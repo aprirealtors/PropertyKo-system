@@ -1,7 +1,93 @@
-import React from 'react';
-import { FileText, Calendar, Home, CreditCard, ArrowRight, ShieldCheck } from 'lucide-react';
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import { supabase } from "@/utils/supabase/client";
+import { FileText, Calendar, Home, CreditCard, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function LeaseTab() {
+  const [unit, setUnit] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchLeaseData();
+  }, []);
+
+  const fetchLeaseData = async () => {
+    setIsLoading(true);
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // 1. Fetch Tenant Profile
+      const { data: profile } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('email', authData.user.email)
+        .single();
+
+      if (profile) {
+        // 2. Fetch the assigned Unit
+        const { data: unitData } = await supabase
+          .from('units')
+          .select('*')
+          .eq('admin_email', profile.admin_email)
+          .ilike('tenant_name', profile.name)
+          .single();
+
+        if (unitData) {
+          setUnit(unitData);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching lease data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Safe variable fallbacks while loading
+  const propertyName = unit?.property_name || "Unassigned Property";
+  const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
+  const monthlyRent = unit?.monthly_rent || 0;
+  
+  // Format Lease End Date
+  const leaseEndDate = unit?.lease_end 
+    ? new Date(unit.lease_end).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
+    : "Not specified";
+
+  // Calculate dynamic display values
+  const securityDeposit = monthlyRent * 2; // Assuming standard 2-months deposit
+  const renewalRate = monthlyRent * 1.05; // Assuming a 5% increase for the renewal offer
+  
+  // Calculate a generic offer expiry (30 days before lease ends)
+  const offerExpiry = unit?.lease_end 
+    ? new Date(new Date(unit.lease_end).getTime() - (30 * 24 * 60 * 60 * 1000)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : "TBD";
+
+  if (isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto pb-10 text-center py-20 text-slate-500">
+        Loading lease details...
+      </div>
+    );
+  }
+
+  if (!unit) {
+    return (
+      <div className="max-w-5xl mx-auto pb-10">
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-16 text-center flex flex-col items-center">
+          <AlertCircle size={48} className="text-slate-300 mb-4" />
+          <h2 className="text-xl font-bold text-slate-800 mb-2">No Active Lease Found</h2>
+          <p className="text-slate-500 text-sm">We couldn't find an active lease assigned to your profile. Please contact your property manager.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto pb-10">
       <div className="mb-8">
@@ -16,10 +102,10 @@ export default function LeaseTab() {
           <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="font-bold text-lg mb-6 text-slate-800">Contract Summary</h3>
             <div className="space-y-6">
-              <LeaseDetail icon={<Home size={20}/>} label="Unit Address" value="The Grove · Unit 3A" />
-              <LeaseDetail icon={<CreditCard size={20}/>} label="Monthly rent" value="₱28,500" />
-              <LeaseDetail icon={<Calendar size={20}/>} label="Lease ends" value="30 Sep 2026" />
-              <LeaseDetail icon={<FileText size={20}/>} label="Security Deposit" value="₱57,000" />
+              <LeaseDetail icon={<Home size={20}/>} label="Unit Address" value={`${propertyName} · ${unitNumber}`} />
+              <LeaseDetail icon={<CreditCard size={20}/>} label="Monthly rent" value={`₱${monthlyRent.toLocaleString()}`} />
+              <LeaseDetail icon={<Calendar size={20}/>} label="Lease ends" value={leaseEndDate} />
+              <LeaseDetail icon={<FileText size={20}/>} label="Security Deposit" value={`₱${securityDeposit.toLocaleString()}`} />
               
               <div className="flex items-center justify-between pt-6 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Full Contract Document</span>
@@ -40,14 +126,14 @@ export default function LeaseTab() {
             </div>
             <h3 className="font-bold text-2xl mb-4">Renew your lease</h3>
             <p className="text-blue-100 mb-8 leading-relaxed">
-              Continue your stay at The Grove for another year. New rate is <strong>₱29,400/mo</strong>. Everything stays the same, just e-sign to lock in your spot.
+              Continue your stay at {propertyName} for another year. New rate is <strong>₱{renewalRate.toLocaleString()}/mo</strong>. Everything stays the same, just e-sign to lock in your spot.
             </p>
             
             <button className="w-full bg-white text-blue-700 rounded-2xl py-4 font-bold text-lg hover:bg-slate-50 transition-all active:scale-[0.98] shadow-lg mb-4">
               Review & e-sign
             </button>
             <p className="text-center text-blue-200 text-[11px]">
-              Offer valid until August 30, 2026
+              Offer valid until {offerExpiry}
             </p>
           </section>
         </div>

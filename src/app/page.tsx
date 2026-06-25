@@ -57,13 +57,12 @@ export default function Home() {
       else if (userRole === "property_manager") {
         router.push("/dashboard/manager"); 
       } 
-      // 👇 NEW: Route for Owners
       else if (userRole === "owner") {
         router.push("/dashboard/owner"); 
       }
-      // 👇 NEW: Route for Tenants
+      // 👇 Route to the newly created tenants folder
       else if (userRole === "tenant") {
-        router.push("/dashboard/tenant"); 
+        router.push("/dashboard/tenants"); 
       }
       // Default fallback for Organization Admins
       else {

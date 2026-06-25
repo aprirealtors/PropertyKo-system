@@ -1,7 +1,10 @@
 'use client';
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, ChevronRight } from 'lucide-react';
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase/client"; 
 
 // Import your tab components
 import PayTab from './pay';
@@ -9,18 +12,84 @@ import RepairTab from './repair';
 import LeaseTab from './lease';
 
 export default function TenantDashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('home');
-      // New State for Logout Modal
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  
+  // Database States
+  const [tenantName, setTenantName] = useState("Tenant");
+  const [unit, setUnit] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const confirmLogout = () => {
-    // Perform logout logic here
-    setShowLogoutModal(false);
+  // Fetch real tenant data on load
+  useEffect(() => {
+    fetchTenantData();
+  }, [router]);
+
+  const fetchTenantData = async () => {
+    setIsLoading(true);
+    const { data: authData } = await supabase.auth.getUser();
+    
+    if (!authData.user) {
+      router.push('/');
+      return;
+    }
+    
+    try {
+      // 1. Pull user profile
+      const { data: profile } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('email', authData.user.email)
+        .single();
+        
+      if (profile) {
+        setTenantName(profile.name);
+
+        // 2. Fetch the Unit assigned to this tenant
+        // We use ilike to make the name matching case-insensitive
+        const { data: unitData } = await supabase
+          .from('units')
+          .select('*')
+          .eq('admin_email', profile.admin_email)
+          .ilike('tenant_name', profile.name)
+          .single();
+          
+        if (unitData) {
+          setUnit(unitData);
+        }
+
+        // 3. Fetch recent transactions (assuming you have a transactions or payments table)
+        // If this table doesn't exist yet, it will just safely return an empty array.
+        const { data: txData } = await supabase
+          .from('transactions') 
+          .select('*')
+          .eq('admin_email', profile.admin_email)
+          .ilike('tenant_name', profile.name)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (txData) {
+          setTransactions(txData);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching tenant data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-return (
+  const confirmLogout = async () => {
+    await supabase.auth.signOut(); 
+    setShowLogoutModal(false);
+    router.push("/"); 
+  };
+
+  return (
     <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
-      {/* TOP HEADER - Layout from image_20b3a3.png */}
+      {/* TOP HEADER */}
       <header className="h-16 bg-[#0b1727] flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-4">
           <div className="bg-white rounded-lg p-1">
@@ -36,7 +105,7 @@ return (
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR - Layout from image_20b3a3.png */}
+        {/* SIDEBAR */}
         <aside className="w-64 bg-[#0b1727] p-4 hidden md:flex flex-col">
           <nav className="space-y-1">
             <NavButton active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={20} />} label="Home" />
@@ -49,7 +118,15 @@ return (
         {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24">
            <div className="max-w-5xl mx-auto">
-             {activeTab === 'home' && <HomeView setActiveTab={setActiveTab} />}
+             {activeTab === 'home' && (
+               <HomeView 
+                 setActiveTab={setActiveTab} 
+                 tenantName={tenantName} 
+                 unit={unit} 
+                 transactions={transactions} 
+                 isLoading={isLoading} 
+               />
+             )}
              {activeTab === 'pay' && <PayTab />}
              {activeTab === 'repair' && <RepairTab />}
              {activeTab === 'lease' && <LeaseTab />}
@@ -65,7 +142,7 @@ return (
         <MobileNavItem active={activeTab === 'lease'} onClick={() => setActiveTab('lease')} icon={<FileText size={22} />} label="Lease" />
       </nav>
 
-      {/* ✨ LOGOUT CONFIRMATION MODAL */}
+      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1e3f]/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
@@ -96,25 +173,48 @@ return (
   );
 }
 
-function HomeView({ setActiveTab }: any) {
+// Sub-component for Home View
+function HomeView({ setActiveTab, tenantName, unit, transactions, isLoading }: any) {
+  
+  // Calculate display values based on database response
+  const rentAmount = unit?.monthly_rent || 0;
+  const propertyName = unit?.property_name || "Unassigned Property";
+  const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
+  
+  // Basic mock due date logic (e.g. rent is usually due on the 1st of the next month)
+  const getDaysUntilDue = () => {
+    const today = new Date();
+    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const diffTime = Math.abs(nextMonth.getTime() - today.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
   return (
     <div className="space-y-6 md:space-y-8">
       <header>
         <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Ms. Lara Cruz</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : tenantName}</h1>
       </header>
       
-      {/* Amount Due Card - Responsive padding */}
+      {/* Amount Due Card connected to live unit data */}
       <section className="bg-[#1e88e5] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
         <p className="text-xs font-semibold opacity-90 uppercase tracking-widest mb-1 md:mb-2">Amount Due</p>
-        <h2 className="text-4xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter">₱28,500</h2>
-        <p className="text-xs md:text-sm opacity-90 mb-6">The Grove · Unit 3A · Due in 3 days</p>
-        <button onClick={() => setActiveTab('pay')} className="w-full bg-white text-blue-600 hover:bg-slate-50 transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base">
-          Pay now <ChevronRight size={18} />
+        <h2 className="text-4xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter">
+          ₱{isLoading ? "0" : rentAmount.toLocaleString()}
+        </h2>
+        <p className="text-xs md:text-sm opacity-90 mb-6">
+          {propertyName} · {unitNumber} {rentAmount > 0 && `· Due in ${getDaysUntilDue()} days`}
+        </p>
+        <button 
+          onClick={() => setActiveTab('pay')} 
+          disabled={rentAmount === 0}
+          className="w-full bg-white text-blue-600 hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base"
+        >
+          {rentAmount > 0 ? "Pay now" : "All caught up"} <ChevronRight size={18} />
         </button>
       </section>
 
-      {/* Grid - ginamit ang gap-3 para sa mobile, gap-4 para sa desktop */}
+      {/* Grid */}
       <div className="grid grid-cols-2 gap-3 md:gap-4">
          <ActionCard onClick={() => setActiveTab('repair')} icon={<PenTool size={20} className="md:text-[24px] text-blue-600" />} title="Report Issue" subtitle="Snap a Photo" />
          <ActionCard onClick={() => setActiveTab('lease')} icon={<FileText size={20} className="md:text-[24px] text-blue-600" />} title="My Lease" subtitle="View Contracts" />
@@ -126,13 +226,27 @@ function HomeView({ setActiveTab }: any) {
       <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-lg text-slate-800">Recent Transactions</h3>
-          <button className="text-sm font-semibold text-[#1e88e5] hover:underline">View all</button>
+          <button onClick={() => setActiveTab('pay')} className="text-sm font-semibold text-[#1e88e5] hover:underline">View all</button>
         </div>
         
-        {/* Placeholder para sa listahan */}
+        {/* Dynamic List */}
         <div className="space-y-4">
-          <TransactionItem title="Rent Payment - June" date="Jun 05, 2026" amount="₱28,500" />
-          <TransactionItem title="Water Bill" date="May 28, 2026" amount="₱850" />
+          {isLoading ? (
+            <p className="text-sm text-slate-400">Loading transactions...</p>
+          ) : transactions.length === 0 ? (
+            <div className="py-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50">
+              <p className="text-sm text-slate-500 font-medium">No recent transactions</p>
+            </div>
+          ) : (
+            transactions.map((tx: any, idx: number) => (
+              <TransactionItem 
+                key={idx} 
+                title={tx.description || "Rent Payment"} 
+                date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
+                amount={`₱${(tx.amount || 0).toLocaleString()}`} 
+              />
+            ))
+          )}
         </div>
       </section>
     </div>
@@ -165,7 +279,6 @@ function NavButton({ active, onClick, icon, label }: any) {
   );
 }
 
-// Sub-component para sa bawat row ng transaction
 function TransactionItem({ title, date, amount }: any) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">

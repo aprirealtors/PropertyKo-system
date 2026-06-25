@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { Camera, DollarSign, X } from "lucide-react";
 
 interface UserProfile {
   name: string;
@@ -27,8 +28,14 @@ export default function MaintenanceDashboard() {
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // New State for Logout Modal
+  // Modals States
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  
+  // Task Completion Modal States
+  const [completeModalTask, setCompleteModalTask] = useState<string | null>(null);
+  const [completionCost, setCompletionCost] = useState("");
+  const [completionImage, setCompletionImage] = useState<File | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Metrics states
   const [metrics, setMetrics] = useState({
@@ -50,7 +57,7 @@ export default function MaintenanceDashboard() {
     
     setMetrics({
       assigned: activeTasks.length,
-      dueToday: due, // This will now accurately reflect the auto-assigned tasks
+      dueToday: due, 
       doneThisWeek: completed
     });
   }, [tasks]);
@@ -95,8 +102,7 @@ export default function MaintenanceDashboard() {
         console.error("Error fetching tasks:", taskError);
         setTasks([]);
       } else if (taskData) {
-        // ✨ AUTO "DUE TODAY" FIX: 
-        // We map over the tasks and automatically ensure pending/in_progress tasks are due today
+        // AUTO "DUE TODAY" FIX
         const formattedTasks = taskData.map(task => ({
           ...task,
           isDueToday: task.status !== 'completed' ? true : task.isDueToday 
@@ -112,7 +118,7 @@ export default function MaintenanceDashboard() {
   };
 
   const updateTaskStatus = async (taskId: string, newStatus: MaintenanceTask['status']) => {
-    // Optimistic UI Update: Instantly change it on the screen so it feels fast
+    // Optimistic UI Update for instant feedback
     setTasks(currentTasks => 
       currentTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
@@ -127,8 +133,69 @@ export default function MaintenanceDashboard() {
 
     if (error) {
       console.error("Failed to update task:", error);
-      // Revert back to true database state if the update failed
       fetchUserDataAndTasks(); 
+    }
+  };
+
+  // Open the completion modal
+  const openCompleteModal = (taskId: string) => {
+    setCompleteModalTask(taskId);
+    setCompletionCost("");
+    setCompletionImage(null);
+  };
+
+  // Submit the completion form (Upload photo, update cost, and close task)
+  const handleCompleteTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completeModalTask) return;
+    
+    setIsCompleting(true);
+
+    try {
+      let photoUrl = "";
+      
+      // 1. Upload resolution photo if provided
+      if (completionImage) {
+        const fileExt = completionImage.name.split('.').pop();
+        const fileName = `resolved-${Math.random()}.${fileExt}`;
+        const { data: imgData, error: uploadError } = await supabase.storage
+          .from('tickets') 
+          .upload(`resolved-uploads/${fileName}`, completionImage);
+
+        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
+
+        if (imgData) {
+          const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
+          photoUrl = publicUrlData.publicUrl;
+        }
+      }
+
+      // 2. Update the task row
+      const updatePayload: any = {
+        status: 'completed',
+        cost: parseFloat(completionCost) || 0,
+      };
+
+      if (photoUrl) {
+        updatePayload.resolution_photo_url = photoUrl;
+      }
+
+      const { error } = await supabase
+        .from('maintenance_tasks')
+        .update(updatePayload)
+        .eq('id', completeModalTask);
+
+      if (error) throw error;
+
+      // 3. Close modal and refresh data
+      setCompleteModalTask(null);
+      await fetchUserDataAndTasks();
+
+    } catch (err: any) {
+      console.error("Error completing task:", err);
+      alert(`Failed to complete task: ${err.message}`);
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -144,7 +211,7 @@ export default function MaintenanceDashboard() {
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
       
-      {/* ✨ LOGOUT CONFIRMATION MODAL */}
+      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1e3f]/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
@@ -166,6 +233,82 @@ export default function MaintenanceDashboard() {
               >
                 Log out
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ TASK COMPLETION MODAL */}
+      {completeModalTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1e3f]/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Complete Repair Task</h2>
+              <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isCompleting}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <form onSubmit={handleCompleteTask} className="space-y-5">
+                
+                {/* Image Upload Input */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Proof of Resolution</label>
+                  <label className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-[#359b46] hover:bg-emerald-50 transition-all cursor-pointer bg-slate-50">
+                    <Camera size={24} className={completionImage ? "text-[#359b46]" : ""} />
+                    <span className={`text-sm ${completionImage ? 'text-[#0a1e3f] font-medium' : 'text-slate-500'}`}>
+                      {completionImage ? completionImage.name : "Upload photo of the fix"}
+                    </span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      required
+                      onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])}
+                      className="hidden"
+                      disabled={isCompleting}
+                    />
+                  </label>
+                </div>
+
+                {/* Cost Input */}
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Equipment Cost (Optional)</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g. 500 for parts" 
+                      value={completionCost} 
+                      onChange={(e) => setCompletionCost(e.target.value)} 
+                      className="w-full pl-10 p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700" 
+                      disabled={isCompleting} 
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">Leave blank or 0 if no parts were purchased.</p>
+                </div>
+
+                {/* Submit Buttons */}
+                <div className="pt-2 flex gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setCompleteModalTask(null)}
+                    disabled={isCompleting}
+                    className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isCompleting} 
+                    className="flex-1 bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#86c48f] text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm"
+                  >
+                    {isCompleting ? "Saving..." : "Mark as Done"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -210,7 +353,7 @@ export default function MaintenanceDashboard() {
               <h2 className="text-[28px] font-extrabold text-[#0a1e3f] tracking-tight leading-tight">My tasks for today</h2>
               <p className="text-slate-500 mt-1 text-[15px]">Hi {profile.name} - here's your assigned work.</p>
             </div>
-            {/* ✨ GREEN THEME: Initials Avatar */}
+            {/* GREEN THEME: Initials Avatar */}
             <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 shadow-sm">
               {profile.initials}
             </div>
@@ -258,7 +401,6 @@ export default function MaintenanceDashboard() {
                         <button className="px-4 py-2 rounded-xl text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors">
                           Call
                         </button>
-                        {/* ✨ GREEN THEME: Start Button */}
                         <button 
                           onClick={() => updateTaskStatus(task.id, 'in_progress')}
                           className="px-5 py-2 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm"
@@ -269,9 +411,9 @@ export default function MaintenanceDashboard() {
                     )}
 
                     {task.status === 'in_progress' && (
-                      // ✨ GREEN THEME: Complete Button
+                      // ✨ Opens the Modal instead of instantly completing
                       <button 
-                        onClick={() => updateTaskStatus(task.id, 'completed')}
+                        onClick={() => openCompleteModal(task.id)}
                         className="px-5 py-2 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm"
                       >
                         Complete
@@ -296,7 +438,7 @@ export default function MaintenanceDashboard() {
             )}
           </div>
 
-          {/* ✨ GREEN THEME: Security / Scope Disclaimer */}
+          {/* Security / Scope Disclaimer */}
           <div className="mt-8 bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium border border-emerald-100/50">
             Staff only see tasks assigned to them - no rent, no tenant finances, no other properties.
           </div>

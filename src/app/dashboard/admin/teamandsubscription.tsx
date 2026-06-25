@@ -47,7 +47,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     if (error) {
       console.error("Error fetching team:", error);
     } else {
-      setTeam(data || []);
+      // ✨ FIX: Filter out owners and tenants so they don't count towards paid seats!
+      const filteredTeam = (data || []).filter(member => {
+        const role = String(member.role).toLowerCase();
+        return !role.includes('owner') && !role.includes('tenant');
+      });
+      setTeam(filteredTeam);
     }
     setIsLoadingTeam(false);
   };

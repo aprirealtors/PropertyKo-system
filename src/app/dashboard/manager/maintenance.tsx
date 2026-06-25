@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, User, HardHat, Bell } from "lucide-react";
+import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any) {
   // Database States
   const [tickets, setTickets] = useState<any[]>([]);
-  const [inboxTickets, setInboxTickets] = useState<any[]>([]); // New state for Owner/Tenant Inbox
+  const [inboxTickets, setInboxTickets] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [units, setUnits] = useState<any[]>([]); // To store units for name lookup
+  const [units, setUnits] = useState<any[]>([]); 
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
 
   // Modal & Form States
@@ -17,7 +17,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  const [selectedInboxId, setSelectedInboxId] = useState(""); // Track selected inbox ticket
+  // NEW: Resolution Review Modal State
+  const [reviewTicket, setReviewTicket] = useState<any | null>(null);
+
+  const [selectedInboxId, setSelectedInboxId] = useState(""); 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [reporter, setReporter] = useState("");
@@ -48,12 +51,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
       setTickets(tasksData || []);
     }
 
-    // 2. Fetch Pending Tickets from Inbox (Submitted by Owners/Tenants)
+    // 2. Fetch Pending Tickets from Inbox 
     const { data: inboxData, error: inboxError } = await supabase
       .from('tickets')
       .select('*')
       .eq('admin_email', orgData.admin_email)
-      .eq('status', 'Open') // Only grab tickets that haven't been assigned yet
+      .eq('status', 'Open') 
       .order('created_at', { ascending: false });
 
     if (inboxError) {
@@ -76,7 +79,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
     }
   };
 
-  // Fetch units to cross-reference location with the owner/tenant's name
   const fetchUnits = async () => {
     const { data } = await supabase
       .from('units')
@@ -97,7 +99,15 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
     }
 
     try {
-      // 1. Insert into Maintenance Tasks (Active Board)
+      let photoUrlToSave = "";
+      if (selectedInboxId) {
+        const matchingInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
+        if (matchingInboxTicket && matchingInboxTicket.photo_url) {
+           photoUrlToSave = matchingInboxTicket.photo_url;
+        }
+      }
+
+      // 1. Insert into Maintenance Tasks 
       const { error } = await supabase
         .from('maintenance_tasks')
         .insert([
@@ -108,13 +118,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
             description: `Reported by ${reporter.trim() || 'Tenant'}`, 
             status: 'pending', 
             assigned_to: assignedTo, 
-            cost: 0
+            cost: 0,
+            photo_url: photoUrlToSave 
           }
         ]);
 
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      // 2. If this came from the Inbox, mark the original ticket as Assigned so it leaves the queue
+      // 2. Mark original inbox ticket as Assigned
       if (selectedInboxId) {
         const { error: updateError } = await supabase
           .from('tickets')
@@ -124,11 +135,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
         if (updateError) console.error("Failed to update inbox ticket status:", updateError);
       }
 
-      // Refresh board and close modal
       await fetchTickets();
       setIsModalOpen(false);
       
-      // Reset form
       setSelectedInboxId("");
       setTitle("");
       setLocation("");
@@ -143,7 +152,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
     }
   };
 
-  // BULLETPROOF STATUS FILTERS (Case-insensitive matching)
+  // BULLETPROOF STATUS FILTERS
   const openTickets = tickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'pending' || s === 'open';
@@ -165,6 +174,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
 
   return (
     <div className="max-w-6xl mx-auto">
+      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
@@ -258,12 +268,79 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
               </div>
             ) : (
               resolvedTickets.map((ticket) => (
-                <TicketCard key={ticket.id} ticket={ticket} teamMembers={teamMembers} statusColor="green" statusLabel="Closed" showCost />
+                // We make the Resolved cards clickable to open the Review Modal
+                <TicketCard 
+                  key={ticket.id} 
+                  ticket={ticket} 
+                  teamMembers={teamMembers} 
+                  statusColor="green" 
+                  statusLabel="Closed" 
+                  showCost 
+                  onClick={() => setReviewTicket(ticket)} 
+                />
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* ✨ RESOLUTION REVIEW MODAL */}
+      {reviewTicket && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="text-[#359b46]" size={20} />
+                <h2 className="text-xl font-bold text-[#0a1e3f]">Review Resolution</h2>
+              </div>
+              <button onClick={() => setReviewTicket(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <h3 className="font-bold text-lg text-slate-800 mb-1">{reviewTicket.title}</h3>
+              <p className="text-sm text-slate-500 mb-6">{reviewTicket.location}</p>
+
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
+                  <span className="text-sm font-semibold text-slate-800">
+                    {teamMembers?.find((m: any) => m.email === reviewTicket.assigned_to)?.name || reviewTicket.assigned_to.split('@')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
+                  <span className="text-sm font-bold text-[#0a1e3f]">₱{(reviewTicket.cost || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Proof of Resolution</span>
+                {reviewTicket.resolution_photo_url ? (
+                  <div className="w-full h-64 rounded-2xl border border-slate-200 overflow-hidden bg-slate-100">
+                    <img src={reviewTicket.resolution_photo_url} alt="Fixed Issue" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center bg-slate-50 text-slate-400">
+                    <Camera size={24} className="mb-2 opacity-50" />
+                    <span className="text-sm font-medium">No photo uploaded by staff.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100">
+              <button 
+                onClick={() => setReviewTicket(null)} 
+                className="w-full bg-[#0a1e3f] hover:bg-[#0a1e3f]/90 text-white py-3 rounded-xl text-sm font-bold transition-all shadow-sm"
+              >
+                Close Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* NEW TICKET MODAL */}
       {isModalOpen && (
@@ -280,7 +357,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
               <form onSubmit={handleAddTicket} className="space-y-5">
                 {errorMsg && <div className="mb-5 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
 
-                {/* INBOX DROPDOWN */}
                 {inboxTickets.length > 0 && (
                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-2">
                     <label className="flex items-center gap-2 text-sm font-bold text-[#0a1e3f] mb-2">
@@ -377,7 +453,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                   />
                 </div>
 
-                {/* ASSIGNMENT DROPDOWN */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><HardHat size={16} className="text-[#359b46]" /> Assign To</label>
                   <select
@@ -411,40 +486,45 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   );
 }
 
-// ✨ UPDATED: TicketCard now receives teamMembers and looks up the real name
-function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost }: any) {
+// ✨ UPDATED: Added onClick support for the Review Modal
+function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost, onClick }: any) {
   const colors: any = {
     yellow: 'bg-amber-50 text-amber-700 border border-amber-100',
-    green: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+    green: 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:shadow-emerald-500/20 hover:border-emerald-300 transition-all cursor-pointer',
     blue: 'bg-blue-50 text-[#1d82f5] border border-blue-100',
   };
 
-  // 1. Try to find the actual name in the teamMembers array
   let assigneeName = "Unassigned";
   if (ticket.assigned_to) {
     const memberMatch = teamMembers?.find((m: any) => m.email === ticket.assigned_to);
     
     if (memberMatch && memberMatch.name) {
-      assigneeName = memberMatch.name; // Use real name (e.g., "John Wick")
+      assigneeName = memberMatch.name; 
     } else {
-      // Fallback: If not found in array, just show the part before the @
-      assigneeName = ticket.assigned_to.split('@')[0];
+      assigneeName = ticket.assigned_to.split('@');
     }
   }
 
+  // Cost default fallback to show ₱0 if empty
+  const formattedCost = ticket.cost !== undefined ? ticket.cost : 0;
+
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer">
+    <div 
+      onClick={onClick} 
+      className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-shadow ${onClick ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''}`}
+    >
       <h5 className="font-bold text-[#0a1e3f] text-sm mb-1">{ticket.title}</h5>
       <p className="text-xs text-slate-500 mb-2">{ticket.location} • {ticket.description}</p>
       
       <div className="flex justify-between items-center mt-4">
         <div className="flex gap-2 items-center">
           <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${colors[statusColor]}`}>{statusLabel}</span>
-          <span className="text-[11px] font-medium text-slate-400 border border-slate-200 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-medium text-slate-500 border border-slate-200 bg-slate-50 px-2 py-0.5 rounded-full">
             👤 {assigneeName}
           </span>
         </div>
-        {showCost && ticket.cost !== undefined && <span className="text-xs text-slate-500 font-bold">₱{ticket.cost}</span>}
+        {/* Displays ₱0 when showCost is active and no cost is provided */}
+        {showCost && <span className="text-[13px] text-[#0a1e3f] font-black tracking-tight">₱{formattedCost.toLocaleString()}</span>}
       </div>
     </div>
   );
