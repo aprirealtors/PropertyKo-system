@@ -125,8 +125,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       <div>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
           <div className="flex items-center gap-3">
-            <h3 className="font-bold text-[#0a1e3f] text-lg">Vacancy board · {isOrgLoading ? "..." : maxUnits} units</h3>
-            <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">{isLoadingUnits || isOrgLoading ? "..." : remainingUnits} remaining slots</span>
+            <h3 className="font-bold text-[#0a1e3f] text-sm">Property Summary Board · {isOrgLoading ? "..." : maxUnits} units</h3>
+           <span className="bg-[#B7C9E2] text-slate-700 border border-[#A5B8D4] text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">Vacancy Board · {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} units</span>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
             <button className="flex-1 sm:flex-none justify-center bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2">

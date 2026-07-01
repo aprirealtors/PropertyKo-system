@@ -4,12 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { Star, Settings, Grid, Wrench, Diamond, Square } from "lucide-react";
+import { Star, Settings, Grid, Wrench, Diamond, Square, Eye, EyeOff } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -25,7 +26,12 @@ export default function Home() {
         password 
       });
 
-      if (authError) throw authError;
+      // ✨ FIX: Handle error gracefully instead of throwing it, so we don't trigger the red dev overlay
+      if (authError) {
+        setErrorMsg("Incorrect email or password. Please try again.");
+        setLoading(false);
+        return; // Stop the function here
+      }
 
       // Extract the role from the user's metadata
       const userRole = authData.user?.user_metadata?.role;
@@ -60,7 +66,7 @@ export default function Home() {
       else if (userRole === "owner") {
         router.push("/dashboard/owner"); 
       }
-      // 👇 Route to the newly created tenants folder
+      // Route to the newly created tenants folder
       else if (userRole === "tenant") {
         router.push("/dashboard/tenants"); 
       }
@@ -71,7 +77,7 @@ export default function Home() {
 
     } catch (error: any) {
       console.error(error);
-      setErrorMsg(error.message || "Invalid login credentials");
+      setErrorMsg("An error occurred during login. Please try again.");
       setLoading(false);
     }
   };
@@ -181,14 +187,23 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent text-sm transition-all"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent text-sm transition-all"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="pt-2">
