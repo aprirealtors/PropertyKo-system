@@ -38,6 +38,13 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       .neq('status', 'Vacant')
       .order('created_at', { ascending: false });
 
+    // ✨ FIX: Filter the occupied list to ONLY include rows with an actual tenant name
+    const actualTenants = (leased || []).filter(unit => {
+      const name = (unit.tenant_name || "").trim();
+      // Keep it if it has a name, and that name is NOT the "—" placeholder we use for Owner Occupied
+      return name !== "" && name !== "—" && name !== "-";
+    });
+
     // 2. Fetch Vacant Units (for the Dropdown)
     const { data: vacant } = await supabase
       .from('units')
@@ -45,7 +52,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       .eq('admin_email', orgData.admin_email)
       .eq('status', 'Vacant');
 
-    setLeasedUnits(leased || []);
+    setLeasedUnits(actualTenants);
     setVacantUnits(vacant || []);
     
     // Auto-select the first vacant unit if available

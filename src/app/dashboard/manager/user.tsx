@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, UserCheck, Building } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, UserCheck, Eye, EyeOff } from "lucide-react";
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -19,43 +19,66 @@ export default function UsersTab({ orgData }: any) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // ✨ NEW: Password visibility toggle
   const [role, setRole] = useState("Tenant");
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
   // Initial Load
   useEffect(() => {
     if (orgData?.admin_email) {
-      fetchUsers();
-      fetchUnits();
+      loadData();
     }
   }, [orgData]);
 
-  const fetchUsers = async () => {
+  const loadData = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    await fetchUsers();
+    setIsLoading(false);
+  };
+
+  const fetchUsers = async () => {
+    const { data: usersData, error: usersError } = await supabase
       .from('team_members')
       .select('*')
       .eq('admin_email', orgData.admin_email)
       .in('role', ['Tenant', 'Owner'])
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Error fetching users:", error);
+    if (usersError) {
+      console.error("Error fetching users:", usersError);
     } else {
-      setUsersList(data || []);
+      setUsersList(usersData || []);
+      // ✨ FIX: Pass the users list to fetchUnits so we can filter out already assigned units
+      fetchUnits(usersData || []);
     }
-    setIsLoading(false);
   };
 
-  const fetchUnits = async () => {
-    const { data, error } = await supabase
+  const fetchUnits = async (currentUsers: any[]) => {
+    const { data: unitsData, error: unitsError } = await supabase
       .from('units')
       .select('*')
       .eq('admin_email', orgData.admin_email)
       .order('property_name', { ascending: true });
 
-    if (!error && data) {
-      setAvailableUnits(data);
+    if (!unitsError && unitsData) {
+      // ✨ FIX: Gather all units that are already assigned to existing users
+      const assignedUnitStrings = new Set<string>();
+      currentUsers.forEach(user => {
+        if (user.access_level) {
+          const userUnits = user.access_level.split(", ");
+          userUnits.forEach((u: string) => assignedUnitStrings.add(u));
+        }
+      });
+
+      // ✨ FIX: Filter units to ONLY show Occupied ones that are NOT already assigned
+      const filteredUnits = unitsData.filter(unit => {
+        const unitString = `${unit.property_name} - ${unit.unit_number}`;
+        const isOccupied = unit.status === 'Occupied';
+        const isNotAssigned = !assignedUnitStrings.has(unitString);
+        return isOccupied && isNotAssigned;
+      });
+
+      setAvailableUnits(filteredUnits);
     }
   };
 
@@ -117,13 +140,14 @@ export default function UsersTab({ orgData }: any) {
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
       // Refresh list and close modal
-      await fetchUsers();
+      await fetchUsers(); // This will also re-fetch and re-filter the available units!
       setIsModalOpen(false);
       
       // Reset form
       setName("");
       setEmail("");
       setPassword("");
+      setShowPassword(false);
       setRole("Tenant");
       setSelectedUnits([]);
 
@@ -136,6 +160,13 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "MG";
+
+  // ✨ FIX: Helper function to strip property name and only show unit numbers
+  const formatUnitsForTable = (accessLevelStr: string) => {
+    if (!accessLevelStr) return "Not assigned";
+    // Split "The Grove - 12B, Future Point - 14A" into just "12B, 14A"
+    return accessLevelStr.split(", ").map(u => u.split(" - ")[1] || u).join(", ");
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -178,7 +209,7 @@ export default function UsersTab({ orgData }: any) {
               <tr>
                 <th className="px-6 py-4 whitespace-nowrap">NAME / EMAIL</th>
                 <th className="px-6 py-4 whitespace-nowrap">ROLE</th>
-                <th className="px-6 py-4 whitespace-nowrap">PROPERTY / UNIT</th>
+                <th className="px-6 py-4 whitespace-nowrap">UNIT(S)</th>
                 <th className="px-6 py-4 text-right whitespace-nowrap">STATUS</th>
               </tr>
             </thead>
@@ -203,8 +234,9 @@ export default function UsersTab({ orgData }: any) {
                         {user.role}
                       </span>
                     </td>
+                    {/* ✨ FIX: Render Cleaned Unit String */}
                     <td className="px-6 py-4 text-slate-600 font-medium max-w-[200px] truncate" title={user.access_level}>
-                      {user.access_level || "Not assigned"}
+                      {formatUnitsForTable(user.access_level)}
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px] px-2.5 py-1 rounded-full inline-flex items-center gap-1">
@@ -252,7 +284,27 @@ export default function UsersTab({ orgData }: any) {
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
                     <Lock size={16} className="text-[#359b46]" /> Initial Password
                   </label>
-                  <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm" disabled={isSubmitting} />
+                  {/* ✨ FIX: Password visibility toggle wrapper */}
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      required 
+                      minLength={6} 
+                      placeholder="Minimum 6 characters" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      className="w-full px-4 py-2 pr-10 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm" 
+                      disabled={isSubmitting} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                      disabled={isSubmitting}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -269,7 +321,7 @@ export default function UsersTab({ orgData }: any) {
                 <div>
                   <div className="flex justify-between items-end mb-1.5">
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                      <Home size={16} className="text-[#359b46]" /> Assign Units
+                      <Home size={16} className="text-[#359b46]" /> Assign Occupied Units
                     </label>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
                       {role === "Owner" ? "Select 1 or more" : "Select 1 or more"}
@@ -278,7 +330,7 @@ export default function UsersTab({ orgData }: any) {
                   
                   <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
                     {availableUnits.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">No units available. Add units first.</p>
+                      <p className="text-xs text-slate-400 text-center py-4">No unassigned occupied units available.</p>
                     ) : (
                       availableUnits.map(unit => {
                         const unitString = `${unit.property_name} - ${unit.unit_number}`;
@@ -300,9 +352,6 @@ export default function UsersTab({ orgData }: any) {
                                 {unit.property_name} <span className="font-medium text-slate-500">• {unit.unit_number}</span>
                               </span>
                             </div>
-                            {unit.status === 'Vacant' && (
-                              <span className="ml-auto text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Vacant</span>
-                            )}
                           </label>
                         )
                       })

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle
+  Wrench, X, AlertTriangle, Briefcase
 } from "lucide-react";
 
 export default function OwnerDashboard() {
@@ -15,11 +15,12 @@ export default function OwnerDashboard() {
   // User & Data States
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [liveTasks, setLiveTasks] = useState<any[]>([]); // Helper array to match live statuses, staff, and cost
-  const [teamMembers, setTeamMembers] = useState<any[]>([]); // To resolve staff names from emails
+  const [liveTasks, setLiveTasks] = useState<any[]>([]); 
+  const [teamMembers, setTeamMembers] = useState<any[]>([]); 
   
   // Dynamic Financial/Property States
   const [payoutThisMonth, setPayoutThisMonth] = useState(0);
+  const [myUnitsList, setMyUnitsList] = useState<any[]>([]); 
   const [unitsCount, setUnitsCount] = useState(0);
   const [occupiedCount, setOccupiedCount] = useState(0);
   const [collectedGross, setCollectedGross] = useState(0);
@@ -56,7 +57,7 @@ export default function OwnerDashboard() {
       if (data) {
         setUserData(data);
         
-        // --- FETCH TEAM MEMBERS (To map emails to real staff names) ---
+        // --- FETCH TEAM MEMBERS ---
         const { data: membersData } = await supabase
           .from('team_members')
           .select('name, email')
@@ -79,6 +80,7 @@ export default function OwnerDashboard() {
             return inAccessLevel || isNamedOwner;
           });
 
+          setMyUnitsList(myUnits); 
           setUnitsCount(myUnits.length);
           setOccupiedCount(myUnits.filter((u: any) => u.status === 'Occupied').length);
           
@@ -87,7 +89,7 @@ export default function OwnerDashboard() {
           setPayoutThisMonth(gross); 
         }
 
-        // --- FETCH LIVE TASKS FOR LIVE TRACKING LINK ---
+        // --- FETCH LIVE TASKS ---
         const { data: tasksData } = await supabase
           .from('maintenance_tasks')
           .select('title, location, status, admin_email, assigned_to, cost')
@@ -104,7 +106,6 @@ export default function OwnerDashboard() {
           .order('created_at', { ascending: false });
 
         if (ticketsData) {
-          // Filter tickets to only show ones submitted by this owner
           const ownerTickets = ticketsData.filter((t: any) => {
              const loc = String(t.location || "").toLowerCase().trim();
              const access = String(data.access_level || "").toLowerCase().trim();
@@ -160,16 +161,12 @@ export default function OwnerDashboard() {
 
       if (error) throw error;
 
-      // Close modal and reset form
       setIsRepairModalOpen(false);
       setRepairIssue("");
       setRepairTime("");
       setSelectedImage(null);
       
-      // Auto-refresh the ticket list
       await fetchOwnerData();
-
-      // Open Success Modal
       setIsSuccessModalOpen(true);
 
     } catch (err: any) {
@@ -195,15 +192,22 @@ export default function OwnerDashboard() {
     return { label: statusValue, styles: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
 
-  // Helper to get full name and 2-letter initials (First & Last name)
+  // Helper to get full name and 2-letter initials
   const fullName = userData?.name || "Owner";
   const getInitials = (name: string) => {
     if (!name || name === "Owner") return "OW";
     const parts = name.trim().split(' ');
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase(); // E.g., Deivid Valderama -> DV
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
   const initials = getInitials(userData?.name);
+
+  // ✨ FIX: Clean Unit String (No business name, no property name)
+  const unitsDisplayString = myUnitsList.map(u => u.unit_number).join(", ");
+  
+  // ✨ FIX: Extract Business Names for the Greeting section
+  const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
+  const businessNameDisplay = uniqueBusinessNames.join(" | ");
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
@@ -255,6 +259,15 @@ export default function OwnerDashboard() {
                 {initials}
               </div>
             </h1>
+            
+            {/* ✨ FIX: Render Business Name prominently if it exists */}
+            {businessNameDisplay && (
+              <div className="flex items-center gap-1.5 mt-1.5 mb-0.5">
+                <Briefcase size={14} className="text-[#359b46]"/>
+                <span className="text-[#359b46] font-bold text-sm">{businessNameDisplay}</span>
+              </div>
+            )}
+            
             <p className="text-slate-500 text-sm mt-1">Here's how your units are doing this month.</p>
           </div>
           <button 
@@ -291,8 +304,9 @@ export default function OwnerDashboard() {
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-slate-500 text-xs font-medium mb-1">My units</p>
             <h3 className="text-2xl font-extrabold text-[#0a1e3f] mb-2">{isLoading ? "-" : unitsCount}</h3>
-            <p className="text-xs text-slate-400 truncate" title={userData?.access_level}>
-              {userData?.access_level || "No assigned units"}
+            {/* ✨ FIX: Render beautifully formatted unit list without Property Name or Biz Name */}
+            <p className="text-xs text-slate-400 truncate" title={unitsDisplayString}>
+              {unitsDisplayString || "No assigned units"}
             </p>
           </div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -332,11 +346,9 @@ export default function OwnerDashboard() {
                 task.location === ticket.location
               );
               
-              // Fallback to initial ticket status value if row layout doesn't catch a card match
               const currentLiveStatus = match ? match.status : ticket.status;
               const badge = getStatusBadge(currentLiveStatus);
 
-              // Map assignee username details cleanly
               let staffName = "Unassigned";
               if (match?.assigned_to) {
                 const memberMatch = teamMembers.find(m => m.email === match.assigned_to);
@@ -349,7 +361,6 @@ export default function OwnerDashboard() {
                     <h4 className="font-bold text-[#0a1e3f] text-sm">{ticket.title}</h4>
                     <p className="text-slate-500 text-xs mt-1">{ticket.description}</p>
                     
-                    {/* Updated layout to show Date reported alongside Assignee and Price elements */}
                     <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-400 font-medium">
                       <span>Reported: <strong className="text-slate-600 font-semibold">{new Date(ticket.created_at).toLocaleDateString()}</strong></span>
                       <span>•</span>
@@ -434,7 +445,6 @@ export default function OwnerDashboard() {
             <div className="p-5">
               <form onSubmit={handleReportRepair} className="space-y-4">
                 
-                {/* Input 1: Issue */}
                 <div>
                   <input 
                     type="text" 
@@ -447,7 +457,6 @@ export default function OwnerDashboard() {
                   />
                 </div>
 
-                {/* Input 2: File Upload */}
                 <div>
                   <label className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
                     <Camera size={20} className="text-slate-400 shrink-0" />
@@ -464,7 +473,6 @@ export default function OwnerDashboard() {
                   </label>
                 </div>
 
-                {/* Input 3: Time */}
                 <div>
                   <input 
                     type="text" 
@@ -477,7 +485,6 @@ export default function OwnerDashboard() {
                   />
                 </div>
 
-                {/* Submit Button */}
                 <div className="pt-2">
                   <button 
                     type="submit" 

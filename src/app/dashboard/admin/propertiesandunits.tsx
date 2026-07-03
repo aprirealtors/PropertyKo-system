@@ -33,7 +33,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [csvPreviewData, setCsvPreviewData] = useState<any[]>([]);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // ✨ NEW: Professional Success Modal State
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,13 +47,36 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     const { data, error } = await supabase
       .from('units')
       .select('*')
-      .eq('admin_email', orgData.admin_email)
-      .order('created_at', { ascending: false });
+      .eq('admin_email', orgData.admin_email);
 
     if (error) {
       console.error("Error fetching units:", error);
+      setUnits([]);
     } else {
-      setUnits(data || []);
+      // ✨ FIX: Advanced Sorting - Property first, then Letters first, then Numbers
+      const sortedData = (data || []).sort((a, b) => {
+        const propA = a.property_name || "";
+        const propB = b.property_name || "";
+        const propCompare = propA.localeCompare(propB);
+        
+        if (propCompare !== 0) return propCompare; // Sort by Property Name first
+        
+        const unitA = String(a.unit_number || "").trim();
+        const unitB = String(b.unit_number || "").trim();
+
+        // Check if the unit string starts with a letter
+        const aStartsLetter = /^[a-zA-Z]/.test(unitA);
+        const bStartsLetter = /^[a-zA-Z]/.test(unitB);
+
+        // Force Letters to come BEFORE numbers
+        if (aStartsLetter && !bStartsLetter) return -1;
+        if (!aStartsLetter && bStartsLetter) return 1;
+
+        // If they both start with a letter, or both start with a number, sort naturally (e.g. A2 before A10)
+        return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setUnits(sortedData);
     }
     setIsLoadingUnits(false);
   };
@@ -229,7 +252,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       }
     };
     
-    reader.readAsText(file);
+    // Windows-1252 encoding to allow 'ñ' from Excel CSVs to display perfectly
+    reader.readAsText(file, 'windows-1252');
   };
 
   // Remove a row from the import preview
@@ -257,7 +281,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       setIsPreviewModalOpen(false);
       setCsvPreviewData([]);
       
-      // ✨ NEW: Trigger Professional Success Modal
+      // Trigger Professional Success Modal
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 3000); // Auto close after 3 seconds
 
@@ -513,6 +537,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       <option value="2BR">2BR</option>
                       <option value="3BR">3BR</option>
                       <option value="Commercial">Commercial</option>
+                      <option value="SOHO">SOHO</option>
                     </select>
                   </div>
                   <div>
