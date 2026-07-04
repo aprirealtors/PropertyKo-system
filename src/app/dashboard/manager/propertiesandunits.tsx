@@ -53,26 +53,22 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       console.error("Error fetching units:", error);
       setUnits([]);
     } else {
-      // ✨ FIX: Advanced Sorting - Property first, then Letters first, then Numbers
       const sortedData = (data || []).sort((a, b) => {
         const propA = a.property_name || "";
         const propB = b.property_name || "";
         const propCompare = propA.localeCompare(propB);
         
-        if (propCompare !== 0) return propCompare; // Sort by Property Name first
+        if (propCompare !== 0) return propCompare; 
         
         const unitA = String(a.unit_number || "").trim();
         const unitB = String(b.unit_number || "").trim();
 
-        // Check if the unit string starts with a letter
         const aStartsLetter = /^[a-zA-Z]/.test(unitA);
         const bStartsLetter = /^[a-zA-Z]/.test(unitB);
 
-        // Force Letters to come BEFORE numbers
         if (aStartsLetter && !bStartsLetter) return -1;
         if (!aStartsLetter && bStartsLetter) return 1;
 
-        // If they both start with a letter, or both start with a number, sort naturally (e.g. A2 before A10)
         return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: 'base' });
       });
 
@@ -81,7 +77,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setIsLoadingUnits(false);
   };
 
-  // Helper to reset the form
   const resetForm = () => {
     setEditingUnitId(null);
     setPropertyName("");
@@ -99,13 +94,11 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setErrorMsg(null);
   };
 
-  // Open modal for a NEW unit
   const openAddModal = () => {
     resetForm();
     setIsModalOpen(true);
   };
 
-  // Open modal to EDIT a unit
   const openEditModal = (unit: any) => {
     resetForm();
     setEditingUnitId(unit.id);
@@ -124,14 +117,12 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setIsModalOpen(true);
   };
 
-  // Submit handler (Handles both Add & Edit)
   const handleSaveUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
 
     const maxUnits = Number(orgData?.units_count) || 0;
-    // Only check limit if adding a NEW unit
     if (!editingUnitId && units.length >= maxUnits) {
       setErrorMsg(`Your plan is limited to ${maxUnits} units. Please upgrade your plan to add more.`);
       setIsSubmitting(false);
@@ -159,11 +150,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
     try {
       if (editingUnitId) {
-        // UPDATE EXISTING
         const { error } = await supabase.from('units').update(payload).eq('id', editingUnitId);
         if (error) throw new Error(`Update Error: ${error.message}`);
       } else {
-        // INSERT NEW
         const { error } = await supabase.from('units').insert([payload]);
         if (error) throw new Error(`Insert Error: ${error.message}`);
       }
@@ -172,7 +161,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       setIsModalOpen(false);
       resetForm();
 
-      // Show success modal for individual add/edit too
       setShowSuccessModal(true);
       setTimeout(() => setShowSuccessModal(false), 3000);
 
@@ -184,14 +172,27 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
-  // Safe Date Parsing helper for CSV imports
+  // Extracts local year, month, and day without creating a timezone shift.
   const parseDateSafe = (dateStr: string) => {
     if (!dateStr || dateStr.trim() === '') return null;
     const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]; 
+    
+    if (isNaN(d.getTime())) return null; 
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`; 
   };
 
-  // CSV Import Handler (Parses to Preview State)
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    const [year, month, day] = dateStr.split('T')[0].split('-');
+    if (!year || !month || !day) return dateStr;
+    return `${parseInt(month)}/${parseInt(day)}/${year}`;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -201,7 +202,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       try {
         const text = event.target?.result as string;
         
-        // Basic CSV Parsing
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
         if (lines.length < 2) throw new Error("CSV file seems empty or missing data rows.");
         
@@ -217,7 +217,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           parsedData.push(obj);
         }
 
-        // Map CSV objects to Database Columns for preview
         const mappedUnits = parsedData.map(row => {
           const tenant = row['TENANT'] || '—';
           const providedStatus = row['STATUS'];
@@ -240,7 +239,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           };
         });
 
-        // Set to preview state and open preview modal
         setCsvPreviewData(mappedUnits);
         setIsPreviewModalOpen(true);
 
@@ -248,20 +246,17 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         console.error("Import parsing error:", err);
         alert(`Failed to read CSV: ${err.message}`);
       } finally {
-        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+        if (fileInputRef.current) fileInputRef.current.value = ""; 
       }
     };
     
-    // Windows-1252 encoding to allow 'ñ' from Excel CSVs to display perfectly
     reader.readAsText(file, 'windows-1252');
   };
 
-  // Remove a row from the import preview
   const removePreviewRow = (indexToRemove: number) => {
     setCsvPreviewData(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // Finally confirm and upload the reviewed CSV list to DB
   const confirmCsvImport = async () => {
     if (csvPreviewData.length === 0) return;
     setIsImporting(true);
@@ -281,9 +276,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       setIsPreviewModalOpen(false);
       setCsvPreviewData([]);
       
-      // Trigger Professional Success Modal
       setShowSuccessModal(true);
-      setTimeout(() => setShowSuccessModal(false), 3000); // Auto close after 3 seconds
+      setTimeout(() => setShowSuccessModal(false), 3000); 
 
     } catch (err: any) {
       console.error("Database import error:", err);
@@ -299,8 +293,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const remainingUnits = Math.max(0, maxUnits - activeUnits); 
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+    <div className="max-w-6xl mx-auto h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 shrink-0">
         <div>
           <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Properties & units</h2>
           <p className="text-slate-500 text-sm mt-1">Vacancy board across the portfolio</p>
@@ -317,8 +311,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       </div>
 
-      <div>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+      <div className="flex-1 flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0">
           <div className="flex items-center gap-3">
             <h3 className="font-bold text-[#0a1e3f] text-sm">Property Summary Board · {isOrgLoading ? "..." : maxUnits} units</h3>
            <span className="bg-[#B7C9E2] text-slate-700 border border-[#A5B8D4] text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">Vacancy Board · {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} units</span>
@@ -348,24 +342,25 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-white text-slate-500 text-[11px] uppercase font-bold border-b border-slate-100 tracking-wider">
+        {/* ✨ FIX: Independent Scroll Container for the Table */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div className="overflow-auto max-h-[60vh] custom-scrollbar">
+            <table className="w-full text-left text-sm relative">
+              <thead className="bg-white text-slate-500 text-[11px] uppercase font-bold tracking-wider sticky top-0 z-10 shadow-sm border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap">PROPERTY</th>
-                  <th className="px-6 py-4 whitespace-nowrap">UNIT</th>
-                  <th className="px-6 py-4 whitespace-nowrap">TYPE</th>
-                  <th className="px-6 py-4 whitespace-nowrap">AREA</th>
-                  <th className="px-6 py-4 whitespace-nowrap">OWNER</th>
-                  <th className="px-6 py-4 whitespace-nowrap">BUSINESS NAME</th>
-                  <th className="px-6 py-4 whitespace-nowrap">TENANT</th>
-                  <th className="px-6 py-4 whitespace-nowrap">MONTHLY RENT</th>
-                  <th className="px-6 py-4 whitespace-nowrap">TURNOVER</th>
-                  <th className="px-6 py-4 whitespace-nowrap">ACCEPTANCE</th>
-                  <th className="px-6 py-4 whitespace-nowrap">REMARKS</th>
-                  <th className="px-6 py-4 whitespace-nowrap">STATUS</th>
-                  <th className="px-6 py-4 whitespace-nowrap text-right">ACTIONS</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">PROPERTY</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">UNIT</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">TYPE</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">AREA</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">OWNER</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">BUSINESS NAME</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">TENANT</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">MONTHLY RENT</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">TURNOVER</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">ACCEPTANCE</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">REMARKS</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">STATUS</th>
+                  <th className="px-6 py-4 whitespace-nowrap text-right bg-white">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -391,8 +386,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.business_name || '—'}</td>
                       <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{unit.tenant_name}</td>
                       <td className="px-6 py-4 text-slate-900 font-medium whitespace-nowrap">₱{unit.monthly_rent.toLocaleString()}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.turnover_date ? new Date(unit.turnover_date).toLocaleDateString() : '—'}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.acceptance_date ? new Date(unit.acceptance_date).toLocaleDateString() : '—'}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.turnover_date)}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.acceptance_date)}</td>
                       <td className="px-6 py-4 text-slate-600 max-w-[150px] truncate" title={unit.remarks}>{unit.remarks || '—'}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${unit.status === 'Vacant' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
@@ -432,22 +427,22 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             </div>
             
             <div className="overflow-auto custom-scrollbar flex-1 bg-white">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase sticky top-0 border-b border-slate-100 shadow-sm z-10">
+              <table className="w-full text-left text-xs relative">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase sticky top-0 shadow-sm z-10">
                   <tr>
-                    <th className="px-4 py-3 whitespace-nowrap">Property</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Unit</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Type</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Area</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Owner</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Business Name</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Tenant</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Rent</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Turnover</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Acceptance</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Remarks</th>
-                    <th className="px-4 py-3 whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3 whitespace-nowrap text-right">Action</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Property</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Unit</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Type</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Area</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Owner</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Business Name</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Tenant</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Rent</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Turnover</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Acceptance</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Remarks</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Status</th>
+                    <th className="px-4 py-3 whitespace-nowrap text-right bg-slate-50">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -464,8 +459,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                         <td className="px-4 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.tenant_name}</td>
                         <td className="px-4 py-3 font-medium whitespace-nowrap">₱{row.monthly_rent}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.turnover_date || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.acceptance_date || '—'}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.turnover_date)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.acceptance_date)}</td>
                         <td className="px-4 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.status}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
