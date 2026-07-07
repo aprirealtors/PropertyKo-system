@@ -19,7 +19,7 @@ export default function UsersTab({ orgData }: any) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // ✨ NEW: Password visibility toggle
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("Tenant");
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
 
@@ -29,6 +29,13 @@ export default function UsersTab({ orgData }: any) {
       loadData();
     }
   }, [orgData]);
+
+  // When role changes, we need to refetch units because availability depends on the role!
+  useEffect(() => {
+    if (usersList.length > 0) {
+      fetchUnits(usersList, role);
+    }
+  }, [role]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -48,37 +55,59 @@ export default function UsersTab({ orgData }: any) {
       console.error("Error fetching users:", usersError);
     } else {
       setUsersList(usersData || []);
-      // ✨ FIX: Pass the users list to fetchUnits so we can filter out already assigned units
-      fetchUnits(usersData || []);
+      // Pass the current role so it filters correctly right away
+      fetchUnits(usersData || [], role);
     }
   };
 
-  const fetchUnits = async (currentUsers: any[]) => {
+  const fetchUnits = async (currentUsers: any[], targetRole: string) => {
     const { data: unitsData, error: unitsError } = await supabase
       .from('units')
       .select('*')
-      .eq('admin_email', orgData.admin_email)
-      .order('property_name', { ascending: true });
+      .eq('admin_email', orgData.admin_email); // Fetch raw data first
 
     if (!unitsError && unitsData) {
-      // ✨ FIX: Gather all units that are already assigned to existing users
+      // Gather all units assigned to EXISTING users OF THE SAME ROLE
       const assignedUnitStrings = new Set<string>();
+      
       currentUsers.forEach(user => {
-        if (user.access_level) {
+        // Only block the unit if the existing user has the SAME role we are trying to create
+        if (user.access_level && user.role === targetRole) {
           const userUnits = user.access_level.split(", ");
           userUnits.forEach((u: string) => assignedUnitStrings.add(u));
         }
       });
 
-      // ✨ FIX: Filter units to ONLY show Occupied ones that are NOT already assigned
+      // Filter units to show Occupied ones that are NOT already assigned TO THIS SPECIFIC ROLE
       const filteredUnits = unitsData.filter(unit => {
         const unitString = `${unit.property_name} - ${unit.unit_number}`;
         const isOccupied = unit.status === 'Occupied';
-        const isNotAssigned = !assignedUnitStrings.has(unitString);
-        return isOccupied && isNotAssigned;
+        const isNotAssignedToSameRole = !assignedUnitStrings.has(unitString);
+        return isOccupied && isNotAssignedToSameRole;
       });
 
-      setAvailableUnits(filteredUnits);
+      // ✨ FIX: Natural Alphanumeric Sorting for the Available Units List
+      const sortedUnits = filteredUnits.sort((a, b) => {
+        const propA = a.property_name || "";
+        const propB = b.property_name || "";
+        const propCompare = propA.localeCompare(propB);
+        
+        if (propCompare !== 0) return propCompare; // Group by Property Name first
+        
+        const unitA = String(a.unit_number || "").trim();
+        const unitB = String(b.unit_number || "").trim();
+
+        const aStartsLetter = /^[a-zA-Z]/.test(unitA);
+        const bStartsLetter = /^[a-zA-Z]/.test(unitB);
+
+        if (aStartsLetter && !bStartsLetter) return -1;
+        if (!aStartsLetter && bStartsLetter) return 1;
+
+        // True Alphanumeric sort
+        return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      setAvailableUnits(sortedUnits);
     }
   };
 
@@ -140,7 +169,7 @@ export default function UsersTab({ orgData }: any) {
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
       // Refresh list and close modal
-      await fetchUsers(); // This will also re-fetch and re-filter the available units!
+      await fetchUsers(); 
       setIsModalOpen(false);
       
       // Reset form
@@ -161,10 +190,8 @@ export default function UsersTab({ orgData }: any) {
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "MG";
 
-  // ✨ FIX: Helper function to strip property name and only show unit numbers
   const formatUnitsForTable = (accessLevelStr: string) => {
     if (!accessLevelStr) return "Not assigned";
-    // Split "The Grove - 12B, Future Point - 14A" into just "12B, 14A"
     return accessLevelStr.split(", ").map(u => u.split(" - ")[1] || u).join(", ");
   };
 
@@ -234,7 +261,6 @@ export default function UsersTab({ orgData }: any) {
                         {user.role}
                       </span>
                     </td>
-                    {/* ✨ FIX: Render Cleaned Unit String */}
                     <td className="px-6 py-4 text-slate-600 font-medium max-w-[200px] truncate" title={user.access_level}>
                       {formatUnitsForTable(user.access_level)}
                     </td>
@@ -284,7 +310,6 @@ export default function UsersTab({ orgData }: any) {
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
                     <Lock size={16} className="text-[#359b46]" /> Initial Password
                   </label>
-                  {/* ✨ FIX: Password visibility toggle wrapper */}
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
@@ -324,7 +349,7 @@ export default function UsersTab({ orgData }: any) {
                       <Home size={16} className="text-[#359b46]" /> Assign Occupied Units
                     </label>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      {role === "Owner" ? "Select 1 or more" : "Select 1 or more"}
+                      Select 1 or more
                     </span>
                   </div>
                   

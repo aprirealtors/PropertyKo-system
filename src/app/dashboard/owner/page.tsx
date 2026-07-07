@@ -33,6 +33,7 @@ export default function OwnerDashboard() {
   const [repairIssue, setRepairIssue] = useState("");
   const [repairTime, setRepairTime] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); // ✨ NEW: State to track which unit is selected
 
   // Success & Logout Modal States
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -123,6 +124,16 @@ export default function OwnerDashboard() {
     router.push("/");
   };
 
+  // ✨ NEW: Helper to open the modal and pre-select the unit if they only have 1
+  const openRepairModal = () => {
+    if (myUnitsList.length === 1) {
+      setSelectedUnitForRepair(`${myUnitsList[0].property_name} - ${myUnitsList[0].unit_number}`);
+    } else {
+      setSelectedUnitForRepair("");
+    }
+    setIsRepairModalOpen(true);
+  };
+
   const handleReportRepair = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -153,7 +164,8 @@ export default function OwnerDashboard() {
         .insert([{
           admin_email: userData?.admin_email,
           title: repairIssue,
-          location: userData?.access_level || "Owner's Unit",
+          // ✨ FIX: Apply the selected unit if they chose one, fallback to standard access level
+          location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
           description: `Best time to visit: ${repairTime}. Reported by Owner.`,
           status: 'Open', 
           photo_url: photoUrl
@@ -165,6 +177,7 @@ export default function OwnerDashboard() {
       setRepairIssue("");
       setRepairTime("");
       setSelectedImage(null);
+      setSelectedUnitForRepair("");
       
       await fetchOwnerData();
       setIsSuccessModalOpen(true);
@@ -202,10 +215,7 @@ export default function OwnerDashboard() {
   };
   const initials = getInitials(userData?.name);
 
-  // ✨ FIX: Clean Unit String (No business name, no property name)
   const unitsDisplayString = myUnitsList.map(u => u.unit_number).join(", ");
-  
-  // ✨ FIX: Extract Business Names for the Greeting section
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
   const businessNameDisplay = uniqueBusinessNames.join(" | ");
 
@@ -260,7 +270,6 @@ export default function OwnerDashboard() {
               </div>
             </h1>
             
-            {/* ✨ FIX: Render Business Name prominently if it exists */}
             {businessNameDisplay && (
               <div className="flex items-center gap-1.5 mt-1.5 mb-0.5">
                 <Briefcase size={14} className="text-[#359b46]"/>
@@ -271,7 +280,7 @@ export default function OwnerDashboard() {
             <p className="text-slate-500 text-sm mt-1">Here's how your units are doing this month.</p>
           </div>
           <button 
-            onClick={() => setIsRepairModalOpen(true)}
+            onClick={openRepairModal} // ✨ FIX: Use new helper function here
             className="bg-white border border-slate-200 hover:border-[#359b46] text-slate-700 hover:text-[#359b46] px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2"
           >
             <Wrench size={16} /> Report a repair
@@ -304,7 +313,6 @@ export default function OwnerDashboard() {
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-slate-500 text-xs font-medium mb-1">My units</p>
             <h3 className="text-2xl font-extrabold text-[#0a1e3f] mb-2">{isLoading ? "-" : unitsCount}</h3>
-            {/* ✨ FIX: Render beautifully formatted unit list without Property Name or Biz Name */}
             <p className="text-xs text-slate-400 truncate" title={unitsDisplayString}>
               {unitsDisplayString || "No assigned units"}
             </p>
@@ -445,6 +453,26 @@ export default function OwnerDashboard() {
             <div className="p-5">
               <form onSubmit={handleReportRepair} className="space-y-4">
                 
+                {/* ✨ FIX: Conditional Dropdown for Owners with Multiple Units */}
+                {myUnitsList.length > 1 && (
+                  <div>
+                    <select
+                      required
+                      value={selectedUnitForRepair}
+                      onChange={(e) => setSelectedUnitForRepair(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700 bg-white"
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>Select which unit needs repair...</option>
+                      {myUnitsList.map((u) => (
+                        <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>
+                          {u.property_name} {u.unit_number}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <input 
                     type="text" 

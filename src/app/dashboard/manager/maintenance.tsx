@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera } from "lucide-react";
+import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera, Clock } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any) {
   // Database States
@@ -17,12 +17,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // NEW: Resolution Review Modal State
+  // Resolution Review Modal State
   const [reviewTicket, setReviewTicket] = useState<any | null>(null);
 
   const [selectedInboxId, setSelectedInboxId] = useState(""); 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
+  const [visitTime, setVisitTime] = useState(""); 
   const [reporter, setReporter] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
 
@@ -71,7 +72,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   const fetchTeamMembers = async () => {
     const { data, error } = await supabase
       .from('team_members')
-      .select('name, email')
+      // ✨ FIX: Now fetching the "role" column so we can filter the dropdown properly
+      .select('name, email, role') 
       .eq('admin_email', orgData.admin_email); 
 
     if (!error && data) {
@@ -83,7 +85,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
     const { data } = await supabase
       .from('units')
       .select('*')
-      .eq('admin_email', orgData.admin_email);
+      .eq('admin_email', orgData.admin_email)
+      .order('property_name', { ascending: true })
+      .order('unit_number', { ascending: true }); 
     if (data) setUnits(data);
   };
 
@@ -115,7 +119,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
             admin_email: orgData.admin_email,
             title: title.trim(),
             location: location.trim(),
-            description: `Reported by ${reporter.trim() || 'Tenant'}`, 
+            // Combine the reporter name with the best time to visit if provided
+            description: `Reported by ${reporter.trim() || 'Tenant'}${visitTime ? ` | Best time: ${visitTime.trim()}` : ''}`, 
             status: 'pending', 
             assigned_to: assignedTo, 
             cost: 0,
@@ -141,6 +146,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
       setSelectedInboxId("");
       setTitle("");
       setLocation("");
+      setVisitTime("");
       setReporter("");
       setAssignedTo("");
 
@@ -268,7 +274,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
               </div>
             ) : (
               resolvedTickets.map((ticket) => (
-                // We make the Resolved cards clickable to open the Review Modal
                 <TicketCard 
                   key={ticket.id} 
                   ticket={ticket} 
@@ -284,7 +289,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
         </div>
       </div>
 
-      {/* ✨ RESOLUTION REVIEW MODAL */}
+      {/* RESOLUTION REVIEW MODAL */}
       {reviewTicket && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col">
@@ -374,16 +379,21 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                             setLocation(t.location || "");
                             
                             const desc = t.description || "";
+                            if (desc.includes("Best time to visit:")) {
+                              const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
+                              if (timeMatch) setVisitTime(timeMatch.trim());
+                            }
+
                             const isOwner = desc.toLowerCase().includes("owner");
                             const roleStr = isOwner ? " (Owner)" : " (Tenant)";
                             
                             let exactName = "";
-                            const locStr = (t.location || "").toLowerCase();
+                            const locStr = String(t.location || "").toLowerCase().trim();
                             
                             const matchedUnit = units.find(u => {
-                              const uNum = String(u.unit_number).toLowerCase();
-                              const pName = String(u.property_name).toLowerCase();
-                              return locStr.includes(uNum) || locStr.includes(pName);
+                              const uNum = String(u.unit_number).toLowerCase().trim();
+                              const locationParts = locStr.split(',').map(p => p.trim());
+                              return locationParts.some(part => part.includes(uNum) || uNum.includes(part));
                             });
 
                             if (matchedUnit) {
@@ -399,6 +409,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                         } else {
                           setTitle("");
                           setLocation("");
+                          setVisitTime("");
                           setReporter("");
                         }
                       }}
@@ -430,12 +441,33 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><MapPin size={16} className="text-[#359b46]" /> Location / Unit</label>
-                  <input
-                    type="text"
+                  <select
                     required
-                    placeholder="e.g. Grove 12B"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white"
+                    disabled={isSubmitting || !!selectedInboxId}
+                  >
+                    <option value="" disabled>Select unit...</option>
+                    <option value="Common Area">Common Area (Lobby, Hallway, etc.)</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>
+                        {u.property_name} {u.unit_number}
+                      </option>
+                    ))}
+                    {location && !units.find(u => `${u.property_name} - ${u.unit_number}` === location) && location !== "Common Area" && (
+                      <option value={location}>{location} (Custom)</option>
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Clock size={16} className="text-[#359b46]" /> Best Time to Visit (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tomorrow morning, Weekends only"
+                    value={visitTime}
+                    onChange={(e) => setVisitTime(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm"
                     disabled={isSubmitting}
                   />
@@ -463,11 +495,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                     disabled={isSubmitting}
                   >
                     <option value="" disabled>Select maintenance staff...</option>
-                    {teamMembers.map((member) => (
-                      <option key={member.email} value={member.email}>
-                        {member.name} ({member.email})
-                      </option>
-                    ))}
+                    {/* ✨ FIX: Filter out Owners, Tenants, and Managers from this list */}
+                    {teamMembers
+                      .filter(m => {
+                        const r = String(m.role || "").toLowerCase();
+                        return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager');
+                      })
+                      .map((member) => (
+                        <option key={member.email} value={member.email}>
+                          {member.name} ({member.email})
+                        </option>
+                      ))
+                    }
                   </select>
                 </div>
 
@@ -486,7 +525,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   );
 }
 
-// ✨ UPDATED: Added onClick support for the Review Modal
 function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost, onClick }: any) {
   const colors: any = {
     yellow: 'bg-amber-50 text-amber-700 border border-amber-100',
@@ -505,7 +543,6 @@ function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost, o
     }
   }
 
-  // Cost default fallback to show ₱0 if empty
   const formattedCost = ticket.cost !== undefined ? ticket.cost : 0;
 
   return (
@@ -523,7 +560,6 @@ function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost, o
             👤 {assigneeName}
           </span>
         </div>
-        {/* Displays ₱0 when showCost is active and no cost is provided */}
         {showCost && <span className="text-[13px] text-[#0a1e3f] font-black tracking-tight">₱{formattedCost.toLocaleString()}</span>}
       </div>
     </div>
