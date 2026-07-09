@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, 
-  Ticket, AlertTriangle, Menu, X, Users 
+  Ticket, AlertTriangle, Menu, X, Users, Bell, CheckCheck, Trash2
 } from "lucide-react";
 
 // Import all split components
@@ -17,7 +17,7 @@ import MaintenanceTab from "./maintenance";
 import BillingTab from "./billing";
 import KPIReportsTab from "./kpireports";
 import ViewTicketTab from "./viewticket";
-import UsersTab from "./user"; // <-- Added the new Users Tab
+import UsersTab from "./user"; 
 
 export default function ManagerDashboard() {
   const router = useRouter();
@@ -31,6 +31,11 @@ export default function ManagerDashboard() {
   const [orgData, setOrgData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // ✨ NOTIFICATION STATES
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
   // Fetch the logged-in user and their parent organization data
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -39,7 +44,6 @@ export default function ManagerDashboard() {
         const { data: authData } = await supabase.auth.getUser();
         
         if (authData?.user) {
-          // CRITICAL DIFFERENCE: Managers fetch the org using their Admin Parent's email
           const adminParentEmail = authData.user.user_metadata?.admin_parent || authData.user.email;
 
           const { data, error } = await supabase
@@ -61,15 +65,80 @@ export default function ManagerDashboard() {
     fetchOrgData();
   }, []);
 
+  // ✨ FETCH NOTIFICATIONS FOR MANAGERS
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (orgData?.admin_email) {
+        const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('admin_email', orgData.admin_email)
+        .eq('recipient', 'MANAGER') // 👈 Pinalitan ang .is('recipient_email', null)
+        .order('created_at', { ascending: false })
+        .limit(15);
+
+        if (!error && data) {
+          setNotifications(data);
+          setUnreadCount(data.filter(n => !n.is_read).length);
+        }
+      }
+    };
+
+    fetchNotifications();
+  }, [orgData]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
   };
 
-  // Helper function to handle tab switching and closing mobile menu
   const handleTabChange = (tabName: string) => {
     setActiveTab(tabName);
-    setIsMobileMenuOpen(false); // Close menu on mobile after clicking
+    setIsMobileMenuOpen(false); 
+  };
+
+  // ✨ NOTIFICATION FUNCTIONS
+  const markAllAsRead = async () => {
+    if (!orgData?.admin_email) return;
+    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('admin_email', orgData.admin_email)
+    .eq('recipient', 'MANAGER') // 👈 Dito rin
+    .eq('is_read', false);
+  };
+
+  // const clearAllNotifications = async () => {
+  //   if (!orgData?.admin_email) return;
+  //   setNotifications([]);
+  //   setUnreadCount(0);
+  //   setIsNotifOpen(false);
+  //   await supabase
+  //   .from('notifications')
+  //   .delete()
+  //   .eq('admin_email', orgData.admin_email)
+  //   .eq('recipient', 'MANAGER');
+  // };
+
+  const handleNotificationClick = async (notif: any) => {
+    if (!notif.is_read) {
+      setNotifications(notifications.map(n => 
+        n.id === notif.id ? { ...n, is_read: true } : n
+      ));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+    }
+
+    setIsNotifOpen(false);
+
+    // ✨ Smart Navigation: Auto-switch tab based on notification type
+    const type = notif.type?.toUpperCase() || '';
+    if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
+    else if (type === 'TICKET') handleTabChange("Tickets");
+    else if (type === 'MAINTENANCE') handleTabChange("Maintenance");
+    else handleTabChange("Dashboard");
   };
 
   return (
@@ -78,7 +147,6 @@ export default function ManagerDashboard() {
       {/* Global Top Navigation */}
       <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30 border-b border-white/10">
         <div className="flex items-center gap-3">
-          {/* Hamburger Button (Mobile Only) */}
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
             className="sm:hidden p-1.5 hover:bg-white/10 rounded-lg transition-colors mr-1"
@@ -88,18 +156,78 @@ export default function ManagerDashboard() {
 
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7">
-              <Image
-                src="/logos.png"
-                alt="PropertyKo Logo"
-                fill
-                className="object-contain object-center"
-                priority
-              />
+              <Image src="/logos.png" alt="PropertyKo Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-4 text-sm relative">
+          
+          {/* ✨ MANAGER NOTIFICATION DROPDOWN */}
+          <div 
+            onClick={() => setIsNotifOpen(!isNotifOpen)} 
+            className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0a1e3f] animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </div>
+
+          {/* ✨ NOTIFICATION MODAL */}
+          {isNotifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+              <div className="absolute top-12 right-12 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
+                <div className="p-3 flex justify-between items-center bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-[#0a1e3f] text-sm">Notifications</h3>
+                  <div className="flex gap-2 relative z-10">
+                    <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1 transition-colors">
+                      <CheckCheck size={14} /> Read All
+                    </button>
+                    {/* <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
+                      <Trash2 size={14} /> Clear
+                    </button> */}
+                  </div>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto relative z-10">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-sm">
+                      No new notifications
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div 
+                        key={notif.id} 
+                        onClick={() => handleNotificationClick(notif)}
+                        className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.is_read ? 'bg-blue-50/50' : 'opacity-70'}`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-sm text-[#0a1e3f] truncate pr-2">
+                            {notif.title}
+                          </span>
+                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${notif.type === 'TICKET' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {notif.type}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(notif.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* MANAGER PORTAL BADGE */}
           <div className="hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">
             Manager Portal
@@ -165,7 +293,6 @@ export default function ManagerDashboard() {
             <NavItem icon={<CreditCard size={18} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
             <NavItem icon={<Ticket size={18} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} />
-            {/* NEW ACCOUNTS TAB */}
             <NavItem icon={<Users size={18} />} label="Accounts" isActive={activeTab === "Users"} onClick={() => handleTabChange("Users")} />
           </nav>
         </aside>
@@ -179,7 +306,6 @@ export default function ManagerDashboard() {
           {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} />}
-          {/* NEW USERS TAB COMPONENT */}
           {activeTab === "Users" && <UsersTab orgData={orgData} isLoading={isLoading} />}
         </main>
       </div>
@@ -220,7 +346,7 @@ function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, la
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-3 sm:py-2.5 rounded-lg text-sm font-semibold transition-all ${
         isActive 
-          ? "bg-[#359b46] text-white shadow-sm" // Green active state
+          ? "bg-[#359b46] text-white shadow-sm" 
           : "text-slate-400 hover:bg-[#122955] hover:text-slate-200"
       }`}
     >

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle, Briefcase
+  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2
 } from "lucide-react";
 
 export default function OwnerDashboard() {
@@ -14,6 +14,7 @@ export default function OwnerDashboard() {
   
   // User & Data States
   const [userData, setUserData] = useState<any>(null);
+  const [userEmail, setUserEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [liveTasks, setLiveTasks] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]); 
@@ -33,11 +34,16 @@ export default function OwnerDashboard() {
   const [repairIssue, setRepairIssue] = useState("");
   const [repairTime, setRepairTime] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); // ✨ NEW: State to track which unit is selected
+  const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); 
 
   // Success & Logout Modal States
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  // ✨ NOTIFICATION STATES
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   useEffect(() => {
     fetchOwnerData();
@@ -48,6 +54,8 @@ export default function OwnerDashboard() {
     const { data: authData } = await supabase.auth.getUser();
     
     if (authData?.user) {
+      setUserEmail(authData.user.email || "");
+
       // Fetch the owner's profile
       const { data, error } = await supabase
         .from('team_members')
@@ -114,6 +122,19 @@ export default function OwnerDashboard() {
           });
           setMyTickets(ownerTickets);
         }
+
+        // ✨ FETCH NOTIFICATIONS FOR THIS OWNER ✨
+        const { data: notifData } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('recipient', authData.user.email)
+          .order('created_at', { ascending: false })
+          .limit(10);
+          
+        if (notifData) {
+          setNotifications(notifData);
+          setUnreadCount(notifData.filter(n => !n.is_read).length);
+        }
       }
     }
     setIsLoading(false);
@@ -124,7 +145,6 @@ export default function OwnerDashboard() {
     router.push("/");
   };
 
-  // ✨ NEW: Helper to open the modal and pre-select the unit if they only have 1
   const openRepairModal = () => {
     if (myUnitsList.length === 1) {
       setSelectedUnitForRepair(`${myUnitsList[0].property_name} - ${myUnitsList[0].unit_number}`);
@@ -139,7 +159,6 @@ export default function OwnerDashboard() {
     setIsSubmitting(true);
 
     try {
-      // 1. Upload Image
       let photoUrl = "";
       if (selectedImage) {
         const fileExt = selectedImage.name.split('.').pop();
@@ -148,9 +167,7 @@ export default function OwnerDashboard() {
           .from('tickets')
           .upload(`owner-uploads/${fileName}`, selectedImage);
           
-        if (uploadError) {
-          throw new Error(`Image Upload Error: ${uploadError.message}`);
-        }
+        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
           
         if (imgData) {
           const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
@@ -158,20 +175,34 @@ export default function OwnerDashboard() {
         }
       }
 
-      // 2. Insert into the TICKETS table
-      const { error } = await supabase
+      // ✨ UPDATED: Added .select().single() to get the inserted ticket ID
+      const { data: newTicket, error } = await supabase
         .from('tickets') 
         .insert([{
           admin_email: userData?.admin_email,
           title: repairIssue,
-          // ✨ FIX: Apply the selected unit if they chose one, fallback to standard access level
           location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
           description: `Best time to visit: ${repairTime}. Reported by Owner.`,
           status: 'Open', 
           photo_url: photoUrl
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // ✨ NEW: TRIGGER NOTIFICATION FOR THE MANAGER
+      await supabase
+        .from('notifications')
+        .insert([{
+          admin_email: userData?.admin_email,
+          recipient: 'MANAGER',
+          type: 'TICKET',
+          title: 'New Repair Request',
+          message: `${userData?.name || 'An owner'} reported an issue: ${repairIssue}`,
+          reference_id: newTicket.id,
+          is_read: false
+        }]);
 
       setIsRepairModalOpen(false);
       setRepairIssue("");
@@ -190,22 +221,41 @@ export default function OwnerDashboard() {
     }
   };
 
-  // Status Badge Formatter Utility
+  // ✨ NOTIFICATION FUNCTIONS
+  const markAllAsRead = async () => {
+    if (!userEmail) return;
+    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
+  };
+
+  // const clearAllNotifications = async () => {
+  //   if (!userEmail) return;
+  //   setNotifications([]);
+  //   setUnreadCount(0);
+  //   setIsNotifOpen(false);
+  //   await supabase.from('notifications').delete().eq('recipient', userEmail);
+  // };
+
+  const handleNotificationClick = async (notif: any) => {
+    if (!notif.is_read) {
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+    }
+    setIsNotifOpen(false);
+    // Note: You can add navigation logic here based on notif.type if you want specific tabs for Owners later
+  };
+
   const getStatusBadge = (statusValue: string) => {
     const s = String(statusValue || '').toLowerCase().trim();
-    if (s === 'pending' || s === 'open') {
-      return { label: 'Open', styles: 'bg-amber-50 text-amber-700 border-amber-100' };
-    }
-    if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') {
-      return { label: 'In Progress', styles: 'bg-blue-50 text-blue-600 border-blue-100' };
-    }
-    if (s === 'completed' || s === 'resolved' || s === 'closed') {
-      return { label: 'Resolved', styles: 'bg-emerald-50 text-[#359b46] border-emerald-100' };
-    }
+    if (s === 'pending' || s === 'open') return { label: 'Open', styles: 'bg-amber-50 text-amber-700 border-amber-100' };
+    if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') return { label: 'In Progress', styles: 'bg-blue-50 text-blue-600 border-blue-100' };
+    if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', styles: 'bg-emerald-50 text-[#359b46] border-emerald-100' };
+    if (s === 'failed') return { label: 'Failed', styles: 'bg-red-50 text-red-600 border-red-100' };
     return { label: statusValue, styles: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
 
-  // Helper to get full name and 2-letter initials
   const fullName = userData?.name || "Owner";
   const getInitials = (name: string) => {
     if (!name || name === "Owner") return "OW";
@@ -214,7 +264,6 @@ export default function OwnerDashboard() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
   const initials = getInitials(userData?.name);
-
   const unitsDisplayString = myUnitsList.map(u => u.unit_number).join(", ");
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
   const businessNameDisplay = uniqueBusinessNames.join(" | ");
@@ -223,7 +272,7 @@ export default function OwnerDashboard() {
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
       
       {/* Top Navigation */}
-      <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 border-b border-white/10">
+      <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 border-b border-white/10 relative z-30">
         <div className="flex items-center gap-4">
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7">
@@ -232,17 +281,72 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-5 text-sm">
-          {/* Notification Icon */}
-          <button className="text-slate-300 hover:text-white transition-colors relative">
-            <Bell size={18} />
-            {myTickets.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-[#0a1e3f]"></span>
+        <div className="flex items-center gap-4 sm:gap-5 text-sm relative">
+          
+          {/* ✨ OWNER NOTIFICATION DROPDOWN */}
+          <div 
+            onClick={() => setIsNotifOpen(!isNotifOpen)} 
+            className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0a1e3f] animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </button>
+          </div>
+
+          {/* ✨ NOTIFICATION MODAL */}
+          {isNotifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+              <div className="absolute top-12 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
+                <div className="p-3 flex justify-between items-center bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-[#0a1e3f] text-sm">Notifications</h3>
+                  <div className="flex gap-2 relative z-10">
+                    <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1 transition-colors">
+                      <CheckCheck size={14} /> Read All
+                    </button>
+                    {/* <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
+                      <Trash2 size={14} /> Clear
+                    </button> */}
+                  </div>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto relative z-10">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-sm">
+                      No new notifications
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div 
+                        key={notif.id} 
+                        onClick={() => handleNotificationClick(notif)}
+                        className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.is_read ? 'bg-blue-50/50' : 'opacity-70'}`}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-sm text-[#0a1e3f] truncate pr-2">
+                            {notif.title}
+                          </span>
+                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${notif.type === 'BILLING' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                            {notif.type}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(notif.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">
             Owner Portal
@@ -280,7 +384,7 @@ export default function OwnerDashboard() {
             <p className="text-slate-500 text-sm mt-1">Here's how your units are doing this month.</p>
           </div>
           <button 
-            onClick={openRepairModal} // ✨ FIX: Use new helper function here
+            onClick={openRepairModal} 
             className="bg-white border border-slate-200 hover:border-[#359b46] text-slate-700 hover:text-[#359b46] px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2"
           >
             <Wrench size={16} /> Report a repair
@@ -348,7 +452,6 @@ export default function OwnerDashboard() {
             </div>
           ) : (
             myTickets.map((ticket, idx) => {
-              // Cross-reference live metrics from maintenance_tasks table
               const match = liveTasks.find(task => 
                 task.title === ticket.title && 
                 task.location === ticket.location
@@ -453,7 +556,6 @@ export default function OwnerDashboard() {
             <div className="p-5">
               <form onSubmit={handleReportRepair} className="space-y-4">
                 
-                {/* ✨ FIX: Conditional Dropdown for Owners with Multiple Units */}
                 {myUnitsList.length > 1 && (
                   <div>
                     <select
