@@ -40,7 +40,7 @@ export default function OwnerDashboard() {
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // ✨ NOTIFICATION STATES
+  // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -101,7 +101,7 @@ export default function OwnerDashboard() {
         // --- FETCH LIVE TASKS ---
         const { data: tasksData } = await supabase
           .from('maintenance_tasks')
-          .select('title, location, status, admin_email, assigned_to, cost')
+          .select('id, title, location, status, admin_email, assigned_to, cost')
           .eq('admin_email', data.admin_email);
         if (tasksData) {
           setLiveTasks(tasksData);
@@ -115,19 +115,20 @@ export default function OwnerDashboard() {
           .order('created_at', { ascending: false });
 
         if (ticketsData) {
-          const ownerTickets = ticketsData.filter((t: any) => {
-             const loc = String(t.location || "").toLowerCase().trim();
-             const access = String(data.access_level || "").toLowerCase().trim();
-             return loc === "owner's unit" || (access !== "" && (loc.includes(access) || access.includes(loc)));
-          });
+          // ✨ FIX: Strictly filter by the exact Owner who created the ticket using email!
+          const ownerTickets = ticketsData.filter((t: any) => 
+            t.reporter_email === authData.user.email || 
+            (String(t.description).includes(data.name) && String(t.description).includes('(Owner)'))
+          );
           setMyTickets(ownerTickets);
         }
 
-        // ✨ FETCH NOTIFICATIONS FOR THIS OWNER ✨
+        // INITIAL NOTIFICATION FETCH (with soft delete check)
         const { data: notifData } = await supabase
           .from('notifications')
           .select('*')
-          .eq('recipient', authData.user.email)
+          .eq('recipient', authData.user.email) 
+          .eq('is_hidden', false)
           .order('created_at', { ascending: false })
           .limit(10);
           
@@ -139,6 +140,107 @@ export default function OwnerDashboard() {
     }
     setIsLoading(false);
   };
+
+  // ✨ LIVE NOTIFICATION LISTENER FOR OWNER
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const realtimeChannel = supabase
+      .channel('owner-live-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient=eq.${userEmail}` 
+        },
+        (payload) => {
+          console.log("LIVE Notification received for Owner!", payload);
+          setNotifications((current) => [payload.new, ...current]);
+          setUnreadCount((count) => count + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(realtimeChannel);
+    };
+  }, [userEmail]);
+
+  // ✨ NEW: LIVE TICKETS AND MAINTENANCE REAL-TIME SYNC FOR OWNER
+  useEffect(() => {
+    if (!userData?.admin_email || !userEmail) return;
+
+    // ✨ FIX: Updated Helper to strictly match the owner's reporter_email
+    const isOwnerTicket = (ticket: any) => {
+      return ticket.reporter_email === userEmail || 
+             (String(ticket.description).includes(userData.name) && String(ticket.description).includes('(Owner)'));
+    };
+
+    // 1. Listen to Tickets changes
+    const ticketsChannel = supabase
+      .channel('owner-live-tickets')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tickets',
+          filter: `admin_email=eq.${userData.admin_email}`
+        },
+        (payload) => {
+          console.log("Owner Realtime Ticket Update:", payload);
+          
+          if (payload.eventType === 'INSERT') {
+            if (isOwnerTicket(payload.new)) {
+              setMyTickets((current) => [payload.new, ...current]);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            if (isOwnerTicket(payload.new)) {
+              setMyTickets((current) => 
+                current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
+              );
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setMyTickets((current) => current.filter(t => t.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Listen to Maintenance Tasks changes (Para mag-update ang assigned staff status at cost)
+    const tasksChannel = supabase
+      .channel('owner-live-tasks')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'maintenance_tasks',
+          filter: `admin_email=eq.${userData.admin_email}`
+        },
+        (payload) => {
+          console.log("Owner Realtime Maintenance Task Update:", payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setLiveTasks((current) => [payload.new, ...current]);
+          } else if (payload.eventType === 'UPDATE') {
+            setLiveTasks((current) => 
+              current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(tasksChannel);
+    };
+  }, [userData, userEmail]); // Added userEmail to dependencies
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -175,14 +277,17 @@ export default function OwnerDashboard() {
         }
       }
 
-      // ✨ UPDATED: Added .select().single() to get the inserted ticket ID
+      const { data: currentAuth } = await supabase.auth.getUser();
+      const finalEmail = currentAuth.user?.email || userEmail;
+
       const { data: newTicket, error } = await supabase
         .from('tickets') 
         .insert([{
           admin_email: userData?.admin_email,
+          reporter_email: finalEmail,
           title: repairIssue,
           location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
-          description: `Best time to visit: ${repairTime}. Reported by Owner.`,
+          description: `Best time to visit: ${repairTime}. Reported by ${userData?.name || 'Owner'} (Owner).`, 
           status: 'Open', 
           photo_url: photoUrl
         }])
@@ -191,7 +296,6 @@ export default function OwnerDashboard() {
 
       if (error) throw error;
 
-      // ✨ NEW: TRIGGER NOTIFICATION FOR THE MANAGER
       await supabase
         .from('notifications')
         .insert([{
@@ -199,7 +303,7 @@ export default function OwnerDashboard() {
           recipient: 'MANAGER',
           type: 'TICKET',
           title: 'New Repair Request',
-          message: `${userData?.name || 'An owner'} reported an issue: ${repairIssue}`,
+          message: `${userData?.name || 'An owner'} (Owner) reported an issue: ${repairIssue}`,
           reference_id: newTicket.id,
           is_read: false
         }]);
@@ -210,7 +314,6 @@ export default function OwnerDashboard() {
       setSelectedImage(null);
       setSelectedUnitForRepair("");
       
-      await fetchOwnerData();
       setIsSuccessModalOpen(true);
 
     } catch (err: any) {
@@ -221,7 +324,7 @@ export default function OwnerDashboard() {
     }
   };
 
-  // ✨ NOTIFICATION FUNCTIONS
+  // NOTIFICATION FUNCTIONS
   const markAllAsRead = async () => {
     if (!userEmail) return;
     setNotifications(notifications.map(n => ({ ...n, is_read: true })));
@@ -229,13 +332,13 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  // const clearAllNotifications = async () => {
-  //   if (!userEmail) return;
-  //   setNotifications([]);
-  //   setUnreadCount(0);
-  //   setIsNotifOpen(false);
-  //   await supabase.from('notifications').delete().eq('recipient', userEmail);
-  // };
+  const clearAllNotifications = async () => {
+    if (!userEmail) return;
+    setNotifications([]);
+    setUnreadCount(0);
+    setIsNotifOpen(false);
+    await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
+  };
 
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
@@ -244,13 +347,13 @@ export default function OwnerDashboard() {
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
     setIsNotifOpen(false);
-    // Note: You can add navigation logic here based on notif.type if you want specific tabs for Owners later
   };
 
   const getStatusBadge = (statusValue: string) => {
     const s = String(statusValue || '').toLowerCase().trim();
     if (s === 'pending' || s === 'open') return { label: 'Open', styles: 'bg-amber-50 text-amber-700 border-amber-100' };
     if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') return { label: 'In Progress', styles: 'bg-blue-50 text-blue-600 border-blue-100' };
+    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', styles: 'bg-purple-50 text-purple-700 border-purple-100' };
     if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', styles: 'bg-emerald-50 text-[#359b46] border-emerald-100' };
     if (s === 'failed') return { label: 'Failed', styles: 'bg-red-50 text-red-600 border-red-100' };
     return { label: statusValue, styles: 'bg-slate-50 text-slate-600 border-slate-200' };
@@ -283,7 +386,7 @@ export default function OwnerDashboard() {
 
         <div className="flex items-center gap-4 sm:gap-5 text-sm relative">
           
-          {/* ✨ OWNER NOTIFICATION DROPDOWN */}
+          {/* OWNER NOTIFICATION DROPDOWN */}
           <div 
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
             className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
@@ -296,7 +399,7 @@ export default function OwnerDashboard() {
             )}
           </div>
 
-          {/* ✨ NOTIFICATION MODAL */}
+          {/* NOTIFICATION MODAL */}
           {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
@@ -307,9 +410,9 @@ export default function OwnerDashboard() {
                     <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1 transition-colors">
                       <CheckCheck size={14} /> Read All
                     </button>
-                    {/* <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
+                    <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
                       <Trash2 size={14} /> Clear
-                    </button> */}
+                    </button>
                   </div>
                 </div>
 
@@ -545,7 +648,7 @@ export default function OwnerDashboard() {
       {/* REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-bold text-[#0a1e3f]">Report a repair</h2>
               <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSubmitting}>

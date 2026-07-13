@@ -11,11 +11,11 @@ export default function RepairTab() {
   // User Context States
   const [profile, setProfile] = useState<any>(null);
   const [unit, setUnit] = useState<any>(null);
+  const [userEmail, setUserEmail] = useState<string>(""); // ✨ NEW: For Realtime filter
 
   // Form States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairIssue, setRepairIssue] = useState("");
-  const [repairDetails, setRepairDetails] = useState("");
   const [repairTime, setRepairTime] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [successMsg, setSuccessMsg] = useState(false);
@@ -29,6 +29,8 @@ export default function RepairTab() {
     const { data: authData } = await supabase.auth.getUser();
 
     if (authData?.user) {
+      setUserEmail(authData.user.email || ""); // ✨ Save email for listener
+
       // 1. Get Tenant Profile
       const { data: profileData } = await supabase
         .from('team_members')
@@ -47,10 +49,8 @@ export default function RepairTab() {
           .ilike('tenant_name', profileData.name)
           .single();
 
-        let unitLoc = "Tenant Unit";
         if (unitData) {
           setUnit(unitData);
-          unitLoc = `${unitData.property_name} - ${unitData.unit_number}`;
         }
 
         // 3. Get Tickets Specific to this Tenant
@@ -61,9 +61,10 @@ export default function RepairTab() {
           .order('created_at', { ascending: false });
 
         if (ticketsData) {
-          // Filter tickets so the tenant only sees their own requests
+          // Strictly filter by the exact user who created the ticket
           const tenantTickets = ticketsData.filter((t: any) => 
-            t.location === unitLoc || String(t.description).includes(profileData.name)
+            t.reporter_email === authData.user.email || 
+            (String(t.description).includes(profileData.name) && String(t.description).includes('(Tenant)'))
           );
           setTickets(tenantTickets);
         }
@@ -72,12 +73,51 @@ export default function RepairTab() {
     setIsLoading(false);
   };
 
+  // ✨ NEW: LIVE TICKETS REAL-TIME SYNC FOR TENANT
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const ticketsChannel = supabase
+      .channel('tenant-live-repair-tickets')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Makikinig sa Insert, Update, at Delete
+          schema: 'public',
+          table: 'tickets',
+          filter: `reporter_email=eq.${userEmail}` // Limitahan sa tickets niya lang
+        },
+        (payload) => {
+          console.log("Tenant Realtime Ticket Update:", payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setTickets((current) => [payload.new, ...current]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTickets((current) => 
+              current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setTickets((current) => current.filter(t => t.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketsChannel);
+    };
+  }, [userEmail]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSuccessMsg(false);
 
     try {
+      // Get the exact reporter email securely
+      const { data: authData } = await supabase.auth.getUser();
+      const currentEmail = authData.user?.email || "";
+
       // 1. Upload Image to Supabase Storage
       let photoUrl = "";
       if (selectedImage) {
@@ -95,33 +135,48 @@ export default function RepairTab() {
         }
       }
 
-      // 2. Format details and location automatically
-      const unitLoc = unit ? `${unit.property_name} - ${unit.unit_number}` : "Tenant Unit";
-      const fullDesc = `${repairDetails ? repairDetails + ' | ' : ''}Best time: ${repairTime}. Reported by ${profile?.name} (Tenant).`;
+      // Format details automatically
+      const unitLoc = unit ? `${unit.property_name} - ${unit.unit_number}` : (profile?.access_level || "Tenant Unit");
+      const fullDesc = `Best time to visit: ${repairTime}. Reported by ${profile?.name || 'Tenant'} (Tenant).`;
 
-      // 3. Save to Tickets Table
-      const { error } = await supabase
+      // 3. Save to Tickets Table WITH reporter_email
+      const { data: newTicket, error } = await supabase
         .from('tickets')
         .insert([{
           admin_email: profile?.admin_email,
+          reporter_email: currentEmail, 
           title: repairIssue,
           location: unitLoc,
           description: fullDesc,
           status: 'Open',
           photo_url: photoUrl
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // 4. TRIGGER NOTIFICATION FOR THE MANAGER
+      await supabase
+        .from('notifications')
+        .insert([{
+          admin_email: profile?.admin_email,
+          recipient: 'MANAGER',
+          type: 'TICKET',
+          title: 'New Repair Request',
+          message: `${profile?.name || 'A tenant'} (Tenant) reported an issue: ${repairIssue}`,
+          reference_id: newTicket.id,
+          is_read: false
+        }]);
+
       // Reset form on success
       setRepairIssue("");
-      setRepairDetails("");
       setRepairTime("");
       setSelectedImage(null);
       setSuccessMsg(true);
       
-      // Refresh the tickets list
-      await fetchData();
+      // ✨ FIX: Tinanggal na ang `await fetchData();` dito dahil automatically na 
+      // isasali ng Realtime Listener yung bagong ticket sa screen ni Tenant!
 
       // Auto-hide success message after 4 seconds
       setTimeout(() => setSuccessMsg(false), 4000);
@@ -143,8 +198,14 @@ export default function RepairTab() {
     if (s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance') {
       return { label: 'In Progress', color: 'bg-amber-50 text-amber-700 border border-amber-100' };
     }
-    if (s === 'completed' || s === 'resolved') {
+    if (s === 'on_hold' || s === 'on hold') {
+      return { label: 'On Hold', color: 'bg-purple-50 text-purple-700 border border-purple-100' };
+    }
+    if (s === 'completed' || s === 'resolved' || s === 'success') {
       return { label: 'Resolved', color: 'bg-emerald-50 text-emerald-700 border border-emerald-100' };
+    }
+    if (s === 'failed') {
+      return { label: 'Failed', color: 'bg-red-50 text-red-600 border border-red-100' };
     }
     return { label: status, color: 'bg-slate-100 text-slate-600 border border-slate-200' };
   };
@@ -186,15 +247,6 @@ export default function RepairTab() {
                 placeholder="What needs fixing?" 
                 disabled={isSubmitting}
                 className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
-              />
-              
-              <textarea 
-                placeholder="Additional details (optional)" 
-                value={repairDetails}
-                onChange={(e) => setRepairDetails(e.target.value)}
-                rows={3}
-                disabled={isSubmitting}
-                className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm resize-none"
               />
               
               {/* Image Upload Input */}

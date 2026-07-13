@@ -2,38 +2,98 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { MapPin, Clock, AlertCircle } from "lucide-react";
+import { MapPin, AlertCircle, X, Wrench, Camera, CheckCircle2 } from "lucide-react";
 
 export default function ViewTicketTab({ orgData }: any) {
   const [tickets, setTickets] = useState<any[]>([]);
-  const [liveTasks, setLiveTasks] = useState<any[]>([]); // New state to read task assignments
-  const [teamMembers, setTeamMembers] = useState<any[]>([]); // New state to map staff names
+  const [liveTasks, setLiveTasks] = useState<any[]>([]); 
+  const [teamMembers, setTeamMembers] = useState<any[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
+  
+  // ✨ NEW: State para sa Selected Ticket (Modal)
+  const [selectedTicketData, setSelectedTicketData] = useState<any | null>(null);
 
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchTicketsAndLiveStatuses();
+
+      // 1. REAL-TIME LISTENER FOR TICKETS
+      const ticketsChannel = supabase
+        .channel('viewticket-live-tickets')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', 
+            schema: 'public',
+            table: 'tickets',
+            filter: `admin_email=eq.${orgData.admin_email}` 
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setTickets((current) => [payload.new, ...current]);
+            } else if (payload.eventType === 'UPDATE') {
+              setTickets((current) => {
+                const exists = current.find(t => t.id === payload.new.id);
+                if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+                return [payload.new, ...current];
+              });
+            } else if (payload.eventType === 'DELETE') {
+              setTickets((current) => current.filter(t => t.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
+      // 2. REAL-TIME LISTENER FOR MAINTENANCE TASKS
+      const tasksChannel = supabase
+        .channel('viewticket-live-tasks')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', 
+            schema: 'public',
+            table: 'maintenance_tasks',
+            filter: `admin_email=eq.${orgData.admin_email}` 
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setLiveTasks((current) => [payload.new, ...current]);
+            } else if (payload.eventType === 'UPDATE') {
+              setLiveTasks((current) => {
+                const exists = current.find(t => t.id === payload.new.id);
+                if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+                return [payload.new, ...current];
+              });
+            } else if (payload.eventType === 'DELETE') {
+              setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(ticketsChannel);
+        supabase.removeChannel(tasksChannel);
+      };
     }
   }, [orgData]);
 
   const fetchTicketsAndLiveStatuses = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch team members to resolve clean worker names
       const { data: membersData } = await supabase
         .from('team_members')
         .select('name, email')
         .eq('admin_email', orgData.admin_email);
       if (membersData) setTeamMembers(membersData);
 
-      // 2. Fetch live data from maintenance_tasks to cross-reference status and assignments
+      // ✨ FIX: Idinagdag natin ang 'resolution_photo_url' sa kukunin sa database
       const { data: tasksData } = await supabase
         .from('maintenance_tasks')
-        .select('title, location, status, assigned_to, cost')
+        .select('id, title, location, status, assigned_to, cost, resolution_photo_url, description') 
         .eq('admin_email', orgData.admin_email);
       if (tasksData) setLiveTasks(tasksData);
 
-      // 3. Reads from the 'tickets' inbox table where owners submit their issues (Preserves images!)
       const { data: ticketsData, error } = await supabase
         .from('tickets') 
         .select('*')
@@ -50,7 +110,6 @@ export default function ViewTicketTab({ orgData }: any) {
     }
   };
 
-  // Helper utility to translate live table statuses into UI layout designs
   const getStatusDisplay = (statusValue: string) => {
     const s = String(statusValue || '').toLowerCase().trim();
     if (s === 'pending' || s === 'open') {
@@ -59,18 +118,48 @@ export default function ViewTicketTab({ orgData }: any) {
     if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') {
       return { label: 'In Progress', color: 'bg-blue-50 text-blue-700 border-blue-100' };
     }
-    if (s === 'completed' || s === 'resolved' || s === 'closed') {
+    if (s === 'on_hold' || s === 'on hold') {
+      return { label: 'On Hold', color: 'bg-purple-50 text-purple-700 border-purple-100' };
+    }
+    if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') {
       return { label: 'Resolved', color: 'bg-emerald-50 text-[#359b46] border-emerald-100' };
     }
     return { label: statusValue, color: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
 
+  // Helper para kapag na-update yung task, mag-uupdate din ang modal nang live kung naka-open ito
+  useEffect(() => {
+    if (selectedTicketData) {
+      const updatedTicket = tickets.find(t => t.id === selectedTicketData.ticket.id);
+      const updatedLiveMatch = liveTasks.find(lt => lt.title === updatedTicket?.title && lt.location === updatedTicket?.location);
+      
+      if (updatedTicket) {
+        const currentLiveStatus = updatedLiveMatch ? updatedLiveMatch.status : updatedTicket.status;
+        const { label, color } = getStatusDisplay(currentLiveStatus);
+        
+        let staffName = "Unassigned";
+        if (updatedLiveMatch?.assigned_to) {
+          const profile = teamMembers.find(m => m.email === updatedLiveMatch.assigned_to);
+          staffName = profile?.name ? profile.name : updatedLiveMatch.assigned_to.split('@');
+        }
+
+        setSelectedTicketData({
+          ticket: updatedTicket,
+          liveMatch: updatedLiveMatch,
+          staffName,
+          label,
+          color
+        });
+      }
+    }
+  }, [tickets, liveTasks]);
+
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Assigned Tickets</h2>
-          <p className="text-slate-500 text-sm mt-1">View and manage owner and tenant maintenance requests</p>
+          <p className="text-slate-500 text-sm mt-1">Click a ticket to view Before & After reports</p>
         </div>
         <div className="bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
           <span className="text-sm font-bold text-slate-700">Total Open: </span>
@@ -97,17 +186,14 @@ export default function ViewTicketTab({ orgData }: any) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tickets.map(ticket => {
-            // Find live tracking entry from maintenance_tasks table
             const liveMatch = liveTasks.find(task => 
               task.title === ticket.title && 
               task.location === ticket.location
             );
 
-            // Compute dynamic live context settings
             const currentLiveStatus = liveMatch ? liveMatch.status : ticket.status;
             const { label, color } = getStatusDisplay(currentLiveStatus);
 
-            // Resolve clean name of staff worker instead of showing raw email
             let staffName = "Unassigned";
             if (liveMatch?.assigned_to) {
               const profile = teamMembers.find(m => m.email === liveMatch.assigned_to);
@@ -115,8 +201,11 @@ export default function ViewTicketTab({ orgData }: any) {
             }
 
             return (
-              <div key={ticket.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                
+              <div 
+                key={ticket.id} 
+                onClick={() => setSelectedTicketData({ ticket, liveMatch, staffName, label, color })}
+                className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md hover:border-[#359b46] transition-all cursor-pointer active:scale-[0.98]"
+              >
                 {/* Image Header */}
                 {ticket.photo_url ? (
                   <div className="relative w-full h-48 bg-slate-100 border-b border-slate-100">
@@ -141,7 +230,6 @@ export default function ViewTicketTab({ orgData }: any) {
                     {ticket.description}
                   </p>
 
-                  {/* Footer details */}
                   <div className="flex flex-col gap-2 mt-auto pt-4 border-t border-slate-100">
                     <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                       <MapPin size={14} className="text-slate-400" /> 
@@ -153,12 +241,6 @@ export default function ViewTicketTab({ orgData }: any) {
                       </div>
                       
                       <div className="flex items-center gap-1.5">
-                        {/* Dynamic Cost Tag display if registered */}
-                        {liveMatch?.cost !== undefined && liveMatch.cost > 0 && (
-                          <span className="text-xs font-extrabold text-[#0a1e3f] bg-slate-100 px-2 py-0.5 rounded">
-                            ₱{liveMatch.cost.toLocaleString()}
-                          </span>
-                        )}
                         <span className="text-[11px] font-medium text-slate-500 border border-slate-200 bg-slate-50 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                           👤 {staffName}
                         </span>
@@ -170,6 +252,105 @@ export default function ViewTicketTab({ orgData }: any) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ✨ NEW: BEFORE & AFTER MODAL */}
+      {selectedTicketData && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
+                  {selectedTicketData.ticket.title}
+                </h2>
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mt-1">
+                  <MapPin size={14} className="text-slate-400" /> {selectedTicketData.ticket.location}
+                </div>
+              </div>
+              <button onClick={() => setSelectedTicketData(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body (2 Columns for Before & After) */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* 🔴 BEFORE (Reported by Owner/Tenant) */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Before</span>
+                    <span className="text-sm font-bold text-slate-700">Reported Issue</span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center">
+                    {selectedTicketData.ticket.photo_url ? (
+                      <img src={selectedTicketData.ticket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Camera size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No photo submitted</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <p className="text-sm text-slate-600 leading-relaxed mb-3">
+                      {selectedTicketData.ticket.description}
+                    </p>
+                    <div className="text-xs text-slate-400 font-medium border-t border-slate-200 pt-3">
+                      Submitted on: {new Date(selectedTicketData.ticket.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🟢 AFTER (Maintenance Resolution) */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">After</span>
+                      <span className="text-sm font-bold text-slate-700">Maintenance Update</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${selectedTicketData.color}`}>
+                      {selectedTicketData.label}
+                    </span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                    {selectedTicketData.liveMatch?.resolution_photo_url ? (
+                      <img src={selectedTicketData.liveMatch.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Wrench size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No maintenance photo yet</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
+                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        👤 {selectedTicketData.staffName}
+                      </span>
+                    </div>
+                    
+                    {selectedTicketData.liveMatch?.cost !== undefined && selectedTicketData.liveMatch.cost > 0 && (
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
+                        <span className="text-sm font-black text-[#0a1e3f]">₱{selectedTicketData.liveMatch.cost.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
     </div>

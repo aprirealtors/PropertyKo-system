@@ -65,15 +65,17 @@ export default function ManagerDashboard() {
     fetchOrgData();
   }, []);
 
-  // ✨ FETCH NOTIFICATIONS FOR MANAGERS
+  // ✨ FETCH NOTIFICATIONS & SETUP REAL-TIME LISTENER
   useEffect(() => {
+    // 1. Initial Fetch on page load
     const fetchNotifications = async () => {
       if (orgData?.admin_email) {
         const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('admin_email', orgData.admin_email)
-        .eq('recipient', 'MANAGER') // 👈 Pinalitan ang .is('recipient_email', null)
+        .eq('recipient', 'MANAGER') 
+        .eq('is_hidden', false) // Soft delete filter
         .order('created_at', { ascending: false })
         .limit(15);
 
@@ -85,6 +87,35 @@ export default function ManagerDashboard() {
     };
 
     fetchNotifications();
+
+    // 2. Setup Real-time Listener
+    if (orgData?.admin_email) {
+      const realtimeChannel = supabase
+        .channel('manager-live-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient=eq.MANAGER` 
+          },
+          (payload) => {
+            console.log("May pumasok na LIVE notification!", payload);
+            // Double check if the notification belongs to this specific manager's organization
+            if (payload.new.admin_email === orgData.admin_email) {
+              setNotifications((currentNotifs) => [payload.new, ...currentNotifs]);
+              setUnreadCount((currentCount) => currentCount + 1);
+            }
+          }
+        )
+        .subscribe();
+
+      // Cleanup listener pag umalis sa page
+      return () => {
+        supabase.removeChannel(realtimeChannel);
+      };
+    }
   }, [orgData]);
 
   const handleLogout = async () => {
@@ -106,21 +137,21 @@ export default function ManagerDashboard() {
     .from('notifications')
     .update({ is_read: true })
     .eq('admin_email', orgData.admin_email)
-    .eq('recipient', 'MANAGER') // 👈 Dito rin
+    .eq('recipient', 'MANAGER') 
     .eq('is_read', false);
   };
 
-  // const clearAllNotifications = async () => {
-  //   if (!orgData?.admin_email) return;
-  //   setNotifications([]);
-  //   setUnreadCount(0);
-  //   setIsNotifOpen(false);
-  //   await supabase
-  //   .from('notifications')
-  //   .delete()
-  //   .eq('admin_email', orgData.admin_email)
-  //   .eq('recipient', 'MANAGER');
-  // };
+  const clearAllNotifications = async () => {
+    if (!orgData?.admin_email) return;
+    setNotifications([]);
+    setUnreadCount(0);
+    setIsNotifOpen(false);
+    await supabase
+    .from('notifications')
+    .update({ is_hidden: true }) // Soft delete implementation
+    .eq('admin_email', orgData.admin_email)
+    .eq('recipient', 'MANAGER');
+  };
 
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
@@ -133,7 +164,7 @@ export default function ManagerDashboard() {
 
     setIsNotifOpen(false);
 
-    // ✨ Smart Navigation: Auto-switch tab based on notification type
+    // ✨ Smart Navigation
     const type = notif.type?.toUpperCase() || '';
     if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
     else if (type === 'TICKET') handleTabChange("Tickets");
@@ -187,9 +218,9 @@ export default function ManagerDashboard() {
                     <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1 transition-colors">
                       <CheckCheck size={14} /> Read All
                     </button>
-                    {/* <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
+                    <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors">
                       <Trash2 size={14} /> Clear
-                    </button> */}
+                    </button>
                   </div>
                 </div>
 
@@ -213,7 +244,7 @@ export default function ManagerDashboard() {
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         <div className="flex justify-between items-center mt-2">
-                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${notif.type === 'TICKET' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
+                          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${notif.type === 'TICKET'? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'}`}>
                             {notif.type}
                           </span>
                           <span className="text-[10px] text-slate-400">
