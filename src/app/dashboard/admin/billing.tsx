@@ -13,11 +13,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   
-  // ✨ NEW: Global Computation Settings
+  // Global Computation Settings (Added parking)
   const [globalComp, setGlobalComp] = useState({
     duesRate: 0,
     water: 0,
     electricity: 0,
+    parking: 0,
     penaltyType: 'percent',
     penaltyValue: 3,
     collectionDay: 1,
@@ -31,10 +32,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
-  // Computation Form States (Populated from Global config)
+  // Computation Form States
   const [compDuesRate, setCompDuesRate] = useState("");
   const [compWater, setCompWater] = useState("");
   const [compElec, setCompElec] = useState("");
+  const [compParking, setCompParking] = useState("");
   const [compPenaltyType, setCompPenaltyType] = useState("percent");
   const [compPenaltyValue, setCompPenaltyValue] = useState("");
   const [compCollectionDay, setCompCollectionDay] = useState(""); 
@@ -47,11 +49,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   }, [orgData?.admin_email]);
 
-  // ✨ NEW: Fetch Global Billing Settings from the Database
   const fetchBillingConfig = async () => {
     const { data, error } = await supabase
       .from('organizations')
-      .select('dues_rate, default_water, default_electricity, penalty_type, penalty_value, collection_day, grace_period_days')
+      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days')
       .eq('admin_email', orgData.admin_email)
       .single();
 
@@ -60,6 +61,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         duesRate: data.dues_rate || 0,
         water: data.default_water || 0,
         electricity: data.default_electricity || 0,
+        parking: data.default_parking || 0,
         penaltyType: data.penalty_type || 'percent',
         penaltyValue: data.penalty_value || 0,
         collectionDay: data.collection_day || 1,
@@ -100,13 +102,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       setAllUnits(sortedData);
       setSelectedUnit(sortedData[0]); 
       
-      // ✨ FIX: True Database Status Mapping (Removed fake overdue logic)
       const statuses: Record<string, string> = {};
       sortedData.forEach((u) => {
         if (u.status === 'Vacant') {
           statuses[u.id] = 'N/A';
         } else {
-          // Relies strictly on database. Defaults to 'Pending' for new tenants
           statuses[u.id] = u.payment_status || 'Pending';
         }
       });
@@ -129,7 +129,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const dues = globalComp.duesRate * unitArea;
   const water = globalComp.water;
   const electricity = globalComp.electricity;
-  const baseTotal = isVacant ? 0 : (rent + dues + water + electricity);
+  const parking = globalComp.parking;
+  const baseTotal = isVacant ? 0 : (rent + dues + water + electricity + parking);
 
   let lateFee = 0;
   if (currentStatus === 'Overdue') {
@@ -142,11 +143,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
   const totalDue = baseTotal + lateFee;
 
-  // Open Computation Modal and pre-fill with Global Settings
   const openComputationModal = () => {
     setCompDuesRate(globalComp.duesRate ? String(globalComp.duesRate) : "");
     setCompWater(globalComp.water ? String(globalComp.water) : "");
     setCompElec(globalComp.electricity ? String(globalComp.electricity) : "");
+    setCompParking(globalComp.parking ? String(globalComp.parking) : "");
     setCompPenaltyType(globalComp.penaltyType);
     setCompPenaltyValue(globalComp.penaltyValue ? String(globalComp.penaltyValue) : "");
     setCompCollectionDay(String(globalComp.collectionDay));
@@ -154,7 +155,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setIsComputationModalOpen(true);
   };
 
-  // ✨ NEW: Save Computation to Database Globally
   const handleSaveComputation = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -162,6 +162,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       dues_rate: parseFloat(compDuesRate) || 0,
       default_water: parseFloat(compWater) || 0,
       default_electricity: parseFloat(compElec) || 0,
+      default_parking: parseFloat(compParking) || 0,
       penalty_type: compPenaltyType,
       penalty_value: parseFloat(compPenaltyValue) || 0,
       collection_day: parseInt(compCollectionDay) || 1,
@@ -169,19 +170,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     };
 
     try {
-      // 1. Save to Database
-      const { error } = await supabase
+      // 1. Added .select() to force Supabase to return the row if successful
+      const { data, error } = await supabase
         .from('organizations')
         .update(payload)
-        .eq('admin_email', orgData.admin_email);
+        .eq('admin_email', orgData.admin_email)
+        .select();
 
       if (error) throw error;
 
-      // 2. Instantly update UI State
+      // 2. Catch the silent failure caused by RLS
+      if (!data || data.length === 0) {
+        throw new Error("Update blocked by RLS. Your current user does not have permission to update this organization.");
+      }
+
       setGlobalComp({
         duesRate: payload.dues_rate,
         water: payload.default_water,
         electricity: payload.default_electricity,
+        parking: payload.default_parking,
         penaltyType: payload.penalty_type,
         penaltyValue: payload.penalty_value,
         collectionDay: payload.collection_day,
@@ -191,11 +198,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       setIsComputationModalOpen(false);
     } catch (err: any) {
       console.error("Failed to update global computation:", err);
-      alert(`Error updating settings: ${err.message}`);
+      alert(`${err.message}`);
     }
   };
 
-  // Generate Ledger Months
   const generateLedgerMonths = () => {
     const months = [];
     const date = new Date();
@@ -207,8 +213,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       
       let stat = "Upcoming";
       if (isVacant) stat = "N/A";
-      else if (i === 0) stat = "Paid"; // Simulate past month as Paid
-      else if (i === 1) stat = currentStatus; // Lock current month to the real DB Status
+      else if (i === 0) stat = "Paid"; 
+      else if (i === 1) stat = currentStatus; 
       
       const dueDate = `${monthName} ${globalComp.collectionDay}, ${year}`;
       
@@ -304,6 +310,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <span className="font-bold text-[#0a1e3f]">{dues > 0 ? `₱${dues.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
                 </div>
                 <div className="flex justify-between pb-4 border-b border-dashed border-slate-200">
+                  <span className="text-slate-600">Parking</span>
+                  <span className="font-bold text-[#0a1e3f]">{parking > 0 ? `₱${parking.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
+                </div>
+                <div className="flex justify-between pb-4 border-b border-dashed border-slate-200">
                   <span className="text-slate-600">Water</span>
                   <span className="font-bold text-[#0a1e3f]">{water > 0 ? `₱${water.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
                 </div>
@@ -375,6 +385,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">DUE DATE</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">BASE RENT</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">DUES</th>
+                        <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">PARKING</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">UTILITIES</th>
                         <th className="px-4 py-3 whitespace-nowrap bg-red-600 text-white border-r border-red-700">
                           PENALTY ({globalComp.penaltyType === 'percent' ? `${globalComp.penaltyValue}%` : `₱${globalComp.penaltyValue}`})
@@ -397,6 +408,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200 text-slate-500">{row.dueDate}</td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">₱{rent.toLocaleString()}</td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{dues > 0 ? `₱${dues.toLocaleString()}` : "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{parking > 0 ? `₱${parking.toLocaleString()}` : "—"}</td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "—"}</td>
                             
                             <td className={`px-4 py-3 whitespace-nowrap border-r border-slate-200 ${isOverdue && !isVacant ? 'text-red-600 font-bold bg-red-50' : ''}`}>
@@ -503,11 +515,20 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Assoc. Dues Rate (per sqm)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
-                    <input type="number" step="0.01" min="0" placeholder="e.g. 85" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1d82f5] text-sm" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Assoc. Dues (sqm)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="e.g. 85" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1d82f5] text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Parking Baseline</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="e.g. 1500" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1d82f5] text-sm" />
+                    </div>
                   </div>
                 </div>
 
