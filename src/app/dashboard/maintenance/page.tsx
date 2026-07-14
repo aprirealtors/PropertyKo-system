@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Camera, DollarSign, X, CheckCircle, PauseCircle, AlertCircle, AlertTriangle } from "lucide-react";
+import { Camera, DollarSign, X, CheckCircle, PauseCircle, AlertCircle, AlertTriangle, Clock, MapPin, Wrench } from "lucide-react";
 
 interface UserProfile {
   name: string;
@@ -21,19 +21,22 @@ interface MaintenanceTask {
   sla?: string;
   isDueToday?: boolean;
   admin_email?: string; 
+  created_at?: string; 
+  updated_at?: string; 
+  photo_url?: string; 
+  resolution_photo_url?: string; 
+  cost?: number; 
 }
 
 export default function MaintenanceDashboard() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>({ name: "Staff", initials: "ST" });
-  const [userEmail, setUserEmail] = useState<string>(""); // ✨ NEW: Para sa real-time filter
+  const [userEmail, setUserEmail] = useState<string>(""); 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Modals States
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
-  // Custom Alert Modal State
   const [alertConfig, setAlertConfig] = useState({
     isOpen: false,
     type: 'success', 
@@ -41,7 +44,6 @@ export default function MaintenanceDashboard() {
     message: ''
   });
 
-  // Task Completion Modal States
   const [completeModalTask, setCompleteModalTask] = useState<string | null>(null);
   const [completionStatus, setCompletionStatus] = useState(""); 
   const [onHoldReason, setOnHoldReason] = useState(""); 
@@ -51,7 +53,8 @@ export default function MaintenanceDashboard() {
   const [completionImage, setCompletionImage] = useState<File | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // Metrics states
+  const [reviewTask, setReviewTask] = useState<MaintenanceTask | null>(null);
+
   const [metrics, setMetrics] = useState({
     assigned: 0,
     dueToday: 0,
@@ -62,7 +65,7 @@ export default function MaintenanceDashboard() {
     fetchUserDataAndTasks();
   }, []);
 
-  // ✨ NEW: REAL-TIME LISTENER PARA KAY MAINTENANCE STAFF
+  // REAL-TIME LISTENER
   useEffect(() => {
     if (!userEmail) return;
 
@@ -71,41 +74,23 @@ export default function MaintenanceDashboard() {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, and DELETE
+          event: '*', 
           schema: 'public',
           table: 'maintenance_tasks',
-          filter: `assigned_to=eq.${userEmail}` // Only listen to tasks assigned to THIS specific staff
+          filter: `assigned_to=eq.${userEmail}` 
         },
         (payload) => {
-          console.log("Live Task Update for Staff!", payload);
-          
           if (payload.eventType === 'INSERT') {
-            const newTask = {
-              ...payload.new,
-              isDueToday: (payload.new.status !== 'completed' && payload.new.status !== 'on_hold') ? true : payload.new.isDueToday 
-            } as MaintenanceTask;
+            const newTask = payload.new as MaintenanceTask;
             setTasks((current) => [newTask, ...current]);
           } 
-          
           else if (payload.eventType === 'UPDATE') {
             setTasks((current) => {
               const exists = current.find(t => t.id === payload.new.id);
-              if (exists) {
-                return current.map(t => t.id === payload.new.id ? { 
-                  ...t, 
-                  ...payload.new,
-                  isDueToday: (payload.new.status !== 'completed' && payload.new.status !== 'on_hold') ? true : payload.new.isDueToday 
-                } : t);
-              }
-              // If it was just newly assigned to them from another staff
-              const updatedTask = {
-                ...payload.new,
-                isDueToday: (payload.new.status !== 'completed' && payload.new.status !== 'on_hold') ? true : payload.new.isDueToday 
-              } as MaintenanceTask;
-              return [updatedTask, ...current];
+              if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+              return [payload.new as MaintenanceTask, ...current];
             });
           } 
-          
           else if (payload.eventType === 'DELETE') {
             setTasks((current) => current.filter(t => t.id !== payload.old.id));
           }
@@ -118,15 +103,26 @@ export default function MaintenanceDashboard() {
     };
   }, [userEmail]);
 
+  // SMART METRICS
   useEffect(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'failed');
-    const due = activeTasks.filter(t => t.isDueToday).length;
-    const completed = tasks.filter(t => t.status === 'completed').length;
+    
+    const due = activeTasks.filter(t => t.priority === 'Urgent').length;
+    
+    const completedThisWeek = tasks.filter(t => {
+      if (t.status !== 'completed') return false;
+      const taskDate = new Date(t.updated_at || t.created_at || 0);
+      return taskDate >= startOfWeek;
+    }).length;
     
     setMetrics({
       assigned: activeTasks.length,
       dueToday: due, 
-      doneThisWeek: completed
+      doneThisWeek: completedThisWeek
     });
   }, [tasks]);
 
@@ -140,7 +136,7 @@ export default function MaintenanceDashboard() {
         return;
       }
 
-      setUserEmail(user.email || ""); // ✨ Store userEmail for the realtime listener
+      setUserEmail(user.email || ""); 
 
       const { data: userData } = await supabase
         .from('team_members')
@@ -163,16 +159,7 @@ export default function MaintenanceDashboard() {
         .eq('assigned_to', user.email)
         .order('created_at', { ascending: false });
 
-      if (taskError) {
-        console.error("Error fetching tasks:", taskError);
-        setTasks([]);
-      } else if (taskData) {
-        const formattedTasks = taskData.map(task => ({
-          ...task,
-          isDueToday: (task.status !== 'completed' && task.status !== 'on_hold') ? true : task.isDueToday 
-        }));
-        setTasks(formattedTasks);
-      }
+      if (!taskError && taskData) setTasks(taskData);
 
     } catch (error) {
       console.error("Error loading maintenance dashboard:", error);
@@ -182,7 +169,6 @@ export default function MaintenanceDashboard() {
   };
 
   const updateTaskStatus = async (taskId: string, newStatus: MaintenanceTask['status']) => {
-    // Optimistic update
     setTasks(currentTasks => 
       currentTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
@@ -191,12 +177,12 @@ export default function MaintenanceDashboard() {
 
     const { error } = await supabase
       .from('maintenance_tasks')
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', taskId);
 
     if (error) {
       console.error("Failed to update task:", error);
-      fetchUserDataAndTasks(); // Revert on fail
+      fetchUserDataAndTasks(); 
     }
   };
 
@@ -261,6 +247,7 @@ export default function MaintenanceDashboard() {
       const updatePayload: any = {
         status: finalStatus,
         cost: parseFloat(completionCost) || 0,
+        updated_at: new Date().toISOString()
       };
       if (photoUrl) updatePayload.resolution_photo_url = photoUrl;
 
@@ -319,8 +306,6 @@ export default function MaintenanceDashboard() {
       await supabase.from('notifications').insert(notificationsToInsert);
 
       setCompleteModalTask(null);
-      // Removed `await fetchUserDataAndTasks();` here because Realtime handles the UI update automatically!
-      
       showAlert('success', 'Report Submitted', 'Your task report was submitted successfully!');
 
     } catch (err: any) {
@@ -336,6 +321,18 @@ export default function MaintenanceDashboard() {
     router.push('/');
   };
 
+  // KANBAN COLUMNS SETUP & SORTING
+  const openTasks = tasks
+    .filter(t => t.status === 'pending' || t.status === 'in_progress')
+    .sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+
+  const onHoldTasks = tasks
+    .filter(t => t.status === 'on_hold')
+    .sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+
+  const resolvedTasks = tasks
+    .filter(t => t.status === 'completed');
+
   if (isLoading) {
     return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center text-slate-500 font-medium">Loading workspace...</div>;
   }
@@ -347,7 +344,6 @@ export default function MaintenanceDashboard() {
       {alertConfig.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a1e3f]/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center transform transition-all animate-in fade-in zoom-in-95 duration-200">
-            
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
               alertConfig.type === 'success' ? 'bg-emerald-50 text-[#359b46]' :
               alertConfig.type === 'error' ? 'bg-red-50 text-red-500' :
@@ -357,12 +353,10 @@ export default function MaintenanceDashboard() {
               {alertConfig.type === 'error' && <AlertCircle size={36} />}
               {alertConfig.type === 'warning' && <AlertTriangle size={36} />}
             </div>
-            
             <h2 className="text-xl font-bold text-[#0a1e3f] mb-2">{alertConfig.title}</h2>
             <p className="text-slate-500 text-sm mb-8 leading-relaxed whitespace-pre-wrap">
               {alertConfig.message}
             </p>
-            
             <button 
               onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} 
               className={`w-full text-white px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
@@ -417,8 +411,6 @@ export default function MaintenanceDashboard() {
 
             <div className="p-6">
               <form onSubmit={handleCompleteTask} className="space-y-5">
-                
-                {/* Status Selection */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Repair Result</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -433,14 +425,8 @@ export default function MaintenanceDashboard() {
                       <span className="font-semibold text-[13px] leading-tight">On Hold</span>
                     </label>
                   </div>
-                  {!completionStatus && (
-                    <p className="text-[13px] text-amber-600 font-medium mt-2 animate-pulse">
-                      * Please select a repair result to proceed.
-                    </p>
-                  )}
                 </div>
 
-                {/* On Hold Reason Dropdown + Custom Input */}
                 {completionStatus === "On Hold" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
                     <div>
@@ -462,7 +448,6 @@ export default function MaintenanceDashboard() {
                         <option value="Other">Other reason...</option>
                       </select>
                     </div>
-
                     {onHoldReason === "Other" && (
                       <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                         <label className="block text-sm font-bold text-slate-700 mb-2">Please specify reason</label>
@@ -480,7 +465,6 @@ export default function MaintenanceDashboard() {
                   </div>
                 )}
 
-                {/* Remarks / Notes (Only for Success) */}
                 {completionStatus === "Success" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200">
                     <label className="block text-sm font-bold text-slate-700 mb-2">Remarks / Notes</label>
@@ -495,7 +479,6 @@ export default function MaintenanceDashboard() {
                   </div>
                 )}
 
-                {/* Image Upload Input */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Proof of Work / Visit</label>
                   <label className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-[#359b46] hover:bg-emerald-50 transition-all cursor-pointer bg-slate-50">
@@ -513,7 +496,6 @@ export default function MaintenanceDashboard() {
                   </label>
                 </div>
 
-                {/* Cost Input (Only for Success) */}
                 {completionStatus === "Success" && (
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Equipment Cost (Optional)</label>
@@ -533,26 +515,115 @@ export default function MaintenanceDashboard() {
                   </div>
                 )}
 
-                {/* Submit Buttons */}
                 <div className="pt-2 flex gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => setCompleteModalTask(null)}
-                    disabled={isCompleting}
-                    className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
-                  >
+                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
-                    disabled={isCompleting || !completionStatus} 
-                    className="flex-1 bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:text-slate-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm"
-                  >
+                  <button type="submit" disabled={isCompleting || !completionStatus} className="flex-1 bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:text-slate-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
                     {isCompleting ? "Submitting..." : "Submit Report"}
                   </button>
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESOLUTION REVIEW MODAL FOR MAINTENANCE STAFF */}
+      {reviewTask && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
+                  {reviewTask.title}
+                </h2>
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mt-1">
+                  <MapPin size={14} className="text-slate-400" /> {reviewTask.location}
+                </div>
+              </div>
+              <button onClick={() => setReviewTask(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* 🔴 BEFORE */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Before</span>
+                    <span className="text-sm font-bold text-slate-700">Reported Issue</span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center">
+                    {reviewTask.photo_url ? (
+                      <img src={reviewTask.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Camera size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No photo submitted</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <p className="text-sm text-slate-600 leading-relaxed mb-3">
+                      {reviewTask.description}
+                    </p>
+                    <div className="text-xs text-slate-400 font-medium border-t border-slate-200 pt-3">
+                      Submitted on: {new Date(reviewTask.created_at || new Date()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🟢 AFTER */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">After</span>
+                      <span className="text-sm font-bold text-slate-700">My Update</span>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border bg-emerald-50 text-[#359b46] border-emerald-100">
+                      Resolved
+                    </span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                    {reviewTask.resolution_photo_url ? (
+                      <img src={reviewTask.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Wrench size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No photo recorded</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
+                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        👤 {profile.name} (You)
+                      </span>
+                    </div>
+                    
+                    {reviewTask.cost !== undefined && reviewTask.cost > 0 && (
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
+                        <span className="text-sm font-black text-[#0a1e3f]">₱{reviewTask.cost.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
         </div>
       )}
@@ -566,15 +637,11 @@ export default function MaintenanceDashboard() {
             </div>
           </div>
         </div>
-
         <div className="flex items-center gap-4 text-sm">
           <div className="hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-white/20 bg-white/10">
             Maintenance Staff
           </div>
-          <button 
-            onClick={() => setShowLogoutModal(true)}
-            className="text-slate-300 hover:text-white font-medium transition-colors text-xs px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
-          >
+          <button onClick={() => setShowLogoutModal(true)} className="text-slate-300 hover:text-white font-medium transition-colors text-xs px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full">
             Log out
           </button>
         </div>
@@ -582,12 +649,11 @@ export default function MaintenanceDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-12 pt-8">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-[1400px] mx-auto px-6">
           
-          {/* Header Section */}
           <div className="flex justify-between items-end mb-8">
             <div>
-              <h2 className="text-[28px] font-extrabold text-[#0a1e3f] tracking-tight leading-tight">My tasks for today</h2>
+              <h2 className="text-[28px] font-extrabold text-[#0a1e3f] tracking-tight leading-tight">My tasks</h2>
               <p className="text-slate-500 mt-1 text-[15px]">Hi {profile.name} - here's your assigned work.</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 shadow-sm">
@@ -595,92 +661,161 @@ export default function MaintenanceDashboard() {
             </div>
           </div>
 
-          {/* Metrics Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-slate-500 text-sm font-medium mb-2">Assigned</h3>
+              <h3 className="text-slate-500 text-sm font-medium mb-2">Total Assigned</h3>
               <p className="text-3xl font-bold text-[#0a1e3f]">{metrics.assigned}</p>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-slate-500 text-sm font-medium mb-2">Due today</h3>
-              <p className="text-3xl font-bold text-[#0a1e3f]">{metrics.dueToday}</p>
+            <div className="bg-red-50 rounded-2xl p-6 border border-red-100 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 text-red-500"><Clock size={64}/></div>
+              <h3 className="text-red-700 text-sm font-medium mb-2">Due today (Urgent)</h3>
+              <p className="text-3xl font-bold text-red-700 relative z-10">{metrics.dueToday}</p>
             </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10 text-emerald-500"><CheckCircle size={64}/></div>
               <h3 className="text-slate-500 text-sm font-medium mb-2">Done this week</h3>
-              <p className="text-3xl font-bold text-[#0a1e3f]">{metrics.doneThisWeek}</p>
+              <p className="text-3xl font-bold text-[#0a1e3f] relative z-10">{metrics.doneThisWeek}</p>
             </div>
           </div>
 
-          {/* Tasks List */}
-          <div className="space-y-4">
-            {tasks.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm text-center">
-                 <p className="text-slate-500 font-medium">You have no tasks assigned right now. Great job!</p>
+          {/* KANBAN BOARD LAYOUT */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Column 1: To Do / In Progress */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">Open & In Progress <span className="ml-2 bg-blue-100 text-[#1d82f5] px-2 rounded-full text-xs font-bold">{openTasks.length}</span></h4>
+              <div className="space-y-4">
+                {openTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks assigned</div>
+                ) : (
+                  openTasks.map(task => (
+                    <div key={task.id} className={`bg-white rounded-2xl p-5 shadow-sm flex flex-col gap-4 border ${task.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'}`}>
+                      <div>
+                        {/* Title at In Progress Status pinagtabi */}
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <h4 className="font-bold text-[#0a1e3f] text-[15px] leading-tight line-clamp-2">{task.title}</h4>
+                          {task.status === 'in_progress' && (
+                            <span className="bg-blue-100 text-[#1d82f5] text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 mt-0.5">
+                              In Progress
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Location at Urgent Badge pinagtabi */}
+                        <div className="flex items-center justify-between mb-2 mt-1">
+                          <p className="text-[#359b46] font-semibold text-xs truncate pr-2">
+                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                            {task.location}
+                          </p>
+                          {task.priority === 'Urgent' && (
+                            <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
+                              🚨 URGENT
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-3">{task.description}</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 shrink-0 border-t border-slate-100 pt-3">
+                        {task.status === 'pending' ? (
+                          <button onClick={() => updateTaskStatus(task.id, 'in_progress')} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm">
+                            Start Task
+                          </button>
+                        ) : (
+                          <button onClick={() => openCompleteModal(task.id)} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#1d82f5] text-white hover:bg-blue-600 transition-colors shadow-sm">
+                            Submit Report
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-            ) : (
-              tasks.map((task) => (
-                <div key={task.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  
-                  <div>
-                    <h4 className="font-bold text-[#0a1e3f] text-[15px]">
-                      {task.title} · <span className="font-semibold">{task.location}</span>
-                    </h4>
-                    <p className="text-slate-500 text-sm mt-1">
-                      {task.description} 
-                      {task.sla && <span className="font-semibold text-red-500 ml-1">· {task.sla}</span>}
-                    </p>
-                  </div>
+            </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {task.status === 'pending' && (
-                      <>
-                        <button 
-                          onClick={() => updateTaskStatus(task.id, 'in_progress')}
-                          className="px-5 py-2 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm"
-                        >
-                          Start Task
-                        </button>
-                      </>
-                    )}
-
-                    {task.status === 'in_progress' && (
-                      <button 
-                        onClick={() => openCompleteModal(task.id)}
-                        className="px-5 py-2 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm"
-                      >
-                        Submit Report
-                      </button>
-                    )}
-
-                    {task.status === 'on_hold' && (
-                      <>
-                        <span className="hidden sm:flex px-3 py-1.5 rounded-lg text-[13px] font-bold bg-amber-50 text-amber-700 border border-amber-100 items-center gap-1.5">
-                          <PauseCircle size={14} /> On Hold
-                        </span>
-                        <button 
-                          onClick={() => openCompleteModal(task.id)}
-                          className="px-5 py-2 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm"
-                        >
+            {/* Column 2: On Hold */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">On Hold <span className="ml-2 bg-purple-100 text-purple-700 px-2 rounded-full text-xs font-bold">{onHoldTasks.length}</span></h4>
+              <div className="space-y-4">
+                {onHoldTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks on hold</div>
+                ) : (
+                  onHoldTasks.map(task => (
+                    <div key={task.id} className="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                      <div>
+                        {/* Title and On Hold Badge together */}
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <h4 className="font-bold text-slate-600 text-[15px] leading-tight line-clamp-2">{task.title}</h4>
+                          {task.status === 'on_hold' && (
+                            <span className="bg-purple-100 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 mt-0.5">
+                              On Hold
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Location and Urgent Badge together */}
+                        <div className="flex items-center justify-between mb-2 mt-1">
+                          <p className="text-slate-500 font-semibold text-xs truncate pr-2">
+                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                            {task.location}
+                          </p>
+                          {task.priority === 'Urgent' && (
+                            <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                              🚨 URGENT
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-3">{task.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 border-t border-slate-200 pt-3">
+                        <button onClick={() => openCompleteModal(task.id)} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm">
                           Update Report
                         </button>
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
-                    {task.status === 'completed' && (
-                      <span className="px-4 py-1.5 rounded-lg text-[13px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1.5">
-                        <CheckCircle size={14} /> Success
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
+            {/* Column 3: Resolved */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">Resolved <span className="ml-2 bg-emerald-100 text-emerald-700 px-2 rounded-full text-xs font-bold">{resolvedTasks.length}</span></h4>
+              <div className="space-y-4">
+                {resolvedTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No resolved tasks</div>
+                ) : (
+                  resolvedTasks.map(task => (
+                    <div 
+                      key={task.id} 
+                      onClick={() => setReviewTask(task)} 
+                      className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 flex flex-col gap-4 cursor-pointer hover:shadow-md active:scale-[0.98] transition-all"
+                    >
+                      <div>
+                        {/* Title at Success Badge pinagtabi */}
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <h4 className="font-bold text-[#0a1e3f] text-[15px] line-clamp-2 leading-tight">{task.title}</h4>
+                          <span className="bg-emerald-100 text-[#359b46] text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shrink-0 mt-0.5">
+                            <CheckCircle size={12} /> Success
+                          </span>
+                        </div>
+                        
+                        <p className="text-slate-500 font-semibold text-xs mt-1 truncate mb-2">
+                          <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                          {task.location}
+                        </p>
+                        
+                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-2">{task.description}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
           </div>
-
-          <div className="mt-8 bg-emerald-50 text-emerald-700 p-4 rounded-xl text-sm font-medium border border-emerald-100/50">
-            Staff only see tasks assigned to them - no rent, no tenant finances, no other properties.
-          </div>
-
         </div>
       </main>
     </div>

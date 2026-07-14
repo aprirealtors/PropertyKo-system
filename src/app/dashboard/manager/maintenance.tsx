@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera, Clock } from "lucide-react";
+import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera, Clock, AlertCircle } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any) {
   // Database States
@@ -26,36 +26,33 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
   const [visitTime, setVisitTime] = useState(""); 
   const [reporter, setReporter] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
+  const [priority, setPriority] = useState("Normal"); // ✨ Priority State
 
-  // Fetch actual tickets and team members (UPDATED WITH REALTIME LISTENER)
+  // Fetch actual tickets and team members (UPDATED WITH REALTIME LISTENERS)
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchTickets();
       fetchTeamMembers();
       fetchUnits();
 
-      // ✨ REAL-TIME LISTENER FOR TICKETS INBOX ✨
+      // ✨ 1. REAL-TIME LISTENER FOR TICKETS INBOX ✨
       const ticketsChannel = supabase
         .channel('manager-live-tickets')
         .on(
           'postgres_changes',
           {
-            event: '*', // Makikinig sa lahat (INSERT, UPDATE, DELETE)
+            event: '*', 
             schema: 'public',
             table: 'tickets',
             filter: `admin_email=eq.${orgData.admin_email}` 
           },
           (payload) => {
             console.log("Live Ticket Update!", payload);
-
-            // KAPAG MAY BAGONG TICKET (INSERT)
             if (payload.eventType === 'INSERT') {
               if (payload.new.status === 'Open') {
                 setInboxTickets((current: any[]) => [payload.new, ...current]);
               }
             } 
-            
-            // KAPAG MAY IN-UPDATE NA TICKET (Halimbawa: Naging 'On Hold' o 'Resolved')
             else if (payload.eventType === 'UPDATE') {
               if (payload.new.status === 'Open') {
                 setInboxTickets((current: any[]) => {
@@ -67,8 +64,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                 setInboxTickets((current: any[]) => current.filter(t => t.id !== payload.new.id));
               }
             }
-            
-            // KAPAG MAY TICKET NA BINURA (DELETE)
             else if (payload.eventType === 'DELETE') {
               setInboxTickets((current: any[]) => current.filter(t => t.id !== payload.old.id));
             }
@@ -76,30 +71,53 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
         )
         .subscribe();
 
-      // Cleanup Listener kapag umalis sa component
+      // ✨ 2. REAL-TIME LISTENER FOR MAINTENANCE KANBAN BOARD ✨
+      const tasksChannel = supabase
+        .channel('manager-live-tasks')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', 
+            schema: 'public',
+            table: 'maintenance_tasks',
+            filter: `admin_email=eq.${orgData.admin_email}` 
+          },
+          (payload) => {
+            console.log("Live Maintenance Task Board Update!", payload);
+            if (payload.eventType === 'INSERT') {
+              setTickets((current: any[]) => [payload.new, ...current]);
+            } 
+            else if (payload.eventType === 'UPDATE') {
+              setTickets((current: any[]) => {
+                const exists = current.find(t => t.id === payload.new.id);
+                if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+                return [payload.new, ...current];
+              });
+            } 
+            else if (payload.eventType === 'DELETE') {
+              setTickets((current: any[]) => current.filter(t => t.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
       return () => {
         supabase.removeChannel(ticketsChannel);
+        supabase.removeChannel(tasksChannel);
       };
     }
   }, [orgData?.admin_email]);
 
   const fetchTickets = async () => {
     setIsLoadingTickets(true);
-    
-    // 1. Fetch Maintenance Tasks (For the Kanban Board)
     const { data: tasksData, error: tasksError } = await supabase
       .from('maintenance_tasks')
       .select('*')
       .eq('admin_email', orgData.admin_email)
       .order('created_at', { ascending: false });
 
-    if (tasksError) {
-      console.error("Error fetching tickets:", tasksError.message);
-    } else {
-      setTickets(tasksData || []);
-    }
+    if (!tasksError) setTickets(tasksData || []);
 
-    // 2. Fetch Pending Tickets from Inbox 
     const { data: inboxData, error: inboxError } = await supabase
       .from('tickets')
       .select('*')
@@ -107,11 +125,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
       .eq('status', 'Open') 
       .order('created_at', { ascending: false });
 
-    if (inboxError) {
-      console.error("Error fetching inbox:", inboxError.message);
-    } else {
-      setInboxTickets(inboxData || []);
-    }
+    if (!inboxError) setInboxTickets(inboxData || []);
 
     setIsLoadingTickets(false);
   };
@@ -121,10 +135,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
       .from('team_members')
       .select('name, email, role') 
       .eq('admin_email', orgData.admin_email); 
-
-    if (!error && data) {
-      setTeamMembers(data);
-    }
+    if (!error && data) setTeamMembers(data);
   };
 
   const fetchUnits = async () => {
@@ -157,8 +168,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
         }
       }
 
-      // 1. Insert into Maintenance Tasks 
-      const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; // ✨ FIX: Pinalinis ang format
+      const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; 
 
       const { error } = await supabase
         .from('maintenance_tasks')
@@ -167,27 +177,26 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
             admin_email: orgData.admin_email,
             title: title, 
             location: location, 
-            description: finalDesc, // ✨ In-apply ang malinis na description
+            description: finalDesc, 
             status: 'pending', 
             assigned_to: assignedTo, 
             cost: 0,
-            photo_url: photoUrlToSave 
+            photo_url: photoUrlToSave,
+            priority: priority 
           }
         ]);
 
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      // 2. Mark original inbox ticket as Assigned
       if (selectedInboxId) {
         const { error: updateError } = await supabase
           .from('tickets')
           .update({ status: 'Assigned to Maintenance' })
           .eq('id', selectedInboxId);
-          
         if (updateError) console.error("Failed to update inbox ticket status:", updateError);
       }
 
-      await fetchTickets();
+      await fetchTickets(); 
       setIsModalOpen(false);
       
       setSelectedInboxId("");
@@ -196,6 +205,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
       setVisitTime("");
       setReporter("");
       setAssignedTo("");
+      setPriority("Normal"); 
 
     } catch (error: any) {
       console.error(error);
@@ -454,7 +464,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                             
                             const desc = t.description || "";
                             
-                            // ✨ FIX: Smart Extractor para sa Visit Time
                             if (desc.includes("Best time to visit:")) {
                               const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
                               if (timeMatch) setVisitTime(timeMatch.trim());
@@ -462,12 +471,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                               setVisitTime("");
                             }
 
-                            // ✨ FIX: Smart Extractor para sa Reporter Name (Kukunin yung eksaktong name na sinend ng Owner/Tenant)
                             if (desc.includes("Reported by ")) {
                               const repMatch = desc.split("Reported by ")[1]?.split(".")[0];
                               if (repMatch) setReporter(repMatch.trim());
                             } else {
-                              setReporter("Resident"); // Fallback
+                              setReporter("Resident"); 
                             }
                           }
                         } else {
@@ -549,28 +557,44 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading }: any
                   />
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><HardHat size={16} className="text-[#359b46]" /> Assign To</label>
-                  <select
-                    required
-                    value={assignedTo}
-                    onChange={(e) => setAssignedTo(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white"
-                    disabled={isSubmitting}
-                  >
-                    <option value="" disabled>Select maintenance staff...</option>
-                    {teamMembers
-                      .filter(m => {
-                        const r = String(m.role || "").toLowerCase();
-                        return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager');
-                      })
-                      .map((member) => (
-                        <option key={member.email} value={member.email}>
-                          {member.name} ({member.email})
-                        </option>
-                      ))
-                    }
-                  </select>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><HardHat size={16} className="text-[#359b46]" /> Assign To</label>
+                    <select
+                      required
+                      value={assignedTo}
+                      onChange={(e) => setAssignedTo(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white"
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>Select staff...</option>
+                      {teamMembers
+                        .filter(m => {
+                          const r = String(m.role || "").toLowerCase();
+                          return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager');
+                        })
+                        .map((member) => (
+                          <option key={member.email} value={member.email}>
+                            {member.name}
+                          </option>
+                        ))
+                      }
+                    </select>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><AlertCircle size={16} className="text-[#359b46]" /> Priority Level</label>
+                    <select
+                      required
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white"
+                      disabled={isSubmitting}
+                    >
+                      <option value="Normal">Normal (Flexible)</option>
+                      <option value="Urgent">🚨 Urgent (Due Today)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100">
@@ -612,19 +636,37 @@ function TicketCard({ ticket, teamMembers, statusColor, statusLabel, showCost, o
   return (
     <div 
       onClick={onClick} 
-      className={`bg-white p-4 rounded-2xl shadow-sm border border-slate-200 transition-shadow ${onClick ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''}`}
+      className={`bg-white p-4 rounded-2xl shadow-sm border transition-shadow flex flex-col ${
+        ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
+      } ${onClick ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''}`}
     >
-      <h5 className="font-bold text-[#0a1e3f] text-sm mb-1">{ticket.title}</h5>
-      <p className="text-xs text-slate-500 mb-2">{ticket.location} • {ticket.description}</p>
+      {/* ✨ FIX: Title and Priority Badge aligned seamlessly */}
+      <div className="flex justify-between items-start mb-1 gap-2">
+        <h5 className="font-bold text-[#0a1e3f] text-sm line-clamp-2 leading-tight">{ticket.title}</h5>
+        {ticket.priority === 'Urgent' && statusColor !== 'green' && (
+          <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0 mt-0.5">
+            🚨 URGENT
+          </span>
+        )}
+      </div>
       
-      <div className="flex justify-between items-center mt-4">
-        <div className="flex gap-2 items-center">
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${colors[statusColor]}`}>{statusLabel}</span>
-          <span className="text-[11px] font-medium text-slate-500 border border-slate-200 bg-slate-50 px-2 py-0.5 rounded-full">
+      <div className="mb-2">
+        <span className="text-xs font-semibold text-[#359b46] truncate">
+          <MapPin size={12} className="inline mr-1 -mt-0.5" />
+          {ticket.location}
+        </span>
+      </div>
+      
+      <p className="text-xs text-slate-500 mb-3 flex-1 line-clamp-2">{ticket.description}</p>
+      
+      <div className="flex justify-between items-center mt-auto border-t border-slate-100 pt-3">
+        <div className="flex gap-2 items-center flex-wrap">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[statusColor]}`}>{statusLabel}</span>
+          <span className="text-[10px] font-medium text-slate-500 border border-slate-200 bg-slate-50 px-2 py-0.5 rounded-full">
             👤 {assigneeName}
           </span>
         </div>
-        {showCost && <span className="text-[13px] text-[#0a1e3f] font-black tracking-tight">₱{formattedCost.toLocaleString()}</span>}
+        {showCost && <span className="text-[12px] text-[#0a1e3f] font-black tracking-tight">₱{formattedCost.toLocaleString()}</span>}
       </div>
     </div>
   );

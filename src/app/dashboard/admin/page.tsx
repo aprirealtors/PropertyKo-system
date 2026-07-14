@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
-  ChevronDown, AlertTriangle, Menu, X, Bell, CheckCheck, Trash2 
+  ChevronDown, AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket 
 } from "lucide-react";
 
 // Import all split components
@@ -16,6 +16,7 @@ import LeasingAndTenantsTab from "./leasingandtenants";
 import MaintenanceTab from "./maintenance";
 import BillingTab from "./billing";
 import KPIReportsTab from "./kpireports";
+import ViewTicketTab from "./viewticket"; // Added ViewTicketTab
 import TeamTab from "./teamandsubscription";
 
 export default function AdminDashboard() {
@@ -162,10 +163,11 @@ export default function AdminDashboard() {
 
     setIsNotifOpen(false);
 
-    // ✨ Smart Navigation adapted for Admin Tabs
+    // ✨ Smart Navigation
     const type = notif.type?.toUpperCase() || '';
     if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
-    else if (type === 'TICKET' || type === 'MAINTENANCE') handleTabChange("Maintenance");
+    else if (type === 'TICKET') handleTabChange("Tickets");
+    else if (type === 'MAINTENANCE') handleTabChange("Maintenance");
     else handleTabChange("Dashboard");
   };
 
@@ -330,19 +332,20 @@ export default function AdminDashboard() {
             <NavItem icon={<Wrench size={18} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} />
             <NavItem icon={<CreditCard size={18} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
+            <NavItem icon={<Ticket size={18} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} />
             <NavItem icon={<Settings size={18} />} label="Team & subscription" isActive={activeTab === "Team"} onClick={() => handleTabChange("Team")} />
           </nav>
         </aside>
 
         {/* Dynamic Main Content Area */}
         <main className="flex-1 bg-[#f8fafc] overflow-y-auto p-4 sm:p-6 lg:p-10 w-full">
-          {/* onNavigate prop added to DashboardTab below */}
           {activeTab === "Dashboard" && <DashboardTab orgData={orgData} isLoading={isLoading} onNavigate={handleTabChange} />}
           {activeTab === "Properties" && <PropertiesAndUnitsTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Leasing" && <LeasingAndTenantsTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
+          {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Team" && <TeamTab orgData={orgData} isLoading={isLoading} />}
         </main>
       </div>
