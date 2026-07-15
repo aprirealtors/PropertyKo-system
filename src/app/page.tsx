@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { Star, Settings, Grid, Wrench, Diamond, Square, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, ArrowRight, Mail, Lock, Building2, Users, LayoutDashboard } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -26,14 +26,12 @@ export default function Home() {
         password 
       });
 
-      // ✨ FIX: Handle error gracefully instead of throwing it, so we don't trigger the red dev overlay
       if (authError) {
         setErrorMsg("Incorrect email or password. Please try again.");
         setLoading(false);
-        return; // Stop the function here
+        return; 
       }
 
-      // Extract the role from the user's metadata
       const userRole = authData.user?.user_metadata?.role;
 
       // 2. FETCH MATCHING ORG DATA FROM DATABASE
@@ -46,12 +44,6 @@ export default function Home() {
       if (dbError) {
         console.log("Not a registered organization admin, checking alternate roles...");
       }
-
-      console.log("Logged in successfully!", {
-        user: authData.user?.email,
-        role: userRole || "Admin/Owner",
-        organization: orgData?.org_name || "Platform Staff"
-      });
 
       // 3. DYNAMIC ROUTING BASED ON ROLE
       if (email === "superadmin@propertyko.com") {
@@ -66,11 +58,9 @@ export default function Home() {
       else if (userRole === "owner") {
         router.push("/dashboard/owner"); 
       }
-      // Route to the newly created tenants folder
       else if (userRole === "tenant") {
         router.push("/dashboard/tenants"); 
       }
-      // Default fallback for Organization Admins
       else {
         router.push("/dashboard/admin"); 
       }
@@ -83,179 +73,195 @@ export default function Home() {
   };
 
   return (
-    <>
-      {/* Top Navigation Bar */}
-      <nav className="w-full bg-white px-6 py-3 flex items-center justify-between shadow-sm border-b border-slate-100 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="relative w-50 h-15">
-            <Image 
-              src="/logos.png" 
-              alt="PropertyKo Logo" 
-              fill 
-              className="object-contain object-left" 
-              priority
-            />
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f]">
+      
+      {/* =========================================
+          LEFT PANEL - BRANDING (Hidden on Mobile)
+          ========================================= */}
+      <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden bg-slate-900">
+        {/* High-end architectural background with overlay */}
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
+          style={{ backgroundImage: "url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop')" }}
+        />
+        <div className="absolute inset-0 z-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-900/30" />
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 bg-slate-50 overflow-hidden">
-        <div className="max-w-5xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
+
+        {/* Center Value Proposition */}
+        <div className="relative z-10 max-w-lg py-8 mb-20">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold tracking-wide text-[#86c48f] uppercase mb-6 backdrop-blur-md">
+            <ShieldCheck size={14} />
+            Enterprise RBAC
+          </div>
           
-          {/* Left Panel - Information */}
-          <div className="bg-[#0a1e3f] text-white p-6 md:p-10 w-full md:w-5/12 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-              <div className="absolute -top-24 -left-24 w-64 h-64 rounded-full bg-[#359b46] blur-3xl"></div>
+          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-[1.15] mb-6 tracking-tight">
+            One platform. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#359b46] to-[#86c48f]">
+              Six distinct experiences.
+            </span>
+          </h1>
+          
+          <p className="text-slate-300 text-lg leading-relaxed mb-10">
+            Intelligently adapting to your workflow. Super Admins, Admins, Managers, Maintenance, Owners, and Tenants see exactly what they need securely and efficiently.
+          </p>
+
+          {/* Minimalist Feature Grid */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="flex flex-col gap-2">
+              <Building2 className="text-[#359b46] w-6 h-6" />
+              <h3 className="text-white font-semibold text-sm">Unified Management</h3>
+              <p className="text-slate-400 text-xs leading-relaxed">Centralize all your properties and operations in one workspace.</p>
             </div>
-
-            <div className="relative z-10">
-              <div className="flex justify-center mb-6">
-                <div className="inline-block bg-white p-2.5 rounded-xl shadow-lg">
-                  <div className="relative w-48 h-12">
-                    <Image
-                      src="/logos.png"
-                      alt="PropertyKo Logo"
-                      fill
-                      className="object-contain"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <h3 className="text-xl md:text-2xl font-semibold mb-6 leading-snug text-white">
-                One platform, six doors in each person sees only what they need.
-              </h3>
-
-              <ul className="space-y-4 text-sm text-slate-300">
-                <li className="flex items-start gap-3">
-                  <Star className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Super admin</span> - runs the platform & client orgs</div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Settings className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Admin</span> - owns company account & subscription</div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Grid className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Property manager</span> - properties, leases & collections</div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Wrench className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Staff</span> - caretaker & maintenance tasks</div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Diamond className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Owner</span> - landlord portal</div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Square className="text-[#359b46] shrink-0 mt-0.5" size={18} />
-                  <div><span className="font-bold text-white">Tenant</span> - pay rent, request repairs, view lease</div>
-                </li>
-              </ul>
-            </div>
-
-            <div className="mt-8 text-xs text-slate-400 font-medium relative z-10">
-              PropertyKo.com - Role-Based Access Control (RBAC)
-            </div>
-          </div>
-
-          {/* Right Panel - Login Form */}
-          <div className="bg-white p-6 md:p-10 w-full md:w-7/12 flex items-center">
-            <div className="max-w-md w-full mx-auto">
-              <h2 className="text-3xl font-bold text-[#0a1e3f] mb-1">Sign in</h2>
-              <p className="text-slate-500 text-sm mb-6">Welcome back to your PropertyKo workspace.</p>
-
-              {/* Error Message Display */}
-              {errorMsg && (
-                <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
-                  {errorMsg}
-                </div>
-              )}
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email address</label>
-                  <input
-                    type="email"
-                    placeholder="Enter your registered email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent text-sm transition-all"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent text-sm transition-all"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#86c48f] text-white font-medium py-2.5 rounded-lg transition-colors text-sm shadow-sm flex justify-center items-center"
-                  >
-                    {loading ? "Verifying..." : "Sign in to account"}
-                  </button>
-                </div>
-              </form>
-
-              {/* Clean Divider */}
-              <div className="relative flex items-center py-5">
-                <div className="flex-grow border-t border-slate-100"></div>
-              </div>
-
-              {/* Quick-Access Helper Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <RoleButton icon={<Star size={16} />} title="Super admin" subtitle="platform owner" onClick={() => { setEmail("superadmin@propertyko.com"); setPassword("password123"); }} />
-                <RoleButton icon={<Settings size={16} />} title="Admin" subtitle="company account" placeholder="Enter custom org email above" />
-                <RoleButton icon={<Grid size={16} />} title="Property manager" subtitle="day-to-day ops" placeholder="Enter custom manager email above" />
-                <RoleButton icon={<Wrench size={16} />} title="Staff" subtitle="caretaker tasks" placeholder="Enter custom staff email above" />
-                <RoleButton icon={<Diamond size={16} />} title="Owner" subtitle="landlord portal" placeholder="Enter custom owner email above" />
-                <RoleButton icon={<Square size={16} />} title="Tenant" subtitle="resident app" placeholder="Enter custom tenant email above" />
-              </div>
-
+            <div className="flex flex-col gap-2">
+              <Users className="text-[#359b46] w-6 h-6" />
+              <h3 className="text-white font-semibold text-sm">Owner and Tenant Portals</h3>
+              <p className="text-slate-400 text-xs leading-relaxed">Seamlessly connect with residents for payments and requests.</p>
             </div>
           </div>
         </div>
-      </main>
-    </>
-  );
-}
 
-// Reusable component for the role buttons
-function RoleButton({ icon, title, subtitle, onClick, placeholder }: { icon: React.ReactNode; title: string; subtitle: string; onClick?: () => void; placeholder?: string }) {
-  return (
-    <button 
-      type="button" 
-      onClick={onClick} 
-      title={placeholder}
-      className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:border-[#359b46] hover:bg-[#f0f9f1] transition-all text-left group shadow-sm hover:shadow-md w-full"
-    >
-      <div className="text-[#359b46] bg-[#f0f9f1] p-1.5 rounded-lg group-hover:bg-white transition-colors shrink-0">
-        {icon}
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between text-xs font-medium text-slate-500">
+          <p>© {new Date().getFullYear()} PropertyKo Inc.</p>
+          <div className="flex gap-4">
+            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+          </div>
+        </div>
       </div>
-      <div className="truncate">
-        <div className="text-sm font-bold text-[#0a1e3f] truncate">{title}</div>
-        <div className="text-[11px] text-slate-500 font-medium truncate">{onClick ? subtitle : placeholder || subtitle}</div>
+
+      {/* =========================================
+          RIGHT PANEL - LOGIN FORM (Full width on Mobile)
+          ========================================= */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-white relative overflow-hidden">
+        
+        
+
+        <div className="w-full max-w-[420px] mt-16 lg:mt-0">
+          {/* Header */}
+          <div className="mb-10 text-center lg:text-left">
+
+            {/* Logo */}
+    <div className="flex justify-center mb-6">
+      <div className="relative w-90 sm:w-94 h-36 sm:h-37">
+        <Image
+          src="/logos.jpeg"
+          fill
+          alt="PropertyKo"
+          className="object-contain"
+          priority
+        />
       </div>
-    </button>
+    </div>
+
+            <div className="w-12 h-12 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center mb-6 mx-auto lg:mx-0 shadow-sm">
+              <LayoutDashboard className="text-[#359b46] w-6 h-6" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-2">
+              Welcome back
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Enter your credentials to access your workspace.
+            </p>
+          </div>
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+              <ShieldCheck className="w-5 h-5 text-red-500 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-5">
+            
+            {/* Email Input */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-slate-700 block">Email Address</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Mail size={18} />
+                </div>
+                <input
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-semibold text-slate-700 block">Password</label>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Lock size={18} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-12 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-4 bg-[#0a1e3f] hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-3.5 rounded-xl transition-all text-sm shadow-md hover:shadow-lg flex justify-center items-center gap-2 group"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Authenticating...
+                </span>
+              ) : (
+                <>
+                  Sign In to Workspace
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Secure Note */}
+          <p className="mt-8 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck size={14} className="text-[#359b46]" />
+            Secure, role-based access control enabled.
+          </p>
+
+          {/* Mobile Footer (Hidden on Desktop) */}
+          <div className="lg:hidden mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-slate-900 transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-slate-900 transition-colors">Terms of Service</a>
+            </div>
+            <p>© {new Date().getFullYear()} PropertyKo Inc.</p>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
   );
 }

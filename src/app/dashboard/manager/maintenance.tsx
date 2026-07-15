@@ -25,8 +25,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [assignedTo, setAssignedTo] = useState("");
   const [priority, setPriority] = useState("Normal"); 
 
-  // ✨ NEW STATES FOR ANIMATIONS
-  const [pulseNewBtn, setPulseNewBtn] = useState(false);
+  // ✨ Tinanggal na yung pulseNewBtn, focus na lang sa highlight ID ng Card
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -116,9 +115,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       }
       const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; 
 
-      const { error } = await supabase.from('maintenance_tasks').insert([{ 
+      // ✨ FIX: Pinapasa na natin ang nagawang Task ID para i-animate pagka-save!
+      const { data: newTask, error } = await supabase.from('maintenance_tasks').insert([{ 
         admin_email: orgData.admin_email, title: title, location: location, description: finalDesc, status: 'pending', assigned_to: assignedTo, cost: 0, photo_url: photoUrlToSave, priority: priority 
-      }]);
+      }]).select().single();
+
       if (error) throw new Error(`Database Error: ${error.message}`);
 
       if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance' }).eq('id', selectedInboxId);
@@ -126,6 +127,19 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       await fetchTickets(); 
       setIsModalOpen(false);
       setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); 
+
+      // ✨ FIX: Scroll and Highlight the Newly Created Card
+      if (newTask) {
+        setTimeout(() => {
+          const targetElement = document.getElementById(`maintenance-card-${newTask.id}`);
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            setActiveHighlightId(newTask.id);
+            setTimeout(() => setActiveHighlightId(null), 3500);
+          }
+        }, 500);
+      }
+
     } catch (error: any) {
       console.error(error);
       setErrorMsg(error.message);
@@ -156,15 +170,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
 
-  // ✨ HEARTBEAT & SCROLL LOGIC FOR KANBAN CARDS AND +NEW TICKET BUTTON
+  // ✨ FIX: Tinanggal na ang "NEW" logic para sa button. Highlight ID na lang ang binabasa dito.
   useEffect(() => {
     if (highlightTicketId && !isLoadingTickets) {
       const actualId = highlightTicketId.split('_')[0];
       
-      if (actualId === "NEW") {
-        setPulseNewBtn(true);
-        setTimeout(() => setPulseNewBtn(false), 3500); // Mawawala after 3.5s
-      } else {
+      if (actualId !== "NEW") {
         setTimeout(() => {
           const targetElement = document.getElementById(`maintenance-card-${actualId}`);
           if (targetElement) {
@@ -205,10 +216,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             </span>
           )}
         </div>
-        {/* ✨ FIX: Pulse Animation on the Button */}
         <button 
           onClick={() => setIsModalOpen(true)}
-          className={`bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${pulseNewBtn ? 'ring-4 ring-green-500/50 scale-105 animate-pulse z-10' : ''}`}
+          className="bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
         >
           + New ticket
         </button>
@@ -406,7 +416,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   );
 }
 
-// ✨ FIX: Tumatanggap na ng id at isHighlighted prop
 function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, showCost, onClick, isHighlighted }: any) {
   const colors: any = {
     yellow: 'bg-amber-50 text-amber-700 border border-amber-100',
