@@ -1,25 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2
+  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, PauseCircle, AlertCircle, User
 } from "lucide-react";
 
 export default function OwnerDashboard() {
   const router = useRouter();
   
-  // User & Data States
   const [userData, setUserData] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [liveTasks, setLiveTasks] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]); 
   
-  // Dynamic Financial/Property States
   const [payoutThisMonth, setPayoutThisMonth] = useState(0);
   const [myUnitsList, setMyUnitsList] = useState<any[]>([]); 
   const [unitsCount, setUnitsCount] = useState(0);
@@ -28,22 +26,32 @@ export default function OwnerDashboard() {
   const [myTickets, setMyTickets] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
   
-  // Repair Modal States
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairIssue, setRepairIssue] = useState("");
   const [repairTime, setRepairTime] = useState("");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); 
+  const [repairPriority, setRepairPriority] = useState("Normal");
 
-  // Success & Logout Modal States
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [reviewTicket, setReviewTicket] = useState<any | null>(null);
 
-  // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  // ✨ NEW: States for Auto-scroll and Heartbeat Animation
+  const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
+  // ✨ White Label & User Modal States
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
+  
+  // ✨ Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     fetchOwnerData();
@@ -56,7 +64,6 @@ export default function OwnerDashboard() {
     if (authData?.user) {
       setUserEmail(authData.user.email || "");
 
-      // Fetch the owner's profile
       const { data, error } = await supabase
         .from('team_members')
         .select('*')
@@ -66,16 +73,25 @@ export default function OwnerDashboard() {
       if (data) {
         setUserData(data);
         
-        // --- FETCH TEAM MEMBERS ---
+        // ✨ Fetch the parent admin's organization to get the white-label logo
+        if (data.admin_email) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('logo_url')
+            .eq('admin_email', data.admin_email)
+            .single();
+
+          if (orgData?.logo_url) {
+            setOrgLogo(orgData.logo_url);
+          }
+        }
+
         const { data: membersData } = await supabase
           .from('team_members')
           .select('name, email')
           .eq('admin_email', data.admin_email);
-        if (membersData) {
-          setTeamMembers(membersData);
-        }
+        if (membersData) setTeamMembers(membersData);
         
-        // --- FETCH UNITS ---
         const { data: unitsData } = await supabase
           .from('units')
           .select('*')
@@ -98,16 +114,12 @@ export default function OwnerDashboard() {
           setPayoutThisMonth(gross); 
         }
 
-        // --- FETCH LIVE TASKS ---
         const { data: tasksData } = await supabase
           .from('maintenance_tasks')
-          .select('id, title, location, status, admin_email, assigned_to, cost')
+          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at')
           .eq('admin_email', data.admin_email);
-        if (tasksData) {
-          setLiveTasks(tasksData);
-        }
+        if (tasksData) setLiveTasks(tasksData);
 
-        // --- FETCH TICKETS INBOX ---
         const { data: ticketsData } = await supabase
           .from('tickets') 
           .select('*')
@@ -115,7 +127,6 @@ export default function OwnerDashboard() {
           .order('created_at', { ascending: false });
 
         if (ticketsData) {
-          // ✨ FIX: Strictly filter by the exact Owner who created the ticket using email!
           const ownerTickets = ticketsData.filter((t: any) => 
             t.reporter_email === authData.user.email || 
             (String(t.description).includes(data.name) && String(t.description).includes('(Owner)'))
@@ -123,7 +134,6 @@ export default function OwnerDashboard() {
           setMyTickets(ownerTickets);
         }
 
-        // INITIAL NOTIFICATION FETCH (with soft delete check)
         const { data: notifData } = await supabase
           .from('notifications')
           .select('*')
@@ -141,7 +151,6 @@ export default function OwnerDashboard() {
     setIsLoading(false);
   };
 
-  // ✨ LIVE NOTIFICATION LISTENER FOR OWNER
   useEffect(() => {
     if (!userEmail) return;
 
@@ -156,7 +165,6 @@ export default function OwnerDashboard() {
           filter: `recipient=eq.${userEmail}` 
         },
         (payload) => {
-          console.log("LIVE Notification received for Owner!", payload);
           setNotifications((current) => [payload.new, ...current]);
           setUnreadCount((count) => count + 1);
         }
@@ -168,17 +176,14 @@ export default function OwnerDashboard() {
     };
   }, [userEmail]);
 
-  // ✨ NEW: LIVE TICKETS AND MAINTENANCE REAL-TIME SYNC FOR OWNER
   useEffect(() => {
     if (!userData?.admin_email || !userEmail) return;
 
-    // ✨ FIX: Updated Helper to strictly match the owner's reporter_email
     const isOwnerTicket = (ticket: any) => {
       return ticket.reporter_email === userEmail || 
              (String(ticket.description).includes(userData.name) && String(ticket.description).includes('(Owner)'));
     };
 
-    // 1. Listen to Tickets changes
     const ticketsChannel = supabase
       .channel('owner-live-tickets')
       .on(
@@ -190,8 +195,6 @@ export default function OwnerDashboard() {
           filter: `admin_email=eq.${userData.admin_email}`
         },
         (payload) => {
-          console.log("Owner Realtime Ticket Update:", payload);
-          
           if (payload.eventType === 'INSERT') {
             if (isOwnerTicket(payload.new)) {
               setMyTickets((current) => [payload.new, ...current]);
@@ -209,7 +212,6 @@ export default function OwnerDashboard() {
       )
       .subscribe();
 
-    // 2. Listen to Maintenance Tasks changes (Para mag-update ang assigned staff status at cost)
     const tasksChannel = supabase
       .channel('owner-live-tasks')
       .on(
@@ -221,8 +223,6 @@ export default function OwnerDashboard() {
           filter: `admin_email=eq.${userData.admin_email}`
         },
         (payload) => {
-          console.log("Owner Realtime Maintenance Task Update:", payload);
-          
           if (payload.eventType === 'INSERT') {
             setLiveTasks((current) => [payload.new, ...current]);
           } else if (payload.eventType === 'UPDATE') {
@@ -240,11 +240,17 @@ export default function OwnerDashboard() {
       supabase.removeChannel(ticketsChannel);
       supabase.removeChannel(tasksChannel);
     };
-  }, [userData, userEmail]); // Added userEmail to dependencies
+  }, [userData, userEmail]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
+  };
+
+  // ✨ Helper to trigger the toast
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const openRepairModal = () => {
@@ -253,6 +259,7 @@ export default function OwnerDashboard() {
     } else {
       setSelectedUnitForRepair("");
     }
+    setRepairPriority("Normal");
     setIsRepairModalOpen(true);
   };
 
@@ -289,7 +296,8 @@ export default function OwnerDashboard() {
           location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
           description: `Best time to visit: ${repairTime}. Reported by ${userData?.name || 'Owner'} (Owner).`, 
           status: 'Open', 
-          photo_url: photoUrl
+          photo_url: photoUrl,
+          priority: repairPriority 
         }])
         .select()
         .single();
@@ -311,6 +319,7 @@ export default function OwnerDashboard() {
       setIsRepairModalOpen(false);
       setRepairIssue("");
       setRepairTime("");
+      setRepairPriority("Normal");
       setSelectedImage(null);
       setSelectedUnitForRepair("");
       
@@ -318,13 +327,12 @@ export default function OwnerDashboard() {
 
     } catch (err: any) {
       console.error("Error submitting repair:", err);
-      alert(`Failed to submit request:\n\n${err.message}`);
+      showToast(err.message || "Failed to submit request", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // NOTIFICATION FUNCTIONS
   const markAllAsRead = async () => {
     if (!userEmail) return;
     setNotifications(notifications.map(n => ({ ...n, is_read: true })));
@@ -347,6 +355,14 @@ export default function OwnerDashboard() {
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
     setIsNotifOpen(false);
+
+    // ✨ NOTIFICATION CLICK LOGIC FOR OWNER (Auto-scroll Trigger)
+    const type = notif.type?.toUpperCase() || '';
+    if (type === 'TICKET' || type === 'MAINTENANCE') {
+      if (notif.reference_id) {
+        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); // Passed with timestamp!
+      }
+    }
   };
 
   const getStatusBadge = (statusValue: string) => {
@@ -358,6 +374,71 @@ export default function OwnerDashboard() {
     if (s === 'failed') return { label: 'Failed', styles: 'bg-red-50 text-red-600 border-red-100' };
     return { label: statusValue, styles: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
+
+  const enrichedTickets = useMemo(() => {
+    return myTickets.map(ticket => {
+      const match = liveTasks.find(task => task.title === ticket.title && task.location === ticket.location);
+      const currentLiveStatus = match ? match.status : ticket.status;
+      const badge = getStatusBadge(currentLiveStatus);
+
+      let staffName = "Unassigned";
+      if (match?.assigned_to) {
+        const memberMatch = teamMembers.find(m => m.email === match.assigned_to);
+        staffName = memberMatch?.name ? memberMatch.name : match.assigned_to.split('@');
+      }
+
+      return {
+        ...ticket,
+        liveMatch: match,
+        currentLiveStatus,
+        label: badge.label,
+        color: badge.styles,
+        staffName,
+        priority: match?.priority || ticket.priority || 'Normal'
+      };
+    });
+  }, [myTickets, liveTasks, teamMembers]);
+
+  // ✨ HEARTBEAT & SCROLL LOGIC
+  useEffect(() => {
+    if (highlightTicketId && !isLoading && enrichedTickets.length > 0) {
+      const actualId = highlightTicketId.split('_')[0]; // Tanggalin ang timestamp
+      setTimeout(() => {
+        const matchingTicket = enrichedTickets.find(t => 
+          String(t.id) === actualId || 
+          (t.liveMatch && String(t.liveMatch.id) === actualId)
+        );
+        
+        if (matchingTicket) {
+          const targetId = String(matchingTicket.id);
+          const targetElement = document.getElementById(`ticket-${targetId}`);
+          
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            setActiveHighlightId(targetId);
+            setTimeout(() => {
+              setActiveHighlightId(null);
+            }, 3500);
+          }
+        }
+      }, 300);
+    }
+  }, [highlightTicketId, isLoading, enrichedTickets]);
+
+  const openInProgressTasks = enrichedTickets.filter(t => {
+    const s = String(t.currentLiveStatus).toLowerCase();
+    return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
+  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+
+  const onHoldTasks = enrichedTickets.filter(t => {
+    const s = String(t.currentLiveStatus).toLowerCase();
+    return s === 'on_hold' || s === 'on hold';
+  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+
+  const resolvedTasks = enrichedTickets.filter(t => {
+    const s = String(t.currentLiveStatus).toLowerCase();
+    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success';
+  });
 
   const fullName = userData?.name || "Owner";
   const getInitials = (name: string) => {
@@ -376,17 +457,26 @@ export default function OwnerDashboard() {
       
       {/* Top Navigation */}
       <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 border-b border-white/10 relative z-30">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
+          <button 
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
+            title="User Profile Info"
+          >
+            <User size={16} />
+          </button>
+
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
-            <div className="relative w-24 sm:w-28 h-6 sm:h-7">
-              <Image src="/logos.png" alt="PropertyKo Logo" fill className="object-contain object-center" priority />
+            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+              {/* ✨ Dynamically use orgLogo or fallback to default */}
+              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-4 sm:gap-5 text-sm relative">
           
-          {/* OWNER NOTIFICATION DROPDOWN */}
           <div 
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
             className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
@@ -399,7 +489,6 @@ export default function OwnerDashboard() {
             )}
           </div>
 
-          {/* NOTIFICATION MODAL */}
           {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
@@ -465,14 +554,18 @@ export default function OwnerDashboard() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
         
-        {/* Greeting & Action Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
               Good day, {isLoading ? "..." : fullName} 👋
-              <div className="ml-2 w-8 h-8 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 hidden sm:flex">
+              {/* Clickable Profile Initials Bubble */}
+              <div 
+                onClick={() => setIsWorkspaceModalOpen(true)}
+                className="ml-2 w-8 h-8 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 hidden sm:flex cursor-pointer hover:bg-emerald-100 transition-colors"
+                title="View Profile Details"
+              >
                 {initials}
               </div>
             </h1>
@@ -494,7 +587,6 @@ export default function OwnerDashboard() {
           </button>
         </div>
 
-        {/* Big Payout Card */}
         <div className="bg-[#359b46] rounded-2xl p-6 sm:p-8 text-white shadow-md mb-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
           <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -515,7 +607,6 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        {/* 3 Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <p className="text-slate-500 text-xs font-medium mb-1">My units</p>
@@ -540,62 +631,177 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        {/* MY TICKETS SECTION */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+        {/* KANBAN BOARD LAYOUT */}
+        <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-[#0a1e3f] text-lg">My tickets</h3>
-            <span className="bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full flex items-center justify-center text-xs font-bold">
-              {myTickets.length}
-            </span>
+            <h3 className="font-bold text-[#0a1e3f] text-lg">My Repair Requests</h3>
           </div>
           
-          {myTickets.length === 0 ? (
-            <div className="py-6 text-center text-sm text-slate-400 border-t border-slate-100">
-              You have no active repair tickets.
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Column 1: Open & In Progress */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">Open & In Progress <span className="ml-2 bg-blue-100 text-[#1d82f5] px-2 rounded-full text-xs font-bold">{openInProgressTasks.length}</span></h4>
+              <div className="space-y-4">
+                {openInProgressTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No open requests</div>
+                ) : (
+                  openInProgressTasks.map(t => {
+                    const isHighlighted = activeHighlightId === String(t.id);
+                    return (
+                      <div 
+                        key={t.id} 
+                        id={`ticket-${t.id}`}
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col transition-all duration-500 hover:shadow-md ${
+                          isHighlighted 
+                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
+                            : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        {t.photo_url ? (
+                          <div className="relative w-full h-28 bg-slate-100 border-b border-slate-100">
+                            <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-12 bg-slate-50 border-b border-slate-100 flex items-center justify-center">
+                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">No Photo</span>
+                          </div>
+                        )}
+                        <div className="p-4 flex-1 flex flex-col">
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <h4 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-2">{t.title}</h4>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
+                              {t.label}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mb-2 mt-1">
+                            <p className="text-[#359b46] font-semibold text-xs truncate pr-2">
+                              <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                              {t.location}
+                            </p>
+                            {t.priority === 'Urgent' && (
+                              <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
+                                🚨 URGENT
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
+                          
+                          <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
+                            <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                              👤 {t.staffName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          ) : (
-            myTickets.map((ticket, idx) => {
-              const match = liveTasks.find(task => 
-                task.title === ticket.title && 
-                task.location === ticket.location
-              );
-              
-              const currentLiveStatus = match ? match.status : ticket.status;
-              const badge = getStatusBadge(currentLiveStatus);
 
-              let staffName = "Unassigned";
-              if (match?.assigned_to) {
-                const memberMatch = teamMembers.find(m => m.email === match.assigned_to);
-                staffName = memberMatch?.name ? memberMatch.name : match.assigned_to.split('@');
-              }
+            {/* Column 2: On Hold */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">On Hold <span className="ml-2 bg-purple-100 text-purple-700 px-2 rounded-full text-xs font-bold">{onHoldTasks.length}</span></h4>
+              <div className="space-y-4">
+                {onHoldTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No requests on hold</div>
+                ) : (
+                  onHoldTasks.map(t => {
+                    const isHighlighted = activeHighlightId === String(t.id);
+                    return (
+                      <div 
+                        key={t.id} 
+                        id={`ticket-${t.id}`}
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col transition-all duration-500 hover:shadow-md opacity-90 hover:opacity-100 ${
+                          isHighlighted 
+                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' 
+                            : t.priority === 'Urgent' ? 'bg-slate-50 border-red-300 shadow-red-500/10' : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        {t.photo_url && (
+                          <div className="relative w-full h-28 bg-slate-100 border-b border-slate-100">
+                            <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" />
+                          </div>
+                        )}
+                        <div className="p-4 flex-1 flex flex-col">
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <h4 className="font-bold text-slate-600 text-sm leading-tight line-clamp-2">{t.title}</h4>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
+                              {t.label}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between mb-2 mt-1">
+                            <p className="text-slate-500 font-semibold text-xs truncate pr-2">
+                              <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                              {t.location}
+                            </p>
+                            {t.priority === 'Urgent' && (
+                              <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                🚨 URGENT
+                              </span>
+                            )}
+                          </div>
+                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
 
-              return (
-                <div key={idx} className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 py-3 border-t border-slate-100">
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-[#0a1e3f] text-sm">{ticket.title}</h4>
-                    <p className="text-slate-500 text-xs mt-1">{ticket.description}</p>
-                    
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-400 font-medium">
-                      <span>Reported: <strong className="text-slate-600 font-semibold">{new Date(ticket.created_at).toLocaleDateString()}</strong></span>
-                      <span>•</span>
-                      <span>Assigned Staff: <strong className="text-slate-600 font-semibold">👤 {staffName}</strong></span>
-                      {match?.cost !== undefined && match.cost > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="text-slate-600 font-bold">Cost: ₱{match.cost.toLocaleString()}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <span className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-full border ${badge.styles}`}>
-                      {badge.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          )}
+            {/* Column 3: Resolved */}
+            <div>
+              <h4 className="font-bold text-slate-700 text-sm mb-4">Resolved <span className="ml-2 bg-emerald-100 text-emerald-700 px-2 rounded-full text-xs font-bold">{resolvedTasks.length}</span></h4>
+              <div className="space-y-4">
+                {resolvedTasks.length === 0 ? (
+                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No resolved requests</div>
+                ) : (
+                  resolvedTasks.map(t => {
+                    const isHighlighted = activeHighlightId === String(t.id);
+                    return (
+                      <div 
+                        key={t.id} 
+                        id={`ticket-${t.id}`}
+                        onClick={() => setReviewTicket(t)} 
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all duration-500 cursor-pointer ${
+                          isHighlighted 
+                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
+                            : 'bg-emerald-50 border-emerald-100'
+                        }`}
+                      >
+                        {(t.liveMatch?.resolution_photo_url || t.photo_url) && (
+                          <div className={`relative w-full h-28 border-b ${isHighlighted ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
+                            <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="p-4 flex-1 flex flex-col">
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <div className="flex items-start gap-1.5">
+                              <CheckCircle size={14} className={`${isHighlighted ? 'text-blue-500' : 'text-[#359b46]'} mt-0.5 shrink-0`} />
+                              <h4 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-2">{t.title}</h4>
+                            </div>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
+                              {t.label}
+                            </span>
+                          </div>
+                          <p className="text-slate-500 font-semibold text-xs mt-1 truncate mb-2">
+                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
+                            {t.location}
+                          </p>
+                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+          </div>
         </div>
 
         {/* Statements Table */}
@@ -639,11 +845,155 @@ export default function OwnerDashboard() {
             </table>
           </div>
         </div>
-        
-        <div className="text-center text-xs text-slate-400 font-medium pb-8">
-          No spreadsheets, no waiting for reports. Owners just see money in and what needs a yes.
-        </div>
       </main>
+
+      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {isWorkspaceModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Owner Profile</h2>
+              <button 
+                onClick={() => setIsWorkspaceModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
+              <div className="bg-gradient-to-r from-[#0a1e3f] to-[#122955] rounded-2xl p-6 text-white flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20">
+                  {initials}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg">{fullName}</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">Property Owner</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">
+                  Account Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label>
+                    <p className="text-sm font-semibold text-slate-800">{fullName}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
+                    <p className="text-sm font-semibold text-slate-800 break-all">{userEmail || "Not available"}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
+                    <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">
+                      Owner
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVIEW RESOLUTION MODAL */}
+      {reviewTicket && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
+                  {reviewTicket.title}
+                </h2>
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mt-1">
+                  <MapPin size={14} className="text-slate-400" /> {reviewTicket.location}
+                </div>
+              </div>
+              <button onClick={() => setReviewTicket(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* BEFORE */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Before</span>
+                    <span className="text-sm font-bold text-slate-700">Your Report</span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center">
+                    {reviewTicket.photo_url ? (
+                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Camera size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No photo submitted</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <p className="text-sm text-slate-600 leading-relaxed mb-3">
+                      {reviewTicket.description}
+                    </p>
+                    <div className="text-xs text-slate-400 font-medium border-t border-slate-200 pt-3">
+                      Reported on: {new Date(reviewTicket.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AFTER */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">After</span>
+                      <span className="text-sm font-bold text-slate-700">Resolution</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${reviewTicket.color}`}>
+                      {reviewTicket.label}
+                    </span>
+                  </div>
+
+                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                    {reviewTicket.liveMatch?.resolution_photo_url ? (
+                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Wrench size={32} className="mx-auto mb-2 opacity-50" />
+                        <span className="text-sm font-medium">No maintenance photo yet</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
+                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                        👤 {reviewTicket.staffName}
+                      </span>
+                    </div>
+                    
+                    {reviewTicket.liveMatch?.cost !== undefined && reviewTicket.liveMatch.cost > 0 && (
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
+                        <span className="text-sm font-black text-[#0a1e3f]">₱{reviewTicket.liveMatch.cost.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
@@ -691,6 +1041,19 @@ export default function OwnerDashboard() {
                 </div>
 
                 <div>
+                  <select
+                    required
+                    value={repairPriority}
+                    onChange={(e) => setRepairPriority(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700 bg-white"
+                    disabled={isSubmitting}
+                  >
+                    <option value="Normal">Normal (Can wait)</option>
+                    <option value="Urgent">🚨 Urgent (Needs attention today)</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
                     <Camera size={20} className="text-slate-400 shrink-0" />
                     <span className={`text-sm ${selectedImage ? 'text-[#0a1e3f] font-medium' : 'text-slate-500'}`}>
@@ -735,7 +1098,7 @@ export default function OwnerDashboard() {
 
       {/* SUCCESS MODAL */}
       {isSuccessModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 z-">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8">
             <div className="w-16 h-16 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={36} />
@@ -778,6 +1141,22 @@ export default function OwnerDashboard() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ✨ TOAST NOTIFICATION */}
+      {toast && (
+        <div 
+          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
+            toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="text-[#359b46]" size={20} />
+          ) : (
+            <AlertTriangle className="text-red-500" size={20} />
+          )}
+          {toast.message}
         </div>
       )}
     </div>

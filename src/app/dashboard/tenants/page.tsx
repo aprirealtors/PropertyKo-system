@@ -1,7 +1,10 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from 'react';
-import { Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, ChevronRight, Bell, CheckCheck, Trash2 } from 'lucide-react';
+import { 
+  Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
+  ChevronRight, Bell, CheckCheck, Trash2, User, X 
+} from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client"; 
@@ -24,12 +27,18 @@ export default function TenantDashboard() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✨ NOTIFICATION STATES
+  // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // Fetch real tenant data on load
+  // ✨ NEW: State to hold Highlight ID for Repairs
+  const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+
+  // ✨ White Label & User Modal States
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
+
   useEffect(() => {
     fetchTenantData();
   }, [router]);
@@ -56,6 +65,19 @@ export default function TenantDashboard() {
         setUserData(profile);
         setTenantName(profile.name);
 
+        // ✨ Fetch the parent admin's organization to get the white-label logo
+        if (profile.admin_email) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('logo_url')
+            .eq('admin_email', profile.admin_email)
+            .single();
+
+          if (orgData?.logo_url) {
+            setOrgLogo(orgData.logo_url);
+          }
+        }
+
         const { data: unitData } = await supabase
           .from('units')
           .select('*')
@@ -75,12 +97,11 @@ export default function TenantDashboard() {
 
         if (txData) setTransactions(txData);
 
-        // INITIAL NOTIFICATION FETCH
         const { data: notifData } = await supabase
           .from('notifications')
           .select('*')
           .eq('recipient', authData.user.email) 
-          .eq('is_hidden', false) // Soft delete check
+          .eq('is_hidden', false) 
           .order('created_at', { ascending: false })
           .limit(10);
           
@@ -96,7 +117,6 @@ export default function TenantDashboard() {
     }
   };
 
-  // ✨ LIVE NOTIFICATION LISTENER FOR TENANT
   useEffect(() => {
     if (!userEmail) return;
 
@@ -108,10 +128,9 @@ export default function TenantDashboard() {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `recipient=eq.${userEmail}` // Only listen for THIS tenant's email
+          filter: `recipient=eq.${userEmail}` 
         },
         (payload) => {
-          console.log("LIVE Notification received for Tenant!", payload);
           setNotifications((current) => [payload.new, ...current]);
           setUnreadCount((count) => count + 1);
         }
@@ -129,7 +148,6 @@ export default function TenantDashboard() {
     router.push("/"); 
   };
 
-  // ✨ NOTIFICATION FUNCTIONS
   const markAllAsRead = async () => {
     if (!userEmail) return;
     setNotifications(notifications.map(n => ({ ...n, is_read: true })));
@@ -153,23 +171,51 @@ export default function TenantDashboard() {
     }
     setIsNotifOpen(false);
 
+    // ✨ NOTIFICATION CLICK LOGIC FOR TENANT
     const type = notif.type?.toUpperCase() || '';
-    if (type === 'BILLING' || type === 'SOA') setActiveTab("pay");
-    else if (type === 'MAINTENANCE' || type === 'TICKET') setActiveTab("repair");
+    if (type === 'BILLING' || type === 'SOA') {
+      setActiveTab("pay");
+    } else if (type === 'MAINTENANCE' || type === 'TICKET') {
+      if (notif.reference_id) {
+        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); // Passed with Timestamp!
+      }
+      setActiveTab("repair");
+    } else {
+      setActiveTab("home");
+    }
   };
+
+  const getInitials = (name: string) => {
+    if (!name) return "TE";
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+  const initials = getInitials(tenantName);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
-      {/* TOP HEADER */}
       <header className="h-16 bg-[#0b1727] flex items-center justify-between px-6 flex-shrink-0 relative z-40">
-        <div className="flex items-center gap-4">
-          <div className="bg-white rounded-lg p-1">
-            <Image src="/logos.png" alt="Logo" width={100} height={25} />
+        <div className="flex items-center gap-3">
+          {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
+          <button 
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
+            title="User Profile Info"
+          >
+            <User size={16} />
+          </button>
+
+          <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
+            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+              {/* ✨ Dynamically use orgLogo or fallback to default */}
+              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
+            </div>
           </div>
         </div>
+
         <div className="flex items-center gap-4 text-white relative">
           
-          {/* ✨ TENANT NOTIFICATION DROPDOWN */}
           <div
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
             className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
@@ -182,7 +228,6 @@ export default function TenantDashboard() {
             )}
           </div>
 
-          {/* ✨ NOTIFICATION MODAL */}
           {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
@@ -242,44 +287,100 @@ export default function TenantDashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* SIDEBAR */}
         <aside className="w-64 bg-[#0b1727] p-4 hidden md:flex flex-col">
           <nav className="space-y-1">
-            <NavButton active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={20} />} label="Home" />
-            <NavButton active={activeTab === 'pay'} onClick={() => setActiveTab('pay')} icon={<Receipt size={20} />} label="Billing & payments" />
+            <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={20} />} label="Home" />
+            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={20} />} label="Billing & payments" />
             <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={20} />} label="Maintenance" />
-            <NavButton active={activeTab === 'lease'} onClick={() => setActiveTab('lease')} icon={<FileText size={20} />} label="My lease" />
+            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={20} />} label="My lease" />
           </nav>
         </aside>
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
            <div className="max-w-5xl mx-auto">
              {activeTab === 'home' && (
                <HomeView 
                  setActiveTab={setActiveTab} 
                  tenantName={tenantName} 
+                 initials={initials}
+                 openProfileModal={() => setIsWorkspaceModalOpen(true)}
                  unit={unit} 
                  transactions={transactions} 
                  isLoading={isLoading} 
                />
              )}
              {activeTab === 'pay' && <PayTab />}
-             {activeTab === 'repair' && <RepairTab />}
+             {/* ✨ Pass highlightTicketId to RepairTab */}
+             {activeTab === 'repair' && <RepairTab highlightTicketId={highlightTicketId} />}
              {activeTab === 'lease' && <LeaseTab />}
            </div>
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pt-2 pb-5 z-50">
-        <MobileNavItem active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={22} />} label="Home" />
-        <MobileNavItem active={activeTab === 'pay'} onClick={() => setActiveTab('pay')} icon={<Receipt size={22} />} label="Pay" />
+        <MobileNavItem active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={22} />} label="Home" />
+        <MobileNavItem active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={22} />} label="Pay" />
         <MobileNavItem active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={22} />} label="Repairs" />
-        <MobileNavItem active={activeTab === 'lease'} onClick={() => setActiveTab('lease')} icon={<FileText size={22} />} label="Lease" />
+        <MobileNavItem active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={22} />} label="Lease" />
       </nav>
 
-      {/* LOGOUT CONFIRMATION MODAL */}
+      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {isWorkspaceModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Tenant Profile</h2>
+              <button 
+                onClick={() => setIsWorkspaceModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
+              <div className="bg-gradient-to-r from-[#0b1727] to-[#1e293b] rounded-2xl p-6 text-white flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20">
+                  {initials}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg">{tenantName}</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">Active Resident</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">
+                  Account Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label>
+                    <p className="text-sm font-semibold text-slate-800">{tenantName}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
+                    <p className="text-sm font-semibold text-slate-800 break-all">{userEmail || "Not available"}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Assigned Property</label>
+                    <p className="text-sm font-semibold text-slate-800 break-all">
+                      {unit?.property_name ? `${unit.property_name} - Unit ${unit.unit_number}` : "Not Assigned"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
+                    <span className="inline-block text-[10px] font-semibold text-[#1e88e5] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded mt-1">
+                      Tenant
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
@@ -310,7 +411,7 @@ export default function TenantDashboard() {
   );
 }
 
-function HomeView({ setActiveTab, tenantName, unit, transactions, isLoading }: any) {
+function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, transactions, isLoading }: any) {
   const rentAmount = unit?.monthly_rent || 0;
   const propertyName = unit?.property_name || "Unassigned Property";
   const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
@@ -324,9 +425,19 @@ function HomeView({ setActiveTab, tenantName, unit, transactions, isLoading }: a
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <header>
-        <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : tenantName}</h1>
+      <header className="flex justify-between items-end">
+        <div>
+          <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : tenantName}</h1>
+        </div>
+        {/* Clickable Profile Initials Bubble */}
+        <div 
+          onClick={openProfileModal}
+          className="w-12 h-12 rounded-full bg-blue-50 text-[#1e88e5] flex items-center justify-center font-bold text-lg border border-blue-100 shadow-sm cursor-pointer hover:bg-blue-100 transition-colors"
+          title="View Profile Details"
+        >
+          {initials}
+        </div>
       </header>
       
       <section className="bg-[#1e88e5] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
@@ -386,7 +497,7 @@ function NavButton({ active, onClick, icon, label }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${active ? 'bg-[#359b46] text-white shadow-lg shadow-green-900/20' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}
+      className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${active ? 'bg-[#1e88e5] text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}
     >
       <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'scale-100'}`}>{icon}</div>
       <span>{label}</span>

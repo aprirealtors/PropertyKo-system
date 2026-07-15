@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Camera, DollarSign, X, CheckCircle, PauseCircle, AlertCircle, AlertTriangle, Clock, MapPin, Wrench } from "lucide-react";
+import { 
+  Camera, DollarSign, X, CheckCircle, PauseCircle, AlertCircle, 
+  AlertTriangle, Clock, MapPin, Wrench, User, Building, CheckCircle2 
+} from "lucide-react";
 
 interface UserProfile {
   name: string;
@@ -37,6 +40,15 @@ export default function MaintenanceDashboard() {
   
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
+  // ✨ User/Workspace Account Modal State (Read-only)
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  
+  // ✨ Custom Organization Logo State
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
+
+  // ✨ Toast Notification State
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
   const [alertConfig, setAlertConfig] = useState({
     isOpen: false,
     type: 'success', 
@@ -138,6 +150,18 @@ export default function MaintenanceDashboard() {
 
       setUserEmail(user.email || ""); 
 
+      // ✨ Fetch the parent admin's organization to get the white-label logo
+      const adminParentEmail = user.user_metadata?.admin_parent || user.email;
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('logo_url')
+        .eq('admin_email', adminParentEmail)
+        .single();
+
+      if (orgData?.logo_url) {
+        setOrgLogo(orgData.logo_url);
+      }
+
       const { data: userData } = await supabase
         .from('team_members')
         .select('name')
@@ -168,6 +192,12 @@ export default function MaintenanceDashboard() {
     }
   };
 
+  // ✨ Helper to trigger the toast
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const updateTaskStatus = async (taskId: string, newStatus: MaintenanceTask['status']) => {
     setTasks(currentTasks => 
       currentTasks.map(task => 
@@ -183,6 +213,9 @@ export default function MaintenanceDashboard() {
     if (error) {
       console.error("Failed to update task:", error);
       fetchUserDataAndTasks(); 
+      showToast("Failed to update status", "error");
+    } else {
+      showToast(`Task marked as ${newStatus.replace('_', ' ')}!`, "success");
     }
   };
 
@@ -306,7 +339,8 @@ export default function MaintenanceDashboard() {
       await supabase.from('notifications').insert(notificationsToInsert);
 
       setCompleteModalTask(null);
-      showAlert('success', 'Report Submitted', 'Your task report was submitted successfully!');
+      showToast("Report submitted successfully!", "success");
+      fetchUserDataAndTasks();
 
     } catch (err: any) {
       console.error("Error completing task:", err);
@@ -628,12 +662,75 @@ export default function MaintenanceDashboard() {
         </div>
       )}
 
+      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {isWorkspaceModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Staff Profile</h2>
+              <button 
+                onClick={() => setIsWorkspaceModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
+              {/* Profile Card Summary */}
+              <div className="bg-gradient-to-r from-[#0a1e3f] to-[#122955] rounded-2xl p-6 text-white flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20">
+                  {profile.initials}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg">{profile.name}</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">Maintenance Department</p>
+                </div>
+              </div>
+
+              {/* Read Only Account Data */}
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">
+                  Account Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label>
+                    <p className="text-sm font-semibold text-slate-800">{profile.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
+                    <p className="text-sm font-semibold text-slate-800 break-all">{userEmail || "Not available"}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
+                    <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">
+                      Maintenance Staff
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Global Top Navigation */}
       <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30 border-b border-white/10">
         <div className="flex items-center gap-3">
+          {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
+          <button 
+            onClick={() => setIsWorkspaceModalOpen(true)}
+            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
+            title="User Profile Info"
+          >
+            <User size={16} />
+          </button>
+
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
-            <div className="relative w-24 sm:w-28 h-6 sm:h-7">
-              <Image src="/logos.png" alt="PropertyKo Logo" fill className="object-contain object-center" priority />
+            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+              {/* ✨ Dynamically use orgLogo or fallback to default */}
+              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
         </div>
@@ -656,7 +753,12 @@ export default function MaintenanceDashboard() {
               <h2 className="text-[28px] font-extrabold text-[#0a1e3f] tracking-tight leading-tight">My tasks</h2>
               <p className="text-slate-500 mt-1 text-[15px]">Hi {profile.name} - here's your assigned work.</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 shadow-sm">
+            {/* Clickable Profile Initials Bubble */}
+            <div 
+              onClick={() => setIsWorkspaceModalOpen(true)}
+              className="w-12 h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 shadow-sm cursor-pointer hover:bg-emerald-100 transition-colors"
+              title="View Profile Details"
+            >
               {profile.initials}
             </div>
           </div>
@@ -742,7 +844,7 @@ export default function MaintenanceDashboard() {
                   <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks on hold</div>
                 ) : (
                   onHoldTasks.map(task => (
-                    <div key={task.id} className="bg-slate-50 rounded-2xl p-5 border border-slate-200 flex flex-col gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                    <div key={task.id} className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col gap-4 shadow-sm">
                       <div>
                         {/* Title and On Hold Badge together */}
                         <div className="flex justify-between items-start mb-1 gap-2">
@@ -818,6 +920,22 @@ export default function MaintenanceDashboard() {
           </div>
         </div>
       </main>
+
+      {/* ✨ TOAST NOTIFICATION */}
+      {toast && (
+        <div 
+          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
+            toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="text-[#359b46]" size={20} />
+          ) : (
+            <AlertTriangle className="text-red-500" size={20} />
+          )}
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
