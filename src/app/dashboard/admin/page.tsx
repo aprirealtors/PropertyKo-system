@@ -27,6 +27,10 @@ export default function AdminDashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  // ✨ User Profile Modal State
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
+  const [adminProfile, setAdminProfile] = useState({ name: "Admin", email: "" });
+
   // ✨ Workspace Info Modal & White Label States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -49,7 +53,22 @@ export default function AdminDashboard() {
       try {
         const { data: authData } = await supabase.auth.getUser();
         if (authData?.user?.email) {
-          const { data, error } = await supabase.from('organizations').select('*').eq('admin_email', authData.user.email).single();
+          const userEmail = authData.user.email;
+
+          // Fetch Admin's name from team_members (or fallback to System Admin)
+          const { data: teamMember } = await supabase
+            .from('team_members')
+            .select('name')
+            .eq('email', userEmail)
+            .single();
+
+          setAdminProfile({
+            name: teamMember?.name || "System Admin",
+            email: userEmail
+          });
+
+          // Fetch Organization Data
+          const { data, error } = await supabase.from('organizations').select('*').eq('admin_email', userEmail).single();
           if (data) setOrgData(data);
         }
       } catch (err) {
@@ -194,22 +213,18 @@ export default function AdminDashboard() {
             <Menu size={20} />
           </button>
           
-          {/* ✨ ALWAYS VISIBLE PROFILE ICON ✨ */}
+          {/* ✨ ALWAYS VISIBLE PROFILE ICON (Opens User Profile) ✨ */}
           <button 
-            onClick={() => setIsWorkspaceModalOpen(true)}
+            onClick={() => setIsUserProfileModalOpen(true)}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
-            title="Organization Profile"
+            title="User Profile Details"
           >
             <User size={16} />
           </button>
 
-          {/* Only render logo box if an uploaded logo URL exists */}
+          {/* ✨ READ-ONLY LOGO ✨ */}
           {orgData?.logo_url && (
-            <div 
-              className="inline-block bg-white p-1.5 rounded-lg shadow-sm cursor-pointer hover:ring-2 hover:ring-[#359b46] transition-all"
-              onClick={() => setIsWorkspaceModalOpen(true)}
-              title="Organization Profile"
-            >
+            <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm pointer-events-none">
               <div className="relative w-24 sm:w-28 h-8 sm:h-8 flex items-center justify-center">
                 <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain object-center" priority />
               </div>
@@ -266,6 +281,7 @@ export default function AdminDashboard() {
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
           <div className="p-4 sm:mt-2">
+            {/* ✨ WORKSPACE CARD (Opens Org Profile) ✨ */}
             <div 
               onClick={() => setIsWorkspaceModalOpen(true)}
               className="bg-[#122955] rounded-xl p-3 border border-[#1e3a63] shadow-inner cursor-pointer hover:bg-[#1a3a78] transition-all group"
@@ -307,7 +323,58 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* ✨ PROFESSIONAL WORKSPACE INFO MODAL */}
+      {/* ✨ STATIC USER PROFILE MODAL (READ-ONLY) */}
+      {isUserProfileModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Admin Profile</h2>
+              <button 
+                onClick={() => setIsUserProfileModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
+              <div className="bg-gradient-to-r from-[#0a1e3f] to-[#122955] rounded-2xl p-6 text-white flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20 uppercase">
+                  {adminProfile.name.substring(0, 2)}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg">{adminProfile.name}</h3>
+                  <p className="text-xs text-blue-200 mt-0.5">System Administrator</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">
+                  Account Details
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label>
+                    <p className="text-sm font-semibold text-slate-800">{adminProfile.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
+                    <p className="text-sm font-semibold text-slate-800 break-all">{adminProfile.email}</p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
+                    <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">
+                      Admin
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ ORGANIZATION PROFILE MODAL (Workspace & Logo Upload) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[90vh]">

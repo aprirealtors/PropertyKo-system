@@ -188,11 +188,11 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </div>
               </div>
 
-              {/* Chart & Legend Container -> ADDED flex-wrap and justify-center */}
-              <div className="bg-slate-50 rounded-3xl p-8 mb-10 border border-slate-100 flex flex-col xl:flex-row flex-wrap items-center justify-center gap-10 shadow-sm">
+              {/* Chart & Summary Container -> Adjusted for professional mobile & desktop layout */}
+              <div className="bg-slate-50 rounded-3xl p-6 sm:p-8 mb-10 border border-slate-100 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 shadow-sm">
                 
                 {/* 1. Solid SVG Pie Chart */}
-                <div className="relative w-64 h-64 shrink-0">
+                <div className="relative w-56 h-56 sm:w-64 sm:h-64 shrink-0">
                   <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-xl rounded-full">
                     <g transform="rotate(-90 50 50)">
                       {/* Owners Slice (Navy) */}
@@ -232,16 +232,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   </svg>
                 </div>
 
-                {/* 2. Middle Legend */}
-                <div className="flex flex-col gap-5 shrink-0 min-w-[180px]">
-                  <LegendItem color="bg-[#0a1e3f]" title="Owners of Units" sub={`${Math.round(ownersPct)}% (${ownersCount} units)`} />
-                  <div className="w-full h-px bg-slate-200"></div>
-                  <LegendItem color="bg-[#48a457]" title="Available Units" sub={`${Math.round(availablePct)}% (${availableCount} units)`} />
-                  <div className="w-full h-px bg-slate-200"></div>
-                  <LegendItem color="bg-[#94a3b8]" title="Hold Units" sub={`${Math.round(holdPct)}% (${holdCount} units)`} />
-                </div>
-
-                {/* 3. Right Unit Summary Card -> ADDED max-w-md */}
+                {/* 2. Unit Summary Card */}
                 <div className="flex-1 w-full min-w-[280px] max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col">
                   
                   {/* Card Header */}
@@ -373,19 +364,6 @@ function AttentionItem({ label, value, isUrgent, color }: { label: string, value
     <div className="flex justify-between items-center py-1">
       <span className="text-sm text-slate-600">{label}</span>
       <span className={`text-sm font-extrabold ${isUrgent ? color : 'text-[#0a1e3f]'}`}>{value}</span>
-    </div>
-  );
-}
-
-// Helper for the Middle Legend
-function LegendItem({ color, title, sub }: any) {
-  return (
-    <div className="flex items-center gap-4 py-2">
-      <div className={`w-4 h-4 rounded-full ${color} shrink-0`}></div>
-      <div>
-        <div className="text-[15px] font-bold text-[#0a1e3f] leading-tight">{title}</div>
-        <div className="text-[13px] text-slate-500 font-medium mt-1">{sub}</div>
-      </div>
     </div>
   );
 }

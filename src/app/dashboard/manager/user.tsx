@@ -28,14 +28,16 @@ export default function UsersTab({ orgData }: any) {
     if (orgData?.admin_email) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgData]);
 
-  // When role changes, we need to refetch units because availability depends on the role!
+  // Refetch units when the role tab switches
   useEffect(() => {
-    if (usersList.length > 0) {
+    if (usersList && usersList.length > 0) {
       fetchUnits(usersList, role);
     }
-  }, [role]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]); // Strictly keeping size to 1 to prevent array size errors
 
   const loadData = async () => {
     setIsLoading(true);
@@ -55,7 +57,6 @@ export default function UsersTab({ orgData }: any) {
       console.error("Error fetching users:", usersError);
     } else {
       setUsersList(usersData || []);
-      // Pass the current role so it filters correctly right away
       fetchUnits(usersData || [], role);
     }
   };
@@ -64,35 +65,50 @@ export default function UsersTab({ orgData }: any) {
     const { data: unitsData, error: unitsError } = await supabase
       .from('units')
       .select('*')
-      .eq('admin_email', orgData.admin_email); // Fetch raw data first
+      .eq('admin_email', orgData.admin_email); 
 
     if (!unitsError && unitsData) {
-      // Gather all units assigned to EXISTING users OF THE SAME ROLE
       const assignedUnitStrings = new Set<string>();
       
       currentUsers.forEach(user => {
-        // Only block the unit if the existing user has the SAME role we are trying to create
         if (user.access_level && user.role === targetRole) {
           const userUnits = user.access_level.split(", ");
           userUnits.forEach((u: string) => assignedUnitStrings.add(u));
         }
       });
 
-      // Filter units to show Occupied ones that are NOT already assigned TO THIS SPECIFIC ROLE
       const filteredUnits = unitsData.filter(unit => {
         const unitString = `${unit.property_name} - ${unit.unit_number}`;
-        const isOccupied = unit.status === 'Occupied';
         const isNotAssignedToSameRole = !assignedUnitStrings.has(unitString);
-        return isOccupied && isNotAssignedToSameRole;
+        
+        // STRICT CHECK: Filter out empty strings, dashes, N/A, etc.
+        const hasValidName = (nameValue: any) => {
+          if (!nameValue) return false;
+          const str = String(nameValue).trim().toLowerCase();
+          return str !== '' && 
+                 str !== 'n/a' && 
+                 str !== 'none' && 
+                 str !== '-' && 
+                 str !== '—' && 
+                 str !== 'null';
+        };
+
+        let isValidOccupant = false;
+        if (targetRole === 'Tenant') {
+          isValidOccupant = hasValidName(unit.tenant_name);
+        } else {
+          isValidOccupant = hasValidName(unit.owner_name);
+        }
+
+        return isNotAssignedToSameRole && isValidOccupant;
       });
 
-      // ✨ FIX: Natural Alphanumeric Sorting for the Available Units List
       const sortedUnits = filteredUnits.sort((a, b) => {
         const propA = a.property_name || "";
         const propB = b.property_name || "";
         const propCompare = propA.localeCompare(propB);
         
-        if (propCompare !== 0) return propCompare; // Group by Property Name first
+        if (propCompare !== 0) return propCompare; 
         
         const unitA = String(a.unit_number || "").trim();
         const unitB = String(b.unit_number || "").trim();
@@ -103,7 +119,6 @@ export default function UsersTab({ orgData }: any) {
         if (aStartsLetter && !bStartsLetter) return -1;
         if (!aStartsLetter && bStartsLetter) return 1;
 
-        // True Alphanumeric sort
         return unitA.localeCompare(unitB, undefined, { numeric: true, sensitivity: 'base' });
       });
 
@@ -111,13 +126,23 @@ export default function UsersTab({ orgData }: any) {
     }
   };
 
-  // Toggle selection for multiple units
-  const handleUnitToggle = (unitString: string) => {
-    setSelectedUnits(prev => 
-      prev.includes(unitString)
-        ? prev.filter(u => u !== unitString)
-        : [...prev, unitString]
-    );
+  const handleUnitToggle = (unitString: string, unitData: any) => {
+    setSelectedUnits(prev => {
+      const isCurrentlySelected = prev.includes(unitString);
+      
+      if (!isCurrentlySelected) {
+        // Auto-fill the Name and Email fields
+        const occupantName = role === "Tenant" ? unitData.tenant_name : unitData.owner_name;
+        const occupantEmail = role === "Tenant" ? unitData.tenant_email : unitData.owner_email;
+        
+        if (occupantName) setName(occupantName);
+        if (occupantEmail) setEmail(occupantEmail);
+        
+        return [...prev, unitString];
+      }
+      
+      return prev.filter(u => u !== unitString);
+    });
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -132,7 +157,6 @@ export default function UsersTab({ orgData }: any) {
     }
 
     try {
-      // 1. Create Login Account in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -149,10 +173,8 @@ export default function UsersTab({ orgData }: any) {
         throw new Error(`Auth Error: ${authError.message}`);
       }
 
-      // Format selected units as a comma-separated string
       const finalAccessLevel = selectedUnits.join(", ");
 
-      // 2. Insert into database
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -168,11 +190,9 @@ export default function UsersTab({ orgData }: any) {
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
-      // Refresh list and close modal
       await fetchUsers(); 
       setIsModalOpen(false);
       
-      // Reset form
       setName("");
       setEmail("");
       setPassword("");
@@ -289,9 +309,77 @@ export default function UsersTab({ orgData }: any) {
             </div>
 
             <div className="p-6 overflow-y-auto">
+              {/* TABS FOR OWNER / TENANT */}
+              <div className="flex mb-6 border-b border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => { setRole("Tenant"); setSelectedUnits([]); setName(""); setEmail(""); }}
+                  className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${role === "Tenant" ? "border-[#359b46] text-[#359b46]" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+                  disabled={isSubmitting}
+                >
+                  Tenant Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRole("Owner"); setSelectedUnits([]); setName(""); setEmail(""); }}
+                  className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${role === "Owner" ? "border-[#359b46] text-[#359b46]" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+                  disabled={isSubmitting}
+                >
+                  Owner Account
+                </button>
+              </div>
+
               <form onSubmit={handleCreateUser} className="space-y-4">
                 {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
 
+                {/* DYNAMIC UNIT SELECTION */}
+                <div>
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                      <Home size={16} className="text-[#359b46]" /> Select Unit to Auto-Fill
+                    </label>
+                  </div>
+                  
+                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
+                    {availableUnits.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-4">No available units with assigned {role.toLowerCase()}s found.</p>
+                    ) : (
+                      availableUnits.map(unit => {
+                        const unitString = `${unit.property_name} - ${unit.unit_number}`;
+                        const isSelected = selectedUnits.includes(unitString);
+                        const occupantName = role === "Tenant" ? unit.tenant_name : unit.owner_name;
+                        
+                        return (
+                          <div 
+                            key={unit.id} 
+                            onClick={() => !isSubmitting && handleUnitToggle(unitString, unit)}
+                            className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer transition-colors border ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'hover:bg-white border-transparent'}`}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              readOnly
+                              className="w-4 h-4 text-[#359b46] rounded border-slate-300 focus:ring-[#359b46]"
+                              disabled={isSubmitting}
+                            />
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-bold ${isSelected ? 'text-[#0a1e3f]' : 'text-slate-700'}`}>
+                                {unit.property_name} <span className="font-medium text-slate-500">• {unit.unit_number}</span>
+                              </span>
+                              {occupantName && (
+                                <span className="text-xs text-slate-500 font-medium">
+                                  {occupantName}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* FORM FIELDS */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
                     <UserPlus size={16} className="text-[#359b46]" /> Full Name
@@ -329,58 +417,6 @@ export default function UsersTab({ orgData }: any) {
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <Shield size={16} className="text-[#359b46]" /> Account Type
-                  </label>
-                  <select value={role} onChange={(e) => { setRole(e.target.value); setSelectedUnits([]); }} className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white" disabled={isSubmitting}>
-                    <option value="Tenant">Tenant</option>
-                    <option value="Owner">Property Owner</option>
-                  </select>
-                </div>
-
-                {/* DYNAMIC UNIT SELECTION */}
-                <div>
-                  <div className="flex justify-between items-end mb-1.5">
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                      <Home size={16} className="text-[#359b46]" /> Assign Occupied Units
-                    </label>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">
-                      Select 1 or more
-                    </span>
-                  </div>
-                  
-                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
-                    {availableUnits.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">No unassigned occupied units available.</p>
-                    ) : (
-                      availableUnits.map(unit => {
-                        const unitString = `${unit.property_name} - ${unit.unit_number}`;
-                        const isSelected = selectedUnits.includes(unitString);
-                        return (
-                          <label 
-                            key={unit.id} 
-                            className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer transition-colors border ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'hover:bg-white border-transparent'}`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected}
-                              onChange={() => handleUnitToggle(unitString)}
-                              className="w-4 h-4 text-[#359b46] rounded border-slate-300 focus:ring-[#359b46]"
-                              disabled={isSubmitting}
-                            />
-                            <div className="flex flex-col">
-                              <span className={`text-sm font-bold ${isSelected ? 'text-[#0a1e3f]' : 'text-slate-700'}`}>
-                                {unit.property_name} <span className="font-medium text-slate-500">• {unit.unit_number}</span>
-                              </span>
-                            </div>
-                          </label>
-                        )
-                      })
-                    )}
                   </div>
                 </div>
 
