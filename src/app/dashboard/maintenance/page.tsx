@@ -5,16 +5,16 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { 
-  Camera, DollarSign, X, CheckCircle, PauseCircle, AlertCircle, 
-  AlertTriangle, Clock, MapPin, Wrench, User, Building, CheckCircle2 
+  Bell, CheckCircle2, AlertTriangle, LogOut, 
+  Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X
 } from "lucide-react";
 
-interface UserProfile {
-  name: string;
-  initials: string;
-}
+// Import Modular Tabs (History is removed)
+import HomeTab from "./home";
+import TasksTab from "./tasks";
+import MessagesTab from "./messages";
 
-interface MaintenanceTask {
+export interface MaintenanceTask {
   id: string;
   title: string;
   location: string;
@@ -29,115 +29,40 @@ interface MaintenanceTask {
   photo_url?: string; 
   resolution_photo_url?: string; 
   cost?: number; 
+  assigned_to?: string;
 }
 
 export default function MaintenanceDashboard() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile>({ name: "Staff", initials: "ST" });
+  
+  // Navigation State
+  const [activeTab, setActiveTab] = useState('home');
+
+  // Global Data States
+  const [profile, setProfile] = useState({ name: "Staff", initials: "ST" });
   const [userEmail, setUserEmail] = useState<string>(""); 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Modals & UI States
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
-  // ✨ User/Workspace Account Modal State (Read-only)
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
-  
-  // ✨ Custom Organization Logo State
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
-
-  // ✨ Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  const [alertConfig, setAlertConfig] = useState({
-    isOpen: false,
-    type: 'success', 
-    title: '',
-    message: ''
-  });
+  // Notification States
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  const [completeModalTask, setCompleteModalTask] = useState<string | null>(null);
-  const [completionStatus, setCompletionStatus] = useState(""); 
-  const [onHoldReason, setOnHoldReason] = useState(""); 
-  const [customHoldReason, setCustomHoldReason] = useState(""); 
-  const [completionRemarks, setCompletionRemarks] = useState(""); 
-  const [completionCost, setCompletionCost] = useState("");
-  const [completionImage, setCompletionImage] = useState<File | null>(null);
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const [reviewTask, setReviewTask] = useState<MaintenanceTask | null>(null);
-
-  const [metrics, setMetrics] = useState({
-    assigned: 0,
-    dueToday: 0,
-    doneThisWeek: 0
-  });
+  // Metrics
+  const [metrics, setMetrics] = useState({ assigned: 0, dueToday: 0, doneThisWeek: 0 });
 
   useEffect(() => {
     fetchUserDataAndTasks();
   }, []);
 
-  // REAL-TIME LISTENER
-  useEffect(() => {
-    if (!userEmail) return;
-
-    const tasksChannel = supabase
-      .channel('staff-live-tasks')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', 
-          schema: 'public',
-          table: 'maintenance_tasks',
-          filter: `assigned_to=eq.${userEmail}` 
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newTask = payload.new as MaintenanceTask;
-            setTasks((current) => [newTask, ...current]);
-          } 
-          else if (payload.eventType === 'UPDATE') {
-            setTasks((current) => {
-              const exists = current.find(t => t.id === payload.new.id);
-              if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
-              return [payload.new as MaintenanceTask, ...current];
-            });
-          } 
-          else if (payload.eventType === 'DELETE') {
-            setTasks((current) => current.filter(t => t.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(tasksChannel);
-    };
-  }, [userEmail]);
-
-  // SMART METRICS
-  useEffect(() => {
-    const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'failed');
-    
-    const due = activeTasks.filter(t => t.priority === 'Urgent').length;
-    
-    const completedThisWeek = tasks.filter(t => {
-      if (t.status !== 'completed') return false;
-      const taskDate = new Date(t.updated_at || t.created_at || 0);
-      return taskDate >= startOfWeek;
-    }).length;
-    
-    setMetrics({
-      assigned: activeTasks.length,
-      dueToday: due, 
-      doneThisWeek: completedThisWeek
-    });
-  }, [tasks]);
-
+  // Fetch Data
   const fetchUserDataAndTasks = async () => {
     setIsLoading(true);
     try {
@@ -150,7 +75,6 @@ export default function MaintenanceDashboard() {
 
       setUserEmail(user.email || ""); 
 
-      // ✨ Fetch the parent admin's organization to get the white-label logo
       const adminParentEmail = user.user_metadata?.admin_parent || user.email;
       const { data: orgData } = await supabase
         .from('organizations')
@@ -158,9 +82,7 @@ export default function MaintenanceDashboard() {
         .eq('admin_email', adminParentEmail)
         .single();
 
-      if (orgData?.logo_url) {
-        setOrgLogo(orgData.logo_url);
-      }
+      if (orgData?.logo_url) setOrgLogo(orgData.logo_url);
 
       const { data: userData } = await supabase
         .from('team_members')
@@ -173,7 +95,6 @@ export default function MaintenanceDashboard() {
         const initials = nameParts.length > 1 
           ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
           : userData.name.substring(0, 2).toUpperCase();
-        
         setProfile({ name: userData.name, initials });
       }
 
@@ -185,6 +106,20 @@ export default function MaintenanceDashboard() {
 
       if (!taskError && taskData) setTasks(taskData);
 
+      // Fetch Notifications
+      const { data: notifData } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('recipient', user.email) 
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false })
+        .limit(10);
+        
+      if (notifData) {
+        setNotifications(notifData);
+        setUnreadCount(notifData.filter(n => !n.is_read).length);
+      }
+
     } catch (error) {
       console.error("Error loading maintenance dashboard:", error);
     } finally {
@@ -192,162 +127,63 @@ export default function MaintenanceDashboard() {
     }
   };
 
-  // ✨ Helper to trigger the toast
+  // Real-time Tasks Listener
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const tasksChannel = supabase
+      .channel('staff-live-tasks')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `assigned_to=eq.${userEmail}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setTasks((current) => [payload.new as MaintenanceTask, ...current]);
+          } else if (payload.eventType === 'UPDATE') {
+            setTasks((current) => {
+              const exists = current.find(t => t.id === payload.new.id);
+              if (exists) return current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t);
+              return [payload.new as MaintenanceTask, ...current];
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setTasks((current) => current.filter(t => t.id !== payload.old.id));
+          }
+        }
+      ).subscribe();
+
+    const notifChannel = supabase
+      .channel('staff-live-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userEmail}` },
+        (payload) => {
+          setNotifications((current) => [payload.new, ...current]);
+          setUnreadCount((count) => count + 1);
+        }
+      ).subscribe();
+
+    return () => {
+      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(notifChannel);
+    };
+  }, [userEmail]);
+
+  // Update Metrics
+  useEffect(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'failed');
+    const due = activeTasks.filter(t => t.priority === 'Urgent').length;
+    const completedThisWeek = tasks.filter(t => {
+      if (t.status !== 'completed') return false;
+      const taskDate = new Date(t.updated_at || t.created_at || 0);
+      return taskDate >= startOfWeek;
+    }).length;
+    
+    setMetrics({ assigned: activeTasks.length, dueToday: due, doneThisWeek: completedThisWeek });
+  }, [tasks]);
+
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  const updateTaskStatus = async (taskId: string, newStatus: MaintenanceTask['status']) => {
-    setTasks(currentTasks => 
-      currentTasks.map(task => 
-        task.id === taskId ? { ...task, status: newStatus } : task
-      )
-    );
-
-    const { error } = await supabase
-      .from('maintenance_tasks')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', taskId);
-
-    if (error) {
-      console.error("Failed to update task:", error);
-      fetchUserDataAndTasks(); 
-      showToast("Failed to update status", "error");
-    } else {
-      showToast(`Task marked as ${newStatus.replace('_', ' ')}!`, "success");
-    }
-  };
-
-  const openCompleteModal = (taskId: string) => {
-    setCompleteModalTask(taskId);
-    setCompletionStatus(""); 
-    setOnHoldReason(""); 
-    setCustomHoldReason(""); 
-    setCompletionRemarks("");
-    setCompletionCost("");
-    setCompletionImage(null);
-  };
-
-  const showAlert = (type: 'success' | 'error' | 'warning', title: string, message: string) => {
-    setAlertConfig({ isOpen: true, type, title, message });
-  };
-
-  const handleCompleteTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!completeModalTask || !completionStatus) return;
-
-    if (completionStatus === "On Hold") {
-      if (!onHoldReason) {
-        showAlert('warning', 'Missing Information', 'Please select a reason for putting the task on hold.');
-        return;
-      }
-      if (onHoldReason === "Other" && !customHoldReason.trim()) {
-        showAlert('warning', 'Specific Reason Needed', 'Please type the specific reason for putting the task on hold.');
-        return;
-      }
-    }
-
-    if (!completionImage) {
-      showAlert('warning', 'Photo Required', 'Please upload a photo as proof of work or visit.');
-      return;
-    }
-    
-    setIsCompleting(true);
-
-    try {
-      const task = tasks.find(t => t.id === completeModalTask);
-      if (!task) throw new Error("Task details not found");
-
-      let photoUrl = "";
-      
-      if (completionImage) {
-        const fileExt = completionImage.name.split('.').pop();
-        const fileName = `resolved-${Math.random()}.${fileExt}`;
-        const { data: imgData, error: uploadError } = await supabase.storage
-          .from('tickets') 
-          .upload(`resolved-uploads/${fileName}`, completionImage);
-
-        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
-
-        if (imgData) {
-          const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
-          photoUrl = publicUrlData.publicUrl;
-        }
-      }
-
-      const finalStatus = completionStatus === "Success" ? "completed" : "on_hold";
-      const updatePayload: any = {
-        status: finalStatus,
-        cost: parseFloat(completionCost) || 0,
-        updated_at: new Date().toISOString()
-      };
-      if (photoUrl) updatePayload.resolution_photo_url = photoUrl;
-
-      const { error } = await supabase
-        .from('maintenance_tasks')
-        .update(updatePayload)
-        .eq('id', completeModalTask);
-
-      if (error) throw error;
-
-      const { data: ticketData } = await supabase
-        .from('tickets')
-        .select('*')
-        .ilike('title', task.title)
-        .ilike('location', task.location)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (ticketData) {
-        await supabase.from('tickets').update({
-          status: completionStatus === "Success" ? "Resolved" : "On Hold", 
-        }).eq('id', ticketData.id);
-      }
-
-      let notifMessage = `${profile.name} marked this task as COMPLETED. Remarks: ${completionRemarks}`;
-      if (completionStatus === "On Hold") {
-        const finalReason = onHoldReason === "Other" ? customHoldReason : onHoldReason;
-        notifMessage = `${profile.name} put this task ON HOLD. Reason: ${finalReason}.`;
-      }
-
-      const notificationsToInsert = [
-        {
-          admin_email: task.admin_email,
-          recipient: 'MANAGER', 
-          type: 'MAINTENANCE',
-          title: `Task ${completionStatus}: ${task.title}`,
-          message: notifMessage,
-          reference_id: task.id,
-          is_read: false
-        }
-      ];
-
-      if (ticketData?.reporter_email) {
-        notificationsToInsert.push({
-          admin_email: task.admin_email,
-          recipient: ticketData.reporter_email, 
-          type: 'MAINTENANCE',
-          title: `Repair Update: ${task.title}`,
-          message: `Your repair request was marked as ${completionStatus.toUpperCase()}. ${completionStatus === 'On Hold' ? 'It is currently on hold due to: ' + (onHoldReason === "Other" ? customHoldReason : onHoldReason) : 'It has been resolved!'}`,
-          reference_id: task.id,
-          is_read: false
-        });
-      }
-
-      await supabase.from('notifications').insert(notificationsToInsert);
-
-      setCompleteModalTask(null);
-      showToast("Report submitted successfully!", "success");
-      fetchUserDataAndTasks();
-
-    } catch (err: any) {
-      console.error("Error completing task:", err);
-      showAlert('error', 'Submission Failed', err.message || 'An unexpected error occurred while saving.');
-    } finally {
-      setIsCompleting(false);
-    }
   };
 
   const confirmLogout = async () => {
@@ -355,368 +191,41 @@ export default function MaintenanceDashboard() {
     router.push('/');
   };
 
-  // KANBAN COLUMNS SETUP & SORTING
-  const openTasks = tasks
-    .filter(t => t.status === 'pending' || t.status === 'in_progress')
-    .sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+  // Notification Actions
+  const markAllAsRead = async () => {
+    if (!userEmail) return;
+    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
+  };
 
-  const onHoldTasks = tasks
-    .filter(t => t.status === 'on_hold')
-    .sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+  const clearAllNotifications = async () => {
+    if (!userEmail) return;
+    setNotifications([]);
+    setUnreadCount(0);
+    setIsNotifOpen(false);
+    await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
+  };
 
-  const resolvedTasks = tasks
-    .filter(t => t.status === 'completed');
+  const handleNotificationClick = async (notif: any) => {
+    if (!notif.is_read) {
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+    }
+    setIsNotifOpen(false);
+    setActiveTab("tasks"); 
+  };
 
   if (isLoading) {
     return <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center text-slate-500 font-medium">Loading workspace...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-900">
+    <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
-      {/* UNIVERSAL ALERT MODAL */}
-      {alertConfig.isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a1e3f]/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center transform transition-all animate-in fade-in zoom-in-95 duration-200">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
-              alertConfig.type === 'success' ? 'bg-emerald-50 text-[#359b46]' :
-              alertConfig.type === 'error' ? 'bg-red-50 text-red-500' :
-              'bg-amber-50 text-amber-500'
-            }`}>
-              {alertConfig.type === 'success' && <CheckCircle size={36} />}
-              {alertConfig.type === 'error' && <AlertCircle size={36} />}
-              {alertConfig.type === 'warning' && <AlertTriangle size={36} />}
-            </div>
-            <h2 className="text-xl font-bold text-[#0a1e3f] mb-2">{alertConfig.title}</h2>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed whitespace-pre-wrap">
-              {alertConfig.message}
-            </p>
-            <button 
-              onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} 
-              className={`w-full text-white px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm ${
-                alertConfig.type === 'success' ? 'bg-[#359b46] hover:bg-[#2c813a]' :
-                alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' :
-                'bg-amber-500 hover:bg-amber-600'
-              }`}
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* LOGOUT CONFIRMATION MODAL */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a1e3f]/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
-            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle size={24} />
-            </div>
-            <h3 className="text-xl font-bold text-[#0a1e3f] mb-2">Sign out</h3>
-            <p className="text-slate-500 text-sm mb-6">Are you sure you want to log out of your account?</p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowLogoutModal(false)} 
-                className="flex-1 py-2.5 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={confirmLogout} 
-                className="flex-1 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
-              >
-                Log out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TASK COMPLETION MODAL */}
-      {completeModalTask && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#0a1e3f]/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8">
-            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h2 className="text-lg font-bold text-[#0a1e3f]">Submit Task Report</h2>
-              <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isCompleting}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={handleCompleteTask} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Repair Result</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${completionStatus === "Success" ? "border-[#359b46] bg-emerald-50 text-[#2c813a]" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                      <input type="radio" name="status" value="Success" checked={completionStatus === "Success"} onChange={(e) => {setCompletionStatus(e.target.value); setOnHoldReason(""); setCustomHoldReason("");}} className="hidden" />
-                      <CheckCircle size={18} className={completionStatus === "Success" ? "text-[#359b46]" : "text-slate-400"} />
-                      <span className="font-semibold text-sm">Success</span>
-                    </label>
-                    <label className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all ${completionStatus === "On Hold" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                      <input type="radio" name="status" value="On Hold" checked={completionStatus === "On Hold"} onChange={(e) => setCompletionStatus(e.target.value)} className="hidden" />
-                      <PauseCircle size={18} className={completionStatus === "On Hold" ? "text-amber-600" : "text-slate-400"} />
-                      <span className="font-semibold text-[13px] leading-tight">On Hold</span>
-                    </label>
-                  </div>
-                </div>
-
-                {completionStatus === "On Hold" && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Reason for holding</label>
-                      <select
-                        required
-                        value={onHoldReason}
-                        onChange={(e) => {
-                          setOnHoldReason(e.target.value);
-                          if (e.target.value !== "Other") setCustomHoldReason(""); 
-                        }}
-                        className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm text-amber-900"
-                        disabled={isCompleting}
-                      >
-                        <option value="" disabled>Select reason...</option>
-                        <option value="Need Parts">Need Parts</option>
-                        <option value="No Access">No Access</option>
-                        <option value="Budget Approval">Budget Approval</option>
-                        <option value="Other">Other reason...</option>
-                      </select>
-                    </div>
-                    {onHoldReason === "Other" && (
-                      <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Please specify reason</label>
-                        <input
-                          type="text"
-                          required
-                          value={customHoldReason}
-                          onChange={(e) => setCustomHoldReason(e.target.value)}
-                          placeholder="Type the specific reason here..."
-                          className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm text-amber-900 placeholder:text-amber-700/50"
-                          disabled={isCompleting}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {completionStatus === "Success" && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Remarks / Notes</label>
-                    <textarea 
-                      required
-                      value={completionRemarks}
-                      onChange={(e) => setCompletionRemarks(e.target.value)}
-                      placeholder="Briefly describe what was fixed..."
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0a1e3f] focus:border-transparent min-h-[80px]"
-                      disabled={isCompleting}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Proof of Work / Visit</label>
-                  <label className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-[#359b46] hover:bg-emerald-50 transition-all cursor-pointer bg-slate-50">
-                    <Camera size={24} className={completionImage ? "text-[#359b46]" : ""} />
-                    <span className={`text-sm ${completionImage ? 'text-[#0a1e3f] font-medium' : 'text-slate-500'}`}>
-                      {completionImage ? completionImage.name : "Upload photo (e.g. fixed item or closed door)"}
-                    </span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])}
-                      className="hidden" 
-                      disabled={isCompleting}
-                    />
-                  </label>
-                </div>
-
-                {completionStatus === "Success" && (
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Equipment Cost (Optional)</label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="number" 
-                        min="0"
-                        step="0.01"
-                        placeholder="e.g. 500 for parts" 
-                        value={completionCost} 
-                        onChange={(e) => setCompletionCost(e.target.value)} 
-                        className="w-full pl-10 p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700" 
-                        disabled={isCompleting} 
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-2 flex gap-3">
-                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isCompleting || !completionStatus} className="flex-1 bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:text-slate-500 text-white py-3 rounded-xl text-sm font-bold transition-colors shadow-sm">
-                    {isCompleting ? "Submitting..." : "Submit Report"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* RESOLUTION REVIEW MODAL FOR MAINTENANCE STAFF */}
-      {reviewTask && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <div>
-                <h2 className="text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
-                  {reviewTask.title}
-                </h2>
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mt-1">
-                  <MapPin size={14} className="text-slate-400" /> {reviewTask.location}
-                </div>
-              </div>
-              <button onClick={() => setReviewTask(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
-                {/* 🔴 BEFORE */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Before</span>
-                    <span className="text-sm font-bold text-slate-700">Reported Issue</span>
-                  </div>
-
-                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center">
-                    {reviewTask.photo_url ? (
-                      <img src={reviewTask.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <Camera size={32} className="mx-auto mb-2 opacity-50" />
-                        <span className="text-sm font-medium">No photo submitted</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <p className="text-sm text-slate-600 leading-relaxed mb-3">
-                      {reviewTask.description}
-                    </p>
-                    <div className="text-xs text-slate-400 font-medium border-t border-slate-200 pt-3">
-                      Submitted on: {new Date(reviewTask.created_at || new Date()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 🟢 AFTER */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">After</span>
-                      <span className="text-sm font-bold text-slate-700">My Update</span>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border bg-emerald-50 text-[#359b46] border-emerald-100">
-                      Resolved
-                    </span>
-                  </div>
-
-                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative">
-                    {reviewTask.resolution_photo_url ? (
-                      <img src={reviewTask.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <Wrench size={32} className="mx-auto mb-2 opacity-50" />
-                        <span className="text-sm font-medium">No photo recorded</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
-                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                        👤 {profile.name} (You)
-                      </span>
-                    </div>
-                    
-                    {reviewTask.cost !== undefined && reviewTask.cost > 0 && (
-                      <div className="flex justify-between items-center border-t border-slate-200 pt-3">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
-                        <span className="text-sm font-black text-[#0a1e3f]">₱{reviewTask.cost.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
-      {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg font-bold text-[#0a1e3f]">Staff Profile</h2>
-              <button 
-                onClick={() => setIsWorkspaceModalOpen(false)}
-                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
-              {/* Profile Card Summary */}
-              <div className="bg-gradient-to-r from-[#0a1e3f] to-[#122955] rounded-2xl p-6 text-white flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20">
-                  {profile.initials}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-lg">{profile.name}</h3>
-                  <p className="text-xs text-blue-200 mt-0.5">Maintenance Department</p>
-                </div>
-              </div>
-
-              {/* Read Only Account Data */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">
-                  Account Details
-                </h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label>
-                    <p className="text-sm font-semibold text-slate-800">{profile.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
-                    <p className="text-sm font-semibold text-slate-800 break-all">{userEmail || "Not available"}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
-                    <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">
-                      Maintenance Staff
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Global Top Navigation */}
-      <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30 border-b border-white/10">
+      {/* UNIFIED HEADER */}
+      <header className="h-16 bg-[#0b1727] flex items-center justify-between px-6 flex-shrink-0 relative z-40">
         <div className="flex items-center gap-3">
           {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
           <button 
@@ -729,210 +238,158 @@ export default function MaintenanceDashboard() {
 
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              {/* ✨ Dynamically use orgLogo or fallback to default */}
               <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-white/20 bg-white/10">
-            Maintenance Staff
+
+        <div className="flex items-center gap-4 text-white relative">
+          <div onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors">
+            <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0b1727] animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </div>
-          <button onClick={() => setShowLogoutModal(true)} className="text-slate-300 hover:text-white font-medium transition-colors text-xs px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full">
-            Log out
+
+          {/* Notifications Dropdown */}
+          {isNotifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
+              <div className="absolute top-14 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
+                <div className="p-3 flex justify-between items-center bg-slate-50 border-b border-slate-200">
+                  <h3 className="font-bold text-[#0a1e3f] text-sm">Notifications</h3>
+                  <div className="flex gap-2 relative z-10">
+                    <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1"><CheckCheck size={14} /> Read All</button>
+                    <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1"><Trash2 size={14} /> Clear</button>
+                  </div>
+                </div>
+                <div className="max-h-80 overflow-y-auto relative z-10">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-sm">No new notifications</div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 ${!notif.is_read ? 'bg-emerald-50/50' : 'opacity-70'}`}>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-sm text-[#0a1e3f] truncate pr-2">{notif.title}</span>
+                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[#359b46] shrink-0 mt-1"></span>}
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">Maintenance Staff</span>
+          <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 sm:px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full">
+            <LogOut size={16} /> <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-12 pt-8">
-        <div className="max-w-[1400px] mx-auto px-6">
-          
-          <div className="flex justify-between items-end mb-8">
-            <div>
-              <h2 className="text-[28px] font-extrabold text-[#0a1e3f] tracking-tight leading-tight">My tasks</h2>
-              <p className="text-slate-500 mt-1 text-[15px]">Hi {profile.name} - here's your assigned work.</p>
-            </div>
-            {/* Clickable Profile Initials Bubble */}
-            <div 
-              onClick={() => setIsWorkspaceModalOpen(true)}
-              className="w-12 h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 shadow-sm cursor-pointer hover:bg-emerald-100 transition-colors"
-              title="View Profile Details"
-            >
-              {profile.initials}
-            </div>
+      {/* LAYOUT WRAPPER */}
+      <div className="flex flex-1 overflow-hidden">
+        
+        {/* DESKTOP SIDEBAR */}
+        <aside className="w-64 bg-[#0b1727] p-4 hidden md:flex flex-col">
+          <nav className="space-y-1 mt-2">
+            <button onClick={() => setActiveTab('home')} className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'home' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}>
+              <div className={`transition-transform duration-300 ${activeTab === 'home' ? 'scale-110' : 'scale-100'}`}><Home size={20} /></div>
+              <span>Home</span>
+              {activeTab === 'home' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
+            <button onClick={() => setActiveTab('tasks')} className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'tasks' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}>
+              <div className={`transition-transform duration-300 ${activeTab === 'tasks' ? 'scale-110' : 'scale-100'}`}><Wrench size={20} /></div>
+              <span>My Tasks</span>
+              {activeTab === 'tasks' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
+            <button onClick={() => setActiveTab('messages')} className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'messages' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}>
+              <div className={`transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110' : 'scale-100'}`}><MessageSquare size={20} /></div>
+              <span>Messages</span>
+              {activeTab === 'messages' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
+          </nav>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
+          <div className="max-w-6xl mx-auto">
+            {activeTab === 'home' && (
+              <HomeTab 
+                profile={profile} 
+                metrics={metrics} 
+                openProfileModal={() => setIsWorkspaceModalOpen(true)} 
+                tasks={tasks} 
+                setActiveTab={setActiveTab} 
+              />
+            )}
+            {activeTab === 'tasks' && <TasksTab tasks={tasks} profile={profile} showToast={showToast} fetchTasks={fetchUserDataAndTasks} />}
+            {activeTab === 'messages' && <MessagesTab />}
           </div>
+        </main>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-slate-500 text-sm font-medium mb-2">Total Assigned</h3>
-              <p className="text-3xl font-bold text-[#0a1e3f]">{metrics.assigned}</p>
-            </div>
-            <div className="bg-red-50 rounded-2xl p-6 border border-red-100 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 opacity-10 text-red-500"><Clock size={64}/></div>
-              <h3 className="text-red-700 text-sm font-medium mb-2">Due today (Urgent)</h3>
-              <p className="text-3xl font-bold text-red-700 relative z-10">{metrics.dueToday}</p>
-            </div>
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 opacity-10 text-emerald-500"><CheckCircle size={64}/></div>
-              <h3 className="text-slate-500 text-sm font-medium mb-2">Done this week</h3>
-              <p className="text-3xl font-bold text-[#0a1e3f] relative z-10">{metrics.doneThisWeek}</p>
-            </div>
-          </div>
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pt-2 pb-5 z-50">
+        <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}><Home size={22} /><span className="text-[10px] font-bold">Home</span></button>
+        <button onClick={() => setActiveTab('tasks')} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'tasks' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}><Wrench size={22} /><span className="text-[10px] font-bold">Tasks</span></button>
+        <button onClick={() => setActiveTab('messages')} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}><MessageSquare size={22} /><span className="text-[10px] font-bold">Messages</span></button>
+      </nav>
 
-          {/* KANBAN BOARD LAYOUT */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Column 1: To Do / In Progress */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">Open & In Progress <span className="ml-2 bg-blue-100 text-[#1d82f5] px-2 rounded-full text-xs font-bold">{openTasks.length}</span></h4>
-              <div className="space-y-4">
-                {openTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks assigned</div>
-                ) : (
-                  openTasks.map(task => (
-                    <div key={task.id} className={`bg-white rounded-2xl p-5 shadow-sm flex flex-col gap-4 border ${task.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'}`}>
-                      <div>
-                        {/* Title at In Progress Status pinagtabi */}
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <h4 className="font-bold text-[#0a1e3f] text-[15px] leading-tight line-clamp-2">{task.title}</h4>
-                          {task.status === 'in_progress' && (
-                            <span className="bg-blue-100 text-[#1d82f5] text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 mt-0.5">
-                              In Progress
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Location at Urgent Badge pinagtabi */}
-                        <div className="flex items-center justify-between mb-2 mt-1">
-                          <p className="text-[#359b46] font-semibold text-xs truncate pr-2">
-                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                            {task.location}
-                          </p>
-                          {task.priority === 'Urgent' && (
-                            <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
-                              🚨 URGENT
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-3">{task.description}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 shrink-0 border-t border-slate-100 pt-3">
-                        {task.status === 'pending' ? (
-                          <button onClick={() => updateTaskStatus(task.id, 'in_progress')} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#359b46] text-white hover:bg-[#2c813a] transition-colors shadow-sm">
-                            Start Task
-                          </button>
-                        ) : (
-                          <button onClick={() => openCompleteModal(task.id)} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#1d82f5] text-white hover:bg-blue-600 transition-colors shadow-sm">
-                            Submit Report
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
+      {/* MODALS */}
+      {/* 1. WORKSPACE PROFILE MODAL */}
+      {isWorkspaceModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg font-bold text-[#0a1e3f]">Staff Profile</h2>
+              <button onClick={() => setIsWorkspaceModalOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
+            </div>
+            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
+              <div className="bg-gradient-to-r from-[#0b1727] to-[#1e293b] rounded-2xl p-6 text-white flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl border border-white/20">{profile.initials}</div>
+                <div>
+                  <h3 className="font-extrabold text-lg">{profile.name}</h3>
+                  <p className="text-xs text-emerald-300 mt-0.5">Maintenance Department</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">Account Details</h4>
+                <div className="space-y-3">
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label><p className="text-sm font-semibold text-slate-800">{profile.name}</p></div>
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label><p className="text-sm font-semibold text-slate-800 break-all">{userEmail}</p></div>
+                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label><span className="inline-block text-[10px] font-semibold text-[#359b46] bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">Maintenance Staff</span></div>
+                  
+                </div>
               </div>
             </div>
-
-            {/* Column 2: On Hold */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">On Hold <span className="ml-2 bg-purple-100 text-purple-700 px-2 rounded-full text-xs font-bold">{onHoldTasks.length}</span></h4>
-              <div className="space-y-4">
-                {onHoldTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks on hold</div>
-                ) : (
-                  onHoldTasks.map(task => (
-                    <div key={task.id} className="bg-white rounded-2xl p-5 border border-slate-200 flex flex-col gap-4 shadow-sm">
-                      <div>
-                        {/* Title and On Hold Badge together */}
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <h4 className="font-bold text-slate-600 text-[15px] leading-tight line-clamp-2">{task.title}</h4>
-                          {task.status === 'on_hold' && (
-                            <span className="bg-purple-100 text-purple-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 mt-0.5">
-                              On Hold
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Location and Urgent Badge together */}
-                        <div className="flex items-center justify-between mb-2 mt-1">
-                          <p className="text-slate-500 font-semibold text-xs truncate pr-2">
-                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                            {task.location}
-                          </p>
-                          {task.priority === 'Urgent' && (
-                            <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                              🚨 URGENT
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-3">{task.description}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 border-t border-slate-200 pt-3">
-                        <button onClick={() => openCompleteModal(task.id)} className="w-full py-2.5 rounded-xl text-sm font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm">
-                          Update Report
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Column 3: Resolved */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">Resolved <span className="ml-2 bg-emerald-100 text-emerald-700 px-2 rounded-full text-xs font-bold">{resolvedTasks.length}</span></h4>
-              <div className="space-y-4">
-                {resolvedTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No resolved tasks</div>
-                ) : (
-                  resolvedTasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      onClick={() => setReviewTask(task)} 
-                      className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 flex flex-col gap-4 cursor-pointer hover:shadow-md active:scale-[0.98] transition-all"
-                    >
-                      <div>
-                        {/* Title at Success Badge pinagtabi */}
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <h4 className="font-bold text-[#0a1e3f] text-[15px] line-clamp-2 leading-tight">{task.title}</h4>
-                          <span className="bg-emerald-100 text-[#359b46] text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shrink-0 mt-0.5">
-                            <CheckCircle size={12} /> Success
-                          </span>
-                        </div>
-                        
-                        <p className="text-slate-500 font-semibold text-xs mt-1 truncate mb-2">
-                          <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                          {task.location}
-                        </p>
-                        
-                        <p className="text-slate-500 text-sm mt-2 leading-relaxed line-clamp-2">{task.description}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
           </div>
         </div>
-      </main>
+      )}
 
-      {/* ✨ TOAST NOTIFICATION */}
+      {/* 2. LOGOUT CONFIRMATION */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4"><AlertTriangle size={24} /></div>
+            <h3 className="text-xl font-bold text-[#0b1727] mb-2">Sign out</h3>
+            <p className="text-slate-500 text-sm mb-6">Are you sure you want to log out of your account?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-2.5 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors border border-slate-200">Cancel</button>
+              <button onClick={confirmLogout} className="flex-1 py-2.5 rounded-xl font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">Log out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. TOAST */}
       {toast && (
-        <div 
-          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
-            toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="text-[#359b46]" size={20} />
-          ) : (
-            <AlertTriangle className="text-red-500" size={20} />
-          )}
+        <div className={`fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"}`}>
+          {toast.type === "success" ? <CheckCircle2 className="text-[#359b46]" size={20} /> : <AlertTriangle className="text-red-500" size={20} />}
           {toast.message}
         </div>
       )}

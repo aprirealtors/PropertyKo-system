@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
-  ChevronRight, Bell, CheckCheck, Trash2, User, X 
+  ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare 
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import { supabase } from "@/utils/supabase/client";
 import PayTab from './pay';
 import RepairTab from './repair';
 import LeaseTab from './lease';
+import ConversationTab from './conversation'; 
 
 export default function TenantDashboard() {
   const router = useRouter();
@@ -32,10 +33,10 @@ export default function TenantDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // ✨ NEW: State to hold Highlight ID for Repairs
+  // State to hold Highlight ID for Repairs
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
 
-  // ✨ White Label & User Modal States
+  // White Label & User Modal States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
 
@@ -65,7 +66,7 @@ export default function TenantDashboard() {
         setUserData(profile);
         setTenantName(profile.name);
 
-        // ✨ Fetch the parent admin's organization to get the white-label logo
+        // Fetch the parent admin's organization to get the white-label logo
         if (profile.admin_email) {
           const { data: orgData } = await supabase
             .from('organizations')
@@ -164,6 +165,7 @@ export default function TenantDashboard() {
   };
 
   const handleNotificationClick = async (notif: any) => {
+    // 1. Mark notification as read when clicked
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -171,15 +173,18 @@ export default function TenantDashboard() {
     }
     setIsNotifOpen(false);
 
-    // ✨ NOTIFICATION CLICK LOGIC FOR TENANT
+    // 2. Route to the correct tab based on the notification type
     const type = notif.type?.toUpperCase() || '';
     if (type === 'BILLING' || type === 'SOA') {
       setActiveTab("pay");
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
       if (notif.reference_id) {
-        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); // Passed with Timestamp!
+        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); 
       }
       setActiveTab("repair");
+    } else if (type === 'MESSAGE' || type === 'CHAT') {
+      // ✨ ADDED: Properly route message notifications to the conversation tab
+      setActiveTab("conversation");
     } else {
       setActiveTab("home");
     }
@@ -197,7 +202,6 @@ export default function TenantDashboard() {
     <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
       <header className="h-16 bg-[#0b1727] flex items-center justify-between px-6 flex-shrink-0 relative z-40">
         <div className="flex items-center gap-3">
-          {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
           <button 
             onClick={() => setIsWorkspaceModalOpen(true)}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
@@ -208,7 +212,6 @@ export default function TenantDashboard() {
 
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              {/* ✨ Dynamically use orgLogo or fallback to default */}
               <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
@@ -292,6 +295,7 @@ export default function TenantDashboard() {
             <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={20} />} label="Home" />
             <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={20} />} label="Billing & payments" />
             <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={20} />} label="Maintenance" />
+            <NavButton active={activeTab === 'conversation'} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null);}} icon={<MessageSquare size={20} />} label="Messages" />
             <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={20} />} label="My lease" />
           </nav>
         </aside>
@@ -310,8 +314,8 @@ export default function TenantDashboard() {
                />
              )}
              {activeTab === 'pay' && <PayTab />}
-             {/* ✨ Pass highlightTicketId to RepairTab */}
              {activeTab === 'repair' && <RepairTab highlightTicketId={highlightTicketId} />}
+             {activeTab === 'conversation' && <ConversationTab userData={userData} unit={unit} />}
              {activeTab === 'lease' && <LeaseTab />}
            </div>
         </main>
@@ -321,10 +325,11 @@ export default function TenantDashboard() {
         <MobileNavItem active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={22} />} label="Home" />
         <MobileNavItem active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={22} />} label="Pay" />
         <MobileNavItem active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={22} />} label="Repairs" />
+        <MobileNavItem active={activeTab === 'conversation'} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null);}} icon={<MessageSquare size={22} />} label="Chat" />
         <MobileNavItem active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={22} />} label="Lease" />
       </nav>
 
-      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {/* STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
@@ -430,7 +435,6 @@ function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, 
           <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : tenantName}</h1>
         </div>
-        {/* Clickable Profile Initials Bubble */}
         <div 
           onClick={openProfileModal}
           className="w-12 h-12 rounded-full bg-blue-50 text-[#1e88e5] flex items-center justify-center font-bold text-lg border border-blue-100 shadow-sm cursor-pointer hover:bg-blue-100 transition-colors"
@@ -461,7 +465,7 @@ function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, 
          <ActionCard onClick={() => setActiveTab('repair')} icon={<PenTool size={20} className="md:text-[24px] text-blue-600" />} title="Report Issue" subtitle="Snap a Photo" />
          <ActionCard onClick={() => setActiveTab('lease')} icon={<FileText size={20} className="md:text-[24px] text-blue-600" />} title="My Lease" subtitle="View Contracts" />
          <ActionCard onClick={() => setActiveTab('pay')} icon={<Receipt size={20} className="md:text-[24px] text-blue-600" />} title="History" subtitle="View Receipts" />
-         <ActionCard onClick={() => setActiveTab('home')} icon={<Mail size={20} className="md:text-[24px] text-blue-600" />} title="Support" subtitle="Message PM" />
+         <ActionCard onClick={() => setActiveTab('conversation')} icon={<Mail size={20} className="md:text-[24px] text-blue-600" />} title="Support" subtitle="Message PM" />
       </div>
 
       <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">

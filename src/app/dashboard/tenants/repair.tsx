@@ -605,7 +605,7 @@ export default function RepairTab({ highlightTicketId }: any) {
         <div className="fixed inset-0 bg-[#0a1e3f]/75 backdrop-blur-md z-50 flex items-center justify-center p-0 sm:p-4 transition-all duration-300">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-300">
             
-            <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <div className="px-5 py-10 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg sm:text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2 truncate">
                   {reviewTicket.title}

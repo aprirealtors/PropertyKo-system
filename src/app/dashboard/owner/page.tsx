@@ -6,12 +6,16 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, PauseCircle, AlertCircle, User
+  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, MessageSquare
 } from "lucide-react";
+import ConversationTab from "./conversation"; // Make sure to adjust this import path if needed
 
 export default function OwnerDashboard() {
   const router = useRouter();
   
+  // ✨ TABS STATE (Added 'messages')
+  const [activeTab, setActiveTab] = useState('home');
+
   const [userData, setUserData] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
@@ -42,15 +46,12 @@ export default function OwnerDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // ✨ NEW: States for Auto-scroll and Heartbeat Animation
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
-  // ✨ White Label & User Modal States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
   
-  // ✨ Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
@@ -73,7 +74,6 @@ export default function OwnerDashboard() {
       if (data) {
         setUserData(data);
         
-        // ✨ Fetch the parent admin's organization to get the white-label logo
         if (data.admin_email) {
           const { data: orgData } = await supabase
             .from('organizations')
@@ -158,18 +158,12 @@ export default function OwnerDashboard() {
       .channel('owner-live-notifications')
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient=eq.${userEmail}` 
-        },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userEmail}` },
         (payload) => {
           setNotifications((current) => [payload.new, ...current]);
           setUnreadCount((count) => count + 1);
         }
-      )
-      .subscribe();
+      ).subscribe();
 
     return () => {
       supabase.removeChannel(realtimeChannel);
@@ -186,55 +180,27 @@ export default function OwnerDashboard() {
 
     const ticketsChannel = supabase
       .channel('owner-live-tickets')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tickets',
-          filter: `admin_email=eq.${userData.admin_email}`
-        },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${userData.admin_email}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            if (isOwnerTicket(payload.new)) {
-              setMyTickets((current) => [payload.new, ...current]);
-            }
+            if (isOwnerTicket(payload.new)) setMyTickets((current) => [payload.new, ...current]);
           } else if (payload.eventType === 'UPDATE') {
-            if (isOwnerTicket(payload.new)) {
-              setMyTickets((current) => 
-                current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
-              );
-            }
+            if (isOwnerTicket(payload.new)) setMyTickets((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
           } else if (payload.eventType === 'DELETE') {
             setMyTickets((current) => current.filter(t => t.id !== payload.old.id));
           }
         }
-      )
-      .subscribe();
+      ).subscribe();
 
     const tasksChannel = supabase
       .channel('owner-live-tasks')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'maintenance_tasks',
-          filter: `admin_email=eq.${userData.admin_email}`
-        },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${userData.admin_email}` },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setLiveTasks((current) => [payload.new, ...current]);
-          } else if (payload.eventType === 'UPDATE') {
-            setLiveTasks((current) => 
-              current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
-          }
+          if (payload.eventType === 'INSERT') setLiveTasks((current) => [payload.new, ...current]);
+          else if (payload.eventType === 'UPDATE') setLiveTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+          else if (payload.eventType === 'DELETE') setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
         }
-      )
-      .subscribe();
+      ).subscribe();
 
     return () => {
       supabase.removeChannel(ticketsChannel);
@@ -247,7 +213,6 @@ export default function OwnerDashboard() {
     router.push("/");
   };
 
-  // ✨ Helper to trigger the toast
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -356,12 +321,16 @@ export default function OwnerDashboard() {
     }
     setIsNotifOpen(false);
 
-    // ✨ NOTIFICATION CLICK LOGIC FOR OWNER (Auto-scroll Trigger)
     const type = notif.type?.toUpperCase() || '';
     if (type === 'TICKET' || type === 'MAINTENANCE') {
+      setActiveTab("repair"); 
       if (notif.reference_id) {
-        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); // Passed with timestamp!
+        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); 
       }
+    } else if (type === 'BILLING' || type === 'STATEMENT') {
+      setActiveTab("financials");
+    } else if (type === 'MESSAGE') {
+      setActiveTab("messages");
     }
   };
 
@@ -399,10 +368,9 @@ export default function OwnerDashboard() {
     });
   }, [myTickets, liveTasks, teamMembers]);
 
-  // ✨ HEARTBEAT & SCROLL LOGIC
   useEffect(() => {
-    if (highlightTicketId && !isLoading && enrichedTickets.length > 0) {
-      const actualId = highlightTicketId.split('_')[0]; // Tanggalin ang timestamp
+    if (activeTab === "repair" && highlightTicketId && !isLoading && enrichedTickets.length > 0) {
+      const actualId = highlightTicketId.split('_')[0]; 
       setTimeout(() => {
         const matchingTicket = enrichedTickets.find(t => 
           String(t.id) === actualId || 
@@ -423,7 +391,7 @@ export default function OwnerDashboard() {
         }
       }, 300);
     }
-  }, [highlightTicketId, isLoading, enrichedTickets]);
+  }, [highlightTicketId, isLoading, enrichedTickets, activeTab]);
 
   const openInProgressTasks = enrichedTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
@@ -448,17 +416,20 @@ export default function OwnerDashboard() {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
   const initials = getInitials(userData?.name);
-  const unitsDisplayString = myUnitsList.map(u => u.unit_number).join(", ");
+  
+  const fullUnitsDisplay = myUnitsList.length > 0 
+    ? myUnitsList.map(u => `${u.property_name} - Unit ${u.unit_number}`).join(" • ")
+    : "No assigned units";
+
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
   const businessNameDisplay = uniqueBusinessNames.join(" | ");
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
+    <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
-      {/* Top Navigation */}
-      <header className="w-full bg-[#0a1e3f] text-white h-14 flex items-center justify-between px-4 sm:px-6 shrink-0 border-b border-white/10 relative z-30">
+      {/* UNIFIED TOP NAVIGATION */}
+      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/10">
         <div className="flex items-center gap-3">
-          {/* ✨ ALWAYS VISIBLE PROFILE/USER ICON BUTTON */}
           <button 
             onClick={() => setIsWorkspaceModalOpen(true)}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
@@ -469,14 +440,12 @@ export default function OwnerDashboard() {
 
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              {/* ✨ Dynamically use orgLogo or fallback to default */}
               <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-5 text-sm relative">
-          
+        <div className="flex items-center gap-3 sm:gap-4 text-white relative">
           <div 
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
             className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
@@ -492,7 +461,7 @@ export default function OwnerDashboard() {
           {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
-              <div className="absolute top-12 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
+              <div className="absolute top-14 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
                 <div className="p-3 flex justify-between items-center bg-slate-50 border-b border-slate-200">
                   <h3 className="font-bold text-[#0a1e3f] text-sm">Notifications</h3>
                   <div className="flex gap-2 relative z-10">
@@ -515,13 +484,13 @@ export default function OwnerDashboard() {
                       <div 
                         key={notif.id} 
                         onClick={() => handleNotificationClick(notif)}
-                        className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.is_read ? 'bg-blue-50/50' : 'opacity-70'}`}
+                        className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.is_read ? 'bg-emerald-50/50' : 'opacity-70'}`}
                       >
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-semibold text-sm text-[#0a1e3f] truncate pr-2">
                             {notif.title}
                           </span>
-                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1"></span>}
+                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[#359b46] shrink-0 mt-1"></span>}
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
                         <div className="flex justify-between items-center mt-2">
@@ -540,314 +509,418 @@ export default function OwnerDashboard() {
             </>
           )}
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">
-            Owner Portal
-          </div>
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">Owner Portal</span>
           
           <button 
             onClick={() => setIsLogoutModalOpen(true)}
-            className="text-slate-300 hover:text-white font-medium transition-colors text-xs px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
+            className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
           >
-            Log out
+            <LogOut size={16} />
+            <span className="inline">Log out</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* LAYOUT WRAPPER: Sidebar & Main Content */}
+      <div className="flex flex-1 overflow-hidden">
         
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
-              Good day, {isLoading ? "..." : fullName} 👋
-              {/* Clickable Profile Initials Bubble */}
-              <div 
-                onClick={() => setIsWorkspaceModalOpen(true)}
-                className="ml-2 w-8 h-8 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-lg border border-emerald-100 hidden sm:flex cursor-pointer hover:bg-emerald-100 transition-colors"
-                title="View Profile Details"
-              >
-                {initials}
-              </div>
-            </h1>
-            
-            {businessNameDisplay && (
-              <div className="flex items-center gap-1.5 mt-1.5 mb-0.5">
-                <Briefcase size={14} className="text-[#359b46]"/>
-                <span className="text-[#359b46] font-bold text-sm">{businessNameDisplay}</span>
-              </div>
-            )}
-            
-            <p className="text-slate-500 text-sm mt-1">Here's how your units are doing this month.</p>
-          </div>
-          <button 
-            onClick={openRepairModal} 
-            className="bg-white border border-slate-200 hover:border-[#359b46] text-slate-700 hover:text-[#359b46] px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center gap-2"
-          >
-            <Wrench size={16} /> Report a repair
-          </button>
-        </div>
-
-        <div className="bg-[#359b46] rounded-2xl p-6 sm:p-8 text-white shadow-md mb-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
-          <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-            <div>
-              <p className="text-emerald-100 text-xs font-bold tracking-wider uppercase mb-2">Your Payout This Month</p>
-              <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">
-                ₱{isLoading ? "0" : payoutThisMonth.toLocaleString()}
-              </h2>
-              {payoutThisMonth > 0 && (
-                <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium border border-white/10">
-                  <CheckCircle2 size={14} className="text-white" /> Remitted to your account
-                </div>
-              )}
-            </div>
-            <button className="text-sm font-medium hover:underline flex items-center gap-1 text-emerald-50">
-              See breakdown <ChevronRight size={16} />
+        {/* DESKTOP SIDEBAR */}
+        <aside className="w-64 bg-[#0a1e3f] p-4 hidden md:flex flex-col border-t border-white/10">
+          <nav className="space-y-1 mt-2">
+            <button 
+              onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} 
+              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'home' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+            >
+              <div className={`transition-transform duration-300 ${activeTab === 'home' ? 'scale-110' : 'scale-100'}`}><Home size={20} /></div>
+              <span>Home</span>
+              {activeTab === 'home' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
             </button>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-slate-500 text-xs font-medium mb-1">My units</p>
-            <h3 className="text-2xl font-extrabold text-[#0a1e3f] mb-2">{isLoading ? "-" : unitsCount}</h3>
-            <p className="text-xs text-slate-400 truncate" title={unitsDisplayString}>
-              {unitsDisplayString || "No assigned units"}
-            </p>
-          </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-slate-500 text-xs font-medium mb-1">Occupied</p>
-            <h3 className="text-2xl font-extrabold text-[#0a1e3f] mb-2">{isLoading ? "-" : `${occupiedCount} of ${unitsCount}`}</h3>
-            {occupiedCount > 0 && (
-              <span className="inline-block bg-amber-50 text-amber-700 border border-amber-100 px-2 py-0.5 rounded text-[10px] font-bold">
-                1 renewal due
-              </span>
-            )}
-          </div>
-          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <p className="text-slate-500 text-xs font-medium mb-1">Collected for you</p>
-            <h3 className="text-2xl font-extrabold text-[#0a1e3f] mb-2">₱{isLoading ? "0" : collectedGross.toLocaleString()}</h3>
-            <p className="text-xs text-slate-400">gross, before fees</p>
-          </div>
-        </div>
+            {/* ✨ MESSAGES TAB (Desktop) */}
+            <button 
+              onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} 
+              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'messages' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+            >
+              <div className={`transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110' : 'scale-100'}`}><MessageSquare size={20} /></div>
+              <span>Messages</span>
+              {activeTab === 'messages' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
 
-        {/* KANBAN BOARD LAYOUT */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-[#0a1e3f] text-lg">My Repair Requests</h3>
-          </div>
+            <button 
+              onClick={() => setActiveTab('repair')} 
+              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'repair' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+            >
+              <div className={`transition-transform duration-300 ${activeTab === 'repair' ? 'scale-110' : 'scale-100'}`}><Wrench size={20} /></div>
+              <span>Repairs</span>
+              {activeTab === 'repair' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
+
+            <button 
+              onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} 
+              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'financials' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+            >
+              <div className={`transition-transform duration-300 ${activeTab === 'financials' ? 'scale-110' : 'scale-100'}`}><FileText size={20} /></div>
+              <span>Financials</span>
+              {activeTab === 'financials' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+            </button>
+          </nav>
+        </aside>
+
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Column 1: Open & In Progress */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">Open & In Progress <span className="ml-2 bg-blue-100 text-[#1d82f5] px-2 rounded-full text-xs font-bold">{openInProgressTasks.length}</span></h4>
-              <div className="space-y-4">
-                {openInProgressTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No open requests</div>
-                ) : (
-                  openInProgressTasks.map(t => {
-                    const isHighlighted = activeHighlightId === String(t.id);
-                    return (
-                      <div 
-                        key={t.id} 
-                        id={`ticket-${t.id}`}
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col transition-all duration-500 hover:shadow-md ${
-                          isHighlighted 
-                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-                            : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200'
-                        }`}
-                      >
-                        {t.photo_url ? (
-                          <div className="relative w-full h-28 bg-slate-100 border-b border-slate-100">
-                            <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="relative w-full h-12 bg-slate-50 border-b border-slate-100 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">No Photo</span>
-                          </div>
-                        )}
-                        <div className="p-4 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-1 gap-2">
-                            <h4 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-2">{t.title}</h4>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                              {t.label}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mb-2 mt-1">
-                            <p className="text-[#359b46] font-semibold text-xs truncate pr-2">
-                              <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                              {t.location}
-                            </p>
-                            {t.priority === 'Urgent' && (
-                              <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
-                                🚨 URGENT
-                              </span>
-                            )}
-                          </div>
-                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                          
-                          <div className={`flex items-center gap-1.5 mt-3 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
-                            <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                              👤 {t.staffName}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+          {/* TAB 1: HOME (OVERVIEW) */}
+          {activeTab === 'home' && (
+            <div className="max-w-5xl mx-auto space-y-6 md:space-y-8">
+              <header className="flex justify-between items-end">
+                <div>
+                  <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
+                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : fullName}</h1>
+                  {businessNameDisplay && (
+                    <div className="flex items-center gap-1.5 mt-1.5 mb-0.5">
+                      <Briefcase size={14} className="text-[#359b46]"/>
+                      <span className="text-[#359b46] font-bold text-sm">{businessNameDisplay}</span>
+                    </div>
+                  )}
+                </div>
+              </header>
 
-            {/* Column 2: On Hold */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">On Hold <span className="ml-2 bg-purple-100 text-purple-700 px-2 rounded-full text-xs font-bold">{onHoldTasks.length}</span></h4>
-              <div className="space-y-4">
-                {onHoldTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No requests on hold</div>
-                ) : (
-                  onHoldTasks.map(t => {
-                    const isHighlighted = activeHighlightId === String(t.id);
-                    return (
-                      <div 
-                        key={t.id} 
-                        id={`ticket-${t.id}`}
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col transition-all duration-500 hover:shadow-md opacity-90 hover:opacity-100 ${
-                          isHighlighted 
-                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' 
-                            : t.priority === 'Urgent' ? 'bg-slate-50 border-red-300 shadow-red-500/10' : 'bg-slate-50 border-slate-200'
-                        }`}
-                      >
-                        {t.photo_url && (
-                          <div className="relative w-full h-28 bg-slate-100 border-b border-slate-100">
-                            <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" />
-                          </div>
-                        )}
-                        <div className="p-4 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-1 gap-2">
-                            <h4 className="font-bold text-slate-600 text-sm leading-tight line-clamp-2">{t.title}</h4>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                              {t.label}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mb-2 mt-1">
-                            <p className="text-slate-500 font-semibold text-xs truncate pr-2">
-                              <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                              {t.location}
-                            </p>
-                            {t.priority === 'Urgent' && (
-                              <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                                🚨 URGENT
-                              </span>
-                            )}
-                          </div>
-                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+              <section className="bg-[#359b46] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                  <div>
+                    <p className="text-emerald-100 text-xs font-bold tracking-wider uppercase mb-1 md:mb-2">Your Payout This Month</p>
+                    <h2 className="text-4xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter">
+                      ₱{isLoading ? "0" : payoutThisMonth.toLocaleString()}
+                    </h2>
+                    <p className="text-xs md:text-sm opacity-90 mb-6">
+                      {fullUnitsDisplay} {payoutThisMonth > 0 && `· Remitted to account`}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('financials')} 
+                  disabled={payoutThisMonth === 0}
+                  className="w-full bg-white text-[#359b46] hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base"
+                >
+                  See statements <ChevronRight size={18} />
+                </button>
+              </section>
 
-            {/* Column 3: Resolved */}
-            <div>
-              <h4 className="font-bold text-slate-700 text-sm mb-4">Resolved <span className="ml-2 bg-emerald-100 text-emerald-700 px-2 rounded-full text-xs font-bold">{resolvedTasks.length}</span></h4>
-              <div className="space-y-4">
-                {resolvedTasks.length === 0 ? (
-                  <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No resolved requests</div>
-                ) : (
-                  resolvedTasks.map(t => {
-                    const isHighlighted = activeHighlightId === String(t.id);
-                    return (
-                      <div 
-                        key={t.id} 
-                        id={`ticket-${t.id}`}
-                        onClick={() => setReviewTicket(t)} 
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all duration-500 cursor-pointer ${
-                          isHighlighted 
-                            ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-                            : 'bg-emerald-50 border-emerald-100'
-                        }`}
-                      >
-                        {(t.liveMatch?.resolution_photo_url || t.photo_url) && (
-                          <div className={`relative w-full h-28 border-b ${isHighlighted ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
-                            <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        <div className="p-4 flex-1 flex flex-col">
-                          <div className="flex justify-between items-start mb-1 gap-2">
-                            <div className="flex items-start gap-1.5">
-                              <CheckCircle size={14} className={`${isHighlighted ? 'text-blue-500' : 'text-[#359b46]'} mt-0.5 shrink-0`} />
-                              <h4 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-2">{t.title}</h4>
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><PenTool size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800">Report Issue</h3>
+                  <p className="text-xs text-slate-500">Request Repair</p>
+                </button>
+                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><Home size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800">{isLoading ? "-" : unitsCount.toString()}</h3>
+                  <p className="text-[10px] md:text-xs text-slate-500 w-full px-2 leading-relaxed break-words">{fullUnitsDisplay}</p>
+                </button>
+                <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><Receipt size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800">₱{isLoading ? "0" : collectedGross.toLocaleString()}</h3>
+                  <p className="text-xs text-slate-500">Collected Gross</p>
+                </button>
+                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><CheckCircle size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800">{isLoading ? "-" : `${occupiedCount}/${unitsCount}`}</h3>
+                  <p className="text-xs text-slate-500">Occupied Units</p>
+                </button>
+              </div>
+
+              <section className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg text-slate-800">Recent Statements</h3>
+                  <button onClick={() => setActiveTab('financials')} className="text-sm font-semibold text-[#359b46] hover:underline">View all</button>
+                </div>
+                <div className="space-y-4">
+                  {statements.length === 0 ? (
+                    <div className="py-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                      <p className="text-sm text-slate-500 font-medium">No recent statements</p>
+                    </div>
+                  ) : (
+                    statements.slice(0, 3).map((stmt, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">Statement {stmt.period}</p>
+                          <p className="text-xs text-slate-500 text-[#359b46] font-semibold">{stmt.status}</p>
+                        </div>
+                        <span className="font-bold text-slate-900">₱{stmt.net.toLocaleString()}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+            </div>
+          )}
+
+          {/* ✨ TAB 2: MESSAGES */}
+          {activeTab === 'messages' && (
+            <div className="absolute inset-0 bg-white z-20 flex">
+              <ConversationTab userData={userData} units={myUnitsList} />
+            </div>
+          )}
+
+          {/* TAB 3: REPAIRS KANBAN */}
+          {activeTab === 'repair' && (
+            <div className="flex flex-col w-full h-auto md:h-[calc(100vh-100px)] pb-10 md:pb-4 max-w-6xl mx-auto">
+              <div className="flex-none pb-6 shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-800">Maintenance & Repairs</h2>
+                    <p className="text-slate-500 text-sm mt-1">Submit a request and track status updates in real-time.</p>
+                  </div>
+                  <button 
+                    onClick={openRepairModal} 
+                    className="w-full sm:w-auto justify-center bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                  >
+                    <Wrench size={16} /> New Request
+                  </button>
+                </div>
+              </div>
+
+              {/* Dynamic Responsive Kanban */}
+              <div className="flex-1 min-h-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-full w-full">
+                  
+                  {/* Column 1: Open & In Progress */}
+                  <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
+                    <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
+                      Open & In Progress 
+                      <span className="bg-blue-100 text-[#1d82f5] px-2.5 py-0.5 rounded-full text-xs font-bold">{openInProgressTasks.length}</span>
+                    </h4>
+                    <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
+                      {isLoading ? (
+                        <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
+                      ) : openInProgressTasks.length === 0 ? (
+                        <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No open requests</div>
+                      ) : (
+                        openInProgressTasks.map(t => {
+                          const isHighlighted = activeHighlightId === String(t.id);
+                          return (
+                            <div 
+                              key={t.id} 
+                              id={`ticket-${t.id}`}
+                              className={`h-auto min-h-[260px] shrink-0 bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all duration-500 ${
+                                isHighlighted ? 'ring-4 ring-green-500/50 bg-emerald-50 border-green-400 scale-[1.02] shadow-xl animate-pulse z-10' : t.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
+                              }`}
+                            >
+                              {t.photo_url ? (
+                                <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" /></div>
+                              ) : (
+                                <div className="relative w-full h-32 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
+                              )}
+                              <div className="p-4 flex-1 flex flex-col min-h-0">
+                                <div className="flex justify-between items-start mb-1 gap-2">
+                                  <h4 className="font-bold text-[#0a1e3f] text-sm leading-snug">{t.title}</h4>
+                                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>{t.label}</span>
+                                </div>
+                                <div className="flex items-center justify-between mb-2 mt-1">
+                                  <p className="text-[#359b46] font-semibold text-xs pr-2"><MapPin size={12} className="inline mr-1 -mt-0.5" />{t.location}</p>
+                                  {t.priority === 'Urgent' && <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">🚨 URGENT</span>}
+                                </div>
+                                <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-emerald-700' : 'text-slate-500'}`}>{t.description}</p>
+                                <div className={`shrink-0 flex items-center gap-1.5 mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-emerald-200' : 'border-slate-100'}`}>
+                                  <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
+                                </div>
+                              </div>
                             </div>
-                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                              {t.label}
-                            </span>
-                          </div>
-                          <p className="text-slate-500 font-semibold text-xs mt-1 truncate mb-2">
-                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                            {t.location}
-                          </p>
-                          <p className={`text-xs flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Column 2: On Hold */}
+                  <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
+                    <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
+                      On Hold 
+                      <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{onHoldTasks.length}</span>
+                    </h4>
+                    <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
+                      {isLoading ? (
+                        <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
+                      ) : onHoldTasks.length === 0 ? (
+                        <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No requests on hold</div>
+                      ) : (
+                        onHoldTasks.map(t => {
+                          const isHighlighted = activeHighlightId === String(t.id);
+                          return (
+                            <div 
+                              key={t.id} 
+                              id={`ticket-${t.id}`}
+                              className={`h-auto min-h-[260px] shrink-0 bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all opacity-90 hover:opacity-100 duration-500 ${
+                                isHighlighted ? 'ring-4 ring-green-500/50 bg-emerald-50 border-green-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' : t.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
+                              }`}
+                            >
+                              {t.photo_url ? (
+                                <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" /></div>
+                              ) : (
+                                <div className="relative w-full h-32 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
+                              )}
+                              <div className="p-4 flex-1 flex flex-col min-h-0">
+                                <div className="flex justify-between items-start mb-1 gap-2">
+                                  <h4 className="font-bold text-slate-600 text-sm leading-snug">{t.title}</h4>
+                                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>{t.label}</span>
+                                </div>
+                                <div className="flex items-center justify-between mb-2 mt-1">
+                                  <p className="text-slate-500 font-semibold text-xs pr-2"><MapPin size={12} className="inline mr-1 -mt-0.5" />{t.location}</p>
+                                  {t.priority === 'Urgent' && <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">🚨 URGENT</span>}
+                                </div>
+                                <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
+                                <div className={`shrink-0 flex items-center gap-1.5 mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
+                                  <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Column 3: Resolved */}
+                  <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
+                    <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
+                      Resolved 
+                      <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{resolvedTasks.length}</span>
+                    </h4>
+                    <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
+                      {isLoading ? (
+                        <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
+                      ) : resolvedTasks.length === 0 ? (
+                        <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No resolved requests</div>
+                      ) : (
+                        resolvedTasks.map(t => {
+                          const isHighlighted = activeHighlightId === String(t.id);
+                          return (
+                            <div 
+                              key={t.id} 
+                              id={`ticket-${t.id}`}
+                              onClick={() => setReviewTicket(t)} 
+                              className={`h-auto min-h-[260px] shrink-0 rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer duration-500 ${
+                                isHighlighted ? 'ring-4 ring-green-500/50 bg-emerald-50 border-green-400 scale-[1.02] shadow-xl animate-pulse z-10' : 'bg-white border-emerald-200'
+                              }`}
+                            >
+                              {(t.liveMatch?.resolution_photo_url || t.photo_url) ? (
+                                <div className={`relative w-full h-32 shrink-0 border-b ${isHighlighted ? 'bg-emerald-100 border-emerald-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
+                                  <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover" />
+                                </div>
+                              ) : (
+                                <div className={`relative w-full h-32 shrink-0 border-b flex items-center justify-center ${isHighlighted ? 'bg-emerald-100 border-emerald-200 text-emerald-300' : 'bg-emerald-50 border-emerald-100 text-emerald-300'}`}>
+                                  <span className="text-xs font-bold uppercase tracking-wider">No Photo</span>
+                                </div>
+                              )}
+                              <div className="p-4 flex-1 flex flex-col min-h-0 bg-emerald-50/30">
+                                <div className="flex justify-between items-start mb-1 gap-2">
+                                  <div className="flex items-start gap-1.5">
+                                    <CheckCircle size={14} className={`${isHighlighted ? 'text-emerald-500' : 'text-[#359b46]'} mt-0.5 shrink-0`} />
+                                    <h4 className="font-bold text-[#0a1e3f] text-sm leading-snug">{t.title}</h4>
+                                  </div>
+                                  <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>{t.label}</span>
+                                </div>
+                                <p className="text-slate-500 font-semibold text-xs mt-1 pr-2 mb-2"><MapPin size={12} className="inline mr-1 -mt-0.5" />{t.location}</p>
+                                <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-emerald-700' : 'text-slate-500'}`}>{t.description}</p>
+                                
+                                <div className={`shrink-0 flex items-center justify-between mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-emerald-200' : 'border-emerald-200/60'}`}>
+                                  <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-white text-slate-600 border-slate-200'}`}>👤 {t.staffName}</span>
+                                  {t.liveMatch?.cost !== undefined && t.liveMatch.cost > 0 ? (
+                                    <span className="font-black text-[#0a1e3f] bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">₱{t.liveMatch.cost.toLocaleString()}</span>
+                                  ) : (
+                                    <span className="font-bold text-slate-400 text-[10px] uppercase">No Cost</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </div>
+          )}
 
-          </div>
-        </div>
+          {/* TAB 4: FINANCIALS */}
+          {activeTab === 'financials' && (
+            <div className="max-w-5xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Financial Statements</h2>
+                <p className="text-slate-500 text-sm mt-1">Review your historical payouts and gross rents.</p>
+              </div>
 
-        {/* Statements Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-10">
-          <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 className="font-bold text-[#0a1e3f] text-base">Your statements</h3>
-            <span className="text-xs text-slate-400 font-medium cursor-pointer hover:text-slate-600">tap to view</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100 tracking-wider">
-                <tr>
-                  <th className="px-6 py-3 whitespace-nowrap">PERIOD</th>
-                  <th className="px-6 py-3 whitespace-nowrap">GROSS RENT</th>
-                  <th className="px-6 py-3 whitespace-nowrap">NET PAYOUT</th>
-                  <th className="px-6 py-3 whitespace-nowrap">STATUS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {statements.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
-                      No recent statements available.
-                    </td>
-                  </tr>
-                ) : (
-                  statements.map((stmt, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors cursor-pointer">
-                      <td className="px-6 py-4 font-medium">{stmt.period}</td>
-                      <td className="px-6 py-4">₱{stmt.gross.toLocaleString()}</td>
-                      <td className="px-6 py-4 font-bold text-[#0a1e3f]">₱{stmt.net.toLocaleString()}</td>
-                      <td className="px-6 py-4">
-                        <span className="bg-emerald-50 text-[#359b46] border border-emerald-100 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide">
-                          {stmt.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </main>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="font-bold text-[#0a1e3f] text-base">Your statements</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100 tracking-wider">
+                      <tr>
+                        <th className="px-6 py-3 whitespace-nowrap">PERIOD</th>
+                        <th className="px-6 py-3 whitespace-nowrap">GROSS RENT</th>
+                        <th className="px-6 py-3 whitespace-nowrap">NET PAYOUT</th>
+                        <th className="px-6 py-3 whitespace-nowrap">STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                      {statements.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
+                            No recent statements available yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        statements.map((stmt, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors cursor-pointer">
+                            <td className="px-6 py-4 font-medium">{stmt.period}</td>
+                            <td className="px-6 py-4">₱{stmt.gross.toLocaleString()}</td>
+                            <td className="px-6 py-4 font-bold text-[#0a1e3f]">₱{stmt.net.toLocaleString()}</td>
+                            <td className="px-6 py-4">
+                              <span className="bg-emerald-50 text-[#359b46] border border-emerald-100 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                {stmt.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
-      {/* ✨ STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pt-2 pb-5 z-50">
+        <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <Home size={22} />
+          <span className="text-[10px] font-bold">Home</span>
+        </button>
+        {/* ✨ MESSAGES TAB (Mobile) */}
+        <button onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <MessageSquare size={22} />
+          <span className="text-[10px] font-bold">Messages</span>
+        </button>
+        <button onClick={() => setActiveTab('repair')} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'repair' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <Wrench size={22} />
+          <span className="text-[10px] font-bold">Repairs</span>
+        </button>
+        <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'financials' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <FileText size={22} />
+          <span className="text-[10px] font-bold">Financials</span>
+        </button>
+      </nav>
+
+      {/* MODALS */}
+      {/* 1. WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
@@ -885,12 +958,24 @@ export default function OwnerDashboard() {
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label>
                     <p className="text-sm font-semibold text-slate-800 break-all">{userEmail || "Not available"}</p>
                   </div>
+                  
+                  {/* DISPLAY OWNED PROPERTIES */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Owned Properties</label>
+                    <div className="text-sm font-semibold text-slate-800 break-words">
+                      {myUnitsList.length > 0 
+                        ? myUnitsList.map(u => `${u.property_name} - Unit ${u.unit_number}`).join(' • ')
+                        : "Not Assigned"}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label>
                     <span className="inline-block text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">
                       Owner
                     </span>
                   </div>
+                  
                 </div>
               </div>
             </div>
@@ -898,104 +983,7 @@ export default function OwnerDashboard() {
         </div>
       )}
 
-      {/* REVIEW RESOLUTION MODAL */}
-      {reviewTicket && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
-            
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <div>
-                <h2 className="text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2">
-                  {reviewTicket.title}
-                </h2>
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-500 mt-1">
-                  <MapPin size={14} className="text-slate-400" /> {reviewTicket.location}
-                </div>
-              </div>
-              <button onClick={() => setReviewTicket(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                
-                {/* BEFORE */}
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Before</span>
-                    <span className="text-sm font-bold text-slate-700">Your Report</span>
-                  </div>
-
-                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center">
-                    {reviewTicket.photo_url ? (
-                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <Camera size={32} className="mx-auto mb-2 opacity-50" />
-                        <span className="text-sm font-medium">No photo submitted</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <p className="text-sm text-slate-600 leading-relaxed mb-3">
-                      {reviewTicket.description}
-                    </p>
-                    <div className="text-xs text-slate-400 font-medium border-t border-slate-200 pt-3">
-                      Reported on: {new Date(reviewTicket.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AFTER */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">After</span>
-                      <span className="text-sm font-bold text-slate-700">Resolution</span>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${reviewTicket.color}`}>
-                      {reviewTicket.label}
-                    </span>
-                  </div>
-
-                  <div className="w-full h-64 bg-slate-100 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center relative">
-                    {reviewTicket.liveMatch?.resolution_photo_url ? (
-                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <Wrench size={32} className="mx-auto mb-2 opacity-50" />
-                        <span className="text-sm font-medium">No maintenance photo yet</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assigned Staff</span>
-                      <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                        👤 {reviewTicket.staffName}
-                      </span>
-                    </div>
-                    
-                    {reviewTicket.liveMatch?.cost !== undefined && reviewTicket.liveMatch.cost > 0 && (
-                      <div className="flex justify-between items-center border-t border-slate-200 pt-3">
-                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
-                        <span className="text-sm font-black text-[#0a1e3f]">₱{reviewTicket.liveMatch.cost.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* REPORT REPAIR MODAL */}
+      {/* 2. REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
@@ -1006,7 +994,7 @@ export default function OwnerDashboard() {
               </button>
             </div>
 
-            <div className="p-5">
+            <div className="p-5 overflow-y-auto max-h-[75vh]">
               <form onSubmit={handleReportRepair} className="space-y-4">
                 
                 {myUnitsList.length > 1 && (
@@ -1081,7 +1069,7 @@ export default function OwnerDashboard() {
                   />
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 pb-2">
                   <button 
                     type="submit" 
                     disabled={isSubmitting} 
@@ -1096,7 +1084,120 @@ export default function OwnerDashboard() {
         </div>
       )}
 
-      {/* SUCCESS MODAL */}
+      {/* 3. REVIEW RESOLUTION MODAL */}
+      {reviewTicket && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4 transition-all duration-300">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-300">
+            
+            <div className="px-5 py-10 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+              <div className="min-w-0 flex-1 pr-4">
+                <h2 className="text-lg sm:text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2 truncate">
+                  {reviewTicket.title}
+                </h2>
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500 mt-1 truncate">
+                  <MapPin size={14} className="text-slate-400 shrink-0" /> {reviewTicket.location}
+                </div>
+              </div>
+              <button onClick={() => setReviewTicket(null)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl shrink-0">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* BEFORE */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm flex flex-col space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Before</span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-700">Your Initial Report</span>
+                  </div>
+
+                  <div className="w-full aspect-video sm:h-48 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                    {reviewTicket.photo_url ? (
+                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover transition-transform hover:scale-105 duration-300" />
+                    ) : (
+                      <div className="text-center text-slate-400 p-4">
+                        <Camera size={28} className="mx-auto mb-1.5 opacity-40" />
+                        <span className="text-xs font-medium block">No photo submitted</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 bg-slate-50/60 rounded-xl p-3 sm:p-4 border border-slate-100 flex flex-col justify-between">
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                      {reviewTicket.description}
+                    </p>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-medium border-t border-slate-200/60 pt-2.5 mt-3 shrink-0">
+                      Reported on: {new Date(reviewTicket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AFTER */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">After</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-700">Staff Resolution</span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${reviewTicket.color} shrink-0`}>
+                      {reviewTicket.label}
+                    </span>
+                  </div>
+
+                  <div className="w-full aspect-video sm:h-48 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                    {reviewTicket.liveMatch?.resolution_photo_url ? (
+                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution proof" className="w-full h-full object-cover transition-transform hover:scale-105 duration-300" />
+                    ) : (
+                      <div className="text-center text-slate-400 p-4">
+                        <Wrench size={28} className="mx-auto mb-1.5 opacity-40" />
+                        <span className="text-xs font-medium block">No resolution photo uploaded</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-50/60 rounded-xl p-3 sm:p-4 border border-slate-100 space-y-3 shrink-0">
+                    <div className="flex justify-between items-center text-xs sm:text-sm">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">👤 Staff In Charge</span>
+                      <span className="font-semibold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                        {reviewTicket.staffName}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-3 text-xs sm:text-sm">
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Material / Cost Covered</span>
+                      {reviewTicket.liveMatch?.cost !== undefined && reviewTicket.liveMatch.cost > 0 ? (
+                        <span className="font-extrabold text-[#0a1e3f] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                          ₱{reviewTicket.liveMatch.cost.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-[10px] uppercase">
+                          ₱0.00
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Mobile Footer Button */}
+            <div className="p-4 bg-white border-t border-slate-100 shrink-0 md:hidden">
+              <button 
+                onClick={() => setReviewTicket(null)}
+                className="w-full bg-[#0a1e3f] text-white py-3 rounded-xl font-bold text-sm shadow-md active:scale-[0.99] transition-all"
+              >
+                Close View
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 4. SUCCESS MODAL */}
       {isSuccessModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8">
@@ -1117,7 +1218,7 @@ export default function OwnerDashboard() {
         </div>
       )}
 
-      {/* LOGOUT CONFIRMATION MODAL */}
+      {/* 5. LOGOUT CONFIRMATION MODAL */}
       {isLogoutModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6">
@@ -1147,7 +1248,7 @@ export default function OwnerDashboard() {
       {/* ✨ TOAST NOTIFICATION */}
       {toast && (
         <div 
-          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
+          className={`fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
             toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
           }`}
         >
@@ -1159,6 +1260,7 @@ export default function OwnerDashboard() {
           {toast.message}
         </div>
       )}
+
     </div>
   );
 }

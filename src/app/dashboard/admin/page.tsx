@@ -7,12 +7,13 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   ChevronDown, AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
-  Upload, Building, CheckCircle2, User
+  Upload, Building, CheckCircle2, User, MessageSquare
 } from "lucide-react";
 
 import DashboardTab from "./dashboard";
 import PropertiesAndUnitsTab from "./propertiesandunits";
 import LeasingAndTenantsTab from "./leasingandtenants";
+import ConversationTab from "./conversation"; // ✨ NEW IMPORT
 import MaintenanceTab from "./maintenance";
 import BillingTab from "./billing";
 import KPIReportsTab from "./kpireports";
@@ -27,15 +28,15 @@ export default function AdminDashboard() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // ✨ User Profile Modal State
+  // User Profile Modal State
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [adminProfile, setAdminProfile] = useState({ name: "Admin", email: "" });
 
-  // ✨ Workspace Info Modal & White Label States
+  // Workspace Info Modal & White Label States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   
-  // ✨ Toast Notification State
+  // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [orgData, setOrgData] = useState<any>(null);
@@ -121,13 +122,11 @@ export default function AdminDashboard() {
     }
   };
 
-  // ✨ Helper to trigger the toast
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Logo Upload Handler
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !orgData?.id) return;
@@ -197,7 +196,6 @@ export default function AdminDashboard() {
     } else handleTabChange("Dashboard");
   };
 
-  // Helper function to format database column names
   const formatColumnName = (key: string) => {
     return key
       .split('_')
@@ -213,7 +211,6 @@ export default function AdminDashboard() {
             <Menu size={20} />
           </button>
           
-          {/* ✨ ALWAYS VISIBLE PROFILE ICON (Opens User Profile) ✨ */}
           <button 
             onClick={() => setIsUserProfileModalOpen(true)}
             className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
@@ -222,7 +219,6 @@ export default function AdminDashboard() {
             <User size={16} />
           </button>
 
-          {/* ✨ READ-ONLY LOGO ✨ */}
           {orgData?.logo_url && (
             <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm pointer-events-none">
               <div className="relative w-24 sm:w-28 h-8 sm:h-8 flex items-center justify-center">
@@ -281,7 +277,6 @@ export default function AdminDashboard() {
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
           <div className="p-4 sm:mt-2">
-            {/* ✨ WORKSPACE CARD (Opens Org Profile) ✨ */}
             <div 
               onClick={() => setIsWorkspaceModalOpen(true)}
               className="bg-[#122955] rounded-xl p-3 border border-[#1e3a63] shadow-inner cursor-pointer hover:bg-[#1a3a78] transition-all group"
@@ -303,6 +298,10 @@ export default function AdminDashboard() {
             <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} />
             <NavItem icon={<Box size={18} />} label="Properties & units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
             <NavItem icon={<Home size={18} />} label="Leasing & tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
+            
+            {/* ✨ ADDED MESSAGES TAB ✨ */}
+            <NavItem icon={<MessageSquare size={18} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} />
+
             <NavItem icon={<Wrench size={18} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} />
             <NavItem icon={<CreditCard size={18} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
@@ -311,10 +310,15 @@ export default function AdminDashboard() {
           </nav>
         </aside>
 
-        <main className="flex-1 bg-[#f8fafc] overflow-y-auto p-4 sm:p-6 lg:p-10 w-full">
+        {/* ✨ RELATIVE POSITION ADDED HERE ✨ */}
+        <main className="flex-1 bg-[#f8fafc] overflow-y-auto p-4 sm:p-6 lg:p-10 w-full relative">
           {activeTab === "Dashboard" && <DashboardTab orgData={orgData} isLoading={isLoading} onNavigate={handleTabChange} />}
           {activeTab === "Properties" && <PropertiesAndUnitsTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "Leasing" && <LeasingAndTenantsTab orgData={orgData} isLoading={isLoading} />}
+          
+          {/* ✨ RENDER CONVERSATION TAB ✨ */}
+          {activeTab === "Messages" && <ConversationTab orgData={orgData} adminProfile={adminProfile} />}
+          
           {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
           {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
           {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
@@ -323,7 +327,6 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* ✨ STATIC USER PROFILE MODAL (READ-ONLY) */}
       {isUserProfileModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
@@ -374,12 +377,10 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ✨ ORGANIZATION PROFILE MODAL (Workspace & Logo Upload) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
             
-            {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-bold text-[#0a1e3f]">Organization Profile</h2>
               <button 
@@ -390,10 +391,8 @@ export default function AdminDashboard() {
               </button>
             </div>
             
-            {/* Modal Content - Scrollable */}
             <div className="overflow-y-auto bg-slate-50/50">
               
-              {/* Banner & Logo Section */}
               <div className="bg-gradient-to-r from-[#0a1e3f] to-[#122955] px-6 py-8 flex flex-col sm:flex-row items-center sm:items-end gap-6 relative">
                 <div className="relative group w-28 h-28 shrink-0">
                   <div className="w-full h-full rounded-2xl border-4 border-white bg-white flex items-center justify-center overflow-hidden relative shadow-lg">
@@ -403,7 +402,6 @@ export default function AdminDashboard() {
                       <Building size={40} className="text-slate-300" />
                     )}
                     
-                    {/* Hover Upload Overlay */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-[2px]">
                       <label className="cursor-pointer text-white flex flex-col items-center gap-1 w-full h-full justify-center">
                         <Upload size={20} />
@@ -436,7 +434,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Dynamic Database Fields Map */}
               <div className="p-6">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
                   <h4 className="text-sm font-bold text-slate-800 mb-5 pb-2 border-b border-slate-50">
@@ -493,7 +490,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ✨ TOAST NOTIFICATION */}
       {toast && (
         <div 
           className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-semibold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
