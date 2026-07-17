@@ -27,11 +27,9 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const [isSending, setIsSending] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   
-  // Custom Naming State
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
 
-  // Search States
   const [contactSearch, setContactSearch] = useState(""); 
   const [isSearchActive, setIsSearchActive] = useState(false); 
   const [chatSearchQuery, setChatSearchQuery] = useState("");
@@ -59,13 +57,10 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     }
   }, [messages, activeChat, chatSearchQuery]);
 
-  // PERFECTED ADMIN ROUTING LOGIC
   const isMessageForContact = (msg: any, contactId: string) => {
-    // For admin, the other person's email is always stored in tenant_email, regardless of their actual role
     return msg.tenant_email === contactId;
   };
 
-  // Mark Messages as Read (UPDATED: Bulletproof ID-based updating)
   useEffect(() => {
     const markAsRead = async () => {
       const activeContact = contacts.find(c => c.id === activeChat);
@@ -77,7 +72,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
       if (unreadIds.length === 0) return;
 
-      // Optimistic local update
       setMessages(prev => prev.map(m => 
         unreadIds.includes(m.id) ? { ...m, is_read: true } : m
       ));
@@ -96,7 +90,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     markAsRead();
   }, [activeChat, messages, orgData?.admin_email, adminProfile?.email, contacts]);
 
-  // Real-time subscription (with deduplication)
   useEffect(() => {
     if (!orgData?.admin_email || !adminProfile?.email) return;
 
@@ -112,7 +105,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         },
         (payload) => {
           const msg = payload.new;
-          // Admin sees messages sent to 'admin' OR messages sent by admin
           if (msg.recipient_role === 'admin' || msg.sender_email === adminProfile.email) {
             setMessages((current) => {
               const exists = current.some(m => m.id === msg.id);
@@ -132,32 +124,24 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch messages intended for the admin
       const { data: adminMsgs, error: aError } = await supabase
         .from('messages')
         .select('*')
         .eq('admin_email', orgData.admin_email)
         .eq('recipient_role', 'admin');
 
-      if (aError) console.error("Admin Messages Fetch Error:", aError.message);
-
-      // 2. Fetch messages sent by the admin
       const { data: sentMsgs, error: sError } = await supabase
         .from('messages')
         .select('*')
         .eq('admin_email', orgData.admin_email)
         .eq('sender_email', adminProfile.email);
 
-      if (sError) console.error("Sent Messages Fetch Error:", sError.message);
-
-      // Deduplicate and sort
       const allMsgsMap = new Map();
       [...(adminMsgs || []), ...(sentMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
       const allMsgs = Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       
       setMessages(allMsgs);
 
-      // 3. Fetch dynamically from team_members (Tenants, Owners, Maintenance, Managers)
       const { data: usersData, error: usersError } = await supabase
         .from('team_members')
         .select('name, email, role, access_level')
@@ -168,7 +152,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
       const contactsMap = new Map();
 
-      // Map dynamic users safely
       if (usersData) {
         usersData.forEach(user => {
           if (user.email && user.email.trim() !== '') { 
@@ -204,7 +187,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
       setContacts(Array.from(contactsMap.values()));
 
-      // Initialize custom names state
       const initialNames: Record<string, string> = {};
       contactsMap.forEach((val, key) => {
         initialNames[key] = val.name;
@@ -235,12 +217,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       sender_email: adminProfile.email,
       content: textToSend,
       is_from_tenant: false, 
-      // CRITICAL FIX: The admin thread is universally 'admin', so we hardcode it here
-      recipient_role: 'admin', 
+      // ✨ CRITICAL FIX: Admin routes the message directly to the recipient's role tab!
+      recipient_role: activeContact.type === 'tenant' ? 'admin' : activeContact.type, 
       is_read: false
     };
 
-    // Optimistic Update Implementation
     const optimisticMessage = { ...payload, id: `temp_${Date.now()}`, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, optimisticMessage]);
 
@@ -300,7 +281,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     ? roleMessages 
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  // ✨ Helper to render Badges
   const renderRoleBadge = (roleId: string | undefined) => {
     if (roleId === 'owner') return <span className="shrink-0 text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Owner</span>;
     if (roleId === 'manager') return <span className="shrink-0 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Manager</span>;
@@ -313,10 +293,8 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   return (
     <div className="absolute inset-0 flex bg-white text-slate-800 font-sans z-20 overflow-hidden">
       
-      {/* ================= LEFT SIDEBAR (INBOX) ================= */}
       <div className={`w-full md:w-[340px] flex flex-col border-r border-slate-100 bg-white ${activeChat ? 'hidden md:flex' : 'flex'}`}>
         
-        {/* Sidebar Header & Search (Fixed at top) */}
         <div className="pt-5 pb-3 border-b border-slate-50 flex flex-col shrink-0">
           <div className="flex justify-between items-center px-5 mb-4">
             <h1 className="text-2xl font-bold text-slate-900">Message Center</h1>
@@ -347,7 +325,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
           </div>
         </div>
 
-        {/* Contacts List (Scrollable Area) */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden pt-2">
           {filteredContacts.length === 0 && !isLoading ? (
             <div className="text-center p-6 text-sm text-slate-400">
@@ -361,7 +338,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
                 : '';
 
-              // Unread messages are ones sent TO the admin FROM this contact
               const unreadCount = messages.filter(m => 
                 !m.is_read && m.sender_email !== adminProfile.email && isMessageForContact(m, contact.id) && m.recipient_role === 'admin'
               ).length;
@@ -387,8 +363,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-0.5">
                       
-                      <div className="flex items-center gap-2 truncate pr-2">
-                        {/* Editable Name vs Static Name */}
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
                         {isEditingNames ? (
                           <input 
                             type="text"
@@ -403,8 +378,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                           </h3>
                         )}
                         
-                        {/* IDENTIFIER BADGE */}
-                        {!isEditingNames && renderRoleBadge(contact.type)}
                       </div>
                       
                       <span className={`text-xs whitespace-nowrap ${unreadCount > 0 ? 'text-[#359b46] font-bold' : 'text-slate-400'}`}>
@@ -436,7 +409,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         </div>
       </div>
 
-      {/* ================= RIGHT PANE (ACTIVE CHAT) ================= */}
       <div className={`flex-1 flex flex-col bg-white relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
         
         {!activeChat ? (
@@ -458,10 +430,9 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[#359b46]">
                   <ActiveIcon size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-semibold text-slate-900 text-base md:text-lg leading-tight flex items-center gap-2">
-                    {currentChatName}
-                    {/* HEADER IDENTIFIER BADGE */}
+                    <span className="truncate">{currentChatName}</span>
                     {renderRoleBadge(activeContactDetails?.type)}
                   </h2>
                   <p className="text-[11px] text-slate-400 max-w-[200px] sm:max-w-[400px] truncate">
@@ -561,7 +532,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
             <div className="p-3 md:p-4 bg-white border-t border-slate-100 shrink-0">
               <form onSubmit={handleSendMessage} className="flex gap-2 items-end relative">
-                <div className="flex-1 bg-[#f1f0f0] rounded-[20px] px-4 py-2.5 flex items-end min-h-[40px]">
+                <div className="flex-1 bg-[#f1f0f0] rounded-[20px] px-4 py-2.5 flex items-end min-h-[40px] border">
                   <input
                     type="text"
                     value={newMessage}

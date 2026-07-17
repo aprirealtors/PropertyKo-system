@@ -359,7 +359,7 @@ export default function ConversationTab({ userData, unit }: { userData: any, uni
                           </h3>
                         )}
                         
-                        {!isEditingNames && renderRoleBadge(role.id)}
+                        
                       </div>
 
                       <span className={`text-xs whitespace-nowrap ${unreadCount > 0 ? 'text-[#1e88e5] font-bold' : 'text-slate-400'}`}>
@@ -512,7 +512,7 @@ export default function ConversationTab({ userData, unit }: { userData: any, uni
 
             <div className="p-3 md:p-4 bg-white border-t border-slate-100 shrink-0">
               <form onSubmit={handleSendMessage} className="flex gap-2 items-end relative">
-                <div className="flex-1 bg-[#f1f0f0] rounded-[20px] px-4 py-2.5 flex items-end min-h-[40px]">
+                <div className="flex-1 bg-[#f1f0f0] rounded-[20px] px-4 py-2.5 flex items-end min-h-[40px] border">
                   <input
                     type="text"
                     value={newMessage}

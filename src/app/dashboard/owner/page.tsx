@@ -8,12 +8,12 @@ import {
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, MessageSquare
 } from "lucide-react";
-import ConversationTab from "./conversation"; // Make sure to adjust this import path if needed
+import ConversationTab from "./conversation"; 
 
 export default function OwnerDashboard() {
   const router = useRouter();
   
-  // ✨ TABS STATE (Added 'messages')
+  // ✨ TABS STATE
   const [activeTab, setActiveTab] = useState('home');
 
   const [userData, setUserData] = useState<any>(null);
@@ -428,16 +428,8 @@ export default function OwnerDashboard() {
     <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
       {/* UNIFIED TOP NAVIGATION */}
-      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/10">
+      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-sm">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsWorkspaceModalOpen(true)}
-            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
-            title="User Profile Info"
-          >
-            <User size={16} />
-          </button>
-
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
               <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
@@ -509,14 +501,13 @@ export default function OwnerDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-white border border-[#359b46] bg-[#2c813a]">Owner Portal</span>
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-[#359b46] border border-emerald-500/30 bg-emerald-500/10">Owner Portal</span>
           
           <button 
             onClick={() => setIsLogoutModalOpen(true)}
             className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
           >
-            <LogOut size={16} />
-            <span className="inline">Log out</span>
+            <LogOut size={16} /> <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
       </header>
@@ -524,50 +515,101 @@ export default function OwnerDashboard() {
       {/* LAYOUT WRAPPER: Sidebar & Main Content */}
       <div className="flex flex-1 overflow-hidden">
         
-        {/* DESKTOP SIDEBAR */}
-        <aside className="w-64 bg-[#0a1e3f] p-4 hidden md:flex flex-col border-t border-white/10">
-          <nav className="space-y-1 mt-2">
+        {/* PREMIUM DESKTOP SIDEBAR */}
+        <aside className="w-64 bg-[#0a1e3f] px-4 py-6 hidden md:flex flex-col border-t border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20">
+          
+          <div className="mb-4">
+            <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Overview</h3>
+          </div>
+          
+          <nav className="space-y-1.5 flex-1">
             <button 
               onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} 
-              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'home' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'home' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
             >
-              <div className={`transition-transform duration-300 ${activeTab === 'home' ? 'scale-110' : 'scale-100'}`}><Home size={20} /></div>
-              <span>Home</span>
-              {activeTab === 'home' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+              <div className={`transition-transform duration-300 ${activeTab === 'home' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                <Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
+              </div>
+              <span className="tracking-wide">Home</span>
+              {activeTab === 'home' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
             </button>
 
-            {/* ✨ MESSAGES TAB (Desktop) */}
             <button 
               onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} 
-              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'messages' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'messages' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
             >
-              <div className={`transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110' : 'scale-100'}`}><MessageSquare size={20} /></div>
-              <span>Messages</span>
-              {activeTab === 'messages' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+              <div className={`transition-transform duration-300 ${activeTab === 'messages' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                <MessageSquare size={18} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />
+              </div>
+              <span className="tracking-wide">Messages</span>
+              {activeTab === 'messages' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
             </button>
 
             <button 
               onClick={() => setActiveTab('repair')} 
-              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'repair' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'repair' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
             >
-              <div className={`transition-transform duration-300 ${activeTab === 'repair' ? 'scale-110' : 'scale-100'}`}><Wrench size={20} /></div>
-              <span>Repairs</span>
-              {activeTab === 'repair' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+              <div className={`transition-transform duration-300 ${activeTab === 'repair' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                <Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />
+              </div>
+              <span className="tracking-wide">Repairs</span>
+              {activeTab === 'repair' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
             </button>
+
+            <div className="mt-8 mb-4 pt-4 border-t border-white/5">
+              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance</h3>
+            </div>
 
             <button 
               onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} 
-              className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${activeTab === 'financials' ? 'bg-[#359b46] text-white shadow-lg' : 'text-slate-400 hover:bg-[#122955] hover:text-white'}`}
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'financials' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
             >
-              <div className={`transition-transform duration-300 ${activeTab === 'financials' ? 'scale-110' : 'scale-100'}`}><FileText size={20} /></div>
-              <span>Financials</span>
-              {activeTab === 'financials' && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+              <div className={`transition-transform duration-300 ${activeTab === 'financials' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                <FileText size={18} strokeWidth={activeTab === 'financials' ? 2.5 : 2} />
+              </div>
+              <span className="tracking-wide">Financials</span>
+              {activeTab === 'financials' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
             </button>
           </nav>
+
+          {/* Premium Bottom User Tag (Desktop Only) */}
+          <div className="mt-auto pt-4 border-t border-white/5">
+             <div 
+               onClick={() => setIsWorkspaceModalOpen(true)}
+               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
+               title="View Profile Details"
+             >
+                <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-[#359b46] flex items-center justify-center font-bold text-xs border border-emerald-500/30 shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-200 truncate">{fullName}</p>
+                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">Owner Account</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-500 shrink-0" />
+             </div>
+          </div>
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
+        {/* ✨ FIX: Increased pb-28 to clear the new floating mobile nav */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-28 relative z-10">
           
           {/* TAB 1: HOME (OVERVIEW) */}
           {activeTab === 'home' && (
@@ -588,45 +630,51 @@ export default function OwnerDashboard() {
               <section className="bg-[#359b46] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
                 <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-                  <div>
+                  <div className="w-full">
                     <p className="text-emerald-100 text-xs font-bold tracking-wider uppercase mb-1 md:mb-2">Your Payout This Month</p>
                     <h2 className="text-4xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter">
                       ₱{isLoading ? "0" : payoutThisMonth.toLocaleString()}
                     </h2>
-                    <p className="text-xs md:text-sm opacity-90 mb-6">
+                    
+                    <div className="text-xs md:text-sm opacity-90 mb-6 whitespace-normal break-words w-full">
                       {fullUnitsDisplay} {payoutThisMonth > 0 && `· Remitted to account`}
-                    </p>
+                    </div>
                   </div>
                 </div>
                 <button 
                   onClick={() => setActiveTab('financials')} 
                   disabled={payoutThisMonth === 0}
-                  className="w-full bg-white text-[#359b46] hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base"
+                  className="w-full bg-white text-[#359b46] hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base active:scale-[0.98]"
                 >
                   See statements <ChevronRight size={18} />
                 </button>
               </section>
 
               <div className="grid grid-cols-2 gap-3 md:gap-4">
-                <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
-                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><PenTool size={20} className="md:text-[24px] text-[#359b46]" /></div>
-                  <h3 className="font-bold text-sm text-slate-800">Report Issue</h3>
-                  <p className="text-xs text-slate-500">Request Repair</p>
+                <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0"><PenTool size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800 shrink-0">Report Issue</h3>
+                  <p className="text-xs text-slate-500 mt-1 flex-1">Request Repair</p>
                 </button>
-                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
-                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><Home size={20} className="md:text-[24px] text-[#359b46]" /></div>
-                  <h3 className="font-bold text-sm text-slate-800">{isLoading ? "-" : unitsCount.toString()}</h3>
-                  <p className="text-[10px] md:text-xs text-slate-500 w-full px-2 leading-relaxed break-words">{fullUnitsDisplay}</p>
+                
+                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0"><Home size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800 shrink-0">{isLoading ? "-" : unitsCount.toString()}</h3>
+                  <div className="text-[10px] md:text-xs text-slate-500 w-full px-1 mt-1 leading-relaxed whitespace-normal break-words flex-1">
+                    {fullUnitsDisplay}
+                  </div>
                 </button>
-                <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
-                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><Receipt size={20} className="md:text-[24px] text-[#359b46]" /></div>
-                  <h3 className="font-bold text-sm text-slate-800">₱{isLoading ? "0" : collectedGross.toLocaleString()}</h3>
-                  <p className="text-xs text-slate-500">Collected Gross</p>
+                
+                <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0"><Receipt size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800 shrink-0">₱{isLoading ? "0" : collectedGross.toLocaleString()}</h3>
+                  <p className="text-xs text-slate-500 mt-1 flex-1">Collected Gross</p>
                 </button>
-                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
-                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3"><CheckCircle size={20} className="md:text-[24px] text-[#359b46]" /></div>
-                  <h3 className="font-bold text-sm text-slate-800">{isLoading ? "-" : `${occupiedCount}/${unitsCount}`}</h3>
-                  <p className="text-xs text-slate-500">Occupied Units</p>
+                
+                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+                  <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0"><CheckCircle size={20} className="md:text-[24px] text-[#359b46]" /></div>
+                  <h3 className="font-bold text-sm text-slate-800 shrink-0">{isLoading ? "-" : `${occupiedCount}/${unitsCount}`}</h3>
+                  <p className="text-xs text-slate-500 mt-1 flex-1">Occupied Units</p>
                 </button>
               </div>
 
@@ -657,7 +705,7 @@ export default function OwnerDashboard() {
             </div>
           )}
 
-          {/* ✨ TAB 2: MESSAGES */}
+          {/* TAB 2: MESSAGES */}
           {activeTab === 'messages' && (
             <div className="absolute inset-0 bg-white z-20 flex">
               <ConversationTab userData={userData} units={myUnitsList} />
@@ -675,7 +723,7 @@ export default function OwnerDashboard() {
                   </div>
                   <button 
                     onClick={openRepairModal} 
-                    className="w-full sm:w-auto justify-center bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+                    className="w-full sm:w-auto justify-center bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2 active:scale-95"
                   >
                     <Wrench size={16} /> New Request
                   </button>
@@ -898,31 +946,45 @@ export default function OwnerDashboard() {
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pt-2 pb-5 z-50">
-        <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
-          <Home size={22} />
-          <span className="text-[10px] font-bold">Home</span>
-        </button>
-        {/* ✨ MESSAGES TAB (Mobile) */}
-        <button onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
-          <MessageSquare size={22} />
-          <span className="text-[10px] font-bold">Messages</span>
-        </button>
-        <button onClick={() => setActiveTab('repair')} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'repair' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
-          <Wrench size={22} />
-          <span className="text-[10px] font-bold">Repairs</span>
-        </button>
-        <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className={`flex flex-col items-center justify-center w-full gap-1 ${activeTab === 'financials' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
-          <FileText size={22} />
-          <span className="text-[10px] font-bold">Financials</span>
-        </button>
+      {/* ✨ UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        <div className="flex justify-around items-center px-1 py-1.5">
+          <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {activeTab === 'home' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <Home size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'home' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10">Home</span>
+          </button>
+          
+          <button onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {activeTab === 'messages' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <MessageSquare size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10">Messages</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('repair')} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'repair' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {activeTab === 'repair' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <Wrench size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'repair' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10">Repairs</span>
+          </button>
+          
+          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'financials' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {activeTab === 'financials' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <FileText size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'financials' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10">Financials</span>
+          </button>
+          
+          <button onClick={() => setIsWorkspaceModalOpen(true)} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${isWorkspaceModalOpen ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {isWorkspaceModalOpen && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <User size={22} className={`relative z-10 transition-transform duration-300 ${isWorkspaceModalOpen ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10">Account</span>
+          </button>
+        </div>
       </nav>
 
       {/* MODALS */}
       {/* 1. WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-bold text-[#0a1e3f]">Owner Profile</h2>
@@ -985,7 +1047,7 @@ export default function OwnerDashboard() {
 
       {/* 2. REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-bold text-[#0a1e3f]">Report a repair</h2>
@@ -1086,10 +1148,10 @@ export default function OwnerDashboard() {
 
       {/* 3. REVIEW RESOLUTION MODAL */}
       {reviewTicket && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4 transition-all duration-300">
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-[60] flex items-center justify-center p-0 sm:p-4 transition-all duration-300">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-300">
             
-            <div className="px-5 py-10 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
+            <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-lg sm:text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2 truncate">
                   {reviewTicket.title}
@@ -1199,7 +1261,7 @@ export default function OwnerDashboard() {
 
       {/* 4. SUCCESS MODAL */}
       {isSuccessModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8">
             <div className="w-16 h-16 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={36} />
@@ -1220,7 +1282,7 @@ export default function OwnerDashboard() {
 
       {/* 5. LOGOUT CONFIRMATION MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={32} />

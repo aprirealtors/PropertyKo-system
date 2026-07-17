@@ -165,7 +165,6 @@ export default function TenantDashboard() {
   };
 
   const handleNotificationClick = async (notif: any) => {
-    // 1. Mark notification as read when clicked
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -173,7 +172,6 @@ export default function TenantDashboard() {
     }
     setIsNotifOpen(false);
 
-    // 2. Route to the correct tab based on the notification type
     const type = notif.type?.toUpperCase() || '';
     if (type === 'BILLING' || type === 'SOA') {
       setActiveTab("pay");
@@ -183,7 +181,6 @@ export default function TenantDashboard() {
       }
       setActiveTab("repair");
     } else if (type === 'MESSAGE' || type === 'CHAT') {
-      // ✨ ADDED: Properly route message notifications to the conversation tab
       setActiveTab("conversation");
     } else {
       setActiveTab("home");
@@ -200,16 +197,12 @@ export default function TenantDashboard() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
-      <header className="h-16 bg-[#0b1727] flex items-center justify-between px-6 flex-shrink-0 relative z-40">
+      
+      {/* HEADER */}
+      <header className="h-16 bg-[#0b1727] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-sm">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsWorkspaceModalOpen(true)}
-            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white rounded-full transition-colors border border-white/10 shadow-sm"
-            title="User Profile Info"
-          >
-            <User size={16} />
-          </button>
-
+          
+          {/* ✨ FIX: User Icon Removed completely from header as requested! */}
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
               <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
@@ -217,7 +210,7 @@ export default function TenantDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-white relative">
+        <div className="flex items-center gap-3 sm:gap-4 text-white relative">
           
           <div
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
@@ -282,25 +275,60 @@ export default function TenantDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-full text-xs font-semibold text-white border border-white/20 bg-white/10">Tenant</span>
-          <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full">
-            <LogOut size={16} /> Log out
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-[#1e88e5] border border-blue-500/30 bg-blue-500/10">Tenant</span>
+          
+          <button 
+            onClick={() => setShowLogoutModal(true)} 
+            className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 sm:px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
+          >
+            <LogOut size={16} /> <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
       </header>
 
+      {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-64 bg-[#0b1727] p-4 hidden md:flex flex-col">
-          <nav className="space-y-1">
-            <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={20} />} label="Home" />
-            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={20} />} label="Billing & payments" />
-            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={20} />} label="Maintenance" />
-            <NavButton active={activeTab === 'conversation'} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null);}} icon={<MessageSquare size={20} />} label="Messages" />
-            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={20} />} label="My lease" />
+        
+        {/* PREMIUM DESKTOP SIDEBAR */}
+        <aside className="w-64 bg-[#0b1727] px-4 py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20">
+          
+          <div className="mb-4">
+            <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Overview</h3>
+          </div>
+          
+          <nav className="space-y-1.5 flex-1">
+            <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
+            <NavButton active={activeTab === 'conversation'} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null);}} icon={<MessageSquare size={18} strokeWidth={activeTab === 'conversation' ? 2.5 : 2} />} label="Messages" />
+            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />} label="Repairs" />
+
+            <div className="mt-8 mb-4 pt-4 border-t border-white/5">
+              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance & Lease</h3>
+            </div>
+
+            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Billing & Payments" />
+            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
           </nav>
+
+          {/* Premium Bottom User Tag (Desktop Only) */}
+          <div className="mt-auto pt-4 border-t border-white/5">
+             <div 
+               onClick={() => setIsWorkspaceModalOpen(true)}
+               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
+               title="View Profile Details"
+             >
+                <div className="w-9 h-9 rounded-full bg-blue-500/20 text-[#1e88e5] flex items-center justify-center font-bold text-xs border border-blue-500/30 shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-200 truncate">{tenantName}</p>
+                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">Tenant Account</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-500 shrink-0" />
+             </div>
+          </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-28 relative">
            <div className="max-w-5xl mx-auto">
              {activeTab === 'home' && (
                <HomeView 
@@ -321,17 +349,24 @@ export default function TenantDashboard() {
         </main>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around items-center pt-2 pb-5 z-50">
-        <MobileNavItem active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={22} />} label="Home" />
-        <MobileNavItem active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={22} />} label="Pay" />
-        <MobileNavItem active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={22} />} label="Repairs" />
-        <MobileNavItem active={activeTab === 'conversation'} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null);}} icon={<MessageSquare size={22} />} label="Chat" />
-        <MobileNavItem active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={22} />} label="Lease" />
+      {/* ✨ UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200/50 pb-safe z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        <div className="flex justify-around items-center px-1 py-1.5">
+          {/* ✨ FIX: active condition now ensures they turn off when isWorkspaceModalOpen is true */}
+          <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
+          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Pay" />
+          <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={22} />} label="Repairs" />
+          <MobileNavItem active={activeTab === 'conversation' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<MessageSquare size={22} />} label="Chat" />
+          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileText size={22} />} label="Lease" />
+          
+          {/* ✨ NEW: Account button replacing the User Header Icon for Mobile */}
+          <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Account" />
+        </div>
       </nav>
 
       {/* STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-bold text-[#0a1e3f]">Tenant Profile</h2>
@@ -387,7 +422,7 @@ export default function TenantDashboard() {
       )}
 
       {showLogoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all">
             <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -430,21 +465,15 @@ function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, 
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <header className="flex justify-between items-end">
+      {/* ✨ FIX: Removed redundant profile bubble in the content header to match owner side */}
+      <header className="flex justify-between items-end mb-4 md:mb-6">
         <div>
           <p className="text-slate-500 text-sm md:text-base">Welcome back,</p>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{isLoading ? "Loading..." : tenantName}</h1>
         </div>
-        <div 
-          onClick={openProfileModal}
-          className="w-12 h-12 rounded-full bg-blue-50 text-[#1e88e5] flex items-center justify-center font-bold text-lg border border-blue-100 shadow-sm cursor-pointer hover:bg-blue-100 transition-colors"
-          title="View Profile Details"
-        >
-          {initials}
-        </div>
       </header>
       
-      <section className="bg-[#1e88e5] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20">
+      <section className="bg-[#1e88e5] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-blue-500/20 transition-all hover:shadow-2xl">
         <p className="text-xs font-semibold opacity-90 uppercase tracking-widest mb-1 md:mb-2">Amount Due</p>
         <h2 className="text-4xl md:text-5xl font-extrabold mb-3 md:mb-4 tracking-tighter">
           ₱{isLoading ? "0" : rentAmount.toLocaleString()}
@@ -455,7 +484,7 @@ function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, 
         <button 
           onClick={() => setActiveTab('pay')} 
           disabled={rentAmount === 0}
-          className="w-full bg-white text-blue-600 hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-colors rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base"
+          className="w-full bg-white text-blue-600 hover:bg-slate-50 disabled:opacity-80 disabled:cursor-not-allowed transition-all active:scale-[0.98] rounded-xl py-3 font-bold flex items-center justify-center gap-2 text-sm md:text-base"
         >
           {rentAmount > 0 ? "Pay now" : "All caught up"} <ChevronRight size={18} />
         </button>
@@ -497,15 +526,22 @@ function HomeView({ setActiveTab, tenantName, initials, openProfileModal, unit, 
   );
 }
 
+// Premium Desktop Nav Button
 function NavButton({ active, onClick, icon, label }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 font-medium text-sm ${active ? 'bg-[#1e88e5] text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'}`}
+      className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+        active 
+          ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+      }`}
     >
-      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'scale-100'}`}>{icon}</div>
-      <span>{label}</span>
-      {active && <div className="absolute right-0 w-1 h-6 bg-white rounded-l-full hidden md:block" />}
+      <div className={`transition-transform duration-300 ${active ? 'text-[#1e88e5] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+        {icon}
+      </div>
+      <span className="tracking-wide">{label}</span>
+      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#1e88e5] rounded-r-full shadow-[0_0_10px_#1e88e5]" />}
     </button>
   );
 }
@@ -524,19 +560,23 @@ function TransactionItem({ title, date, amount }: any) {
 
 function ActionCard({ onClick, icon, title, subtitle }: any) {
   return (
-    <button onClick={onClick} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98]">
-      <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3">{icon}</div>
-      <h3 className="font-bold text-sm text-slate-800">{title}</h3>
-      <p className="text-xs text-slate-500">{subtitle}</p>
+    <button onClick={onClick} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+      <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0">{icon}</div>
+      <h3 className="font-bold text-sm text-slate-800 shrink-0">{title}</h3>
+      <p className="text-xs text-slate-500 mt-1 flex-1">{subtitle}</p>
     </button>
   );
 }
 
+// Premium Mobile Nav Button (Pill Indicator, Flex-1 for even sizing)
 function MobileNavItem({ active, onClick, icon, label }: any) {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center w-full gap-1 ${active ? 'text-[#1e88e5]' : 'text-slate-400 hover:text-slate-600'}`}>
-      {icon}
-      <span className="text-[10px] font-bold">{label}</span>
+    <button onClick={onClick} className={`relative flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-[#1e88e5]' : 'text-slate-400 hover:text-slate-600'}`}>
+      {active && <span className="absolute inset-0 bg-blue-500/10 rounded-xl animate-in zoom-in duration-200" />}
+      <div className={`relative z-10 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
+        {icon}
+      </div>
+      <span className="text-[9px] font-bold mt-0.5 relative z-10">{label}</span>
     </button>
   );
 }

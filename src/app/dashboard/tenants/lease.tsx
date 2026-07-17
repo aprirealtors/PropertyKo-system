@@ -70,86 +70,143 @@ export default function LeaseTab() {
 
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto pb-10 text-center py-20 text-slate-500">
-        Loading lease details...
+      <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-500 w-full">
+        <div className="w-12 h-12 border-4 border-[#1e88e5]/20 border-t-[#1e88e5] rounded-full animate-spin"></div>
+        <p className="text-slate-500 font-medium text-sm animate-pulse">Loading lease details...</p>
       </div>
     );
   }
 
   if (!unit) {
     return (
-      <div className="max-w-5xl mx-auto pb-10">
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-16 text-center flex flex-col items-center">
-          <AlertCircle size={48} className="text-slate-300 mb-4" />
-          <h2 className="text-xl font-bold text-slate-800 mb-2">No Active Lease Found</h2>
-          <p className="text-slate-500 text-sm">We couldn't find an active lease assigned to your profile. Please contact your property manager.</p>
+      <div className="w-full mx-auto mt-4 md:mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-10 md:p-20 text-center flex flex-col items-center">
+          <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-100">
+            <FileText size={36} strokeWidth={1.5} />
+          </div>
+          <h2 className="text-2xl font-extrabold text-[#0a1e3f] mb-3 tracking-tight">No Active Lease Found</h2>
+          <p className="text-slate-500 text-sm md:text-base max-w-md mx-auto leading-relaxed">
+            We couldn't find an active lease assigned to your profile. If you believe this is a mistake, please contact your property manager to link your contract.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto pb-10">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-slate-800">My Lease</h2>
-        <p className="text-slate-500 text-sm">View your contract details and renewal options.</p>
+    <div className="w-full pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="mb-6 md:mb-8">
+        <h2 className="text-2xl md:text-3xl font-extrabold text-[#0a1e3f] tracking-tight">My Lease</h2>
+        <p className="text-slate-500 text-sm md:text-base mt-1">View your contract details and renewal options.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
         
-        {/* LEFT COLUMN: Lease Details */}
-        <div className="lg:col-span-7">
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-            <h3 className="font-bold text-lg mb-6 text-slate-800">Contract Summary</h3>
-            <div className="space-y-6">
-              <LeaseDetail icon={<Home size={20}/>} label="Unit Address" value={`${propertyName} · ${unitNumber}`} />
-              <LeaseDetail icon={<CreditCard size={20}/>} label="Monthly rent" value={`₱${monthlyRent.toLocaleString()}`} />
-              <LeaseDetail icon={<Calendar size={20}/>} label="Lease ends" value={leaseEndDate} />
-              <LeaseDetail icon={<FileText size={20}/>} label="Security Deposit" value={`₱${securityDeposit.toLocaleString()}`} />
+        {/* ✨ UPGRADED LEFT COLUMN: 1-Column Form Layout */}
+        <div className="lg:col-span-7 space-y-6">
+          <section className="bg-white p-5 sm:p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
+            <h3 className="font-extrabold text-lg md:text-xl mb-6 text-[#0a1e3f]">Contract Summary</h3>
+            
+            <div className="flex flex-col gap-4">
               
-              <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Full Contract Document</span>
-                <button className="text-[#1e88e5] font-bold hover:underline flex items-center gap-1 transition-all">
-                  View PDF <ArrowRight size={16} />
+              {/* Form Field: Unit Address */}
+              <FormField 
+                label="Unit Address" 
+                icon={<Home size={20} />} 
+                value={`${propertyName} · ${unitNumber}`} 
+              />
+
+              {/* Form Field: Monthly Rent */}
+              <FormField 
+                label="Monthly Rent" 
+                icon={<CreditCard size={20} />} 
+                value={`₱${monthlyRent.toLocaleString()}`} 
+                valueColor="text-[#1e88e5]"
+              />
+
+              {/* Form Field: Lease Ends */}
+              <FormField 
+                label="Lease Ends" 
+                icon={<Calendar size={20} />} 
+                value={leaseEndDate} 
+              />
+
+              {/* Form Field: Security Deposit */}
+              <FormField 
+                label="Security Deposit" 
+                icon={<ShieldCheck size={20} />} 
+                value={`₱${securityDeposit.toLocaleString()}`} 
+              />
+              
+              {/* Full Width Document Button */}
+              <div className="mt-4 pt-2">
+                <button className="w-full bg-blue-50/50 hover:bg-blue-50 text-[#1e88e5] p-4 sm:p-5 rounded-2xl border border-blue-200/60 flex items-center justify-between group transition-all active:scale-[0.98]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-2.5 bg-white shadow-sm border border-blue-100 rounded-xl shrink-0">
+                      <FileText size={20} />
+                    </div>
+                    <div className="text-left">
+                      <span className="font-extrabold text-sm sm:text-base text-[#0a1e3f] block">View Full Contract</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">PDF • Official Copy</span>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-blue-100 group-hover:scale-105 transition-transform shrink-0">
+                    <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
                 </button>
               </div>
+
             </div>
           </section>
         </div>
 
-        {/* RIGHT COLUMN: Renewal Offer (High Emphasis) */}
+        {/* RIGHT COLUMN: Renewal Offer (Premium High Emphasis) */}
         <div className="lg:col-span-5">
-          <section className="bg-gradient-to-br from-blue-600 to-blue-800 p-8 rounded-3xl text-white shadow-xl shadow-blue-500/20 sticky top-24">
-            <div className="flex items-center gap-2 text-blue-200 mb-4">
-              <ShieldCheck size={20} />
-              <span className="text-sm font-bold uppercase tracking-wider">Renewal Ready</span>
-            </div>
-            <h3 className="font-bold text-2xl mb-4">Renew your lease</h3>
-            <p className="text-blue-100 mb-8 leading-relaxed">
-              Continue your stay at {propertyName} for another year. New rate is <strong>₱{renewalRate.toLocaleString()}/mo</strong>. Everything stays the same, just e-sign to lock in your spot.
-            </p>
+          <section className="bg-gradient-to-br from-[#1e88e5] to-[#0a1e3f] p-6 md:p-8 rounded-3xl text-white shadow-2xl shadow-blue-900/20 sticky top-24 relative overflow-hidden transition-all hover:shadow-blue-900/30">
+            {/* Premium Decorative Background Pattern */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-[0.03] rounded-full -ml-10 -mb-10 pointer-events-none"></div>
             
-            <button className="w-full bg-white text-blue-700 rounded-2xl py-4 font-bold text-lg hover:bg-slate-50 transition-all active:scale-[0.98] shadow-lg mb-4">
-              Review & e-sign
-            </button>
-            <p className="text-center text-blue-200 text-[11px]">
-              Offer valid until {offerExpiry}
-            </p>
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 text-blue-200 mb-5">
+                <ShieldCheck size={22} className="text-emerald-400" />
+                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Renewal Ready</span>
+              </div>
+              <h3 className="font-extrabold text-2xl md:text-3xl mb-4 tracking-tight">Renew your lease</h3>
+              <p className="text-blue-100/90 mb-8 text-sm md:text-base leading-relaxed">
+                Continue your stay at <strong>{propertyName}</strong> for another year. The new rate is <span className="font-bold text-white bg-white/10 px-2 py-0.5 rounded-md mx-1">₱{renewalRate.toLocaleString()}/mo</span>. Everything stays the same, just e-sign to lock in your spot.
+              </p>
+              
+              <button className="w-full bg-white text-[#0a1e3f] rounded-2xl py-4 font-black text-sm md:text-base hover:bg-slate-50 transition-all active:scale-[0.98] shadow-lg mb-5 flex justify-center items-center gap-2">
+                Review & e-sign <ArrowRight size={18} />
+              </button>
+              <p className="text-center text-blue-200/70 text-[11px] font-medium uppercase tracking-wider">
+                Offer valid until {offerExpiry}
+              </p>
+            </div>
           </section>
         </div>
+        
       </div>
     </div>
   );
 }
 
-function LeaseDetail({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+// ✨ Premium Read-Only Form Field Component
+function FormField({ label, icon, value, valueColor = "text-[#0a1e3f]" }: any) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3 text-slate-500">
-        <div className="p-2 bg-slate-50 rounded-xl text-slate-400">{icon}</div>
-        <span className="font-medium text-sm">{label}</span>
+    <div className="flex flex-col">
+      <label className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+        {label}
+      </label>
+      <div className="flex items-center gap-3.5 bg-slate-50 border border-slate-200/70 p-4 rounded-2xl hover:bg-white hover:border-[#1e88e5]/40 transition-colors shadow-sm">
+        <div className="text-slate-400 shrink-0">
+          {icon}
+        </div>
+        <div className={`font-extrabold text-sm md:text-base truncate ${valueColor}`}>
+          {value}
+        </div>
       </div>
-      <span className="text-slate-800 font-bold text-sm">{value}</span>
     </div>
   );
 }

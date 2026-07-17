@@ -10,21 +10,24 @@ import {
   MessageSquare,
   Search,
   X,
-  Shield,
+  Briefcase,
   Wrench,
-  Key,
   Edit,
-  Check
+  Check,
+  Shield
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 
-export default function ConversationTab({ orgData, managerProfile }: { orgData: any, managerProfile: any }) {
+export default function ConversationTab() {
   const [messages, setMessages] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string>(''); 
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
+
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
   
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
@@ -45,10 +48,22 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   }, [activeChat]);
 
   useEffect(() => {
-    if (orgData?.admin_email && managerProfile?.email) {
+    const initAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setProfileEmail(user.email);
+        const adminParentEmail = user.user_metadata?.admin_parent || user.email;
+        setAdminEmail(adminParentEmail);
+      }
+    };
+    initAuth();
+  }, []);
+
+  useEffect(() => {
+    if (adminEmail && profileEmail) {
       fetchData();
     }
-  }, [orgData, managerProfile]);
+  }, [adminEmail, profileEmail]);
 
   useEffect(() => {
     if (!chatSearchQuery) {
@@ -56,25 +71,27 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   }, [messages, activeChat, chatSearchQuery]);
 
-  // ✨ PERFECTED MANAGER ROUTING LOGIC (Fixed for proper isolation)
   const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
     if (contactType === 'admin') {
-      return msg.tenant_email === managerProfile.email && (msg.recipient_role === 'admin' || msg.sender_email === orgData.admin_email);
+      return (msg.sender_email === profileEmail && msg.recipient_role === 'admin') ||
+             (msg.sender_email === adminEmail && msg.tenant_email === profileEmail && msg.recipient_role === 'maintenance');
+    } else if (contactType === 'manager') {
+      return (msg.sender_email === profileEmail && msg.recipient_role === 'manager' && msg.tenant_email === profileEmail) ||
+             (msg.sender_email === contactId && msg.recipient_role === 'maintenance' && msg.tenant_email === profileEmail);
     } else if (contactType === 'maintenance') {
-      // Isolates messages to the EXACT maintenance staff member so they don't merge
-      return msg.tenant_email === contactId && (msg.recipient_role === 'manager' || msg.recipient_role === 'maintenance');
-    } else {
-      return msg.tenant_email === contactId && msg.recipient_role === 'manager';
+      return (msg.sender_email === profileEmail && msg.recipient_role === 'maintenance' && msg.tenant_email === contactId) ||
+             (msg.sender_email === contactId && msg.recipient_role === 'maintenance' && msg.tenant_email === profileEmail);
     }
+    return false;
   };
 
   useEffect(() => {
     const markAsRead = async () => {
       const activeContact = contacts.find(c => c.id === activeChat);
-      if (!activeContact || !orgData?.admin_email || messages.length === 0) return;
+      if (!activeContact || !adminEmail || !profileEmail || messages.length === 0) return;
 
       const unreadIds = messages
-        .filter(m => !m.is_read && m.sender_email !== managerProfile.email && isMessageForContact(m, activeContact.id, activeContact.type))
+        .filter(m => !m.is_read && m.sender_email !== profileEmail && isMessageForContact(m, activeContact.id, activeContact.type))
         .map(m => m.id);
 
       if (unreadIds.length === 0) return;
@@ -95,27 +112,24 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       }
     };
     markAsRead();
-  }, [activeChat, messages, orgData?.admin_email, managerProfile?.email, contacts]);
+  }, [activeChat, messages, adminEmail, profileEmail, contacts]);
 
   useEffect(() => {
-    if (!orgData?.admin_email || !managerProfile?.email) return;
+    if (!adminEmail || !profileEmail) return;
 
     const channel = supabase
-      .channel('manager-live-messages')
+      .channel('maintenance-live-messages')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `admin_email=eq.${orgData.admin_email}`
+          filter: `admin_email=eq.${adminEmail}`
         },
         (payload) => {
           const msg = payload.new;
-          if (msg.recipient_role === 'manager' || 
-             (msg.tenant_email === managerProfile.email && ['admin'].includes(msg.recipient_role)) || 
-             ['maintenance'].includes(msg.recipient_role)) {
-            
+          if (msg.recipient_role === 'maintenance' || msg.sender_email === profileEmail) {
             setMessages((current) => {
               const exists = current.some(m => m.id === msg.id);
               if (exists) return current;
@@ -129,60 +143,50 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orgData, managerProfile]);
+  }, [adminEmail, profileEmail]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const { data: tenantMsgs, error: tError } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('admin_email', orgData.admin_email)
-        .eq('recipient_role', 'manager');
+        .eq('admin_email', adminEmail)
+        .or(`sender_email.eq.${profileEmail},recipient_role.eq.maintenance`)
+        .order('created_at', { ascending: true });
 
-      if (tError) console.error("Messages Fetch Error:", tError.message);
-
-      const { data: sysMsgs, error: sError } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('admin_email', orgData.admin_email)
-        .or(`tenant_email.eq.${managerProfile.email},sender_email.eq.${managerProfile.email}`)
-        .in('recipient_role', ['admin', 'maintenance']);
-
-      if (sError) console.error("System Messages Error:", sError.message);
-
-      const allMsgsMap = new Map();
-      [...(tenantMsgs || []), ...(sysMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
-      const allMsgs = Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      
-      setMessages(allMsgs);
+      if (error) console.error("Messages Fetch Error:", error.message);
+      if (data) setMessages(data);
 
       const { data: usersData, error: usersError } = await supabase
         .from('team_members')
         .select('name, email, role, access_level')
-        .eq('admin_email', orgData.admin_email)
-        .in('role', ['Tenant', 'Owner', 'Maintenance staff']); 
+        .eq('admin_email', adminEmail)
+        .in('role', ['Property manager', 'Maintenance staff']); 
       
       if (usersError) console.error("Users Fetch Error:", usersError.message);
 
       const contactsMap = new Map();
-      contactsMap.set('admin', { id: 'admin', name: 'Admin', unit: 'System & Account Support', type: 'admin', icon: Shield });
+
+      contactsMap.set('admin', { 
+        id: adminEmail, 
+        name: 'Admin', 
+        unit: 'System & Account Support', 
+        type: 'admin', 
+        icon: Shield 
+      });
 
       if (usersData) {
         usersData.forEach(user => {
-          if (user.email && user.email.trim() !== '') { 
-            let unitLabel = user.access_level ? user.access_level : 'No unit assigned';
-            let icon = User;
-            let type = user.role.toLowerCase();
+          if (user.email && user.email.trim() !== '' && user.email !== profileEmail) { 
+            let unitLabel = user.access_level ? user.access_level : 'Management';
+            let icon = Briefcase;
+            let type = 'manager';
 
-            if (user.role === 'Owner') icon = Key;
             if (user.role === 'Maintenance staff') {
               icon = Wrench;
-              unitLabel = 'Repairs & Operations';
-              type = 'maintenance'; 
-            }
-            if (user.role === 'Tenant') {
-              type = 'tenant';
+              type = 'maintenance';
+              unitLabel = 'Operations Colleague';
             }
             
             contactsMap.set(user.email, { 
@@ -213,7 +217,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !orgData || !activeChat) return;
+    if (!newMessage.trim() || !adminEmail || !profileEmail || !activeChat) return;
 
     const activeContact = contacts.find(c => c.id === activeChat);
     if (!activeContact) return;
@@ -222,17 +226,13 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     setIsSending(true);
     setNewMessage(""); 
 
-    const { data: authData } = await supabase.auth.getUser();
-    const authEmail = authData?.user?.email || managerProfile.email;
-
     const payload = {
-      // ✨ CRITICAL FIX: Ensure the correct thread ID is assigned for maintenance routing!
-      tenant_email: activeContact.type === 'admin' ? authEmail : activeChat,
-      admin_email: orgData.admin_email,
-      sender_email: authEmail, 
+      tenant_email: (activeContact.type === 'admin' || activeContact.type === 'manager') ? profileEmail : activeChat, 
+      admin_email: adminEmail,
+      sender_email: profileEmail,
       content: textToSend,
-      is_from_tenant: activeContact.type === 'admin' || activeContact.type === 'maintenance', 
-      recipient_role: activeContact.type === 'admin' || activeContact.type === 'maintenance' ? activeContact.type : 'manager',
+      is_from_tenant: false, 
+      recipient_role: activeContact.type, 
       is_read: false
     };
 
@@ -246,14 +246,13 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
         console.error("Insert error:", error.message);
         alert(`Failed to send message: ${error.message}`);
         setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
-        setNewMessage(textToSend); 
+        setNewMessage(textToSend);
         return;
       }
       
       if (data) {
         setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? data : m));
       }
-
     } catch (error) {
       console.error("Error sending message:", error);
       alert("An unexpected error occurred. Please try again.");
@@ -274,10 +273,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     const lastB = getLastMessage(b.id, b.type)?.created_at || '0';
     
     if (lastA === '0' && lastB === '0') {
-      const isASystem = a.type === 'admin' || a.type === 'maintenance';
-      const isBSystem = b.type === 'admin' || b.type === 'maintenance';
-      if (isASystem && !isBSystem) return -1;
-      if (!isASystem && isBSystem) return 1;
+      if (a.type === 'admin') return -1;
+      if (b.type === 'admin') return 1;
     }
     return new Date(lastB).getTime() - new Date(lastA).getTime();
   });
@@ -303,11 +300,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     ? roleMessages 
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  const renderRoleBadge = (type: string | undefined) => {
-    if (type === 'owner') return <span className="shrink-0 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">Owner</span>;
-    if (type === 'maintenance') return <span className="shrink-0 text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">Maintenance</span>;
-    if (type === 'admin') return <span className="shrink-0 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">Admin</span>;
-    if (type === 'tenant') return <span className="shrink-0 text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-bold">Tenant</span>;
+  const renderRoleBadge = (roleId: string | undefined) => {
+    if (roleId === 'manager') return <span className="shrink-0 text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Admin</span>;
+    if (roleId === 'maintenance') return <span className="shrink-0 text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Colleague</span>;
     return null;
   };
 
@@ -321,7 +317,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
             <h1 className="text-2xl font-bold text-slate-900">Message Center</h1>
             <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
-              className={`p-2 rounded-full transition-colors ${isEditingNames ? 'bg-blue-100 text-[#0084ff]' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+              className={`p-2 rounded-full transition-colors ${isEditingNames ? 'bg-emerald-100 text-[#359b46]' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
               title={isEditingNames ? "Save Names" : "Edit Nicknames"}
             >
               {isEditingNames ? <Check size={18} /> : <Edit size={18} />}
@@ -334,7 +330,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                 type="text" 
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
-                placeholder="Search clients or roles..." 
+                placeholder="Search staff..." 
                 className="bg-transparent border-none outline-none text-sm w-full text-slate-800 placeholder-slate-400"
               />
               {contactSearch && (
@@ -347,7 +343,12 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
         </div>
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden pt-2">
-          {filteredContacts.length === 0 && !isLoading ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center h-24 text-slate-400 gap-2">
+              <Clock size={16} className="animate-spin" />
+              <span className="text-sm font-medium">Loading contacts...</span>
+            </div>
+          ) : filteredContacts.length === 0 ? (
             <div className="text-center p-6 text-sm text-slate-400">
               No contacts found matching your search.
             </div>
@@ -359,10 +360,9 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                 ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
                 : '';
 
-              const unreadCount = messages.filter(m => {
-                if (m.is_read || m.sender_email === managerProfile.email) return false;
-                return isMessageForContact(m, contact.id, contact.type);
-              }).length;
+              const unreadCount = messages.filter(m => 
+                !m.is_read && m.sender_email !== profileEmail && isMessageForContact(m, contact.id, contact.type)
+              ).length;
 
               const ContactIcon = contact.icon;
 
@@ -391,7 +391,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                             type="text"
                             value={customNames[contact.id] || contact.name}
                             onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))}
-                            className="text-[15px] font-semibold text-[#0084ff] border-b border-blue-200 bg-transparent outline-none w-full pb-0.5"
+                            className="text-[15px] font-semibold text-[#359b46] border-b border-emerald-200 bg-transparent outline-none w-full pb-0.5"
                             onClick={(e) => e.stopPropagation()}
                           />
                         ) : (
@@ -401,7 +401,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                         )}
                         
                       </div>
-
+                      
                       <span className={`text-xs whitespace-nowrap ${unreadCount > 0 ? 'text-[#359b46] font-bold' : 'text-slate-400'}`}>
                         {displayTime}
                       </span>
@@ -411,7 +411,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       <p className={`text-[13px] truncate ${unreadCount > 0 ? 'font-bold text-slate-800' : 'text-slate-500'}`}>
                         {lastMsg ? (
                           <span>
-                            {lastMsg.sender_email === managerProfile.email ? "You: " : ""}{lastMsg.content}
+                            {lastMsg.sender_email === profileEmail ? "You: " : ""}{lastMsg.content}
                           </span>
                         ) : (
                           contact.unit
@@ -514,13 +514,13 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                   <p className="text-sm text-slate-500">
                     {chatSearchQuery 
                       ? `We couldn't find "${chatSearchQuery}" in this conversation.` 
-                      : "Start the conversation below."}
+                      : "Start the conversation below to coordinate repairs and requests."}
                   </p>
                 </div>
               ) : (
                 displayedMessages.map((msg, idx) => {
-                  const isMe = msg.sender_email === managerProfile.email;
-                  const showAvatar = !isMe && (idx === 0 || displayedMessages[idx - 1].sender_email === managerProfile.email);
+                  const isMe = msg.sender_email === profileEmail;
+                  const showAvatar = !isMe && (idx === 0 || displayedMessages[idx - 1].sender_email === profileEmail);
                   
                   return (
                     <div key={msg.id || idx} className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}>

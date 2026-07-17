@@ -707,7 +707,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                 onClick={() => setReviewTicket(null)}
                 className="w-full bg-[#0a1e3f] text-white py-3 rounded-xl font-bold text-sm shadow-md active:scale-[0.99] transition-all"
               >
-                Back to Dashboard
+                Close View
               </button>
             </div>
 

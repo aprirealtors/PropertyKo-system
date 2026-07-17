@@ -9,10 +9,10 @@ import {
   Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X
 } from "lucide-react";
 
-// Import Modular Tabs (History is removed)
+// Import Modular Tabs
 import HomeTab from "./home";
 import TasksTab from "./tasks";
-import MessagesTab from "./messages";
+import ConversationTab from "./conversation"; // ✨ UPDATED IMPORT
 
 export interface MaintenanceTask {
   id: string;
@@ -316,7 +316,7 @@ export default function MaintenanceDashboard() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 relative">
           <div className="max-w-6xl mx-auto">
             {activeTab === 'home' && (
               <HomeTab 
@@ -328,7 +328,7 @@ export default function MaintenanceDashboard() {
               />
             )}
             {activeTab === 'tasks' && <TasksTab tasks={tasks} profile={profile} showToast={showToast} fetchTasks={fetchUserDataAndTasks} />}
-            {activeTab === 'messages' && <MessagesTab />}
+            {activeTab === 'messages' && <ConversationTab />} {/* ✨ UPDATED RENDER */}
           </div>
         </main>
       </div>
