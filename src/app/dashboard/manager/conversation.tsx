@@ -46,7 +46,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     if (!chatSearchQuery) scrollToBottom();
   }, [messages, activeChat, chatSearchQuery]);
 
-  // ✨ PERFECTED MANAGER ROUTING LOGIC (Fixed for proper isolation)
+  // ✨ PERFECTED MANAGER ROUTING LOGIC
   const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
     if (contactType === 'admin') {
       return msg.tenant_email === managerProfile.email && (msg.recipient_role === 'admin' || msg.sender_email === orgData.admin_email);
@@ -125,7 +125,15 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff']); 
 
       const contactsMap = new Map();
-      contactsMap.set('admin', { id: 'admin', name: 'Admin', unit: 'System & Account Support', type: 'admin', icon: Shield });
+      
+      // 🌟 FIX APPLIED HERE: Ginawang orgData.admin_email ang ID imbis na 'admin'
+      contactsMap.set(orgData.admin_email, { 
+        id: orgData.admin_email, 
+        name: 'Admin', 
+        unit: 'System & Account Support', 
+        type: 'admin', 
+        icon: Shield 
+      });
 
       if (usersData) {
         usersData.forEach(user => {
@@ -236,6 +244,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   const activeContactDetails = contacts.find(c => c.id === activeChat);
   const ActiveIcon = activeContactDetails?.icon || User;
   const currentChatName = activeContactDetails ? (customNames[activeContactDetails.id] || activeContactDetails.name) : "User";
+  
+  // 🌟 FIX: Ngayon mag-mamatch na ang admin email sa online users array!
   const isActiveContactOnline = activeContactDetails && onlineUsers.includes(activeContactDetails.id);
 
   const roleMessages = messages.filter(msg => {
@@ -294,6 +304,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
             const lastMsg = getLastMessage(contact.id, contact.type);
             const displayTime = lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
             const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== managerProfile.email && isMessageForContact(m, contact.id, contact.type)).length;
+            
+            // 🌟 Online indicator will now work correctly!
             const isOnline = onlineUsers.includes(contact.id);
             const ContactIcon = contact.icon;
             

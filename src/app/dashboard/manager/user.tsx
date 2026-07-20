@@ -30,12 +30,13 @@ export default function UsersTab({ orgData }: any) {
     }
   }, [orgData]);
 
-  // Refetch units when the role tab switches
+  // ✨ FIX: Refetch units when the role tab switches or usersList changes.
+  // It will now fetch units from the DB even if the usersList is empty.
   useEffect(() => {
-    if (usersList && usersList.length > 0) {
-      fetchUnits(usersList, role);
+    if (orgData?.admin_email) {
+      fetchUnits(usersList || [], role);
     }
-  }, [role, usersList]); 
+  }, [role, usersList, orgData?.admin_email]); 
 
   const loadData = async () => {
     setIsLoading(true);
@@ -59,13 +60,13 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const fetchUnits = async (currentUsers: any[], targetRole: string) => {
-    // 1. Fetch units
+    // 1. Fetch units (where owners are stored)
     const { data: unitsData } = await supabase
       .from('units')
       .select('*')
       .eq('admin_email', orgData.admin_email); 
 
-    // 2. Fetch active leases
+    // 2. Fetch active leases (for tenants)
     const { data: activeLeases } = await supabase
       .from('leases')
       .select('unit_id')
@@ -101,7 +102,7 @@ export default function UsersTab({ orgData }: any) {
           // A tenant can only be invited if they have a valid name AND an active lease exists
           isValidOccupant = hasValidName(unit.tenant_name) && activeLeasedUnitIds.has(unit.id);
         } else {
-          // Owner check remains standard
+          // Check the owner_name directly from the units table
           isValidOccupant = hasValidName(unit.owner_name);
         }
 
@@ -136,8 +137,18 @@ export default function UsersTab({ orgData }: any) {
       const isCurrentlySelected = prev.includes(unitString);
       
       if (!isCurrentlySelected) {
-        // Auto-fill the Name and Email fields
-        const occupantName = role === "Tenant" ? unitData.tenant_name : unitData.owner_name;
+        // ✨ Auto-fill the Name and Email fields cleanly
+        let occupantName = "";
+        
+        if (role === "Tenant") {
+          occupantName = unitData.tenant_name || "";
+        } else {
+          // If there are multiple owners, split by comma and just take the primary (first) one
+          if (unitData.owner_name) {
+            occupantName = unitData.owner_name.split(',')[0].trim();
+          }
+        }
+        
         const occupantEmail = role === "Tenant" ? unitData.tenant_email : unitData.owner_email;
         
         if (occupantName) setName(occupantName);
@@ -374,7 +385,8 @@ export default function UsersTab({ orgData }: any) {
                       availableUnits.map(unit => {
                         const unitString = `${unit.property_name} - ${unit.unit_number}`;
                         const isSelected = selectedUnits.includes(unitString);
-                        const occupantName = role === "Tenant" ? unit.tenant_name : unit.owner_name;
+                        // Clean display of the occupant name directly below the unit property
+                        const occupantName = role === "Tenant" ? unit.tenant_name : (unit.owner_name ? unit.owner_name.split(',')[0].trim() : "");
                         
                         return (
                           <div 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2 } from "lucide-react";
+import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
 
 // ✨ Sub-component for handling the Clickable Owner Dropdown in the table
 const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
@@ -67,6 +67,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ✨ Confirmation Modal States
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmType, setConfirmType] = useState<'add' | 'edit' | 'import' | null>(null);
   
   // Form Fields
   const [propertyName, setPropertyName] = useState("");
@@ -167,17 +171,26 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setIsModalOpen(true);
   };
 
+  // ✨ INTERCEPT SAVE: Show confirmation instead of directly saving
   const handleSaveUnit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrorMsg(null);
 
     const maxUnits = Number(orgData?.units_count) || 0;
     if (!editingUnitId && units.length >= maxUnits) {
       setErrorMsg(`Your plan is limited to ${maxUnits} units. Please upgrade your plan to add more.`);
-      setIsSubmitting(false);
       return;
     }
+
+    // Show the confirmation modal based on Add or Edit
+    setConfirmType(editingUnitId ? 'edit' : 'add');
+    setShowConfirmModal(true);
+  };
+
+  // ✨ ACTUAL DB SAVE LOGIC: Called from the Confirmation Modal
+  const executeSaveUnit = async () => {
+    setIsSubmitting(true);
+    setShowConfirmModal(false);
 
     const payload: any = {
       admin_email: orgData.admin_email,
@@ -303,16 +316,24 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setCsvPreviewData(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  // ✨ INTERCEPT CSV IMPORT: Show confirmation instead of directly saving
   const confirmCsvImport = async () => {
     if (csvPreviewData.length === 0) return;
-    setIsImporting(true);
 
     const maxUnits = Number(orgData?.units_count) || 0;
     if (units.length + csvPreviewData.length > maxUnits) {
       alert(`Cannot import ${csvPreviewData.length} units. You only have ${Math.max(0, maxUnits - units.length)} seats remaining. Please delete some rows or upgrade your plan.`);
-      setIsImporting(false);
       return;
     }
+
+    setConfirmType('import');
+    setShowConfirmModal(true);
+  };
+
+  // ✨ ACTUAL DB IMPORT LOGIC: Called from the Confirmation Modal
+  const executeCsvImport = async () => {
+    setIsImporting(true);
+    setShowConfirmModal(false);
 
     try {
       const { error } = await supabase.from('units').insert(csvPreviewData);
@@ -565,7 +586,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
                   className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm"
                 >
-                  {isImporting ? "Importing..." : "Confirm & Import"}
+                  Confirm & Import
                 </button>
               </div>
             </div>
@@ -688,7 +709,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm">
-                    {isSubmitting ? "Saving..." : editingUnitId ? "Save Changes" : "Add Unit"}
+                    {editingUnitId ? "Save Changes" : "Add Unit"}
                   </button>
                 </div>
               </form>
@@ -697,9 +718,45 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       )}
 
+      {/* ✨ ARE YOU SURE CONFIRMATION MODAL */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
+              <AlertTriangle size={28} />
+            </div>
+            <h2 className="text-xl font-bold text-[#0a1e3f] mb-2">Confirm Action</h2>
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+              {confirmType === 'add' && "Are you sure you want to add this new unit to your property database?"}
+              {confirmType === 'edit' && "Are you sure you want to save these changes to the unit?"}
+              {confirmType === 'import' && `Are you sure you want to import ${csvPreviewData.length} units? Please make sure the data is correct.`}
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={isSubmitting || isImporting}
+                className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmType === 'add' || confirmType === 'edit') executeSaveUnit();
+                  if (confirmType === 'import') executeCsvImport();
+                }}
+                disabled={isSubmitting || isImporting}
+                className="flex-1 bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center"
+              >
+                {isSubmitting || isImporting ? "Processing..." : "Yes, I'm sure"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ✨ SUCCESS MODAL */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in duration-300">
             <div className="w-16 h-16 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={36} />
