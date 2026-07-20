@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, Users, X, MapPin, Banknote } from "lucide-react";
+import { Search, Users, X, MapPin, CheckCircle, BellRing, Check, CalendarDays } from "lucide-react";
 
 export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading }: any) {
   
   // Database States
-  const [leasedUnits, setLeasedUnits] = useState<any[]>([]);
-  const [vacantUnits, setVacantUnits] = useState<any[]>([]);
+  const [leasesList, setLeasesList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal States
@@ -17,9 +16,10 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form States
-  const [selectedUnitId, setSelectedUnitId] = useState("");
+  const [selectedLeaseId, setSelectedLeaseId] = useState("");
   const [tenantName, setTenantName] = useState("");
-  const [monthlyRent, setMonthlyRent] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -30,43 +30,67 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   const fetchData = async () => {
     setIsLoading(true);
     
-    // 1. Fetch Leased Units (Occupied)
-    const { data: leased } = await supabase
-      .from('units')
-      .select('*')
+    // Fetch Leases (Joining with Units to get Property & Owner details)
+    const { data: leases, error: leaseError } = await supabase
+      .from('leases')
+      .select('*, units!inner(property_name, unit_number, owner_name, monthly_rent)')
       .eq('admin_email', orgData.admin_email)
-      .neq('status', 'Vacant')
       .order('created_at', { ascending: false });
 
-    // ✨ FIX: Filter the occupied list to ONLY include rows with an actual tenant name
-    const actualTenants = (leased || []).filter(unit => {
-      const name = (unit.tenant_name || "").trim();
-      // Keep it if it has a name, and that name is NOT the "—" placeholder we use for Owner Occupied
-      return name !== "" && name !== "—" && name !== "-";
-    });
-
-    // 2. Fetch Vacant Units (for the Dropdown)
-    const { data: vacant } = await supabase
-      .from('units')
-      .select('*')
-      .eq('admin_email', orgData.admin_email)
-      .eq('status', 'Vacant');
-
-    setLeasedUnits(actualTenants);
-    setVacantUnits(vacant || []);
-    
-    // Auto-select the first vacant unit if available
-    if (vacant && vacant.length > 0) {
-      setSelectedUnitId(vacant[0].id);
+    if (leaseError) {
+      console.error("Error fetching leases:", leaseError);
+    } else {
+      setLeasesList(leases || []);
     }
-    
+
     setIsLoading(false);
   };
 
-  const handleNewLease = async (e: React.FormEvent) => {
+  const handleOpenApproveModal = (leaseId?: string) => {
+    setErrorMsg(null);
+    const pendingLeases = leasesList.filter(l => l.status === 'Pending');
+    
+    // If a specific lease was clicked from the table
+    if (leaseId) {
+      const lease = pendingLeases.find(l => l.id === leaseId);
+      if (lease) {
+        setSelectedLeaseId(lease.id);
+        setTenantName(lease.tenant_name);
+        setStartDate(lease.start_date || "");
+        setEndDate(lease.end_date || "");
+      }
+    } 
+    // Otherwise, just pick the first pending lease if clicking the top button
+    else if (pendingLeases.length > 0) {
+      setSelectedLeaseId(pendingLeases[0].id);
+      setTenantName(pendingLeases[0].tenant_name);
+      setStartDate(pendingLeases[0].start_date || "");
+      setEndDate(pendingLeases[0].end_date || "");
+    } else {
+      setSelectedLeaseId("");
+      setTenantName("");
+      setStartDate("");
+      setEndDate("");
+    }
+    
+    setIsModalOpen(true);
+  };
+
+  const handleLeaseSelectionChange = (leaseId: string) => {
+    setSelectedLeaseId(leaseId);
+    
+    const pending = leasesList.find(l => l.id === leaseId);
+    if (pending) {
+      setTenantName(pending.tenant_name);
+      setStartDate(pending.start_date || "");
+      setEndDate(pending.end_date || "");
+    }
+  };
+
+  const handleApproveSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUnitId) {
-      setErrorMsg("Please select a vacant unit.");
+    if (!selectedLeaseId) {
+      setErrorMsg("Please select a pending lease request.");
       return;
     }
     
@@ -74,23 +98,38 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     setErrorMsg(null);
 
     try {
-      // Update the existing vacant unit with the tenant and rent
-      const { error } = await supabase
+      const targetLease = leasesList.find(l => l.id === selectedLeaseId);
+      if (!targetLease) throw new Error("Lease not found");
+
+      // 1. Update the existing lease to 'Active'
+      const { error: updateError } = await supabase
+        .from('leases')
+        .update({ 
+          status: 'Active', 
+          tenant_name: tenantName.trim(), 
+          start_date: startDate, 
+          end_date: endDate 
+        })
+        .eq('id', selectedLeaseId);
+
+      if (updateError) throw new Error(`Lease Update Error: ${updateError.message}`);
+
+      // 2. Sync the tenant details to the physical unit so it marks as Occupied
+      // NOTE: lease_end removed to prevent schema cache errors
+      const { error: unitError } = await supabase
         .from('units')
         .update({
+          status: 'Occupied',
           tenant_name: tenantName.trim(),
-          monthly_rent: parseFloat(monthlyRent) || 0,
-          status: 'Occupied'
+          monthly_rent: targetLease.monthly_rent || 0
         })
-        .eq('id', selectedUnitId);
+        .eq('id', targetLease.unit_id);
 
-      if (error) throw new Error(`Database Error: ${error.message}`);
+      if (unitError) throw new Error(`Unit Update Error: ${unitError.message}`);
 
-      // Refresh the data to move the unit from Vacant -> Leased
+      // Refresh Data
       await fetchData();
       setIsModalOpen(false);
-      setTenantName("");
-      setMonthlyRent("");
 
     } catch (error: any) {
       console.error(error);
@@ -100,7 +139,13 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     }
   };
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  const pendingLeases = leasesList.filter(l => l.status === 'Pending');
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -108,12 +153,12 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Leasing & tenants</h2>
-          <p className="text-slate-500 text-sm mt-1">Screening, e-lease and renewals</p>
+          <p className="text-slate-500 text-sm mt-1">Review owner assignments and manage active contracts.</p>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input type="text" placeholder="Search tenants, units, SOA..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] bg-white shadow-sm" />
+            <input type="text" placeholder="Search tenants, units..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] bg-white shadow-sm" />
           </div>
           <div className="hidden sm:flex items-center gap-3">
             <span className="text-sm font-semibold text-[#359b46]">Manager</span>
@@ -122,117 +167,158 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Table */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-[#0a1e3f] text-lg">
-                Tenants & leases · {isLoading ? "..." : leasedUnits.length}
-              </h3>
-              <button 
-                onClick={() => setIsModalOpen(true)}
-                className="bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
-              >
-                + New lease
-              </button>
+      {/* New Tenant Notification Banner */}
+      {pendingLeases.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+              <BellRing size={20} className="animate-pulse" />
             </div>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-white text-slate-500 text-[11px] uppercase font-bold border-b border-slate-100 tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4 whitespace-nowrap">TENANT</th>
-                    <th className="px-6 py-4 whitespace-nowrap">UNIT</th>
-                    <th className="px-6 py-4 whitespace-nowrap">RENT</th>
-                    <th className="px-6 py-4 whitespace-nowrap">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  
-                  {isLoading ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Loading tenants...</td></tr>
-                  ) : leasedUnits.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-16 text-center text-slate-400 font-medium">
-                        <div className="flex flex-col items-center justify-center space-y-2">
-                          <Users size={32} className="text-slate-300" />
-                          <p>No active tenants found.</p>
-                          <p className="text-xs text-slate-400 mt-1">Click "+ New lease" to assign a tenant to a vacant unit.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    leasedUnits.map((unit) => (
-                      <tr key={unit.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">{unit.tenant_name}</td>
-                        <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.property_name} {unit.unit_number}</td>
-                        <td className="px-6 py-4 text-slate-900 font-medium whitespace-nowrap">₱{unit.monthly_rent.toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full text-[11px] border border-emerald-100">Active</span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-
-                </tbody>
-              </table>
+            <div>
+              <h4 className="font-bold text-amber-800">New Tenant Assignment Awaiting Approval</h4>
+              <p className="text-sm text-amber-700">Property Owners have submitted <strong>{pendingLeases.length}</strong> new tenant(s). Please review and approve them below.</p>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Right Panel (Zeroed Out) */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-6">
-            <h3 className="font-bold text-[#0a1e3f] text-lg mb-2">Screening pipeline</h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">Auto-accept when owner criteria are met - onboarding drops from days to minutes.</p>
-            
-            <div className="space-y-4 mb-6">
-              <div className="flex justify-between items-center text-sm"><span className="text-slate-600 font-medium">New inquiries</span><span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-0.5 rounded-full text-xs border border-slate-200">0</span></div>
-              <div className="flex justify-between items-center text-sm"><span className="text-slate-600 font-medium">ID / KYC verified</span><span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-0.5 rounded-full text-xs border border-slate-200">0</span></div>
-              <div className="flex justify-between items-center text-sm"><span className="text-slate-600 font-medium">Auto-approved</span><span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-0.5 rounded-full text-xs border border-slate-200">0</span></div>
-              <div className="flex justify-between items-center text-sm"><span className="text-slate-600 font-medium">e-Lease awaiting signature</span><span className="bg-slate-100 text-slate-500 font-bold px-2.5 py-0.5 rounded-full text-xs border border-slate-200">0</span></div>
-            </div>
-            
-            <div className="bg-emerald-50/50 p-4 rounded-xl text-[13px] text-slate-600 border border-emerald-100/50 leading-relaxed font-medium">
-              Conversion 0.0% · avg time to lease 0 days — tracked live from these events.
-            </div>
+      {/* Full Width Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <h3 className="font-bold text-[#0a1e3f] text-lg">
+              Lease Contracts
+            </h3>
+            {pendingLeases.length > 0 && (
+              <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-amber-200 shadow-sm animate-pulse">
+                {pendingLeases.length} Pending Approval
+              </span>
+            )}
           </div>
+          <button 
+            onClick={() => handleOpenApproveModal()}
+            disabled={pendingLeases.length === 0}
+            className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#359b46]/50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
+          >
+            Review Pending Leases
+          </button>
+        </div>
+        
+        <div className="overflow-x-auto min-h-[400px]">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white text-slate-500 text-[11px] uppercase font-bold border-b border-slate-100 tracking-wider">
+              <tr>
+                <th className="px-6 py-4 whitespace-nowrap">OWNER</th>
+                <th className="px-6 py-4 whitespace-nowrap">TENANT</th>
+                <th className="px-6 py-4 whitespace-nowrap">UNIT</th>
+                <th className="px-6 py-4 whitespace-nowrap">LEASE START</th>
+                <th className="px-6 py-4 whitespace-nowrap">LEASE ENDS</th>
+                <th className="px-6 py-4 whitespace-nowrap">STATUS</th>
+                <th className="px-6 py-4 whitespace-nowrap text-right">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400">Loading leases...</td></tr>
+              ) : leasesList.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-16 text-center text-slate-400 font-medium">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Users size={32} className="text-slate-300" />
+                      <p>No active or pending leases found.</p>
+                      <p className="text-xs text-slate-400 mt-1">When owners assign tenants, they will appear here for approval.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                leasesList.map((lease) => {
+                  const isActive = lease.status === 'Active';
+                  
+                  return (
+                    <tr key={lease.id} className={`transition-colors ${isActive ? 'hover:bg-slate-50/80' : 'bg-amber-50/30 hover:bg-amber-50/60'}`}>
+                      <td className="px-6 py-4 font-medium text-slate-600 whitespace-nowrap">
+                        {lease.units?.owner_name || '—'}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-900 whitespace-nowrap">
+                        {lease.tenant_name}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                        {lease.units?.property_name} {lease.units?.unit_number}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                        {formatDate(lease.start_date)}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                        {formatDate(lease.end_date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isActive ? (
+                          <span className="bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-full text-[11px] border border-emerald-100">
+                            Active
+                          </span>
+                        ) : (
+                          <span className="bg-amber-100 text-amber-700 font-bold px-2.5 py-1 rounded-full text-[11px] border border-amber-200">
+                            Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        {!isActive ? (
+                          <button 
+                            onClick={() => handleOpenApproveModal(lease.id)}
+                            className="bg-[#1d82f5] hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
+                          >
+                            Approve
+                          </button>
+                        ) : (
+                          <span className="flex items-center justify-end gap-1 text-emerald-600 text-xs font-bold">
+                            <CheckCircle size={14} /> Approved
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* NEW LEASE MODAL */}
+      {/* APPROVAL MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h2 className="text-xl font-bold text-[#0a1e3f]">Create New Lease</h2>
+              <h2 className="text-xl font-bold text-[#0a1e3f]">Approve Lease Request</h2>
               <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6">
-              <form onSubmit={handleNewLease} className="space-y-5">
+            <div className="p-6 overflow-y-auto max-h-[75vh]">
+              <form onSubmit={handleApproveSubmit} className="space-y-5">
                 {errorMsg && <div className="mb-5 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><MapPin size={16} className="text-[#359b46]" /> Select Vacant Unit</label>
-                  {vacantUnits.length === 0 ? (
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><MapPin size={16} className="text-[#359b46]" /> Pending Request</label>
+                  {pendingLeases.length === 0 ? (
                     <div className="p-3 text-sm text-amber-700 bg-amber-50 rounded-lg border border-amber-200">
-                      You do not have any vacant units available. Please add a new unit in the "Properties & Units" tab first.
+                      There are no pending lease requests to approve.
                     </div>
                   ) : (
                     <select
                       required
-                      value={selectedUnitId}
-                      onChange={(e) => setSelectedUnitId(e.target.value)}
+                      value={selectedLeaseId}
+                      onChange={(e) => handleLeaseSelectionChange(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm bg-white"
                       disabled={isSubmitting}
                     >
-                      {vacantUnits.map((unit) => (
-                        <option key={unit.id} value={unit.id}>
-                          {unit.property_name} {unit.unit_number} (Owner: {unit.owner_name || 'N/A'})
+                      {pendingLeases.map((lease) => (
+                        <option key={lease.id} value={lease.id}>
+                          {lease.units?.property_name} {lease.units?.unit_number} — Requested by {lease.units?.owner_name || 'Owner'}
                         </option>
                       ))}
                     </select>
@@ -244,32 +330,38 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Deivid Valderama"
                     value={tenantName}
                     onChange={(e) => setTenantName(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm"
-                    disabled={isSubmitting || vacantUnits.length === 0}
+                    disabled={isSubmitting || pendingLeases.length === 0}
                   />
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Banknote size={16} className="text-[#359b46]" /> Agreed Monthly Rent (₱)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="e.g. 25000"
-                    value={monthlyRent}
-                    onChange={(e) => setMonthlyRent(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm"
-                    disabled={isSubmitting || vacantUnits.length === 0}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CalendarDays size={16} className="text-[#359b46]" /> Start Date</label>
+                    <input 
+                      required type="date"
+                      value={startDate} onChange={e => setStartDate(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700" 
+                      disabled={isSubmitting || pendingLeases.length === 0}
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CalendarDays size={16} className="text-[#359b46]" /> End Date</label>
+                    <input 
+                      required type="date"
+                      value={endDate} onChange={e => setEndDate(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm text-slate-700" 
+                      disabled={isSubmitting || pendingLeases.length === 0}
+                    />
+                  </div>
                 </div>
 
                 <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100">
                   <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                  <button type="submit" disabled={isSubmitting || vacantUnits.length === 0} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg text-sm font-semibold">
-                    {isSubmitting ? "Saving..." : "Start Lease"}
+                  <button type="submit" disabled={isSubmitting || pendingLeases.length === 0} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg text-sm font-semibold">
+                    {isSubmitting ? "Processing..." : "Approve Lease"}
                   </button>
                 </div>
               </form>

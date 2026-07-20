@@ -25,7 +25,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [assignedTo, setAssignedTo] = useState("");
   const [priority, setPriority] = useState("Normal"); 
 
-  // ✨ Tinanggal na yung pulseNewBtn, focus na lang sa highlight ID ng Card
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -115,7 +114,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       }
       const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; 
 
-      // ✨ FIX: Pinapasa na natin ang nagawang Task ID para i-animate pagka-save!
       const { data: newTask, error } = await supabase.from('maintenance_tasks').insert([{ 
         admin_email: orgData.admin_email, title: title, location: location, description: finalDesc, status: 'pending', assigned_to: assignedTo, cost: 0, photo_url: photoUrlToSave, priority: priority 
       }]).select().single();
@@ -128,7 +126,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       setIsModalOpen(false);
       setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); 
 
-      // ✨ FIX: Scroll and Highlight the Newly Created Card
       if (newTask) {
         setTimeout(() => {
           const targetElement = document.getElementById(`maintenance-card-${newTask.id}`);
@@ -170,7 +167,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
 
-  // ✨ FIX: Tinanggal na ang "NEW" logic para sa button. Highlight ID na lang ang binabasa dito.
   useEffect(() => {
     if (highlightTicketId && !isLoadingTickets) {
       const actualId = highlightTicketId.split('_')[0];
@@ -305,6 +301,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Equipment Cost</span>
                   <span className="text-sm font-bold text-[#0a1e3f]">₱{(reviewTicket.cost || 0).toLocaleString()}</span>
                 </div>
+                {/* 🌟 STAFF REMARKS DISPLAY sa MODAL */}
+                {reviewTicket.remarks && (
+                  <div className="flex flex-col border-t border-slate-200 pt-2 mt-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Staff Remarks</span>
+                    <span className="text-sm font-medium text-slate-700 italic bg-white p-2.5 rounded-lg border border-slate-100">"{reviewTicket.remarks}"</span>
+                  </div>
+                )}
               </div>
               <div>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Proof of Resolution</span>
@@ -437,22 +440,45 @@ function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, showCos
     <div 
       id={id}
       onClick={onClick} 
-      className={`bg-white p-4 rounded-2xl shadow-sm border transition-all duration-500 flex flex-col ${
+      /* DITO ANG PAGBABAGO: Naka-lock na sa h-[260px] ang buong card */
+      className={`bg-white p-4 rounded-2xl shadow-sm border transition-all duration-500 flex flex-col h-[260px] ${
         isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
         : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
       } ${onClick ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''}`}
     >
-      <div className="flex justify-between items-start mb-1 gap-2">
+      <div className="flex justify-between items-start mb-1 gap-2 shrink-0">
         <h5 className="font-bold text-[#0a1e3f] text-sm line-clamp-2 leading-tight">{ticket.title}</h5>
         {ticket.priority === 'Urgent' && statusColor !== 'green' && (
           <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0 mt-0.5">🚨 URGENT</span>
         )}
       </div>
-      <div className="mb-2">
-        <span className="text-xs font-semibold text-[#359b46] truncate"><MapPin size={12} className="inline mr-1 -mt-0.5" />{ticket.location}</span>
+      
+      <div className="mb-2 shrink-0">
+        <span className="text-xs font-semibold text-[#359b46] truncate block"><MapPin size={12} className="inline mr-1 -mt-0.5" />{ticket.location}</span>
       </div>
-      <p className={`text-xs mb-3 flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-700' : 'text-slate-500'}`}>{ticket.description}</p>
-      <div className={`flex justify-between items-center mt-auto border-t pt-3 ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
+      
+      {/* Naka flex-1 at overflow-hidden para kung sumobra ang haba, hindi sisirain ang size ng card */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <p className={`text-xs mb-3 line-clamp-2 ${isHighlighted ? 'text-blue-700' : 'text-slate-500'}`}>{ticket.description}</p>
+        
+        {/* 🌟 ON HOLD REASON */}
+        {statusColor === 'purple' && ticket.on_hold_reason && (
+          <div className="px-3 py-2.5 bg-purple-50/70 rounded-xl border border-purple-100 text-[11px] text-purple-700 leading-snug">
+            <span className="font-extrabold text-purple-800 block mb-0.5 flex items-center gap-1.5"><AlertCircle size={12} /> Hold Reason:</span>
+            <span className="font-medium italic line-clamp-2">{ticket.on_hold_reason}</span>
+          </div>
+        )}
+
+        {/* 🌟 RESOLUTION REMARKS */}
+        {statusColor === 'green' && ticket.remarks && (
+          <div className="px-3 py-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100 text-[11px] text-emerald-700 leading-snug">
+            <span className="font-extrabold text-emerald-800 block mb-0.5 flex items-center gap-1.5"><CheckCircle2 size={12} /> Staff Remarks:</span>
+            <span className="font-medium italic line-clamp-2">{ticket.remarks}</span>
+          </div>
+        )}
+      </div>
+
+      <div className={`flex justify-between items-center mt-auto shrink-0 border-t pt-3 ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
         <div className="flex gap-2 items-center flex-wrap">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[statusColor]}`}>{statusLabel}</span>
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {assigneeName}</span>

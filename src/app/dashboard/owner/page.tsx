@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, MessageSquare
+  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, MessageSquare, FileCheck
 } from "lucide-react";
 import ConversationTab from "./conversation"; 
+import FinancialTab from "./financial"; 
+import LeaseTab from "./lease"; // ✨ IMPORTED NEW LEASE COMPONENT
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -569,8 +571,23 @@ export default function OwnerDashboard() {
             </button>
 
             <div className="mt-8 mb-4 pt-4 border-t border-white/5">
-              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance</h3>
+              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance & Documents</h3>
             </div>
+
+            <button 
+              onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} 
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'leases' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
+            >
+              <div className={`transition-transform duration-300 ${activeTab === 'leases' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                <FileCheck size={18} strokeWidth={activeTab === 'leases' ? 2.5 : 2} />
+              </div>
+              <span className="tracking-wide">Leases</span>
+              {activeTab === 'leases' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
+            </button>
 
             <button 
               onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} 
@@ -657,7 +674,7 @@ export default function OwnerDashboard() {
                   <p className="text-xs text-slate-500 mt-1 flex-1">Request Repair</p>
                 </button>
                 
-                <button className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
+                <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col items-center text-center p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all active:scale-[0.98] h-full">
                   <div className="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center mb-3 shrink-0"><Home size={20} className="md:text-[24px] text-[#359b46]" /></div>
                   <h3 className="font-bold text-sm text-slate-800 shrink-0">{isLoading ? "-" : unitsCount.toString()}</h3>
                   <div className="text-[10px] md:text-xs text-slate-500 w-full px-1 mt-1 leading-relaxed whitespace-normal break-words flex-1">
@@ -894,53 +911,17 @@ export default function OwnerDashboard() {
             </div>
           )}
 
-          {/* TAB 4: FINANCIALS */}
-          {activeTab === 'financials' && (
-            <div className="max-w-5xl mx-auto space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800">Financial Statements</h2>
-                <p className="text-slate-500 text-sm mt-1">Review your historical payouts and gross rents.</p>
-              </div>
+          {/* ✨ TAB 4: LEASES */}
+          {activeTab === 'leases' && (
+            <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto">
+              <LeaseTab userData={userData} units={myUnitsList} />
+            </div>
+          )}
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="font-bold text-[#0a1e3f] text-base">Your statements</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="text-slate-400 text-[10px] uppercase font-bold border-b border-slate-100 tracking-wider">
-                      <tr>
-                        <th className="px-6 py-3 whitespace-nowrap">PERIOD</th>
-                        <th className="px-6 py-3 whitespace-nowrap">GROSS RENT</th>
-                        <th className="px-6 py-3 whitespace-nowrap">NET PAYOUT</th>
-                        <th className="px-6 py-3 whitespace-nowrap">STATUS</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      {statements.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-slate-400 font-medium">
-                            No recent statements available yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        statements.map((stmt, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50 transition-colors cursor-pointer">
-                            <td className="px-6 py-4 font-medium">{stmt.period}</td>
-                            <td className="px-6 py-4">₱{stmt.gross.toLocaleString()}</td>
-                            <td className="px-6 py-4 font-bold text-[#0a1e3f]">₱{stmt.net.toLocaleString()}</td>
-                            <td className="px-6 py-4">
-                              <span className="bg-emerald-50 text-[#359b46] border border-emerald-100 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wide">
-                                {stmt.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {/* TAB 5: FINANCIALS */}
+          {activeTab === 'financials' && (
+            <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto">
+              <FinancialTab userData={userData} units={myUnitsList} />
             </div>
           )}
         </main>
@@ -949,34 +930,40 @@ export default function OwnerDashboard() {
       {/* ✨ UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         <div className="flex justify-around items-center px-1 py-1.5">
-          <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'home' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
             {activeTab === 'home' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
-            <Home size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'home' ? 'scale-110 -translate-y-0.5' : ''}`} />
-            <span className="text-[9px] font-bold mt-0.5 relative z-10">Home</span>
+            <Home size={20} className={`relative z-10 transition-transform duration-300 ${activeTab === 'home' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Home</span>
           </button>
           
-          <button onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => {setActiveTab('messages'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'messages' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
             {activeTab === 'messages' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
-            <MessageSquare size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110 -translate-y-0.5' : ''}`} />
-            <span className="text-[9px] font-bold mt-0.5 relative z-10">Messages</span>
+            <MessageSquare size={20} className={`relative z-10 transition-transform duration-300 ${activeTab === 'messages' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Messages</span>
           </button>
           
-          <button onClick={() => setActiveTab('repair')} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'repair' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => setActiveTab('repair')} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'repair' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
             {activeTab === 'repair' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
-            <Wrench size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'repair' ? 'scale-110 -translate-y-0.5' : ''}`} />
-            <span className="text-[9px] font-bold mt-0.5 relative z-10">Repairs</span>
+            <Wrench size={20} className={`relative z-10 transition-transform duration-300 ${activeTab === 'repair' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Repairs</span>
+          </button>
+
+          <button onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'leases' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+            {activeTab === 'leases' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
+            <FileCheck size={20} className={`relative z-10 transition-transform duration-300 ${activeTab === 'leases' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Leases</span>
           </button>
           
-          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'financials' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${activeTab === 'financials' ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
             {activeTab === 'financials' && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
-            <FileText size={22} className={`relative z-10 transition-transform duration-300 ${activeTab === 'financials' ? 'scale-110 -translate-y-0.5' : ''}`} />
-            <span className="text-[9px] font-bold mt-0.5 relative z-10">Financials</span>
+            <FileText size={20} className={`relative z-10 transition-transform duration-300 ${activeTab === 'financials' ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Finance</span>
           </button>
           
-          <button onClick={() => setIsWorkspaceModalOpen(true)} className={`relative flex flex-col items-center justify-center w-[20%] py-2 rounded-2xl transition-all duration-300 ${isWorkspaceModalOpen ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => setIsWorkspaceModalOpen(true)} className={`relative flex flex-col items-center justify-center w-[16%] py-2 rounded-2xl transition-all duration-300 ${isWorkspaceModalOpen ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
             {isWorkspaceModalOpen && <span className="absolute inset-0 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200" />}
-            <User size={22} className={`relative z-10 transition-transform duration-300 ${isWorkspaceModalOpen ? 'scale-110 -translate-y-0.5' : ''}`} />
-            <span className="text-[9px] font-bold mt-0.5 relative z-10">Account</span>
+            <User size={20} className={`relative z-10 transition-transform duration-300 ${isWorkspaceModalOpen ? 'scale-110 -translate-y-0.5' : ''}`} />
+            <span className="text-[9px] font-bold mt-0.5 relative z-10 hidden sm:block">Profile</span>
           </button>
         </div>
       </nav>

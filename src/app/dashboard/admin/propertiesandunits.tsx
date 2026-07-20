@@ -2,16 +2,69 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, ArrowUp, X, Building, MapPin, Tag, Banknote, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2 } from "lucide-react";
+import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2 } from "lucide-react";
+
+// ✨ Sub-component for handling the Clickable Owner Dropdown in the table
+const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  if (!ownerName || ownerName === '—') return <span>—</span>;
+
+  // Parse comma-separated names
+  const owners = ownerName.split(',').map(n => n.trim()).filter(Boolean);
+  const primaryDisplay = abbreviation || owners[0];
+  const hasMore = owners.length > 1;
+
+  // If there's only 1 owner and no abbreviation, just show plain text (no blue link).
+  if (!hasMore && !abbreviation) return <span className="font-medium text-slate-700">{primaryDisplay}</span>;
+
+  return (
+    <div className="relative" onMouseLeave={() => setIsOpen(false)}>
+      <button 
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
+        className="flex items-center gap-1.5 text-[#1d82f5] hover:text-blue-700 font-bold text-left transition-colors"
+      >
+        {/* Removed truncate and max-w classes so the primary name is always fully visible */}
+        <span className="inline-block">{primaryDisplay}</span>
+        {hasMore && (
+          <span className="bg-blue-50 text-[#1d82f5] text-[10px] font-extrabold px-1.5 py-0.5 rounded border border-blue-100">
+            +{owners.length - 1}
+          </span>
+        )}
+      </button>
+      
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-[60] animate-in fade-in zoom-in-95 duration-200 whitespace-normal">
+          <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">All Registered Owners</div>
+          <ul className="space-y-1.5">
+            {owners.map((o, i) => (
+              <li key={i} className="text-xs text-slate-700 font-semibold flex items-start gap-2 break-words">
+                <span className="text-slate-300 shrink-0">{i + 1}.</span> 
+                <span className="leading-relaxed break-words">{o}</span>
+              </li>
+            ))}
+          </ul>
+          {abbreviation && (
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Legal Name</span>
+              <span className="text-xs font-medium text-slate-600 leading-relaxed break-words block">{ownerName}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading }: any) {
   
   const [units, setUnits] = useState<any[]>([]);
   const [isLoadingUnits, setIsLoadingUnits] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal & Form States
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUnitId, setEditingUnitId] = useState<string | null>(null); // Tracks if we are editing
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
@@ -20,9 +73,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [unitNumber, setUnitNumber] = useState("");
   const [unitType, setUnitType] = useState("Studio");
   const [ownerName, setOwnerName] = useState("");
+  const [ownerAbbreviation, setOwnerAbbreviation] = useState("");
   const [tenantName, setTenantName] = useState("");
-  const [monthlyRent, setMonthlyRent] = useState("");
-  const [notForLease, setNotForLease] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [unitArea, setUnitArea] = useState("");
   const [turnoverDate, setTurnoverDate] = useState("");
@@ -83,9 +135,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setUnitNumber("");
     setUnitType("Studio");
     setOwnerName("");
+    setOwnerAbbreviation("");
     setTenantName("");
-    setMonthlyRent("");
-    setNotForLease(false);
     setBusinessName("");
     setUnitArea("");
     setTurnoverDate("");
@@ -107,13 +158,12 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setUnitType(unit.unit_type || "Studio");
     setUnitArea(unit.unit_area || "");
     setOwnerName(unit.owner_name === '—' ? "" : (unit.owner_name || ""));
+    setOwnerAbbreviation(unit.owner_abbreviation || "");
     setBusinessName(unit.business_name || "");
-    setTenantName(unit.tenant_name === '—' ? "" : (unit.tenant_name || ""));
-    setMonthlyRent(unit.monthly_rent ? String(unit.monthly_rent) : "");
+    setTenantName(unit.tenant_name === '—' || unit.tenant_name === 'Vacant' ? "" : (unit.tenant_name || ""));
     setTurnoverDate(unit.turnover_date || "");
     setAcceptanceDate(unit.acceptance_date || "");
     setRemarks(unit.remarks || "");
-    setNotForLease(unit.status === 'Occupied' && (!unit.tenant_name || unit.tenant_name === '—'));
     setIsModalOpen(true);
   };
 
@@ -129,24 +179,24 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       return;
     }
 
-    const isOccupied = tenantName.trim() !== "" || notForLease;
-    const rentValue = monthlyRent.trim() !== "" ? parseFloat(monthlyRent) : 0;
-
-    const payload = {
+    const payload: any = {
       admin_email: orgData.admin_email,
       property_name: propertyName, 
       unit_number: unitNumber, 
       unit_type: unitType, 
       owner_name: ownerName.trim() || '—',
-      tenant_name: notForLease ? '—' : (tenantName.trim() || '—'),
-      monthly_rent: rentValue,
-      status: isOccupied ? 'Occupied' : 'Vacant',
+      owner_abbreviation: ownerAbbreviation.trim() || null,
       business_name: businessName.trim() || null,
       unit_area: unitArea.trim(), 
       turnover_date: turnoverDate || null,
       acceptance_date: acceptanceDate || null,
       remarks: remarks.trim() || null
     };
+
+    if (!editingUnitId) {
+      payload.tenant_name = '—';
+      payload.status = 'Vacant';
+    }
 
     try {
       if (editingUnitId) {
@@ -172,17 +222,13 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
-  // Extracts local year, month, and day without creating a timezone shift.
   const parseDateSafe = (dateStr: string) => {
     if (!dateStr || dateStr.trim() === '') return null;
     const d = new Date(dateStr);
-    
     if (isNaN(d.getTime())) return null; 
-
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    
     return `${year}-${month}-${day}`; 
   };
 
@@ -229,9 +275,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             unit_type: row['TYPE'] || 'Studio',
             unit_area: row['AREA'] || null,
             owner_name: row['OWNER'] || '—',
+            owner_abbreviation: row['OWNER ABBREVIATION'] || null,
             business_name: row['BUSINESS NAME'] || null,
             tenant_name: tenant,
-            monthly_rent: parseFloat(row['MONTHLY RENT']) || 0,
             turnover_date: parseDateSafe(row['TURNOVER']),
             acceptance_date: parseDateSafe(row['ACCEPTANCE']),
             remarks: row['REMARKS'] || null,
@@ -287,6 +333,19 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
+  // Search Filtering Logic
+  const filteredUnits = units.filter(unit => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (unit.property_name && unit.property_name.toLowerCase().includes(searchLower)) ||
+      (unit.unit_number && String(unit.unit_number).toLowerCase().includes(searchLower)) ||
+      (unit.tenant_name && unit.tenant_name.toLowerCase().includes(searchLower)) ||
+      (unit.owner_name && unit.owner_name.toLowerCase().includes(searchLower)) ||
+      (unit.business_name && unit.business_name.toLowerCase().includes(searchLower)) ||
+      (unit.remarks && unit.remarks.toLowerCase().includes(searchLower))
+    );
+  });
+
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
   const maxUnits = Number(orgData?.units_count) || 0;
   const activeUnits = units.length;
@@ -302,7 +361,13 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input type="text" placeholder="Search tenants, units, SOA..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent bg-white shadow-sm" />
+            <input 
+              type="text" 
+              placeholder="Search tenants, units..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent bg-white shadow-sm" 
+            />
           </div>
           <div className="hidden sm:flex items-center gap-3">
             <span className="text-sm font-semibold text-[#359b46]">Admin</span>
@@ -342,7 +407,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           </div>
         </div>
 
-        {/* ✨ FIX: Independent Scroll Container for the Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
           <div className="overflow-auto max-h-[60vh] custom-scrollbar">
             <table className="w-full text-left text-sm relative">
@@ -352,10 +416,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   <th className="px-6 py-4 whitespace-nowrap bg-white">UNIT</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">TYPE</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">AREA</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">OWNER</th>
+                  <th className="px-6 py-4 whitespace-nowrap bg-white">OWNER(S)</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">BUSINESS NAME</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">TENANT</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">MONTHLY RENT</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">TURNOVER</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">ACCEPTANCE</th>
                   <th className="px-6 py-4 whitespace-nowrap bg-white">REMARKS</th>
@@ -365,27 +428,40 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {isLoadingUnits ? (
-                  <tr><td colSpan={13} className="px-6 py-8 text-center text-slate-400">Loading units...</td></tr>
+                  <tr><td colSpan={12} className="px-6 py-8 text-center text-slate-400">Loading units...</td></tr>
                 ) : units.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="px-6 py-16 text-center text-slate-400 font-medium">
+                    <td colSpan={12} className="px-6 py-16 text-center text-slate-400 font-medium">
                       <div className="flex flex-col items-center justify-center space-y-2">
                         <Building size={32} className="text-slate-300" />
                         <p>No units added yet.</p>
                       </div>
                     </td>
                   </tr>
+                ) : filteredUnits.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="px-6 py-16 text-center text-slate-400 font-medium">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <Search size={32} className="text-slate-300" />
+                        <p>No units match your search "{searchQuery}".</p>
+                      </div>
+                    </td>
+                  </tr>
                 ) : (
-                  units.map((unit) => (
+                  filteredUnits.map((unit) => (
                     <tr key={unit.id} className="hover:bg-slate-50/80 transition-colors group">
                       <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">{unit.property_name}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_number}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_type}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_area || '—'}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.owner_name || '—'}</td>
+                      
+                      {/* Interactive Owner Cell */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <OwnerCell ownerName={unit.owner_name} abbreviation={unit.owner_abbreviation} />
+                      </td>
+
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.business_name || '—'}</td>
                       <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{unit.tenant_name}</td>
-                      <td className="px-6 py-4 text-slate-900 font-medium whitespace-nowrap">₱{unit.monthly_rent.toLocaleString()}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.turnover_date)}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.acceptance_date)}</td>
                       <td className="px-6 py-4 text-slate-600 max-w-[150px] truncate" title={unit.remarks}>{unit.remarks || '—'}</td>
@@ -434,10 +510,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Unit</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Type</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Area</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Owner</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Owner(s)</th>
+                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Abbr.</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Business Name</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Tenant</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Rent</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Turnover</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Acceptance</th>
                     <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Remarks</th>
@@ -456,9 +532,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                         <td className="px-4 py-3 whitespace-nowrap">{row.unit_type}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.owner_name}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{row.tenant_name}</td>
-                        <td className="px-4 py-3 font-medium whitespace-nowrap">₱{row.monthly_rent}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.turnover_date)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.acceptance_date)}</td>
                         <td className="px-4 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
@@ -483,7 +559,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 )}
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                 <button 
                   onClick={confirmCsvImport} 
                   disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
@@ -509,7 +585,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             </div>
             
             <div className="overflow-y-auto p-6 custom-scrollbar">
-              <form onSubmit={handleSaveUnit} className="space-y-5">
+              <form onSubmit={handleSaveUnit} className="space-y-6">
                 {errorMsg && <div className="mb-5 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
 
                 {/* Property Name */}
@@ -544,54 +620,48 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 {/* Ownership Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><User size={16} className="text-[#359b46]" /> Owner Name</label>
-                    <input type="text" placeholder="e.g. Juan Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                      <User size={16} className="text-[#359b46]" /> Owner Name(s)
+                    </label>
+                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <p className="text-[10px] text-slate-400 mt-1">Separate multiple names with a comma.</p>
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Briefcase size={16} className="text-slate-400" /> Business Name (Optional)</label>
-                    <input type="text" placeholder="e.g. Reyes Holdings Inc." value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                      <Briefcase size={16} className="text-slate-400" /> Owner Abbreviation (Optional)
+                    </label>
+                    <input type="text" placeholder="e.g. CTMRISP" value={ownerAbbreviation} onChange={(e) => setOwnerAbbreviation(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
                   </div>
                 </div>
 
-                {/* Tenant & Rent Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Users size={16} className="text-slate-400" /> Tenant Name (Optional)</label>
+                {/* Business Name */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                    <Building size={16} className="text-[#359b46]" /> Business Name (Optional)
+                  </label>
+                  <input type="text" placeholder="e.g. Acme Corp" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                </div>
+
+                {/* Tenant Row (Read Only) - ONLY SHOWS ON EDIT */}
+                {editingUnitId && (
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                      <Users size={16} className="text-[#1d82f5]" /> Tenant Name
+                    </label>
                     <input 
                       type="text" 
-                      placeholder="Leave blank if vacant" 
-                      value={tenantName} 
-                      onChange={(e) => setTenantName(e.target.value)} 
-                      disabled={isSubmitting || notForLease} 
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all disabled:bg-slate-100 disabled:text-slate-400" 
+                      value={tenantName || "Vacant"} 
+                      disabled 
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white/50 text-sm font-semibold text-slate-600 cursor-not-allowed" 
                     />
+                    <p className="text-[10px] text-slate-500 font-medium mt-1.5 ml-1">
+                      * Tenants are managed automatically through the <strong>Leases</strong> tab.
+                    </p>
                   </div>
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Banknote size={16} className="text-slate-400" /> Monthly Rent (Optional)</label>
-                    <input type="number" min="0" placeholder="e.g. 25000 (if leased)" value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
-                  </div>
-                </div>
-
-                {/* Checkbox for Not For Lease */}
-                <div className="flex items-center gap-2 px-1">
-                  <input 
-                    type="checkbox" 
-                    id="notForLease" 
-                    checked={notForLease} 
-                    onChange={(e) => {
-                      setNotForLease(e.target.checked);
-                      if (e.target.checked) setTenantName("");
-                    }}
-                    disabled={isSubmitting}
-                    className="w-4 h-4 text-[#359b46] rounded border-slate-300 focus:ring-[#359b46] cursor-pointer"
-                  />
-                  <label htmlFor="notForLease" className="text-sm font-medium text-slate-600 cursor-pointer">
-                    Owner occupying / Not for lease (Sets status to Occupied)
-                  </label>
-                </div>
+                )}
 
                 {/* Dates Row */}
-                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CalendarDays size={16} className="text-slate-400" /> Turnover Date (Optional)</label>
                     <input type="date" value={turnoverDate} onChange={(e) => setTurnoverDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all text-slate-700" disabled={isSubmitting} />

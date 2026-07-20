@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -13,7 +13,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   
-  // Global Computation Settings (Added parking)
+  // Global Computation Settings
   const [globalComp, setGlobalComp] = useState({
     duesRate: 0,
     water: 0,
@@ -104,11 +104,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       
       const statuses: Record<string, string> = {};
       sortedData.forEach((u) => {
-        if (u.status === 'Vacant') {
-          statuses[u.id] = 'N/A';
-        } else {
-          statuses[u.id] = u.payment_status || 'Pending';
-        }
+        statuses[u.id] = u.payment_status || 'Pending';
       });
       setLocalStatuses(statuses);
     }
@@ -122,15 +118,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
   const currentStatus = selectedUnit ? localStatuses[selectedUnit.id] : '';
   const isVacant = selectedUnit?.status === 'Vacant';
-  const rent = selectedUnit?.monthly_rent || 0;
   const unitArea = getUnitAreaValue(selectedUnit?.unit_area);
   
-  // Live Computations using the GLOBAL settings
+  // Live Computations using the GLOBAL settings - RENT IS REMOVED
   const dues = globalComp.duesRate * unitArea;
   const water = globalComp.water;
   const electricity = globalComp.electricity;
   const parking = globalComp.parking;
-  const baseTotal = isVacant ? 0 : (rent + dues + water + electricity + parking);
+  
+  // If vacant, the owner is still billed for dues and parking. Utilities are assumed zeroed out.
+  const baseTotal = isVacant ? (dues + parking) : (dues + water + electricity + parking);
 
   let lateFee = 0;
   if (currentStatus === 'Overdue') {
@@ -170,7 +167,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     };
 
     try {
-      // 1. Added .select() to force Supabase to return the row if successful
       const { data, error } = await supabase
         .from('organizations')
         .update(payload)
@@ -179,7 +175,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       if (error) throw error;
 
-      // 2. Catch the silent failure caused by RLS
       if (!data || data.length === 0) {
         throw new Error("Update blocked by RLS. Your current user does not have permission to update this organization.");
       }
@@ -202,34 +197,83 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
+  // Generates 12 months for the current year
   const generateLedgerMonths = () => {
     const months = [];
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1); 
+    const currentYear = new Date().getFullYear();
+    const currentMonthIndex = new Date().getMonth(); // 0 (Jan) to 11 (Dec)
     
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(currentYear, i, 1);
       const monthName = date.toLocaleString('default', { month: 'long' });
-      const year = date.getFullYear();
       
       let stat = "Upcoming";
-      if (isVacant) stat = "N/A";
-      else if (i === 0) stat = "Paid"; 
-      else if (i === 1) stat = currentStatus; 
+      if (i < currentMonthIndex) {
+        stat = "Paid"; // Past months assumed settled
+      } else if (i === currentMonthIndex) {
+        stat = currentStatus; // Current month uses live DB status
+      }
       
-      const dueDate = `${monthName} ${globalComp.collectionDay}, ${year}`;
+      const dueDate = `${monthName} ${globalComp.collectionDay}, ${currentYear}`;
       
       months.push({
         monthName: monthName,
-        year: year,
+        year: currentYear,
         dueDate: dueDate,
-        status: stat
+        status: stat,
+        isCurrentMonth: i === currentMonthIndex
       });
-      date.setMonth(date.getMonth() + 1);
     }
     return months;
   };
 
   const ledgerData = generateLedgerMonths();
+
+  // Export to CSV Function
+  const handleExportCSV = () => {
+    if (!selectedUnit || ledgerData.length === 0) return;
+
+    // Build the CSV headers
+    const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
+    
+    // Build the CSV rows
+    const rows = ledgerData.map(row => {
+      const isOverdue = row.status === 'Overdue';
+      
+      const rowDues = dues > 0 ? dues : 0;
+      const rowParking = parking > 0 ? parking : 0;
+      const rowUtils = (!isVacant && (water + electricity) > 0) ? (water + electricity) : 0;
+      const rowPenalty = isOverdue ? lateFee : 0;
+      const rowTotal = isOverdue ? totalDue : baseTotal;
+
+      // Wrap string fields in quotes just in case, but keep numbers raw for better Excel parsing
+      return [
+        `"${row.monthName} ${row.year}"`,
+        `"${row.dueDate}"`,
+        rowDues,
+        rowParking,
+        rowUtils,
+        rowPenalty,
+        `"${row.status}"`,
+        rowTotal
+      ].join(",");
+    });
+
+    // Combine headers and rows
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    
+    // Create Blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const currentYear = new Date().getFullYear();
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${selectedUnit.property_name.replace(/\s+/g, '_')}_Unit_${selectedUnit.unit_number}_Ledger_${currentYear}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleSimulatePayment = () => {
     setIsSimulating(true);
@@ -289,8 +333,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                   </h3>
                   <p className="text-slate-500 text-sm mt-1">
+                    Owner: <span className="font-bold text-slate-700">{selectedUnit?.owner_name || '—'}</span> {' | '} 
                     Tenant: <span className={`font-bold ${isVacant ? 'text-slate-400' : 'text-slate-700'}`}>
-                      {isVacant ? 'Vacant' : selectedUnit?.tenant_name}
+                      {isVacant ? 'Vacant' : selectedUnit?.tenant_name || '—'}
                     </span>
                   </p>
                 </div>
@@ -299,12 +344,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   {currentStatus === 'Pending' && <span className="bg-amber-50 text-amber-700 font-bold px-3 py-1.5 rounded-full text-xs border border-amber-100">Pending</span>}
                   {currentStatus === 'Sent' && <span className="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-full text-xs border border-blue-100">Sent</span>}
                   {currentStatus === 'Paid' && <span className="bg-emerald-50 text-emerald-700 font-bold px-3 py-1.5 rounded-full text-xs border border-emerald-100">Settled</span>}
-                  {currentStatus === 'N/A' && <span className="bg-slate-100 text-slate-500 font-bold px-3 py-1.5 rounded-full text-xs border border-slate-200">Not Applicable</span>}
                 </div>
               </div>
 
               <div className="space-y-4 mb-8">
-                <div className="flex justify-between pb-4 border-b border-dashed border-slate-200"><span className="text-slate-600">Monthly rent</span><span className="font-bold text-[#0a1e3f]">₱{rent.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                 <div className="flex justify-between pb-4 border-b border-dashed border-slate-200">
                   <span className="text-slate-600">Association dues <span className="text-xs text-slate-400 ml-1">({unitArea} sqm)</span></span>
                   <span className="font-bold text-[#0a1e3f]">{dues > 0 ? `₱${dues.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
@@ -314,12 +357,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <span className="font-bold text-[#0a1e3f]">{parking > 0 ? `₱${parking.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
                 </div>
                 <div className="flex justify-between pb-4 border-b border-dashed border-slate-200">
-                  <span className="text-slate-600">Water</span>
-                  <span className="font-bold text-[#0a1e3f]">{water > 0 ? `₱${water.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
+                  <span className="text-slate-600">Water {isVacant && <span className="text-xs text-slate-400 ml-1">(Vacant)</span>}</span>
+                  <span className="font-bold text-[#0a1e3f]">{!isVacant && water > 0 ? `₱${water.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
                 </div>
                 <div className="flex justify-between pb-4 border-b border-dashed border-slate-200">
-                  <span className="text-slate-600">Electricity (sub-meter)</span>
-                  <span className="font-bold text-[#0a1e3f]">{electricity > 0 ? `₱${electricity.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
+                  <span className="text-slate-600">Electricity (sub-meter) {isVacant && <span className="text-xs text-slate-400 ml-1">(Vacant)</span>}</span>
+                  <span className="font-bold text-[#0a1e3f]">{!isVacant && electricity > 0 ? `₱${electricity.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</span>
                 </div>
                 {lateFee > 0 && (
                   <div className="flex justify-between pb-4 border-b border-slate-200">
@@ -330,14 +373,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               </div>
               
               <div className="flex justify-between items-center mb-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <span className="font-extrabold text-[#0a1e3f] text-lg">Total due</span>
+                <span className="font-extrabold text-[#0a1e3f] text-lg">Total due {isVacant && <span className="text-sm font-medium text-slate-500 ml-2">(Billed to Owner)</span>}</span>
                 <span className="font-black text-[#359b46] text-2xl">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
               </div>
               
               <div className="flex flex-wrap gap-3 mb-8">
                 <button 
                   onClick={() => setIsPaymentModalOpen(true)}
-                  disabled={currentStatus === 'Paid' || isVacant}
+                  disabled={currentStatus === 'Paid'}
                   className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#86c48f] text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors"
                 >
                   {currentStatus === 'Paid' ? 'Payment Settled' : 'Collect via GCash / QR Ph'}
@@ -350,7 +393,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <Calculator size={16} /> Computation
                 </button>
                 
-                {currentStatus !== 'Paid' && !isVacant && (
+                {currentStatus !== 'Paid' && (
                   <button 
                     onClick={handleMarkAsPaid}
                     disabled={isMarkingPaid}
@@ -360,30 +403,35 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </button>
                 )}
 
-                {!isVacant && (
-                  <button className="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">
-                    Send reminder
-                  </button>
-                )}
+                <button className="bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                  Send reminder
+                </button>
               </div>
 
               <div className="mt-8 border-t border-slate-100 pt-8">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                   <div className="flex items-center gap-2">
                     <CalendarClock className="text-[#359b46]" size={18} />
-                    <h4 className="font-bold text-[#0a1e3f] text-sm">Billing Ledger & Projection</h4>
+                    <h4 className="font-bold text-[#0a1e3f] text-sm">Billing Ledger & Projection ({new Date().getFullYear()})</h4>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    Due: Day {globalComp.collectionDay} | Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                  <div className="flex items-center gap-4">
+                    <div className="text-xs text-slate-500 hidden sm:block">
+                      Due: Day {globalComp.collectionDay} | Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                    </div>
+                    <button 
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-1.5 text-[13px] font-bold text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-100 shadow-sm"
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
                   </div>
                 </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg max-h-[400px] custom-scrollbar relative">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
                       <tr>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">PERIOD</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">DUE DATE</th>
-                        <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">BASE RENT</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">DUES</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">PARKING</th>
                         <th className="px-4 py-3 whitespace-nowrap border-r border-slate-200">UTILITIES</th>
@@ -398,21 +446,20 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       {ledgerData.map((row, idx) => {
                         const isPaid = row.status === 'Paid';
                         const isOverdue = row.status === 'Overdue';
-                        const activeRow = idx === 1 && !isVacant; 
+                        const activeRow = row.isCurrentMonth;
                         
                         return (
-                          <tr key={idx} className={activeRow ? "bg-blue-50/30" : "hover:bg-slate-50"}>
+                          <tr key={idx} className={activeRow ? "bg-blue-50/40" : "hover:bg-slate-50"}>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200 font-bold text-slate-800 uppercase text-[10px]">
                               {row.monthName} {row.year} {activeRow && <span className="text-[#359b46] ml-1">*</span>}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200 text-slate-500">{row.dueDate}</td>
-                            <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">₱{rent.toLocaleString()}</td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{dues > 0 ? `₱${dues.toLocaleString()}` : "—"}</td>
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{parking > 0 ? `₱${parking.toLocaleString()}` : "—"}</td>
-                            <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "—"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">{(!isVacant && (water + electricity) > 0) ? `₱${(water + electricity).toLocaleString()}` : "—"}</td>
                             
-                            <td className={`px-4 py-3 whitespace-nowrap border-r border-slate-200 ${isOverdue && !isVacant ? 'text-red-600 font-bold bg-red-50' : ''}`}>
-                              {isOverdue && !isVacant && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "—"}
+                            <td className={`px-4 py-3 whitespace-nowrap border-r border-slate-200 ${isOverdue ? 'text-red-600 font-bold bg-red-50' : ''}`}>
+                              {isOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "—"}
                             </td>
                             
                             <td className="px-4 py-3 whitespace-nowrap border-r border-slate-200">
@@ -421,10 +468,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {row.status === 'Pending' && <span className="text-amber-600 font-bold">Pending</span>}
                               {row.status === 'Sent' && <span className="text-blue-600 font-bold">Sent</span>}
                               {row.status === 'Upcoming' && <span className="text-slate-400">Upcoming</span>}
-                              {row.status === 'N/A' && <span className="text-slate-300">—</span>}
                             </td>
 
-                            <td className={`px-4 py-3 text-right whitespace-nowrap font-bold ${isPaid && !isVacant ? 'bg-[#22c55e] text-white' : 'text-[#0a1e3f]'}`}>
+                            <td className={`px-4 py-3 text-right whitespace-nowrap font-bold ${isPaid ? 'bg-[#22c55e] text-white' : 'text-[#0a1e3f]'}`}>
                               ₱{(isOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
                             </td>
                           </tr>
@@ -443,7 +489,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="overflow-y-auto custom-scrollbar flex-1 -mr-2 pr-2">
                 <table className="w-full text-left text-sm">
                   <thead className="text-slate-400 text-[10px] uppercase tracking-wider font-bold sticky top-0 bg-white border-b border-slate-100 z-10">
-                    <tr><th className="pb-2">UNIT</th><th className="pb-2 text-right">STATUS</th></tr>
+                    <tr><th className="pb-2">UNIT DETAILS</th><th className="pb-2 text-right">STATUS</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {allUnits.map((unit) => {
@@ -459,8 +505,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         >
                           <td className={`py-3 ${isSelected ? 'font-bold text-[#359b46]' : 'font-medium text-slate-700'} rounded-l-lg pl-2`}>
                             {unit.property_name} {unit.unit_number}
-                            <div className="text-[10px] text-slate-400 font-normal truncate max-w-[150px]">
-                              {!isRowVacant && unit.tenant_name && unit.tenant_name !== '—' ? unit.tenant_name : 'Vacant'}
+                            <div className="text-[10px] text-slate-500 font-normal truncate max-w-[200px] mt-0.5">
+                              Owner: {unit.owner_name || '—'} | Tenant: {!isRowVacant && unit.tenant_name && unit.tenant_name !== '—' ? unit.tenant_name : 'Vacant'}
                             </div>
                           </td>
                           <td className="py-3 text-right pr-2 rounded-r-lg">
@@ -468,7 +514,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                             {status === 'Overdue' && <span className="text-red-600 font-bold text-[11px]">Overdue</span>}
                             {status === 'Pending' && <span className="text-amber-600 font-bold text-[11px]">Pending</span>}
                             {status === 'Sent' && <span className="text-blue-600 font-bold text-[11px]">Sent</span>}
-                            {status === 'N/A' && <span className="text-slate-400 font-medium text-[11px]">Vacant</span>}
                           </td>
                         </tr>
                       )
@@ -575,7 +620,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all" onClick={(e) => e.stopPropagation()}>
             <div className="p-6 pb-2 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-[#0a1e3f]">Pay rent</h2>
+              <h2 className="text-2xl font-bold text-[#0a1e3f]">Pay dues</h2>
               <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSimulating}>
                 <X size={20} />
               </button>

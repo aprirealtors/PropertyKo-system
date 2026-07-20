@@ -28,7 +28,6 @@ export default function UsersTab({ orgData }: any) {
     if (orgData?.admin_email) {
       loadData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgData]);
 
   // Refetch units when the role tab switches
@@ -36,8 +35,7 @@ export default function UsersTab({ orgData }: any) {
     if (usersList && usersList.length > 0) {
       fetchUnits(usersList, role);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]); // Strictly keeping size to 1 to prevent array size errors
+  }, [role, usersList]); 
 
   const loadData = async () => {
     setIsLoading(true);
@@ -57,17 +55,24 @@ export default function UsersTab({ orgData }: any) {
       console.error("Error fetching users:", usersError);
     } else {
       setUsersList(usersData || []);
-      fetchUnits(usersData || [], role);
     }
   };
 
   const fetchUnits = async (currentUsers: any[], targetRole: string) => {
-    const { data: unitsData, error: unitsError } = await supabase
+    // 1. Fetch units
+    const { data: unitsData } = await supabase
       .from('units')
       .select('*')
       .eq('admin_email', orgData.admin_email); 
 
-    if (!unitsError && unitsData) {
+    // 2. Fetch active leases
+    const { data: activeLeases } = await supabase
+      .from('leases')
+      .select('unit_id')
+      .eq('admin_email', orgData.admin_email)
+      .eq('status', 'Active');
+
+    if (unitsData) {
       const assignedUnitStrings = new Set<string>();
       
       currentUsers.forEach(user => {
@@ -77,26 +82,26 @@ export default function UsersTab({ orgData }: any) {
         }
       });
 
+      // Quick lookup for active leases
+      const activeLeasedUnitIds = new Set((activeLeases || []).map(l => l.unit_id));
+
       const filteredUnits = unitsData.filter(unit => {
         const unitString = `${unit.property_name} - ${unit.unit_number}`;
         const isNotAssignedToSameRole = !assignedUnitStrings.has(unitString);
         
-        // STRICT CHECK: Filter out empty strings, dashes, N/A, etc.
         const hasValidName = (nameValue: any) => {
           if (!nameValue) return false;
           const str = String(nameValue).trim().toLowerCase();
-          return str !== '' && 
-                 str !== 'n/a' && 
-                 str !== 'none' && 
-                 str !== '-' && 
-                 str !== '—' && 
-                 str !== 'null';
+          return str !== '' && str !== 'n/a' && str !== 'none' && str !== '-' && str !== '—' && str !== 'null';
         };
 
         let isValidOccupant = false;
+        
         if (targetRole === 'Tenant') {
-          isValidOccupant = hasValidName(unit.tenant_name);
+          // A tenant can only be invited if they have a valid name AND an active lease exists
+          isValidOccupant = hasValidName(unit.tenant_name) && activeLeasedUnitIds.has(unit.id);
         } else {
+          // Owner check remains standard
           isValidOccupant = hasValidName(unit.owner_name);
         }
 
@@ -157,6 +162,7 @@ export default function UsersTab({ orgData }: any) {
     }
 
     try {
+      // Create user auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -175,6 +181,7 @@ export default function UsersTab({ orgData }: any) {
 
       const finalAccessLevel = selectedUnits.join(", ");
 
+      // Insert into team_members table
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -189,6 +196,24 @@ export default function UsersTab({ orgData }: any) {
         ]);
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+
+      // If Tenant, link their newly created email back to the leases table
+      if (role === 'Tenant') {
+        const { data: tenantLeases } = await supabase
+          .from('leases')
+          .select('id')
+          .ilike('tenant_name', name.trim())
+          .eq('admin_email', orgData.admin_email)
+          .eq('status', 'Active');
+          
+        if (tenantLeases && tenantLeases.length > 0) {
+          const leaseIds = tenantLeases.map(l => l.id);
+          await supabase
+            .from('leases')
+            .update({ tenant_email: email.trim() })
+            .in('id', leaseIds);
+        }
+      }
 
       await fetchUsers(); 
       setIsModalOpen(false);
@@ -336,13 +361,15 @@ export default function UsersTab({ orgData }: any) {
                 <div>
                   <div className="flex justify-between items-end mb-1.5">
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                      <Home size={16} className="text-[#359b46]" /> Select Unit to Auto-Fill
+                      <Home size={16} className="text-[#359b46]" /> Select Unit
                     </label>
                   </div>
                   
                   <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
                     {availableUnits.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">No available units with assigned {role.toLowerCase()}s found.</p>
+                      <p className="text-xs text-slate-400 text-center py-4">
+                        {role === 'Tenant' ? "No units with active leases found. You must declare a lease before creating a tenant account." : "No available units with assigned owners found."}
+                      </p>
                     ) : (
                       availableUnits.map(unit => {
                         const unitString = `${unit.property_name} - ${unit.unit_number}`;

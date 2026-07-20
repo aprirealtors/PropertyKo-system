@@ -54,7 +54,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
       const { data: membersData } = await supabase.from('team_members').select('name, email').eq('admin_email', orgData.admin_email);
       if (membersData) setTeamMembers(membersData);
 
-      const { data: tasksData } = await supabase.from('maintenance_tasks').select('id, title, location, status, assigned_to, cost, resolution_photo_url, description, priority').eq('admin_email', orgData.admin_email);
+      const { data: tasksData } = await supabase.from('maintenance_tasks').select('id, title, location, status, assigned_to, cost, resolution_photo_url, description, priority, on_hold_reason, remarks').eq('admin_email', orgData.admin_email);
       if (tasksData) setLiveTasks(tasksData);
 
       const { data: ticketsData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).order('created_at', { ascending: false });
@@ -141,14 +141,15 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Assigned Tickets</h2>
-          <p className="text-slate-500 text-sm mt-1">View and monitor maintenance requests</p>
+      {/* Header Section - Responsive Optimized */}
+      <div className="mb-3 flex items-center justify-between gap-4 border-b border-slate-100/80 pb-5 sm:pb-0 sm:border-none">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight truncate">Assigned Tickets</h2>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate">View and monitor maintenance requests</p>
         </div>
-        <div className="bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
-          <span className="text-sm font-bold text-slate-700">Total Open: </span>
-          <span className="text-sm font-extrabold text-[#359b46]">{openInProgressTasks.length}</span>
+        <div className="bg-white border border-slate-200/80 px-3 sm:px-4 py-2 rounded-xl shadow-sm shrink-0 flex items-center gap-1.5 sm:gap-2">
+          <span className="text-xs sm:text-sm font-bold text-slate-600 uppercase tracking-wider sm:normal-case sm:text-slate-700">Total Open</span>
+          <span className="text-xs sm:text-sm font-black bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg">{openInProgressTasks.length}</span>
         </div>
       </div>
 
@@ -162,7 +163,8 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Column 1 */}
+          
+          {/* Column 1: Open & In Progress */}
           <div>
             <h4 className="font-bold text-slate-700 text-sm mb-4">Open & In Progress <span className="ml-2 bg-blue-100 text-[#1d82f5] px-2 rounded-full text-xs font-bold">{openInProgressTasks.length}</span></h4>
             <div className="space-y-4">
@@ -173,20 +175,24 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                     <div 
                       key={t.id} id={`ticket-${t.id}`}
                       onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer active:scale-[0.98] duration-500 ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200 hover:border-[#359b46]'}`}
+                      // ✨ FIXED SIZE: Locked exactly at h-[340px] for unified layout grid
+                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer active:scale-[0.98] duration-500 h-[340px] ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200 hover:border-[#359b46]'}`}
                     >
                       {t.photo_url ? (
-                        <div className="relative w-full h-32 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" /></div>
+                        <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" /></div>
                       ) : (
-                        <div className="relative w-full h-16 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
+                        <div className="relative w-full h-16 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
                       )}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 gap-2">
-                          <h3 className="font-bold text-[#0a1e3f] text-sm leading-tight">{t.title}</h3>
+                      <div className="p-4 flex-1 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
+                          <h3 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
                           <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${t.color}`}>{t.label}</span>
                         </div>
-                        <p className={`text-xs mb-3 flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
+                        {/* ✨ MICRO SCROLLBAR: Prevents breaking card height while retaining full content */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2">
+                          <p className={`text-xs ${isHighlighted ? 'text-blue-600' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
+                        </div>
+                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 shrink-0 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5 text-slate-500"><MapPin size={12} className="text-slate-400" /> <span className="truncate max-w-[120px]">{t.location}</span></div>
                             {t.priority === 'Urgent' && <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide bg-red-100 text-red-700 border border-red-200 animate-pulse">🚨 URGENT</span>}
@@ -210,24 +216,36 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
               {onHoldTasks.length === 0 ? <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No tasks on hold</div> : (
                 onHoldTasks.map(t => {
                   const isHighlighted = activeHighlightId === String(t.id);
+                  const holdReason = t.liveMatch?.on_hold_reason || t.on_hold_reason;
+                  
                   return (
                     <div 
                       key={t.id} id={`ticket-${t.id}`} 
                       onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer opacity-90 hover:opacity-100 duration-500 ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200'}`}
+                      // ✨ FIXED SIZE: Locked exactly at h-[340px]
+                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer opacity-90 hover:opacity-100 duration-500 h-[340px] ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' : t.priority === 'Urgent' ? 'bg-white border-red-300 shadow-red-500/10' : 'bg-white border-slate-200'}`}
                     >
                       {t.photo_url ? (
-                        <div className="relative w-full h-32 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" /></div>
+                        <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100"><img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" /></div>
                       ) : (
-                        <div className="relative w-full h-16 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
+                        <div className="relative w-full h-16 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span></div>
                       )}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 gap-2">
-                          <h3 className="font-bold text-[#0a1e3f] text-sm leading-tight">{t.title}</h3>
+                      <div className="p-4 flex-1 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
+                          <h3 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
                           <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${t.color}`}>{t.label}</span>
                         </div>
-                        <p className={`text-xs mb-3 flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
+                        {/* ✨ MICRO SCROLLBAR: Accommodates both dynamic long descriptions and dynamic reasons */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 space-y-2">
+                          <p className={`text-xs ${isHighlighted ? 'text-blue-600' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
+                          {holdReason && (
+                            <div className="px-3 py-2 bg-purple-50/70 rounded-xl border border-purple-100 text-[11px] text-purple-700 leading-snug">
+                              <span className="font-extrabold text-purple-800 block mb-0.5 flex items-center gap-1.5"><AlertCircle size={12} /> Hold Reason:</span>
+                              <span className="font-medium italic">{holdReason}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 shrink-0 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5 text-slate-500"><MapPin size={12} className="text-slate-400" /> <span className="truncate max-w-[120px]">{t.location}</span></div>
                             {t.priority === 'Urgent' && <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide bg-red-100 text-red-700 border border-red-200 animate-pulse">🚨 URGENT</span>}
@@ -251,29 +269,41 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
               {resolvedTasks.length === 0 ? <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-slate-50/50">No resolved tasks</div> : (
                 resolvedTasks.map(t => {
                   const isHighlighted = activeHighlightId === String(t.id);
+                  const staffRemarks = t.liveMatch?.remarks || t.remarks;
+
                   return (
                     <div 
                       key={t.id} id={`ticket-${t.id}`} 
                       onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer duration-500 ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' : 'bg-emerald-50 border-emerald-100'}`}
+                      // ✨ FIXED SIZE: Locked exactly at h-[340px]
+                      className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer duration-500 h-[340px] ${isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' : 'bg-emerald-50 border-emerald-100'}`}
                     >
                       {(t.liveMatch?.resolution_photo_url || t.photo_url) ? (
-                        <div className={`relative w-full h-32 border-b ${isHighlighted ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
+                        <div className={`relative w-full h-32 shrink-0 border-b ${isHighlighted ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
                           <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover" />
                         </div>
                       ) : (
-                        <div className={`relative w-full h-16 border-b flex items-center justify-center ${isHighlighted ? 'bg-blue-100 border-blue-200 text-blue-300' : 'bg-emerald-100/30 border-emerald-100 text-emerald-300'}`}><span className="text-xs font-bold uppercase tracking-wider">No Photo</span></div>
+                        <div className={`relative w-full h-16 shrink-0 border-b flex items-center justify-center ${isHighlighted ? 'bg-blue-100 border-blue-200 text-blue-300' : 'bg-emerald-100/30 border-emerald-100 text-emerald-300'}`}><span className="text-xs font-bold uppercase tracking-wider">No Photo</span></div>
                       )}
-                      <div className="p-4 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-2 gap-2">
+                      <div className="p-4 flex-1 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
                           <div className="flex items-start gap-2">
                             <CheckCircle2 size={16} className={`${isHighlighted ? 'text-blue-500' : 'text-[#359b46]'} shrink-0 mt-0.5`} />
                             <h3 className="font-bold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
                           </div>
                           <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${t.color}`}>{t.label}</span>
                         </div>
-                        <p className={`text-xs mb-3 flex-1 line-clamp-2 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-emerald-200/50'}`}>
+                        {/* ✨ MICRO SCROLLBAR: Accommodates text content and logs beautifully */}
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 space-y-2">
+                          <p className={`text-xs ${isHighlighted ? 'text-blue-600' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
+                          {staffRemarks && (
+                            <div className="px-3 py-2 bg-emerald-50/70 rounded-xl border border-emerald-100 text-[11px] text-emerald-700 leading-snug">
+                              <span className="font-extrabold text-emerald-800 block mb-0.5 flex items-center gap-1.5"><CheckCircle2 size={12} /> Remarks:</span>
+                              <span className="font-medium italic">{staffRemarks}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`flex flex-col gap-1.5 mt-auto pt-3 shrink-0 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-emerald-200/50'}`}>
                           <div className="flex items-center gap-1.5 text-slate-500"><MapPin size={12} className="text-slate-400" /> <span className="truncate">{t.location}</span></div>
                           <div className="flex justify-between items-center mt-1">
                             <span className={`font-medium px-2 py-0.5 rounded-full ${isHighlighted ? 'bg-blue-100 text-blue-700' : 'bg-white/50 text-slate-500'}`}>👤 {t.staffName}</span>
@@ -378,13 +408,13 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
               </div>
             </div>
 
-            {/* ✨ NEW: MODAL ACTION FOOTER (Seamless Navigation to Maintenance) */}
+            {/* MODAL ACTION FOOTER */}
             {(() => {
                const statusStr = String(selectedTicketData.ticket.status).toLowerCase();
                const isResolved = statusStr === 'completed' || statusStr === 'resolved' || statusStr === 'closed' || statusStr === 'success';
                const isUnassigned = statusStr === 'open' || statusStr === 'pending';
 
-               if (isResolved) return null; // Wala nang button kapag tapos na
+               if (isResolved) return null;
 
                return (
                  <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
@@ -392,7 +422,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                      <button
                        onClick={() => {
                          setSelectedTicketData(null);
-                         if (onNavigate) onNavigate("Maintenance", `NEW_TICKET_${Date.now()}`); // I-trigger ang +New Ticket pulse
+                         if (onNavigate) onNavigate("Maintenance", `NEW_TICKET_${Date.now()}`);
                        }}
                        className="bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
                      >
@@ -402,7 +432,6 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                      <button
                        onClick={() => {
                          setSelectedTicketData(null);
-                         // Ipasa yung mismong maintenance task id
                          const passId = selectedTicketData.liveMatch?.id || selectedTicketData.ticket.id;
                          if (onNavigate) onNavigate("Maintenance", `${passId}_${Date.now()}`);
                        }}
@@ -418,6 +447,15 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
           </div>
         </div>
       )}
+
+      {/* Global CSS injected for micro scrollbar uniformity */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
+      `}} />
+
     </div>
   );
 }

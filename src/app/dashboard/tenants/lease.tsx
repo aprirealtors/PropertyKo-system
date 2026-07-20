@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, CalendarDays } from 'lucide-react';
 
 export default function LeaseTab() {
+  const [lease, setLease] = useState<any>(null);
   const [unit, setUnit] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,16 +31,19 @@ export default function LeaseTab() {
         .single();
 
       if (profile) {
-        // 2. Fetch the assigned Unit
-        const { data: unitData } = await supabase
-          .from('units')
-          .select('*')
-          .eq('admin_email', profile.admin_email)
-          .ilike('tenant_name', profile.name)
+        // 2. Fetch the Active Lease from the new leases table
+        const { data: leaseData } = await supabase
+          .from('leases')
+          .select('*, units!inner(*)') // Joins the unit data so we get property name
+          .eq('tenant_email', profile.email)
+          .eq('status', 'Active')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .single();
 
-        if (unitData) {
-          setUnit(unitData);
+        if (leaseData) {
+          setLease(leaseData);
+          setUnit(leaseData.units);
         }
       }
     } catch (error) {
@@ -49,24 +53,17 @@ export default function LeaseTab() {
     }
   };
 
-  // Safe variable fallbacks while loading
   const propertyName = unit?.property_name || "Unassigned Property";
   const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
-  const monthlyRent = unit?.monthly_rent || 0;
+  const monthlyRent = lease?.monthly_rent || 0;
   
-  // Format Lease End Date
-  const leaseEndDate = unit?.lease_end 
-    ? new Date(unit.lease_end).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
+  const leaseStartDate = lease?.start_date 
+    ? new Date(lease.start_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
     : "Not specified";
 
-  // Calculate dynamic display values
-  const securityDeposit = monthlyRent * 2; // Assuming standard 2-months deposit
-  const renewalRate = monthlyRent * 1.05; // Assuming a 5% increase for the renewal offer
-  
-  // Calculate a generic offer expiry (30 days before lease ends)
-  const offerExpiry = unit?.lease_end 
-    ? new Date(new Date(unit.lease_end).getTime() - (30 * 24 * 60 * 60 * 1000)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    : "TBD";
+  const leaseEndDate = lease?.end_date 
+    ? new Date(lease.end_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
+    : "Not specified";
 
   if (isLoading) {
     return (
@@ -77,7 +74,7 @@ export default function LeaseTab() {
     );
   }
 
-  if (!unit) {
+  if (!lease) {
     return (
       <div className="w-full mx-auto mt-4 md:mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-10 md:p-20 text-center flex flex-col items-center">
@@ -97,48 +94,25 @@ export default function LeaseTab() {
     <div className="w-full pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-6 md:mb-8">
         <h2 className="text-2xl md:text-3xl font-extrabold text-[#0a1e3f] tracking-tight">My Lease</h2>
-        <p className="text-slate-500 text-sm md:text-base mt-1">View your contract details and renewal options.</p>
+        <p className="text-slate-500 text-sm md:text-base mt-1">View your contract details and history.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
         
-        {/* ✨ UPGRADED LEFT COLUMN: 1-Column Form Layout */}
+        {/* LEFT COLUMN: 1-Column Form Layout */}
         <div className="lg:col-span-7 space-y-6">
           <section className="bg-white p-5 sm:p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-sm transition-all hover:shadow-md">
             <h3 className="font-extrabold text-lg md:text-xl mb-6 text-[#0a1e3f]">Contract Summary</h3>
             
             <div className="flex flex-col gap-4">
+              <FormField label="Unit Address" icon={<Home size={20} />} value={`${propertyName} · ${unitNumber}`} />
+              <FormField label="Monthly Rent" icon={<CreditCard size={20} />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[#1e88e5]" />
               
-              {/* Form Field: Unit Address */}
-              <FormField 
-                label="Unit Address" 
-                icon={<Home size={20} />} 
-                value={`${propertyName} · ${unitNumber}`} 
-              />
-
-              {/* Form Field: Monthly Rent */}
-              <FormField 
-                label="Monthly Rent" 
-                icon={<CreditCard size={20} />} 
-                value={`₱${monthlyRent.toLocaleString()}`} 
-                valueColor="text-[#1e88e5]"
-              />
-
-              {/* Form Field: Lease Ends */}
-              <FormField 
-                label="Lease Ends" 
-                icon={<Calendar size={20} />} 
-                value={leaseEndDate} 
-              />
-
-              {/* Form Field: Security Deposit */}
-              <FormField 
-                label="Security Deposit" 
-                icon={<ShieldCheck size={20} />} 
-                value={`₱${securityDeposit.toLocaleString()}`} 
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Lease Start" icon={<CalendarDays size={20} />} value={leaseStartDate} />
+                <FormField label="Lease Ends" icon={<Calendar size={20} />} value={leaseEndDate} />
+              </div>
               
-              {/* Full Width Document Button */}
               <div className="mt-4 pt-2">
                 <button className="w-full bg-blue-50/50 hover:bg-blue-50 text-[#1e88e5] p-4 sm:p-5 rounded-2xl border border-blue-200/60 flex items-center justify-between group transition-all active:scale-[0.98]">
                   <div className="flex items-center gap-3.5">
@@ -160,29 +134,20 @@ export default function LeaseTab() {
           </section>
         </div>
 
-        {/* RIGHT COLUMN: Renewal Offer (Premium High Emphasis) */}
+        {/* RIGHT COLUMN: Contact Management */}
         <div className="lg:col-span-5">
-          <section className="bg-gradient-to-br from-[#1e88e5] to-[#0a1e3f] p-6 md:p-8 rounded-3xl text-white shadow-2xl shadow-blue-900/20 sticky top-24 relative overflow-hidden transition-all hover:shadow-blue-900/30">
-            {/* Premium Decorative Background Pattern */}
+          <section className="bg-gradient-to-br from-[#1e88e5] to-[#0a1e3f] p-6 md:p-8 rounded-3xl text-white shadow-2xl shadow-blue-900/20 sticky top-24 relative overflow-hidden transition-all">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-white opacity-[0.03] rounded-full -ml-10 -mb-10 pointer-events-none"></div>
             
             <div className="relative z-10">
-              <div className="flex items-center gap-2 text-blue-200 mb-5">
-                <ShieldCheck size={22} className="text-emerald-400" />
-                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Renewal Ready</span>
-              </div>
-              <h3 className="font-extrabold text-2xl md:text-3xl mb-4 tracking-tight">Renew your lease</h3>
+              <h3 className="font-extrabold text-2xl md:text-3xl mb-4 tracking-tight">Need assistance?</h3>
               <p className="text-blue-100/90 mb-8 text-sm md:text-base leading-relaxed">
-                Continue your stay at <strong>{propertyName}</strong> for another year. The new rate is <span className="font-bold text-white bg-white/10 px-2 py-0.5 rounded-md mx-1">₱{renewalRate.toLocaleString()}/mo</span>. Everything stays the same, just e-sign to lock in your spot.
+                If you have questions about your lease, need to terminate early, or want to negotiate a renewal, please message management directly.
               </p>
               
-              <button className="w-full bg-white text-[#0a1e3f] rounded-2xl py-4 font-black text-sm md:text-base hover:bg-slate-50 transition-all active:scale-[0.98] shadow-lg mb-5 flex justify-center items-center gap-2">
-                Review & e-sign <ArrowRight size={18} />
+              <button className="w-full bg-white text-[#0a1e3f] rounded-2xl py-4 font-black text-sm md:text-base hover:bg-slate-50 transition-all active:scale-[0.98] shadow-lg flex justify-center items-center gap-2">
+                Message Manager <ArrowRight size={18} />
               </button>
-              <p className="text-center text-blue-200/70 text-[11px] font-medium uppercase tracking-wider">
-                Offer valid until {offerExpiry}
-              </p>
             </div>
           </section>
         </div>
@@ -192,14 +157,13 @@ export default function LeaseTab() {
   );
 }
 
-// ✨ Premium Read-Only Form Field Component
 function FormField({ label, icon, value, valueColor = "text-[#0a1e3f]" }: any) {
   return (
     <div className="flex flex-col">
       <label className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
         {label}
       </label>
-      <div className="flex items-center gap-3.5 bg-slate-50 border border-slate-200/70 p-4 rounded-2xl hover:bg-white hover:border-[#1e88e5]/40 transition-colors shadow-sm">
+      <div className="flex items-center gap-3.5 bg-slate-50 border border-slate-200/70 p-4 rounded-2xl hover:bg-white hover:border-[#1e88e5]/40 transition-colors shadow-sm w-full">
         <div className="text-slate-400 shrink-0">
           {icon}
         </div>

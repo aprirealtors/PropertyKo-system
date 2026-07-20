@@ -328,7 +328,8 @@ export default function TenantDashboard() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-28 relative">
+        {/* ✨ FIX: Standardized Mobile Padding for main wrapper */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-[100px] md:pb-8 relative">
            <div className="max-w-5xl mx-auto">
              {activeTab === 'home' && (
                <HomeView 
@@ -350,14 +351,13 @@ export default function TenantDashboard() {
       </div>
 
       {/* ✨ UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200/50 pb-safe z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-        <div className="flex justify-around items-center px-1 py-1.5">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        <div className="flex justify-around items-center px-1 py-2">
           {/* ✨ FIX: active condition now ensures they turn off when isWorkspaceModalOpen is true */}
           <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
           <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Pay" />
           <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={22} />} label="Repairs" />
           <MobileNavItem active={activeTab === 'conversation' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('conversation'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<MessageSquare size={22} />} label="Chat" />
-          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileText size={22} />} label="Lease" />
           
           {/* ✨ NEW: Account button replacing the User Header Icon for Mobile */}
           <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Account" />
@@ -447,6 +447,9 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      <style dangerouslySetInnerHTML={{__html: `
+        .pb-safe { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+      `}} />
     </div>
   );
 }
@@ -573,7 +576,7 @@ function MobileNavItem({ active, onClick, icon, label }: any) {
   return (
     <button onClick={onClick} className={`relative flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-[#1e88e5]' : 'text-slate-400 hover:text-slate-600'}`}>
       {active && <span className="absolute inset-0 bg-blue-500/10 rounded-xl animate-in zoom-in duration-200" />}
-      <div className={`relative z-10 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
+      <div className={`relative z-50 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
         {icon}
       </div>
       <span className="text-[9px] font-bold mt-0.5 relative z-10">{label}</span>
