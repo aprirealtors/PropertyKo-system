@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Camera, Clock, Wrench, AlertCircle, CheckCircle2, MapPin, X, CheckCircle, ArrowRight, User } from 'lucide-react';
+import { Camera, Clock, Wrench, AlertCircle, Inbox, PauseCircle, CheckCircle2, AlertTriangle, MapPin, X, CheckCircle, User, ChevronRight, Check } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 
 export default function RepairTab({ highlightTicketId }: any) {
@@ -20,11 +20,13 @@ export default function RepairTab({ highlightTicketId }: any) {
   const [repairTime, setRepairTime] = useState("");
   const [repairPriority, setRepairPriority] = useState("Normal");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [successMsg, setSuccessMsg] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false); // Changed to modal like Owner side
 
   const [reviewTicket, setReviewTicket] = useState<any | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
-
+  const [reviewOnHoldTicket, setReviewOnHoldTicket] = useState<any | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  
   useEffect(() => {
     fetchData();
   }, []);
@@ -69,7 +71,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
         const { data: tasksData } = await supabase
           .from('maintenance_tasks')
-          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at')
+          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at, on_hold_reason, remarks')
           .eq('admin_email', profileData.admin_email);
         if (tasksData) setLiveTasks(tasksData);
 
@@ -131,10 +133,23 @@ export default function RepairTab({ highlightTicketId }: any) {
     };
   }, [profile, userEmail]);
 
+  const capitalizeWords = (str: string) => {
+    if (!str) return "";
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  };
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedImage) {
+      showToast("Please upload a photo of the issue.", "error");
+      return;
+    }
     setIsSubmitting(true);
-    setSuccessMsg(false);
 
     try {
       const { data: authData } = await supabase.auth.getUser();
@@ -156,15 +171,18 @@ export default function RepairTab({ highlightTicketId }: any) {
         }
       }
 
+      const capitalizedIssue = capitalizeWords(repairIssue);
+      const capitalizedTime = capitalizeWords(repairTime);
+
       const unitLoc = unit?.property_name ? `${unit.property_name} - ${unit.unit_number}` : (profile?.access_level || "Tenant Unit");
-      const fullDesc = `Best time to visit: ${repairTime}. Reported by ${profile?.name || 'Tenant'} (Tenant).`;
+      const fullDesc = `Best time to visit: ${capitalizedTime}. Reported by ${profile?.name || 'Tenant'} (Tenant).`;
 
       const { data: newTicket, error } = await supabase
         .from('tickets')
         .insert([{
           admin_email: profile?.admin_email,
           reporter_email: currentEmail, 
-          title: repairIssue,
+          title: capitalizedIssue,
           location: unitLoc,
           description: fullDesc,
           status: 'Open',
@@ -183,7 +201,7 @@ export default function RepairTab({ highlightTicketId }: any) {
           recipient: 'MANAGER',
           type: 'TICKET',
           title: 'New Repair Request',
-          message: `${profile?.name || 'A tenant'} (Tenant) reported an issue: ${repairIssue}`,
+          message: `${profile?.name || 'A tenant'} (Tenant) reported an issue: ${capitalizedIssue}`,
           reference_id: newTicket.id,
           is_read: false
         }]);
@@ -193,13 +211,11 @@ export default function RepairTab({ highlightTicketId }: any) {
       setRepairPriority("Normal");
       setSelectedImage(null);
       setIsRepairModalOpen(false); 
-      setSuccessMsg(true);
-      
-      setTimeout(() => setSuccessMsg(false), 4000);
+      setIsSuccessModalOpen(true); // Open Owner style success modal
 
     } catch (err: any) {
       console.error("Submit error:", err);
-      alert(`Failed to submit request: ${err.message}`);
+      showToast(`Failed to submit request: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -207,12 +223,12 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   const getStatusDisplay = (status: string) => {
     const s = String(status || '').toLowerCase().trim();
-    if (s === 'pending' || s === 'open') return { label: 'Pending', color: 'bg-slate-100 text-slate-600 border border-slate-200' };
-    if (s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance') return { label: 'In Progress', color: 'bg-blue-50 text-blue-600 border border-blue-100' };
-    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'bg-purple-50 text-purple-700 border border-purple-100' };
-    if (s === 'completed' || s === 'resolved' || s === 'success') return { label: 'Resolved', color: 'bg-emerald-50 text-emerald-700 border border-emerald-100' };
-    if (s === 'failed') return { label: 'Failed', color: 'bg-red-50 text-red-600 border border-red-100' };
-    return { label: status, color: 'bg-slate-100 text-slate-600 border border-slate-200' };
+    if (s === 'pending' || s === 'open') return { label: 'Open', color: 'bg-amber-100 text-amber-800 border-amber-200' };
+    if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') return { label: 'In Progress', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'bg-purple-100 text-purple-700 border-purple-200' };
+    if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+    if (s === 'failed') return { label: 'Failed', color: 'bg-red-100 text-red-800 border-red-200' };
+    return { label: status, color: 'bg-slate-100 text-slate-700 border-slate-200' };
   };
 
   const enrichedTickets = useMemo(() => {
@@ -232,9 +248,11 @@ export default function RepairTab({ highlightTicketId }: any) {
         liveMatch: match,
         currentLiveStatus,
         label: badge.label,
-        color: badge.color,
+        color: badge.color, // Maps to exact owner side colors
         staffName,
-        priority: match?.priority || ticket.priority || 'Normal'
+        priority: match?.priority || ticket.priority || 'Normal',
+        on_hold_reason: match?.on_hold_reason || ticket.on_hold_reason || null,
+        remarks: match?.remarks || ticket.remarks || null
       };
     });
   }, [tickets, liveTasks, teamMembers]);
@@ -280,318 +298,410 @@ export default function RepairTab({ highlightTicketId }: any) {
   });
 
   return (
-    // ✨ FIX: Main container changed to h-auto on mobile, fixed h-full on desktop
-    <div className="flex flex-col w-full h-auto md:h-[calc(100vh-100px)] pb-10 md:pb-4">
+    // ✨ EXACT OWNER SIDE LAYOUT WRAPPER
+    <div className="flex flex-col w-full max-w-[1400px] mx-auto overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8">
       
-      {/* FIXED HEADER SECTION */}
-      <div className="flex-none pb-6 shrink-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Kanban Header */}
+      <div className="flex-none pb-4 shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 bg-white p-5 md:p-6 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100/60">
           <div>
-            <h2 className="text-2xl font-bold text-slate-800">Maintenance & Repairs</h2>
-            <p className="text-slate-500 text-sm mt-1">Submit a request and track status updates in real-time.</p>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Maintenance & Repairs</h2>
+            <p className="text-slate-500 text-sm mt-1.5 font-medium">Track your requested property repairs and updates here.</p>
           </div>
           <button 
             onClick={() => setIsRepairModalOpen(true)} 
-            className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2"
+            className="w-full sm:w-auto justify-center bg-gradient-to-br from-[#1a3d6c] via-[#1565c0] to-[#0d47a1] hover:from-blue-800 hover:to-blue-900 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 active:scale-95"
           >
             <Wrench size={16} /> New Request
           </button>
         </div>
-
-        {successMsg && (
-          <div className="mt-4 p-4 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 flex items-center gap-3 animate-in fade-in duration-300">
-            <CheckCircle2 size={24} className="text-[#359b46] shrink-0" />
-            <div>
-              <h4 className="font-bold text-sm">Request Sent Successfully!</h4>
-              <p className="text-xs mt-0.5">Management and maintenance staff have been notified.</p>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ✨ KANBAN COLUMNS CONTAINER (No horizontal scroll on mobile) */}
-      <div className="flex-1 min-h-0">
-        {/* ✨ FIX: grid-cols-1 on mobile naturally stacks downwards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-full w-full">
+      {/* Kanban Board Container - Natural Grid Layout (Mag-iscroll na ang buong page) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full overflow-y-auto custom-scrollbar">
           
-          {/* Column 1: Open & In Progress */}
-          <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
-            <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
-              Open & In Progress 
-              <span className="bg-blue-100 text-[#1d82f5] px-2.5 py-0.5 rounded-full text-xs font-bold">{openInProgressTasks.length}</span>
-            </h4>
-            {/* ✨ FIX: overflow-y-visible on mobile, auto on desktop */}
-            <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
-              {isLoading ? (
-                <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
-              ) : openInProgressTasks.length === 0 ? (
-                <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No open requests</div>
-              ) : (
-                openInProgressTasks.map(t => {
-                  const isHighlighted = activeHighlightId === String(t.id);
-                  return (
-                    <div 
-                      key={t.id} 
-                      id={`ticket-${t.id}`}
-                      className={`h-auto min-h-[260px] shrink-0 bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all duration-500 ${
-                        isHighlighted 
-                          ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-                          : t.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
-                      }`}
-                    >
-                      {t.photo_url ? (
-                        <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100">
-                          <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="relative w-full h-32 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center">
-                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span>
-                        </div>
-                      )}
-                      <div className="p-4 flex-1 flex flex-col min-h-0">
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <h4 className="font-bold text-[#0a1e3f] text-sm leading-snug">{t.title}</h4>
-                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                            {t.label}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between mb-2 mt-1">
-                          <p className="text-[#359b46] font-semibold text-xs pr-2">
-                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                            {t.location}
-                          </p>
-                          {t.priority === 'Urgent' && (
-                            <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
-                              🚨 URGENT
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        
-                        <div className={`shrink-0 flex items-center gap-1.5 mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
-                          <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                            👤 {t.staffName}
-                          </span>
-                        </div>
+        {/* Column 1: Open & In Progress */}
+        <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+          <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+            <span className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Inbox size={16} strokeWidth={2.5} /></div>
+              In Progress
+            </span>
+            <span className="bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+              {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
+            </span>
+          </h4>
+          
+          <div className="flex flex-col space-y-4">
+            {isLoading ? (
+              <><KanbanSkeleton /><KanbanSkeleton /></>
+            ) : openInProgressTasks.length === 0 ? (
+              <EmptyState icon={Inbox} title="No open requests" message="Active and pending maintenance tasks will appear here." />
+            ) : (
+              openInProgressTasks.map(t => {
+                const isHighlighted = activeHighlightId === String(t.id);
+                return (
+                  <div 
+                    key={t.id} 
+                    id={`ticket-${t.id}`}
+                    className={`group h-auto shrink-0 bg-white rounded-3xl border overflow-hidden flex flex-col transition-all duration-300 hover:shadow-[0_12px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1.5 ${
+                      isHighlighted ? 'ring-4 ring-emerald-500/50 bg-emerald-50 border-emerald-400 scale-[1.02] shadow-xl animate-pulse z-10' : 
+                      t.priority === 'Urgent' ? 'border-l-4 border-red-500 border-y-slate-100 border-r-slate-100 shadow-sm' : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'
+                    }`}
+                  >
+                    {t.photo_url ? (
+                      <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100 overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 to-transparent z-10"></div>
+                        <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Column 2: On Hold */}
-          <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
-            <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
-              On Hold 
-              <span className="bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{onHoldTasks.length}</span>
-            </h4>
-            <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
-              {isLoading ? (
-                <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
-              ) : onHoldTasks.length === 0 ? (
-                <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No requests on hold</div>
-              ) : (
-                onHoldTasks.map(t => {
-                  const isHighlighted = activeHighlightId === String(t.id);
-                  return (
-                    <div 
-                      key={t.id} 
-                      id={`ticket-${t.id}`}
-                      className={`h-auto min-h-[260px] shrink-0 bg-white rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all opacity-90 hover:opacity-100 duration-500 ${
-                        isHighlighted 
-                          ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse opacity-100 z-10' 
-                          : t.priority === 'Urgent' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
-                      }`}
-                    >
-                      {t.photo_url ? (
-                        <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100">
-                          <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[30%]" />
-                        </div>
-                      ) : (
-                        <div className="relative w-full h-32 shrink-0 bg-slate-50 border-b border-slate-100 flex items-center justify-center">
-                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">No Photo</span>
-                        </div>
-                      )}
-                      <div className="p-4 flex-1 flex flex-col min-h-0">
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <h4 className="font-bold text-slate-600 text-sm leading-snug">{t.title}</h4>
-                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                            {t.label}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between mb-2 mt-1">
-                          <p className="text-slate-500 font-semibold text-xs pr-2">
-                            <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                            {t.location}
-                          </p>
-                          {t.priority === 'Urgent' && (
-                            <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                              🚨 URGENT
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        
-                        <div className={`shrink-0 flex items-center gap-1.5 mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
-                          <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                            👤 {t.staffName}
-                          </span>
-                        </div>
+                    ) : (
+                      <div className="relative w-full h-32 shrink-0 bg-slate-50/80 border-b border-slate-100 flex flex-col items-center justify-center text-slate-300">
+                        <Camera size={24} className="mb-2 opacity-50" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">No Photo</span>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                    )}
 
-          {/* Column 3: Resolved */}
-          <div className="flex flex-col h-auto md:h-full bg-slate-100/50 rounded-2xl p-4 border border-slate-200/60 shadow-sm w-full shrink-0">
-            <h4 className="font-bold text-slate-700 text-sm mb-4 shrink-0 flex items-center justify-between">
-              Resolved 
-              <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-xs font-bold">{resolvedTasks.length}</span>
-            </h4>
-            <div className="flex-1 overflow-y-visible md:overflow-y-auto space-y-4 pr-0 md:pr-1 pb-2">
-              {isLoading ? (
-                <div className="text-center text-slate-400 text-sm py-4">Loading...</div>
-              ) : resolvedTasks.length === 0 ? (
-                <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center text-xs text-slate-400 bg-white">No resolved requests</div>
-              ) : (
-                resolvedTasks.map(t => {
-                  const isHighlighted = activeHighlightId === String(t.id);
-                  return (
-                    <div 
-                      key={t.id} 
-                      id={`ticket-${t.id}`}
-                      onClick={() => setReviewTicket(t)} 
-                      className={`h-auto min-h-[260px] shrink-0 rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md transition-all cursor-pointer duration-500 ${
-                        isHighlighted 
-                          ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-                          : 'bg-white border-emerald-200'
-                      }`}
-                    >
-                      {(t.liveMatch?.resolution_photo_url || t.photo_url) ? (
-                        <div className={`relative w-full h-32 shrink-0 border-b ${isHighlighted ? 'bg-blue-100 border-blue-200' : 'bg-emerald-100/50 border-emerald-100'}`}>
-                          <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className={`relative w-full h-32 shrink-0 border-b flex items-center justify-center ${isHighlighted ? 'bg-blue-100 border-blue-200 text-blue-300' : 'bg-emerald-50 border-emerald-100 text-emerald-300'}`}>
-                          <span className="text-xs font-bold uppercase tracking-wider">No Photo</span>
-                        </div>
-                      )}
-                      <div className="p-4 flex-1 flex flex-col min-h-0 bg-emerald-50/30">
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                          <div className="flex items-start gap-1.5">
-                            <CheckCircle size={14} className={`${isHighlighted ? 'text-blue-500' : 'text-[#359b46]'} mt-0.5 shrink-0`} />
-                            <h4 className="font-bold text-[#0a1e3f] text-sm leading-snug">{t.title}</h4>
-                          </div>
-                          <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide border ${t.color} mt-0.5`}>
-                            {t.label}
-                          </span>
-                        </div>
-                        <p className="text-slate-500 font-semibold text-xs mt-1 pr-2 mb-2">
-                          <MapPin size={12} className="inline mr-1 -mt-0.5" />
-                          {t.location}
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white relative z-20">
+                      <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${t.color}`}>{t.label}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-3 mt-1 shrink-0">
+                        <p className="text-emerald-600 font-bold text-xs flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100/50">
+                          <MapPin size={12} className="text-[#359b46]" />{t.location}
                         </p>
-                        <p className={`text-xs flex-1 min-h-0 ${isHighlighted ? 'text-blue-600' : 'text-slate-500'}`}>{t.description}</p>
-                        
-                        <div className={`shrink-0 flex items-center justify-between mt-4 pt-3 border-t text-xs ${isHighlighted ? 'border-blue-200' : 'border-emerald-200/60'}`}>
-                          <span className={`font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-slate-200'}`}>
-                            👤 {t.staffName}
+                        {t.priority === 'Urgent' && (
+                          <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider animate-pulse flex items-center gap-1 shrink-0">
+                            <AlertCircle size={10} /> Urgent
                           </span>
-                          {t.liveMatch?.cost !== undefined && t.liveMatch.cost > 0 ? (
-                            <span className="font-black text-[#0a1e3f] bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                              ₱{t.liveMatch.cost.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="font-bold text-slate-400 text-[10px] uppercase">No Cost</span>
-                          )}
+                        )}
+                      </div>
+
+                      <div className="space-y-2 mb-3">
+                        <p className={`text-xs leading-relaxed font-medium ${isHighlighted ? 'text-emerald-800' : 'text-slate-500'}`}>
+                          {t.description}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 bg-blue-50/60 border border-blue-100/60 rounded-xl p-2.5 mb-3">
+                        <span className="font-black text-blue-600 block mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                          <AlertCircle size={14} /> Status Update
+                        </span>
+                        <p className="text-xs text-blue-800 font-bold tracking-wide">Awaiting Action</p>
+                      </div>
+
+                      <div className="shrink-0 mt-auto pt-3 border-t border-slate-100/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-[#0a1e3f] text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                            {t.staffName !== "Unassigned" ? t.staffName.substring(0, 1) : "?"}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned</span>
+                            <span className="text-xs font-bold text-slate-700">{t.staffName}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-
         </div>
+
+        {/* Column 2: On Hold */}
+        <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+          <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+            <span className="flex items-center gap-2">
+              <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><PauseCircle size={16} strokeWidth={2.5} /></div>
+              On Hold
+            </span>
+            <span className="bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+              {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : onHoldTasks.length}
+            </span>
+          </h4>
+          
+          <div className="flex flex-col space-y-4">
+            {isLoading ? (
+              <KanbanSkeleton />
+            ) : onHoldTasks.length === 0 ? (
+              <EmptyState icon={PauseCircle} title="No tasks on hold" message="Tasks awaiting parts or feedback will show here." />
+            ) : (
+              onHoldTasks.map(t => {
+                const isHighlighted = activeHighlightId === String(t.id);
+                const holdReason = t.liveMatch?.on_hold_reason || t.on_hold_reason;
+                
+                return (
+                  <div 
+                    key={t.id} 
+                    id={`ticket-${t.id}`}
+                    onClick={() => setReviewOnHoldTicket(t)}
+                    className={`group h-auto shrink-0 bg-white/90 backdrop-blur-sm rounded-3xl border overflow-hidden flex flex-col cursor-pointer transition-all duration-300 hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1.5 ${
+                      isHighlighted ? 'ring-4 ring-emerald-500/50 bg-emerald-50 border-emerald-400 scale-[1.02] shadow-2xl z-10' : 
+                      t.priority === 'Urgent' ? 'border-l-4 border-red-500 border-y-slate-100 border-r-slate-100 shadow-sm' : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'
+                    }`}
+                  >
+                    {t.photo_url ? (
+                      <div className="relative w-full h-32 shrink-0 bg-slate-100 border-b border-slate-100 overflow-hidden">
+                        <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px] z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <span className="bg-white/90 text-slate-800 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5">
+                            View Details <ChevronRight size={14} />
+                          </span>
+                        </div>
+                        <img src={t.photo_url} alt="Repair issue" className="w-full h-full object-cover grayscale-[40%] transition-transform duration-700 group-hover:scale-105 group-hover:grayscale-0" />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 shrink-0 bg-slate-50/80 border-b border-slate-100 flex flex-col items-center justify-center text-slate-300">
+                        <Camera size={24} className="mb-2 opacity-50" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">No Photo</span>
+                      </div>
+                    )}
+
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white relative z-20">
+                      <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${t.color}`}>{t.label}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-3 mt-1 shrink-0">
+                        <p className="text-slate-500 font-bold text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
+                          <MapPin size={12} className="text-[#359b46]" />{t.location}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 mb-3">
+                        <p className={`text-xs leading-relaxed font-medium ${isHighlighted ? 'text-blue-700' : 'text-slate-500'}`}>
+                          {t.description}
+                        </p>
+                        {holdReason && (
+                          <div className="bg-purple-50/60 border-l-4 border-purple-400 p-3 rounded-r-xl">
+                            <span className="font-black text-purple-700 text-[10px] uppercase tracking-widest block mb-1.5 flex items-center gap-1.5">
+                              <Clock size={12} strokeWidth={2.5} /> Reason
+                            </span>
+                            <p className="text-xs text-purple-900 leading-relaxed font-semibold">
+                              {holdReason}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 mt-auto pt-3 border-t border-slate-100/80 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold shadow-sm">
+                            {t.staffName !== "Unassigned" ? t.staffName.substring(0, 1) : "?"}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned</span>
+                            <span className="text-xs font-bold text-slate-600">{t.staffName}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Column 3: Resolved */}
+        <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+          <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+            <span className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><CheckCircle2 size={16} strokeWidth={2.5} /></div>
+              Resolved
+            </span>
+            <span className="bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+              {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : resolvedTasks.length}
+            </span>
+          </h4>
+          
+          <div className="flex flex-col space-y-4">
+            {isLoading ? (
+              <><KanbanSkeleton /><KanbanSkeleton /></>
+            ) : resolvedTasks.length === 0 ? (
+              <EmptyState icon={CheckCircle2} title="No resolved requests" message="Completed tasks and resolution photos will be logged here." />
+            ) : (
+              resolvedTasks.map(t => {
+                const isHighlighted = activeHighlightId === String(t.id);
+                const staffRemarks = t.liveMatch?.remarks || t.remarks;
+
+                return (
+                  <div 
+                    key={t.id} 
+                    id={`ticket-${t.id}`}
+                    onClick={() => setReviewTicket(t)} 
+                    className={`group h-auto shrink-0 bg-white rounded-3xl border overflow-hidden flex flex-col cursor-pointer transition-all duration-300 hover:shadow-[0_12px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1.5 ${
+                      isHighlighted ? 'ring-4 ring-emerald-500/50 bg-emerald-50 border-emerald-400 scale-[1.02] shadow-2xl z-10' : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'
+                    }`}
+                  >
+                    {(t.liveMatch?.resolution_photo_url || t.photo_url) ? (
+                      <div className="relative w-full h-32 shrink-0 border-b border-emerald-50 overflow-hidden">
+                        <div className="absolute inset-0 bg-emerald-900/30 backdrop-blur-[1px] z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <span className="bg-white/95 text-emerald-800 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-1.5">
+                            View Resolution <ChevronRight size={14} />
+                          </span>
+                        </div>
+                        <img src={t.liveMatch?.resolution_photo_url || t.photo_url} alt="Resolved issue" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 shrink-0 border-b flex flex-col items-center justify-center bg-emerald-50/40 border-emerald-100 text-emerald-400">
+                        <Check size={28} strokeWidth={3} className="mb-2 opacity-50" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/80">No Photo</span>
+                      </div>
+                    )}
+
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col bg-gradient-to-b from-transparent to-emerald-50/30 relative z-20">
+                      <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle size={16} className={`${isHighlighted ? 'text-emerald-500' : 'text-emerald-600'} mt-0.5 shrink-0`} strokeWidth={2.5} />
+                          <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                        </div>
+                        <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${t.color}`}>{t.label}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-3 mt-1 shrink-0 pl-6">
+                        <p className="text-slate-500 font-bold text-xs flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-slate-100 shadow-sm">
+                          <MapPin size={12} className="text-slate-400 shrink-0" />{t.location}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 mb-3 pl-6">
+                        <p className={`text-xs leading-relaxed font-medium ${isHighlighted ? 'text-emerald-800' : 'text-slate-500'}`}>
+                          {t.description}
+                        </p>
+                        {staffRemarks && (
+                          <div className="bg-emerald-50/80 border border-emerald-100/60 p-3 rounded-xl mt-2">
+                            <span className="font-black text-emerald-700 block mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                              <CheckCircle2 size={12} strokeWidth={2.5} /> Remarks
+                            </span>
+                            <p className="text-xs text-emerald-900 font-semibold leading-relaxed">
+                              {staffRemarks}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="shrink-0 mt-auto pt-3 border-t border-emerald-100/60 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold border border-emerald-200">
+                            {t.staffName !== "Unassigned" ? t.staffName.substring(0, 1) : "?"}
+                          </div>
+                          <span className="text-xs font-bold text-slate-600">{t.staffName}</span>
+                        </div>
+
+                        {t.liveMatch?.cost !== undefined && t.liveMatch.cost > 0 ? (
+                          <span className="font-black text-slate-800 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-sm">₱{t.liveMatch.cost.toLocaleString()}</span>
+                        ) : (
+                          <span className="font-black text-slate-400 text-[10px] uppercase tracking-widest">No Cost</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
       </div>
 
-      {/* NEW REPAIR MODAL */}
+      {/* ✨ TOAST NOTIFICATION */}
+      {toast && (
+        <div 
+          className={`fixed bottom-24 md:bottom-10 right-4 md:right-10 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] font-bold text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
+            toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="text-[#359b46]" size={22} strokeWidth={2.5} />
+          ) : (
+            <AlertTriangle className="text-red-500" size={22} strokeWidth={2.5} />
+          )}
+          {toast.message}
+        </div>
+      )}
+
+      {/* ✨ 1. REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg font-bold text-[#0a1e3f] flex items-center gap-2">
-                <Wrench size={18} className="text-blue-600" /> New Request
-              </h2>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSubmitting}>
-                <X size={20} />
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+            
+            <div className="px-6 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Report a repair</h2>
+              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+                <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto max-h-[75vh]">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <input 
-                  type="text" 
-                  required
-                  value={repairIssue}
-                  onChange={(e) => setRepairIssue(e.target.value)}
-                  placeholder="What needs fixing?" 
-                  disabled={isSubmitting}
-                  className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-slate-700"
-                />
+            <div className="p-5 sm:p-8 overflow-y-auto custom-scrollbar bg-slate-50/30 pb-safe">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                 
-                <select
-                  required
-                  value={repairPriority}
-                  onChange={(e) => setRepairPriority(e.target.value)}
-                  className="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-slate-700 bg-white"
-                  disabled={isSubmitting}
-                >
-                  <option value="Normal">Normal (Can wait)</option>
-                  <option value="Urgent">🚨 Urgent (Needs attention today)</option>
-                </select>
-
-                <label className="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center gap-2 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-all cursor-pointer bg-slate-50 hover:bg-blue-50/50">
-                  <Camera size={20} />
-                  <span className={`font-medium text-sm ${selectedImage ? 'text-blue-600 font-bold' : ''}`}>
-                    {selectedImage ? selectedImage.name : "Attach photo"}
-                  </span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
-                    className="hidden"
-                    disabled={isSubmitting}
-                  />
-                </label>
-
-                <div className="relative">
-                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <div>
                   <input 
                     type="text" 
-                    required
-                    value={repairTime}
-                    onChange={(e) => setRepairTime(e.target.value)}
-                    placeholder="Preferred visit time" 
-                    disabled={isSubmitting}
-                    className="w-full pl-11 p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-slate-700"
+                    required 
+                    placeholder="What needs fixing? (e.g. leaking faucet)" 
+                    value={repairIssue} 
+                    onChange={(e) => setRepairIssue(e.target.value)}
+                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
+                    disabled={isSubmitting} 
                   />
                 </div>
 
-                <div className="pt-2 pb-2">
+                <div>
+                  <select
+                    required
+                    value={repairPriority}
+                    onChange={(e) => setRepairPriority(e.target.value)}
+                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 bg-white hover:border-slate-300 transition-all cursor-pointer shadow-sm appearance-none"
+                    disabled={isSubmitting}
+                  >
+                    <option value="Normal">Normal (Can wait)</option>
+                    <option value="Urgent">🚨 Urgent (Needs attention today)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`flex items-center gap-3 sm:gap-4 w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border-2 border-dashed cursor-pointer hover:bg-slate-50 transition-all group ${selectedImage ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-300 hover:border-slate-400'}`}>
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-sm shrink-0 ${selectedImage ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-100 text-slate-400 group-hover:text-slate-500'}`}>
+                      <Camera size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={selectedImage ? 2.5 : 2} />
+                    </div>
+                    <span className={`text-xs sm:text-sm flex-1 truncate ${selectedImage ? 'text-emerald-800 font-extrabold' : 'text-slate-500 font-bold'}`}>
+                      {selectedImage ? selectedImage.name : "Upload photo evidence"}
+                    </span>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
+                      className="hidden"
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Best time for the caretaker to visit" 
+                    value={repairTime} 
+                    onChange={(e) => setRepairTime(e.target.value)} 
+                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
+                    disabled={isSubmitting} 
+                  />
+                </div>
+
+                <div className="pt-2 sm:pt-4">
                   <button 
                     type="submit" 
-                    disabled={isSubmitting}
-                    className="w-full bg-[#1e88e5] disabled:bg-blue-300 text-white rounded-xl py-3.5 font-bold hover:bg-blue-600 active:scale-[0.98] transition-all shadow-md"
+                    disabled={isSubmitting} 
+                    className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 disabled:from-emerald-300 disabled:to-green-400 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-all shadow-md sm:shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex justify-center items-center gap-2 sm:gap-3"
                   >
-                    {isSubmitting ? "Sending..." : "Send Request"}
+                    {isSubmitting ? (
+                      <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-3 border-white/30 border-t-white rounded-full animate-spin"></div> Submitting...</>
+                    ) : "Submit Request"}
                   </button>
                 </div>
               </form>
@@ -600,101 +710,113 @@ export default function RepairTab({ highlightTicketId }: any) {
         </div>
       )}
 
-      {/* REVIEW RESOLUTION MODAL */}
+      {/* ✨ 2. REVIEW RESOLUTION MODAL */}
       {reviewTicket && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/75 backdrop-blur-md z-50 flex items-center justify-center p-0 sm:p-4 transition-all duration-300">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-300">
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
             
-            <div className="px-5 py-10 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 shrink-0">
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-extrabold text-[#0a1e3f] flex items-center gap-2 truncate">
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
+              <div className="min-w-0 flex-1 pr-4">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
                   {reviewTicket.title}
                 </h2>
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-500 mt-1 truncate">
-                  <MapPin size={14} className="text-slate-400 shrink-0" /> {reviewTicket.location}
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
+                  <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewTicket.location}
                 </div>
               </div>
-              <button 
-                onClick={() => setReviewTicket(null)} 
-                className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors p-2 rounded-xl ml-4 shrink-0 shadow-sm"
-              >
-                <X size={18} />
+              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+                <X size={24} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 sm:space-y-0 bg-slate-50/30">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 h-full">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
-                {/* BEFORE COLUMN CARD */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm flex flex-col space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Before</span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-700">Your Initial Report</span>
+                {/* BEFORE */}
+                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col space-y-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-amber-200/60 shadow-sm">Before</span>
+                    <span className="text-sm sm:text-base font-black text-slate-800">Your Initial Report</span>
                   </div>
 
-                  <div className="w-full aspect-video sm:h-48 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                  <div className="w-full aspect-video sm:h-56 bg-slate-100 rounded-3xl border border-slate-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group">
                     {reviewTicket.photo_url ? (
-                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover transition-transform hover:scale-105 duration-300" />
+                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
                     ) : (
                       <div className="text-center text-slate-400 p-4">
-                        <Camera size={28} className="mx-auto mb-1.5 opacity-40" />
-                        <span className="text-xs font-medium block">No photo submitted</span>
+                        <Camera size={32} className="mx-auto mb-2 opacity-40" />
+                        <span className="text-xs font-bold block uppercase tracking-widest">No photo</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 bg-slate-50/60 rounded-xl p-3 sm:p-4 border border-slate-100 flex flex-col justify-between">
-                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                  <div className="flex-1 bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-slate-200 pb-2 mb-2">Description:</span>
+                    <p className="text-sm text-slate-700 leading-relaxed font-semibold">
                       {reviewTicket.description}
                     </p>
-                    <div className="text-[10px] sm:text-xs text-slate-400 font-medium border-t border-slate-200/60 pt-2.5 mt-3 shrink-0">
-                      Reported on: {new Date(reviewTicket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-slate-200 pt-4 mt-5 shrink-0">
+                      Reported: {new Date(reviewTicket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
 
-                {/* AFTER COLUMN CARD */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-sm flex flex-col space-y-4">
+                {/* AFTER */}
+                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col space-y-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow">
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">After</span>
-                      <span className="text-xs sm:text-sm font-bold text-slate-700">Staff Resolution</span>
+                    <div className="flex items-center gap-3">
+                      <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-200/60 shadow-sm">After</span>
+                      <span className="text-sm sm:text-base font-black text-slate-800">Staff Resolution</span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${reviewTicket.color} shrink-0`}>
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${reviewTicket.color} shrink-0 shadow-sm`}>
                       {reviewTicket.label}
                     </span>
                   </div>
 
-                  <div className="w-full aspect-video sm:h-48 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden flex items-center justify-center shrink-0 shadow-inner">
+                  <div className="w-full aspect-video sm:h-56 bg-emerald-50/50 rounded-3xl border border-emerald-100 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group">
                     {reviewTicket.liveMatch?.resolution_photo_url ? (
-                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution proof" className="w-full h-full object-cover transition-transform hover:scale-105 duration-300" />
+                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution proof" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
                     ) : (
-                      <div className="text-center text-slate-400 p-4">
-                        <Wrench size={28} className="mx-auto mb-1.5 opacity-40" />
-                        <span className="text-xs font-medium block">No resolution photo uploaded</span>
+                      <div className="text-center text-emerald-300 p-4">
+                        <CheckCircle2 size={32} className="mx-auto mb-2 opacity-60" />
+                        <span className="text-xs font-bold block uppercase tracking-widest text-emerald-600/70">No evidence photo</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-slate-50/60 rounded-xl p-3 sm:p-4 border border-slate-100 space-y-3 shrink-0">
-                    <div className="flex justify-between items-center text-xs sm:text-sm">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">👤 Staff In Charge</span>
-                      <span className="font-semibold text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                        {reviewTicket.staffName}
-                      </span>
-                    </div>
+                  <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4 shrink-0 flex flex-col justify-between flex-1">
                     
-                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-3 text-xs sm:text-sm">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Material / Cost Covered</span>
-                      {reviewTicket.liveMatch?.cost !== undefined && reviewTicket.liveMatch.cost > 0 ? (
-                        <span className="font-extrabold text-[#0a1e3f] bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200/60">
-                          ₱{reviewTicket.liveMatch.cost.toLocaleString()}
+                    {/* {reviewTicket.remarks && (
+                      <div className="bg-emerald-50/80 border border-emerald-100/60 p-3 rounded-xl mb-2 shrink-0">
+                        <span className="font-black text-emerald-700 block mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-widest">
+                          <CheckCircle2 size={12} strokeWidth={2.5} /> Remarks
                         </span>
-                      ) : (
-                        <span className="font-bold text-slate-400 bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-[10px] uppercase">
-                          ₱0.00
+                        <p className="text-xs text-emerald-900 font-semibold leading-relaxed">
+                          "{reviewTicket.remarks}"
+                        </p>
+                      </div>
+                    )} */}
+
+                    <div className="mt-auto space-y-4 pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><User size={14} /> Staff</span>
+                        <span className="font-extrabold text-slate-800 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm text-xs">
+                          {reviewTicket.staffName}
                         </span>
-                      )}
+                      </div>
+                      
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-4">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cost Covered</span>
+                        {reviewTicket.liveMatch?.cost !== undefined && reviewTicket.liveMatch.cost > 0 ? (
+                          <span className="font-black text-lg text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200/60 shadow-sm">
+                            ₱{reviewTicket.liveMatch.cost.toLocaleString()}
+                          </span> 
+                        ) : (
+                          <span className="font-black text-slate-400 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs uppercase shadow-sm">
+                            ₱0.00
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -702,10 +824,11 @@ export default function RepairTab({ highlightTicketId }: any) {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex shrink-0 sm:hidden">
+            {/* Mobile Footer Button */}
+            <div className="p-5 bg-white border-t border-slate-100 shrink-0 md:hidden z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
               <button 
                 onClick={() => setReviewTicket(null)}
-                className="w-full bg-[#0a1e3f] text-white py-3 rounded-xl font-bold text-sm shadow-md active:scale-[0.99] transition-all"
+                className="w-full bg-[#081832] text-white py-4 rounded-2xl font-black text-base shadow-lg active:scale-[0.98] transition-all"
               >
                 Close View
               </button>
@@ -715,6 +838,178 @@ export default function RepairTab({ highlightTicketId }: any) {
         </div>
       )}
 
+      {/* ✨ 3. REVIEW ON HOLD MODAL (2-Column Layout) */}
+      {reviewOnHoldTicket && (
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
+            
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
+              <div className="min-w-0 flex-1 pr-4">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
+                  {reviewOnHoldTicket.title}
+                </h2>
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
+                  <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewOnHoldTicket.location}
+                </div>
+              </div>
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+                <X size={24} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                
+                {/* BEFORE COLUMN */}
+                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col space-y-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-amber-200/60 shadow-sm">Before</span>
+                    <span className="text-sm sm:text-base font-black text-slate-800">Initial Report</span>
+                  </div>
+
+                  <div className="w-full aspect-video sm:h-56 bg-slate-100 rounded-3xl border border-slate-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group">
+                    {reviewOnHoldTicket.photo_url ? (
+                      <img src={reviewOnHoldTicket.photo_url} alt="Reported issue" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    ) : (
+                      <div className="text-center text-slate-400 p-4">
+                        <Camera size={32} className="mx-auto mb-2 opacity-40" />
+                        <span className="text-xs font-bold block uppercase tracking-widest">No photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 bg-slate-50 rounded-2xl p-5 border border-slate-100 flex flex-col justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-slate-200 pb-2 mb-2">Description:</span>
+                    <p className="text-sm text-slate-700 leading-relaxed font-semibold">
+                      {reviewOnHoldTicket.description}
+                    </p>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-slate-200 pt-5 mt-5 shrink-0">
+                      Reported: {new Date(reviewOnHoldTicket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ON HOLD UPDATE COLUMN */}
+                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] flex flex-col space-y-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-200/60 shadow-sm">Update</span>
+                      <span className="text-sm sm:text-base font-black text-slate-800">Staff Report</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${reviewOnHoldTicket.color} shrink-0 shadow-sm`}>
+                      {reviewOnHoldTicket.label}
+                    </span>
+                  </div>
+
+                  <div className="w-full aspect-video sm:h-56 bg-slate-100 rounded-3xl border border-slate-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group">
+                    {(reviewOnHoldTicket.liveMatch?.on_hold_photo_url || reviewOnHoldTicket.liveMatch?.resolution_photo_url) ? (
+                      <img 
+                        src={reviewOnHoldTicket.liveMatch?.on_hold_photo_url || reviewOnHoldTicket.liveMatch?.resolution_photo_url} 
+                        alt="On hold status" 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                      />
+                    ) : (
+                      <div className="text-center text-slate-400 p-4">
+                        <PauseCircle size={40} strokeWidth={1.5} className="mx-auto mb-3 opacity-40 text-purple-500" />
+                        <span className="text-xs font-black block uppercase tracking-widest text-purple-600/70">Awaiting action or parts</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100 space-y-2 shrink-0 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest block border-b border-purple-200 pb-2 mb-2">Reason for delay:</span>
+                      <p className="text-sm text-purple-800 leading-relaxed font-bold">
+                        {reviewOnHoldTicket.liveMatch?.on_hold_reason || reviewOnHoldTicket.liveMatch?.remarks || "Task is currently on hold. We will update you soon as possible."}
+                      </p>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-xs sm:text-sm border-t border-purple-200/60 pt-4 mt-2">
+                      <span className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">👤 Staff In Charge</span>
+                      <span className="font-bold text-purple-900 bg-white px-3 py-1.5 rounded-xl border border-purple-100 shadow-sm">
+                        {reviewOnHoldTicket.staffName || "Pending Assignment"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Mobile Footer Button */}
+            <div className="p-5 bg-white border-t border-slate-100 shrink-0 md:hidden z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
+              <button 
+                onClick={() => setReviewOnHoldTicket(null)} 
+                className="w-full bg-[#081832] text-white py-4 rounded-2xl font-black text-base shadow-lg active:scale-[0.98] transition-all"
+              >
+                Close View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ 4. SUCCESS MODAL */}
+      {isSuccessModalOpen && (
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-10 animate-in zoom-in-95 duration-500 border border-white/20">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border-4 border-emerald-50">
+              <CheckCircle2 size={40} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 mb-3">Request Sent!</h2>
+            <p className="text-slate-500 text-sm mb-10 leading-relaxed font-medium">
+              Your repair request is now with the property manager. We'll update you soon.
+            </p>
+            <button 
+              onClick={() => setIsSuccessModalOpen(false)} 
+              className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-4 rounded-2xl text-base font-black transition-all shadow-lg shadow-emerald-500/25 active:scale-[0.98]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ FIXED HEIGHT KANBAN SKELETON (Matched to Owner Side)
+// -------------------------------------------------------------
+function KanbanSkeleton() {
+  return (
+    <div className="h-[340px] shrink-0 bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 overflow-hidden flex flex-col animate-pulse">
+      <div className="w-full h-36 bg-slate-100 shrink-0"></div>
+      <div className="p-5 flex-1 flex flex-col gap-3">
+        <div className="flex justify-between items-center mb-1 shrink-0">
+          <div className="h-5 bg-slate-200 rounded-md w-1/2"></div>
+          <div className="h-5 bg-slate-200 rounded-full w-14"></div>
+        </div>
+        <div className="flex-1 flex flex-col gap-2.5">
+          <div className="h-3 bg-slate-200 rounded-md w-1/3 mt-2"></div>
+          <div className="h-3 bg-slate-100 rounded-md w-full mt-3"></div>
+          <div className="h-3 bg-slate-100 rounded-md w-5/6"></div>
+        </div>
+        <div className="mt-auto pt-4 border-t border-slate-50 flex gap-2 shrink-0">
+          <div className="h-8 bg-slate-200 rounded-full w-28"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ STANDARDIZED EMPTY STATE (Matched to Owner Side)
+// -------------------------------------------------------------
+function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 h-[340px] animate-in fade-in duration-300">
+      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-400 border border-slate-100">
+        <Icon size={26} strokeWidth={1.5} />
+      </div>
+      <h4 className="font-extrabold text-slate-700 mb-1.5">{title}</h4>
+      <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
     </div>
   );
 }

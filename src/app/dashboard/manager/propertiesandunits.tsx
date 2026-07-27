@@ -8,7 +8,9 @@ import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maxi
 const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  if (!ownerName || ownerName === '—') return <span>—</span>;
+  if (!ownerName || ownerName === '—' || ownerName.toLowerCase() === 'vacant') {
+    return <span className="text-slate-400 font-medium">Vacant</span>;
+  }
 
   // Parse comma-separated names
   const owners = ownerName.split(',').map(n => n.trim()).filter(Boolean);
@@ -161,7 +163,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setUnitNumber(unit.unit_number || "");
     setUnitType(unit.unit_type || "Studio");
     setUnitArea(unit.unit_area || "");
-    setOwnerName(unit.owner_name === '—' ? "" : (unit.owner_name || ""));
+    setOwnerName(unit.owner_name === '—' || unit.owner_name === 'Vacant' ? "" : (unit.owner_name || ""));
     setOwnerAbbreviation(unit.owner_abbreviation || "");
     setBusinessName(unit.business_name || "");
     setTenantName(unit.tenant_name === '—' || unit.tenant_name === 'Vacant' ? "" : (unit.tenant_name || ""));
@@ -192,23 +194,27 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setIsSubmitting(true);
     setShowConfirmModal(false);
 
+    const finalOwner = ownerName.trim() || 'Vacant';
+    const finalTenant = editingUnitId ? (tenantName.trim() || 'Vacant') : 'Vacant';
+
     const payload: any = {
       admin_email: orgData.admin_email,
       property_name: propertyName, 
       unit_number: unitNumber, 
       unit_type: unitType, 
-      owner_name: ownerName.trim() || '—',
+      owner_name: finalOwner,
       owner_abbreviation: ownerAbbreviation.trim() || null,
       business_name: businessName.trim() || null,
       unit_area: unitArea.trim(), 
       turnover_date: turnoverDate || null,
       acceptance_date: acceptanceDate || null,
-      remarks: remarks.trim() || null
+      remarks: remarks.trim() || null,
+      // Automatically mark as Occupied if there is an Owner OR Tenant
+      status: (finalOwner !== 'Vacant' || (finalTenant !== 'Vacant' && finalTenant !== '—')) ? 'Occupied' : 'Vacant'
     };
 
     if (!editingUnitId) {
-      payload.tenant_name = '—';
-      payload.status = 'Vacant';
+      payload.tenant_name = 'Vacant';
     }
 
     try {
@@ -277,9 +283,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         }
 
         const mappedUnits = parsedData.map(row => {
-          const tenant = row['TENANT'] || '—';
+          const owner = row['OWNER'] && row['OWNER'] !== '—' ? row['OWNER'] : 'Vacant';
+          const tenant = row['TENANT'] && row['TENANT'] !== '—' ? row['TENANT'] : 'Vacant';
           const providedStatus = row['STATUS'];
-          const isOccupied = tenant !== '—' || providedStatus === 'Occupied';
+          const isOccupied = owner !== 'Vacant' || tenant !== 'Vacant' || providedStatus === 'Occupied';
 
           return {
             admin_email: orgData.admin_email,
@@ -287,7 +294,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             unit_number: row['UNIT'] || 'N/A',
             unit_type: row['TYPE'] || 'Studio',
             unit_area: row['AREA'] || null,
-            owner_name: row['OWNER'] || '—',
+            owner_name: owner,
             owner_abbreviation: row['OWNER ABBREVIATION'] || null,
             business_name: row['BUSINESS NAME'] || null,
             tenant_name: tenant,
@@ -482,7 +489,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       </td>
 
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.business_name || '—'}</td>
-                      <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">{unit.tenant_name}</td>
+                      <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">
+                        {unit.tenant_name === '—' || unit.tenant_name?.toLowerCase() === 'vacant' ? <span className="text-slate-400 font-medium">Vacant</span> : unit.tenant_name}
+                      </td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.turnover_date)}</td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.acceptance_date)}</td>
                       <td className="px-6 py-4 text-slate-600 max-w-[150px] truncate" title={unit.remarks}>{unit.remarks || '—'}</td>
@@ -645,7 +654,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       <User size={16} className="text-[#359b46]" /> Owner Name(s)
                     </label>
                     <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
-                    <p className="text-[10px] text-slate-400 mt-1">Separate multiple names with a comma.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Leave empty if vacant. Separate multiple names with a comma.</p>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">

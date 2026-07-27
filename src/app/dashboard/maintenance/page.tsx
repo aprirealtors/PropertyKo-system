@@ -267,17 +267,17 @@ export default function MaintenanceDashboard() {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
-          <div onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors">
+          {/* <div onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors">
             <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
             {unreadCount > 0 && (
               <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0b1727] animate-pulse">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
-          </div>
+          </div> */}
 
           {/* Notifications Dropdown */}
-          {isNotifOpen && (
+          {/* {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
               <div className="absolute top-14 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
@@ -305,11 +305,11 @@ export default function MaintenanceDashboard() {
                 </div>
               </div>
             </>
-          )}
+          )} */}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold text-[#359b46] border border-emerald-500/30 bg-emerald-500/10">Maintenance Staff</span>
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-500/30 text-emerald-50 bg-gradient-to-r from-emerald-600 to-green-700">Maintenance Portal</span>
           
-          <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 sm:px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full">
+          <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-xl">
             <LogOut size={16} /> <span className="hidden sm:inline">Log out</span>
           </button>
         </div>
@@ -384,30 +384,68 @@ export default function MaintenanceDashboard() {
       </nav>
 
       {/* MODALS */}
-      {/* 1. WORKSPACE PROFILE MODAL */}
+      {/* 1. WORKSPACE PROFILE MODAL (STAFF PROFILE) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 sm:p-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg font-bold text-[#0a1e3f]">Staff Profile</h2>
-              <button onClick={() => setIsWorkspaceModalOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><X size={20} /></button>
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          {/* ✨ Bottom sheet sa mobile, Center modal sa desktop */}
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+            
+            <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">Staff Profile</h2>
+              <button 
+                onClick={() => setIsWorkspaceModalOpen(false)}
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
+              >
+                <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
+              </button>
             </div>
-            <div className="overflow-y-auto bg-slate-50/50 p-6 space-y-6">
-              <div className="bg-gradient-to-r from-[#0b1727] to-[#1e293b] rounded-2xl p-6 text-white flex items-center gap-4 shadow-md">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center font-black text-2xl border border-emerald-500/30 text-[#359b46]">{profile.initials}</div>
-                <div>
-                  <h3 className="font-extrabold text-lg">{profile.name}</h3>
-                  <p className="text-xs text-emerald-300 mt-0.5">Maintenance Department</p>
+            
+            <div className="overflow-y-auto bg-slate-50/50 p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
+              
+              {/* Profile Banner */}
+              <div className="bg-gradient-to-r from-[#0b1727] to-[#1e293b] rounded-[1.5rem] sm:rounded-2xl p-5 sm:p-6 text-white flex flex-row items-center gap-4 sm:gap-5 shadow-lg relative overflow-hidden shrink-0">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                
+                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-full bg-emerald-500/20 flex items-center justify-center font-black text-xl sm:text-2xl border border-emerald-500/30 shadow-inner shrink-0 z-10 text-[#359b46]">
+                  {profile.initials}
+                </div>
+                
+                <div className="flex-1 min-w-0 z-10">
+                  <h3 className="font-extrabold text-base sm:text-lg tracking-tight break-words leading-tight">{profile.name}</h3>
+                  <p className="text-[10px] sm:text-xs font-bold text-emerald-300 mt-0.5 sm:mt-1 tracking-widest uppercase">Maintenance Department</p>
                 </div>
               </div>
-              <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 space-y-4">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-50">Account Details</h4>
-                <div className="space-y-3">
-                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Full Name</label><p className="text-sm font-semibold text-slate-800">{profile.name}</p></div>
-                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Email Address</label><p className="text-sm font-semibold text-slate-800 break-all">{userEmail}</p></div>
-                  <div><label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Access Role</label><span className="inline-block text-[10px] font-semibold text-[#359b46] bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded mt-1">Maintenance Staff</span></div>
+
+              {/* Account Details Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-sm border border-slate-100 p-5 space-y-4 sm:space-y-5">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 sm:pb-2 border-b border-slate-50">
+                  Account Details
+                </h4>
+                
+                <div className="space-y-4 sm:space-y-3">
+                  <div>
+                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 sm:mb-1">Full Name</label>
+                    <p className="text-sm font-extrabold text-slate-800 tracking-tight break-words">{profile.name}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1">Email Address</label>
+                    <div className="w-full">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-600 break-all bg-slate-50 py-2 rounded-xl inline-block border border-slate-100 leading-normal">
+                        {userEmail}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Access Role</label>
+                    <span className="inline-flex text-[9px] sm:text-[10px] font-black text-[#359b46] bg-emerald-50 border border-emerald-100 px-2.5 sm:px-2 py-1 sm:py-0.5 rounded-lg sm:rounded tracking-widest uppercase shadow-sm sm:mt-1">
+                      Maintenance Staff
+                    </span>
+                  </div>
                 </div>
               </div>
+              
             </div>
           </div>
         </div>
@@ -415,14 +453,32 @@ export default function MaintenanceDashboard() {
 
       {/* 2. LOGOUT CONFIRMATION */}
       {showLogoutModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 text-center transform transition-all">
-            <div className="w-14 h-14 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4 border border-red-100"><AlertTriangle size={28} /></div>
-            <h3 className="text-xl font-bold text-[#0a1e3f] mb-2">Sign out</h3>
-            <p className="text-slate-500 text-sm mb-6">Are you sure you want to log out of your account?</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
-              <button onClick={confirmLogout} className="flex-1 py-3 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm">Log out</button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#081832]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-10 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-white/20">
+            
+            {/* ✨ Responsive Premium Icon Wrapper */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] bg-red-50 flex items-center justify-center mx-auto mb-5 sm:mb-6 border-4 border-red-50/50 shadow-sm">
+              <AlertTriangle size={28} className="text-red-500 sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Sign out</h3>
+            <p className="text-slate-500 text-[13px] sm:text-sm mb-8 sm:mb-10 leading-relaxed font-medium px-2 sm:px-0">
+              Are you sure you want to log out of your account?
+            </p>
+            
+            <div className="flex gap-3 sm:gap-4">
+              <button 
+                onClick={() => setShowLogoutModal(false)} 
+                className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all active:scale-[0.96] text-sm sm:text-base duration-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmLogout} 
+                className="flex-1 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 transition-all shadow-lg shadow-red-500/25 active:scale-[0.96] text-sm sm:text-base duration-200"
+              >
+                Log out
+              </button>
             </div>
           </div>
         </div>
@@ -435,6 +491,20 @@ export default function MaintenanceDashboard() {
           {toast.message}
         </div>
       )}
+      {/* ✨ GLOBAL CSS: INVISIBLE SCROLLBARS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar {
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE and Edge */
+        }
+        .custom-scrollbar::-webkit-scrollbar { 
+          display: none; /* Chrome, Safari, Opera */
+        }
+        
+        .animate-bounce-slow {
+          animation: bounce 3s infinite;
+        }
+      `}} />
     </div>
   );
 }

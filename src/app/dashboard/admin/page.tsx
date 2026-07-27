@@ -80,6 +80,138 @@ export default function AdminDashboard() {
     fetchOrgData();
   }, []);
 
+  // ✨ LIVE ASSIGNED TICKETS (OPEN & IN PROGRESS) SIDEBAR COUNTER STATE
+  const [activeTicketsCount, setActiveTicketsCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!orgData?.admin_email) return;
+
+    const fetchActiveTicketsCount = async () => {
+      try {
+        // A. Kunin ang raw tickets data table reference
+        const { data: ticketsData } = await supabase
+          .from('tickets')
+          .select('title, location, status')
+          .eq('admin_email', orgData.admin_email);
+
+        // B. Kunin ang active maintenance tasks dictionary block para sa status precedence matching
+        const { data: tasksData } = await supabase
+          .from('maintenance_tasks')
+          .select('title, location, status')
+          .eq('admin_email', orgData.admin_email);
+
+        if (ticketsData) {
+          // ✨ EXACT ADAPTATION FROM VIEWTICKET.TSX FILTERING LOGIC
+          const activeCount = ticketsData.filter(ticket => {
+            const liveMatch = tasksData?.find(task => task.title === ticket.title && task.location === ticket.location);
+            const currentLiveStatus = String(liveMatch ? liveMatch.status : ticket.status).toLowerCase().trim();
+            
+            // Sinasala lamang ang mga tasks na 'Open & In Progress' base sa exact state paradigm mo
+            return currentLiveStatus === 'pending' || 
+                   currentLiveStatus === 'open' || 
+                   currentLiveStatus === 'in_progress' || 
+                   currentLiveStatus === 'in progress' || 
+                   currentLiveStatus === 'assigned to maintenance' || 
+                   currentLiveStatus === 'working';
+          }).length;
+
+          setActiveTicketsCount(activeCount);
+        }
+      } catch (err) {
+        console.error("Sidebar tickets count fetch breakdown:", err);
+      }
+    };
+
+    fetchActiveTicketsCount();
+
+    // Realtime channel stream trap para mag-sync ang sidebar badge sa bawat database matrix table updates
+    const viewTicketChannel = supabase
+      .channel('sidebar-live-viewticket-counts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` }, () => {
+        fetchActiveTicketsCount();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${orgData.admin_email}` }, () => {
+        fetchActiveTicketsCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(viewTicketChannel);
+    };
+  }, [orgData]);
+
+  // ✨ LIVE MAINTENANCE TICKETS INBOX COUNTER STATE
+  const [pendingMaintenanceCount, setPendingMaintenanceCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!orgData?.admin_email) return;
+
+    // 1. Kunin ang paunang bilang ng mga 'Open' na tickets sa inbox
+    const fetchPendingTickets = async () => {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('admin_email', orgData.admin_email)
+        .eq('status', 'Open');
+
+      if (!error && data) {
+        setPendingMaintenanceCount(data.length);
+      }
+    };
+    fetchPendingTickets();
+
+    // 2. Makinig sa realtime events (INSERT, UPDATE, DELETE) para awtomatikong mag-sync ang badge count
+    const maintenanceChannel = supabase
+      .channel('sidebar-live-maintenance-counts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` },
+        () => {
+          fetchPendingTickets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(maintenanceChannel);
+    };
+  }, [orgData]);
+
+  // ✨ LIVE CHAT MESSAGES UNREAD COUNT COUNTER STATE
+  const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!orgData?.admin_email) return;
+
+    // 1. Kunin ang initial unread messages count para kay admin
+    const fetchUnreadMessages = async () => {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('admin_email', orgData.admin_email)
+        .eq('recipient_role', 'admin')
+        .eq('is_read', false);
+
+      if (!error && data) {
+        setUnreadMessageCount(data.length);
+      }
+    };
+    fetchUnreadMessages();
+
+    // 2. Realtime channel listener para mag-update ang count kapag may pumasok o nabasang chat
+    const chatChannel = supabase
+      .channel('sidebar-live-chat-counts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
+        () => {
+          // Awtomatikong ire-refresh ang count tuwing may pagbabago (bago, update sa read) sa table
+          fetchUnreadMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(chatChannel);
+    };
+  }, [orgData]);
+
   useEffect(() => {
     const fetchNotifications = async () => {
       if (orgData?.admin_email) {
@@ -163,6 +295,17 @@ export default function AdminDashboard() {
     } finally {
       setIsUploadingLogo(false);
     }
+  };
+
+  // ✨ FIX: Bagong helper triggers para awtomatikong isara ang mobile menu kapag binuksan ang modals
+  const openUserProfileFromSidebar = () => {
+    setIsUserProfileModalOpen(true);
+    setIsMobileMenuOpen(false); 
+  };
+
+  const openWorkspaceFromSidebar = () => {
+    setIsWorkspaceModalOpen(true);
+    setIsMobileMenuOpen(false); 
   };
 
   const markAllAsRead = async () => {
@@ -252,7 +395,7 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="hidden sm:flex items-center gap-2 font-black tracking-tight text-white/90">
-              <Building size={20} className="text-[#359b46]" /> Admin Portal
+              <Building size={20} className="text-[#359b46]" /> Organization Logo
             </div>
           )}
         </div>
@@ -267,7 +410,7 @@ export default function AdminDashboard() {
             >
               <Bell className={`w-[22px] h-[22px] text-slate-300 group-hover:text-white transition-colors ${unreadCount > 0 ? 'animate-bounce-slow' : ''}`} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0a1e3f] shadow-sm">
+                <span className="absolute top-1 right-1 flex h-4 w-4 p-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0a1e3f] shadow-sm">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -318,7 +461,7 @@ export default function AdminDashboard() {
               </>
             )}
           </div>
-          
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-500/30 text-emerald-50 bg-gradient-to-r from-emerald-600 to-green-700">Admin Portal</span>
           {/* Logout Icon Button */}
           <button 
             onClick={() => setIsLogoutModalOpen(true)} 
@@ -349,7 +492,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <span className="font-extrabold text-white text-sm tracking-wide flex items-center gap-2">
-                <Building size={18} className="text-[#359b46]" /> Admin Portal
+                <Building size={18} className="text-[#359b46]" /> Organizational Logo
               </span>
             )}
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
@@ -358,7 +501,7 @@ export default function AdminDashboard() {
           {/* Workspace Info Card */}
           <div className="p-4 sm:pt-6 pb-2 shrink-0">
             <div 
-              onClick={() => setIsWorkspaceModalOpen(true)}
+              onClick={openWorkspaceFromSidebar}
               className="bg-white/5 rounded-2xl p-4 border border-white/10 shadow-sm cursor-pointer hover:bg-white/10 transition-all duration-300 group"
             >
               <div className="flex justify-between items-center mb-2">
@@ -384,11 +527,13 @@ export default function AdminDashboard() {
             <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} />
             <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
-            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} />
-            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} />
+            {/* <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} /> */}
+            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} />
+
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
             <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
-            <NavItem icon={<Ticket size={18} strokeWidth={2.5} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} />
+            <NavItem icon={<Ticket size={18} strokeWidth={2.5} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} badgeCount={activeTicketsCount} />
             <div className="pt-4 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>
@@ -398,7 +543,7 @@ export default function AdminDashboard() {
           {/* ✨ PROFILE AT FOOTER OF SIDEBAR */}
           <div className="shrink-0 p-4 border-t border-white/5 bg-[#0a1e3f]">
             <button 
-              onClick={() => setIsUserProfileModalOpen(true)}
+              onClick={openUserProfileFromSidebar}
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group"
             >
               <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-white shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5">
@@ -430,47 +575,52 @@ export default function AdminDashboard() {
 
       {/* 🌟 PREMIUM USER PROFILE MODAL */}
       {isUserProfileModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight">Admin Profile</h2>
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          {/* ✨ Bottom Sheet sa Mobile (rounded-t), Center Modal sa Desktop (rounded-2xl) */}
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+            <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">Admin Profile</h2>
               <button 
                 onClick={() => setIsUserProfileModalOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
               >
-                <X size={20} />
+                <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="overflow-y-auto bg-[#f8fafc] p-6 space-y-6 custom-scrollbar">
-              <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] rounded-3xl p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shadow-[#0a1e3f]/10">
+            <div className="overflow-y-auto bg-slate-50/50 p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
+              {/* Profile Banner Card */}
+              <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] rounded-[1.5rem] sm:rounded-3xl p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shadow-[#0a1e3f]/10 shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
                 
-                <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-3xl border-2 border-white/20 uppercase shadow-inner z-10">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-white/20 uppercase shadow-inner z-10">
                   {adminProfile.name.substring(0, 2)}
                 </div>
-                <div className="z-10 mt-1">
-                  <h3 className="font-black text-xl tracking-tight">{adminProfile.name}</h3>
-                  <p className="text-xs font-semibold text-blue-200 mt-1 uppercase tracking-wider">System Administrator</p>
+                <div className="z-10 mt-1 min-w-0 w-full px-2">
+                  <h3 className="font-extrabold text-lg sm:text-xl tracking-tight truncate">{adminProfile.name}</h3>
+                  <p className="text-[10px] sm:text-xs font-bold text-blue-200 mt-1 tracking-widest uppercase">System Administrator</p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6 space-y-5">
-                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest pb-3 border-b border-slate-100">
+              {/* Account Details Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200/60 p-5 sm:p-6 space-y-4 sm:space-y-5">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 border-b border-slate-100">
                   Account Details
                 </h4>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Full Name</label>
-                    <p className="text-[15px] font-bold text-[#0a1e3f]">{adminProfile.name}</p>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-0.5 sm:mb-1">Full Name</label>
+                    <p className="text-sm sm:text-[15px] font-extrabold text-[#0a1e3f] tracking-tight break-words">{adminProfile.name}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
-                    <p className="text-[15px] font-bold text-[#0a1e3f] break-all">{adminProfile.email}</p>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Email Address</label>
+                    <p className="text-xs sm:text-sm font-semibold text-slate-600 break-all bg-slate-50 py-2 rounded-xl inline-block border border-slate-100/50 leading-normal">
+                      {adminProfile.email}
+                    </p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block mb-1">Access Role</label>
-                    <span className="inline-block text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg mt-1">
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Access Role</label>
+                    <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg shadow-sm">
                       Full Admin Access
                     </span>
                   </div>
@@ -481,44 +631,45 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 PREMIUM WORKSPACE MODAL */}
+      {/* 🌟 PREMIUM WORKSPACE MODAL (ORGANIZATION PROFILE) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/70 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[95vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          {/* ✨ Bottom Sheet sa Mobile, Center Modal sa Desktop */}
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
             
             {/* Modal Header */}
-            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+            <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">Organization Profile</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
-                className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-600 transition-colors"
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
               >
-                <X size={20} />
+                <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
             
             {/* Scrollable Content Area */}
-            <div className="overflow-y-auto bg-[#f8fafc] custom-scrollbar flex-1">
+            <div className="overflow-y-auto bg-slate-50/50 custom-scrollbar flex-1 pb-8 sm:pb-0">
               
               {/* Header Banner */}
-              <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] px-4 sm:px-8 py-6 sm:py-10 flex flex-col sm:flex-row items-center sm:items-end gap-5 sm:gap-8 relative">
+              <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] px-5 sm:px-8 py-6 sm:py-8 flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 relative shrink-0 text-center sm:text-left">
                 <div className="absolute top-0 left-0 right-0 h-full overflow-hidden opacity-10 pointer-events-none">
                   <div className="absolute -top-24 -right-10 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
                 </div>
 
                 {/* Logo Container */}
-                <div className="relative group w-24 h-24 sm:w-32 sm:h-32 shrink-0 z-10">
-                  <div className="w-full h-full rounded-[1.5rem] sm:rounded-[2rem] border-[3px] sm:border-4 border-white bg-white flex items-center justify-center overflow-hidden relative shadow-xl">
+                <div className="relative group w-20 h-20 sm:w-24 sm:h-24 shrink-0 z-10">
+                  <div className="w-full h-full rounded-2xl border-[3px] border-white bg-white flex items-center justify-center overflow-hidden relative shadow-md">
                     {orgData?.logo_url ? (
-                      <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain p-2 sm:p-3" />
+                      <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain p-1.5 sm:p-2" />
                     ) : (
-                      <Building className="text-slate-300 w-10 h-10 sm:w-12 sm:h-12" />
+                      <Building className="text-slate-300 w-8 h-8 sm:w-10 sm:h-10" />
                     )}
                     
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
-                      <label className="cursor-pointer text-white flex flex-col items-center gap-1 sm:gap-1.5 w-full h-full justify-center">
-                        <Upload className="w-5 h-5 sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} />
-                        <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest text-center leading-tight">Change<br className="sm:hidden"/>Logo</span>
+                      <label className="cursor-pointer text-white flex flex-col items-center gap-1 w-full h-full justify-center">
+                        <Upload className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
+                        <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-center leading-tight">Change<br/>Logo</span>
                         <input 
                           type="file" 
                           accept="image/*" 
@@ -530,41 +681,41 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   {isUploadingLogo && (
-                    <div className="absolute -bottom-6 sm:-bottom-8 left-0 right-0 text-center">
-                      <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-blue-200 animate-pulse">Uploading...</p>
+                    <div className="absolute -bottom-5 left-0 right-0 text-center">
+                      <p className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider text-blue-200 animate-pulse">Uploading...</p>
                     </div>
                   )}
                 </div>
                 
                 {/* Organization Info */}
-                <div className="text-center sm:text-left text-white pb-1 sm:pb-2 flex-1 z-10 w-full sm:w-auto">
-                  <h3 className="text-2xl sm:text-3xl font-black mb-1 sm:mb-2 truncate tracking-tight" title={orgData?.org_name}>
+                <div className="text-center sm:text-left text-white flex-1 min-w-0 z-10 w-full">
+                  <h3 className="text-xl sm:text-2xl font-black mb-1 truncate tracking-tight" title={orgData?.org_name}>
                     {orgData?.org_name || "Organization Name"}
                   </h3>
-                  <p className="text-blue-200 text-xs sm:text-sm font-semibold flex items-center justify-center sm:justify-start gap-2">
-                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#359b46] shadow-[0_0_12px_rgba(53,155,70,0.8)] animate-pulse"></span>
+                  <p className="text-blue-200 text-xs font-semibold flex items-center justify-center sm:justify-start gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#359b46] shadow-[0_0_10px_rgba(53,155,70,0.8)] animate-pulse"></span>
                     Active Workspace
                   </p>
                 </div>
               </div>
 
               {/* Data Display Section */}
-              <div className="p-4 sm:p-6 md:p-8">
-                <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+              <div className="p-4 sm:p-6 md:p-6">
+                <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
                   
                   {/* Section Header */}
-                  <div className="px-5 sm:px-8 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <h4 className="text-sm font-black text-[#0a1e3f] tracking-tight flex items-center gap-2">
-                      <Box size={16} className="text-slate-400" />
+                  <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h4 className="text-xs sm:text-sm font-black text-[#0a1e3f] tracking-tight flex items-center gap-2">
+                      <Box size={14} className="text-slate-400 sm:w-4 sm:h-4" />
                       Business Details
                     </h4>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-200/50 px-2.5 py-1 rounded-md">
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2.5 py-1 rounded-md">
                       View Only
                     </span>
                   </div>
                   
                   {/* Data Grid */}
-                  <div className="p-5 sm:p-8">
+                  <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {orgData ? (
                         Object.entries(orgData).map(([key, value]) => {
@@ -577,28 +728,26 @@ export default function AdminDashboard() {
                           return (
                             <div 
                               key={key} 
-                              className={`group flex flex-col p-4 rounded-xl transition-all duration-300 border border-transparent hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-sm overflow-hidden ${isFullWidth ? 'sm:col-span-2 bg-slate-50/40 border-slate-100/50' : 'bg-transparent'}`}
+                              className={`group flex flex-col p-3.5 rounded-xl transition-all duration-300 border border-transparent hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-sm overflow-hidden ${isFullWidth ? 'sm:col-span-2 bg-slate-50/40 border-slate-100/50' : 'bg-transparent'}`}
                             >
-                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5 whitespace-nowrap">
+                              <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5 whitespace-nowrap">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500/30 group-hover:bg-[#359b46] transition-colors duration-300 shrink-0"></span>
                                 {formatColumnName(key)}
                               </label>
                               
-                              {/* Dito in-apply ang whitespace-nowrap at overflow-x-auto */}
-                              <div className="pl-3 border-l-2 border-slate-200 group-hover:border-[#359b46] transition-colors duration-300 overflow-x-auto custom-scrollbar pb-1">
-                                <p className={`text-[14px] sm:text-[15px] font-bold ${value ? 'text-[#0a1e3f]' : 'text-slate-400 italic'} whitespace-nowrap w-max pr-4`}>
+                              <div className="pl-2.5 border-l-2 border-slate-200 group-hover:border-[#359b46] transition-colors duration-300 overflow-x-auto custom-scrollbar pb-0.5">
+                                <p className={`text-xs sm:text-sm font-extrabold ${value ? 'text-[#0a1e3f]' : 'text-slate-400 italic'} whitespace-nowrap w-max pr-4 tracking-tight`}>
                                   {displayValue}
                                 </p>
                               </div>
-
                             </div>
                           );
                         })
                       ) : (
-                        <div className="col-span-1 sm:col-span-2 text-center text-slate-400 text-sm py-10 sm:py-12">
-                          <div className="animate-pulse flex flex-col items-center gap-3">
-                            <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-400 rounded-full animate-spin"></div>
-                            <span className="font-semibold">Loading organization details...</span>
+                        <div className="col-span-1 sm:col-span-2 text-center text-slate-400 text-xs py-8">
+                          <div className="animate-pulse flex flex-col items-center gap-2.5">
+                            <div className="w-6 h-6 border-3 border-slate-200 border-t-slate-400 rounded-full animate-spin"></div>
+                            <span className="font-bold uppercase tracking-wider">Loading details...</span>
                           </div>
                         </div>
                       )}
@@ -615,16 +764,26 @@ export default function AdminDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-200">
-            <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
-              <AlertTriangle size={36} strokeWidth={2.5} />
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[#0a1e3f] mb-2 tracking-tight">Confirm Logout</h2>
-            <p className="text-slate-500 text-[15px] font-medium mb-8 leading-relaxed">Are you sure you want to log out of your admin workspace?</p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={() => setIsLogoutModalOpen(false)} className="flex-1 px-4 py-3.5 text-[15px] font-extrabold text-slate-600 hover:text-[#0a1e3f] bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200">Cancel</button>
-              <button onClick={handleLogout} className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-3.5 rounded-xl text-[15px] font-extrabold transition-all shadow-md hover:shadow-red-500/20 active:scale-95">Log Out</button>
+            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 tracking-tight">Confirm Logout</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">Are you sure you want to log out of your admin workspace?</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsLogoutModalOpen(false)} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl sm:rounded-2xl transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleLogout} 
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 sm:py-3.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Log Out
+              </button>
             </div>
           </div>
         </div>
@@ -633,20 +792,20 @@ export default function AdminDashboard() {
       {/* 🌟 PREMIUM TOAST */}
       {toast && (
         <div 
-          className={`fixed bottom-8 right-8 z-[100] flex items-center gap-3.5 px-6 py-4 rounded-2xl shadow-2xl font-bold text-[15px] transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
+          className={`fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-8 sm:right-8 z-[120] flex items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl shadow-2xl font-black text-xs sm:text-sm transition-all transform animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${
             toast.type === "success" ? "border-l-4 border-l-[#359b46] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"
           }`}
         >
           {toast.type === "success" ? (
-            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="text-[#359b46]" size={20} strokeWidth={2.5} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="text-[#359b46] w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="text-red-500" size={20} strokeWidth={2.5} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="text-red-500 w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
             </div>
           )}
-          {toast.message}
+          <span className="truncate flex-1">{toast.message}</span>
         </div>
       )}
 
@@ -669,7 +828,9 @@ export default function AdminDashboard() {
 }
 
 // ✨ UPDATED NAV ITEM: 1-line enforce (truncate + whitespace-nowrap) & flex-1 to prevent wrap
-function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void }) {
+// function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void }) {
+// ✨ REFACTORED NAV ITEM: Idinagdag ang optional custom operational badgeCount container trap
+function NavItem({ icon, label, isActive, onClick, badgeCount }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number }) {
   return (
     <button 
       onClick={onClick} 
@@ -684,7 +845,16 @@ function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, la
       </span>
       <span className="tracking-wide truncate whitespace-nowrap flex-1 text-left">{label}</span>
       
-      {!isActive && (
+      {/* ✨ DYNAMIC BADGE BADGE COMPONENT TRAP */}
+      {badgeCount !== undefined && badgeCount > 0 && (
+        <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
+          isActive ? 'bg-white text-[#277534]' : 'bg-red-500 text-white shadow-red-500/10'
+        }`}>
+          {badgeCount > 99 ? '99+' : badgeCount}
+        </span>
+      )}
+      
+      {!isActive && (!badgeCount || badgeCount <= 0) && (
         <ChevronRight size={16} className="shrink-0 ml-auto opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-slate-500" />
       )}
     </button>

@@ -27,149 +27,159 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
     .slice(0, 3);
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-6">
+    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-8 max-w-7xl mx-auto px-1 sm:px-0">
       
-      {/* 🌟 PREMIUM HEADER SECTION */}
-      <div className="flex justify-between items-start md:items-end mb-2 md:mb-6">
-        <div>
-          <div className="flex items-center gap-2 text-slate-500 text-xs sm:text-sm mb-1.5 font-medium">
-            <Calendar size={14} className="text-blue-500" />
+      {/* 🌟 ULTRA-PREMIUM HEADER SECTION */}
+      <div className="flex justify-between items-center mb-5 md:mb-8 gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] mb-1.5 sm:mb-2">
+            <div className="p-1 bg-blue-50 rounded-md text-blue-500 shrink-0">
+              <Calendar size={12} strokeWidth={3} />
+            </div>
             <span>{currentDate}</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-[#0a1e3f] tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-[2.5rem] font-black tracking-tight leading-tight truncate text-transparent bg-clip-text bg-gradient-to-r from-[#0a1e3f] to-[#1e3a8a] pb-1">
             {greeting}, {profile.name?.split(' ')[0]} 👋
           </h2>
-          <p className="text-slate-500 mt-2 text-sm md:text-base font-medium">Here's your maintenance overview for today.</p>
+          <p className="text-slate-500 mt-0.5 md:mt-1 text-xs sm:text-sm font-medium truncate leading-relaxed max-w-lg">
+            Here's your maintenance overview for today.
+          </p>
         </div>
+        
         <div 
           onClick={openProfileModal}
-          className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-emerald-50 text-[#359b46] flex items-center justify-center font-black text-lg md:text-xl border-2 border-emerald-100 shadow-sm cursor-pointer hover:bg-emerald-100 hover:scale-105 hover:rotate-3 active:scale-95 transition-all duration-300 shrink-0"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] md:rounded-[1.5rem] bg-gradient-to-br from-emerald-50 to-emerald-100/50 text-[#359b46] flex items-center justify-center font-black text-xl md:text-2xl border border-emerald-200 shadow-[0_8px_16px_rgba(53,155,70,0.12)] cursor-pointer hover:shadow-[0_12px_24px_rgba(53,155,70,0.2)] hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 ring-4 ring-white"
           title="View Profile Details"
         >
           {profile.initials}
         </div>
       </div>
 
-      {/* 📊 METRICS CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      {/* 📊 METRICS CARDS - Polished Gradients & Shadows */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         
         {/* Active Assigned */}
-        <div className="bg-gradient-to-br from-white to-blue-50/50 rounded-3xl p-6 border border-blue-100/60 shadow-sm flex flex-col justify-center transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 group">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-blue-100/50 text-blue-600 rounded-2xl group-hover:bg-blue-100 transition-colors">
+        <div className="bg-gradient-to-br from-white to-slate-50 rounded-3xl p-6 border border-slate-200/60 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex flex-col justify-center transition-all duration-400 hover:shadow-[0_8px_30px_rgba(37,99,235,0.08)] hover:-translate-y-1 hover:border-blue-200 group relative overflow-hidden h-full">
+          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-slate-100 transition-transform duration-700 group-hover:scale-[1.2] group-hover:text-blue-50/80">
+            <Activity size={140} />
+          </div>
+          <div className="flex justify-between items-start mb-4 relative z-10">
+            <div className="p-3 bg-slate-100 text-slate-500 rounded-2xl group-hover:bg-blue-500 group-hover:text-white transition-all duration-300 shadow-sm">
               <Activity size={24} />
             </div>
           </div>
-          <div>
-            <p className="text-4xl font-black text-[#0a1e3f] tracking-tight">{metrics.assigned}</p>
-            <h3 className="text-slate-500 text-sm font-bold mt-1">Active Assigned</h3>
+          <div className="relative z-10 mt-2">
+            <p className="text-4xl md:text-5xl font-black text-[#0a1e3f] tracking-tight group-hover:text-blue-600 transition-colors duration-300">{metrics.assigned}</p>
+            <h3 className="text-slate-400 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Active Assigned</h3>
           </div>
         </div>
 
         {/* Urgent Tasks */}
-        <div className="bg-gradient-to-br from-red-50 to-white rounded-3xl p-6 border border-red-100/80 shadow-sm relative overflow-hidden flex flex-col justify-center transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 hover:-translate-y-1 group">
-          <div className="absolute -right-6 -top-6 text-red-500/5 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
+        <div className="bg-gradient-to-br from-white to-red-50/30 rounded-3xl p-6 border border-red-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)] relative overflow-hidden flex flex-col justify-center transition-all duration-400 hover:shadow-[0_8px_30px_rgba(220,38,38,0.12)] hover:-translate-y-1 hover:border-red-200 group h-full">
+          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-red-50 transition-transform duration-700 group-hover:scale-[1.2] group-hover:-rotate-12 group-hover:text-red-100/80">
             <AlertCircle size={140} />
           </div>
           <div className="flex justify-between items-start mb-4 relative z-10">
-            <div className="p-3 bg-red-100 text-red-600 rounded-2xl group-hover:animate-pulse shadow-inner shadow-red-200/50">
+            <div className="p-3 bg-red-100 text-red-600 rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-all duration-300 shadow-sm">
               <AlertCircle size={24} />
             </div>
             {metrics.dueToday > 0 && (
-              <span className="flex h-3 w-3 relative mt-1 mr-1">
+              <span className="flex h-3.5 w-3.5 relative mt-1 mr-1">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white"></span>
               </span>
             )}
           </div>
-          <div className="relative z-10">
-            <p className="text-4xl font-black text-red-700 tracking-tight">{metrics.dueToday}</p>
-            <h3 className="text-red-700/80 text-sm font-bold mt-1">Urgent Tasks</h3>
+          <div className="relative z-10 mt-2">
+            <p className="text-4xl md:text-5xl font-black text-red-600 tracking-tight">{metrics.dueToday}</p>
+            <h3 className="text-red-400 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Urgent Tasks</h3>
           </div>
         </div>
 
-        {/* Done This Week */}
-        <div className="bg-gradient-to-br from-[#359b46] to-[#277534] rounded-3xl p-6 border border-[#277534] shadow-md relative overflow-hidden flex flex-col justify-center text-white transition-all duration-300 hover:shadow-xl hover:shadow-emerald-900/20 hover:-translate-y-1 group">
-          <div className="absolute -right-4 -bottom-4 text-white/10 transition-transform duration-500 group-hover:scale-110">
-            <CheckCircle size={120} />
+        {/* Done Tasks */}
+        <div className="bg-gradient-to-br from-[#359b46] to-[#277534] rounded-3xl p-6 border border-[#277534] shadow-[0_8px_20px_rgba(53,155,70,0.2)] relative overflow-hidden flex flex-col justify-center text-white transition-all duration-400 hover:shadow-[0_12px_30px_rgba(53,155,70,0.3)] hover:-translate-y-1 hover:from-[#3ca64e] hover:to-[#2b823a] group h-full">
+          <div className="absolute -right-4 top-1/2 -translate-y-1/2 text-white/5 transition-transform duration-700 group-hover:scale-[1.2] group-hover:rotate-6">
+            <CheckCircle size={140} />
           </div>
           <div className="flex justify-between items-start mb-4 relative z-10">
-            <div className="p-3 bg-white/20 text-white rounded-2xl backdrop-blur-sm border border-white/10">
+            <div className="p-3 bg-white/20 text-white rounded-2xl backdrop-blur-md border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]">
               <CheckCircle size={24} />
             </div>
           </div>
-          <div className="relative z-10">
-            <p className="text-4xl font-black text-white tracking-tight">{metrics.doneThisWeek}</p>
-            <h3 className="text-emerald-100 text-sm font-bold mt-1">Done this week</h3>
+          <div className="relative z-10 mt-2">
+            <p className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-sm">{metrics.doneThisWeek}</p>
+            <h3 className="text-emerald-100 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Done Tasks</h3>
           </div>
         </div>
       </div>
 
       {/* 🚀 UP NEXT SECTION */}
-      <section className="bg-white rounded-3xl p-5 md:p-8 shadow-sm border border-slate-200/60">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-6 bg-[#359b46] rounded-full"></div>
-            <h3 className="font-extrabold text-lg md:text-xl text-[#0a1e3f]">Up Next For You</h3>
+      <section className="bg-white rounded-[2rem] p-5 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-100">
+        <div className="flex items-center justify-between mb-6 border-b border-slate-100/80 pb-5">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="w-2 h-7 bg-gradient-to-b from-[#359b46] to-emerald-300 rounded-full shadow-sm"></div>
+            <h3 className="font-black text-lg sm:text-xl md:text-2xl text-[#0a1e3f] tracking-tight">Up Next For You</h3>
           </div>
-          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-sm font-bold text-[#359b46] hover:text-[#277534] hover:bg-emerald-50 px-4 py-2 rounded-xl transition-all hidden sm:flex items-center gap-1 group">
-            View all tasks <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-bold text-[#359b46] hover:text-white hover:bg-[#359b46] px-4 py-2.5 rounded-xl transition-all hidden sm:flex items-center gap-1.5 group shadow-sm active:scale-95 border border-[#359b46]/20 hover:border-transparent">
+            View all tasks <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
           </button>
         </div>
 
         <div>
           {upNextTasks.length === 0 ? (
-            <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 flex flex-col items-center justify-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 shadow-inner text-[#359b46]">
-                <CheckCircle size={32} />
+            <div className="py-14 text-center border-2 border-dashed border-slate-200 rounded-[2rem] bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-slate-300">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 rounded-[1.5rem] flex items-center justify-center mb-5 shadow-inner text-[#359b46] border border-emerald-100/50">
+                <CheckCircle size={36} className="sm:w-10 sm:h-10" />
               </div>
-              <h4 className="text-lg text-[#0a1e3f] font-extrabold">You're all caught up!</h4>
-              <p className="text-sm text-slate-500 mt-2 font-medium max-w-xs mx-auto">Awesome work. You have no pending maintenance tasks on your plate right now.</p>
+              <h4 className="text-lg md:text-xl text-[#0a1e3f] font-black tracking-tight">You're all caught up!</h4>
+              <p className="text-xs md:text-sm text-slate-500 mt-2 font-medium max-w-sm mx-auto leading-relaxed">Awesome work. You have no pending maintenance tasks on your plate right now.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
               {upNextTasks.map((task: any) => (
                 <div 
                   key={task.id} 
                   onClick={() => setActiveTab && setActiveTab('tasks')}
-                  className={`group relative overflow-hidden rounded-2xl p-5 border flex flex-col gap-3 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] ${
+                  className={`group relative overflow-hidden rounded-[1.5rem] p-5 sm:p-6 flex flex-col h-full cursor-pointer transition-all duration-400 hover:-translate-y-1.5 active:scale-[0.98] ${
                     task.priority === 'Urgent' 
-                      ? 'bg-gradient-to-br from-white to-red-50/30 border-red-200 hover:border-red-300' 
-                      : 'bg-white border-slate-200 hover:border-blue-300'
+                      ? 'bg-white ring-1 ring-red-200 hover:ring-red-400 hover:shadow-[0_12px_30px_rgba(220,38,38,0.1)]' 
+                      : 'bg-white ring-1 ring-slate-200/80 hover:ring-blue-400 hover:shadow-[0_12px_30px_rgba(37,99,235,0.08)]'
                   }`}
                 >
-                  {/* Priority Indicator Stripe on left */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${task.priority === 'Urgent' ? 'bg-red-500' : 'bg-transparent group-hover:bg-blue-400 transition-colors'}`}></div>
+                  {/* Subtle Background Gradient on Hover */}
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none ${task.priority === 'Urgent' ? 'bg-gradient-to-br from-white to-red-50/50' : 'bg-gradient-to-br from-white to-blue-50/30'}`} />
 
-                  <div className="pl-1">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <h4 className={`font-extrabold text-sm md:text-base leading-tight line-clamp-2 ${task.priority === 'Urgent' ? 'text-red-950' : 'text-[#0a1e3f] group-hover:text-blue-700 transition-colors'}`}>
+                  {/* Priority Indicator Dot/Stripe */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${task.priority === 'Urgent' ? 'bg-gradient-to-b from-red-400 to-red-600' : 'bg-transparent group-hover:bg-gradient-to-b group-hover:from-blue-400 group-hover:to-blue-600 transition-colors'}`}></div>
+
+                  <div className="pl-2 flex flex-col flex-1 relative z-10">
+                    <div className="flex justify-between items-start mb-2.5 gap-3">
+                      <h4 className={`font-black text-sm md:text-base leading-snug line-clamp-2 ${task.priority === 'Urgent' ? 'text-red-950' : 'text-[#0a1e3f] group-hover:text-blue-800 transition-colors'}`}>
                         {task.title}
                       </h4>
                       {task.priority === 'Urgent' && (
-                        <span className="bg-red-100 text-red-700 border border-red-200/60 text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shrink-0 shadow-sm animate-pulse">
-                          Urgent
+                        <span className="bg-red-50 text-red-600 ring-1 ring-red-200 text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0 shadow-sm animate-pulse flex items-center gap-1">
+                          <span className="w-1 h-1 rounded-full bg-red-500"></span> Urgent
                         </span>
                       )}
                     </div>
-                    <p className="text-slate-500 font-semibold text-xs mt-1.5 flex items-center gap-1.5 truncate">
-                      <MapPin size={12} className={task.priority === 'Urgent' ? 'text-red-400' : 'text-[#359b46]'} />
-                      {task.location}
+                    <p className="text-slate-500 font-semibold text-[11px] sm:text-xs mt-1 mb-5 flex items-center gap-1.5 truncate group-hover:text-slate-600 transition-colors">
+                      <MapPin size={14} className={task.priority === 'Urgent' ? 'text-red-400' : 'text-slate-400 group-hover:text-[#359b46] transition-colors shrink-0'} />
+                      <span className="truncate">{task.location}</span>
                     </p>
                   </div>
                   
-                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between pl-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg border shadow-sm ${
+                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between pl-2 relative z-10">
+                    <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] px-3 py-1.5 rounded-lg ring-1 shadow-sm transition-colors ${
                       task.status === 'in_progress' 
-                        ? 'bg-blue-50 text-blue-700 border-blue-200/60' 
-                        : 'bg-slate-50 text-slate-600 border-slate-200'
+                        ? 'bg-blue-50 text-blue-700 ring-blue-200/60 group-hover:bg-blue-100' 
+                        : 'bg-slate-50 text-slate-500 ring-slate-200 group-hover:bg-white group-hover:ring-slate-300 group-hover:text-slate-700'
                     }`}>
                       {task.status === 'in_progress' ? 'In Progress' : 'Pending'}
                     </span>
                     
-                    {/* Hover Arrow Icon */}
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                      <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300 shadow-sm shrink-0">
+                      <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" strokeWidth={3} />
                     </div>
                   </div>
                 </div>
@@ -179,12 +189,14 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         </div>
         
         {/* Mobile View All Button */}
-        <button 
-          onClick={() => setActiveTab && setActiveTab('tasks')} 
-          className="w-full mt-6 sm:hidden bg-slate-50 text-[#0a1e3f] py-4 rounded-2xl font-extrabold text-sm border border-slate-200 active:bg-slate-100 flex items-center justify-center gap-2"
-        >
-          View all your tasks <ChevronRight size={16} />
-        </button>
+        {upNextTasks.length > 0 && (
+          <button 
+            onClick={() => setActiveTab && setActiveTab('tasks')} 
+            className="w-full mt-6 sm:hidden bg-slate-50 text-[#0a1e3f] py-4 rounded-xl font-extrabold text-sm border border-slate-200 hover:bg-slate-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+          >
+            View all your tasks <ChevronRight size={16} strokeWidth={2.5} />
+          </button>
+        )}
       </section>
 
     </div>
