@@ -40,6 +40,25 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   //   }
   // }, [activeChat, isLoading, isSearchActive, isSending]);
 
+  useEffect(() => {
+    if (managerProfile?.email) {
+      const storedNames = localStorage.getItem(`custom_chat_names_${managerProfile.email}`);
+      if (storedNames) {
+        try {
+          setCustomNames(JSON.parse(storedNames));
+        } catch (e) {
+          console.error("Error parsing stored aliases", e);
+        }
+      }
+    }
+  }, [managerProfile?.email]);
+
+  useEffect(() => {
+    if (managerProfile?.email && Object.keys(customNames).length > 0) {
+      localStorage.setItem(`custom_chat_names_${managerProfile.email}`, JSON.stringify(customNames));
+    }
+  }, [customNames, managerProfile?.email]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -379,7 +398,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       {isEditingNames ? (
                         <input 
                           type="text" 
-                          value={customNames[contact.id] || contact.name} 
+                          value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
                           onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
                           className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
                           onClick={(e) => e.stopPropagation()} 

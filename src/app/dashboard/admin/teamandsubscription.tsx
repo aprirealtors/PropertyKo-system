@@ -2,15 +2,41 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock } from "lucide-react";
+import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, Calendar } from "lucide-react";
+
+// Helper function to calculate the actual upcoming date based on the declared billing day
+const calculateNextBillingDate = (billingDay: number | undefined | null) => {
+  if (!billingDay) return "Not Set";
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  // Create candidate date for the current month
+  let targetDate = new Date(currentYear, currentMonth, billingDay);
+
+  // If today is past the billing day, target the same day next month
+  if (today.getDate() > billingDay) {
+    targetDate = new Date(currentYear, currentMonth + 1, billingDay);
+  }
+
+  return targetDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
 
 export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   
   // Database States
   const [team, setTeam] = useState<any[]>([]);
   const [isLoadingTeam, setIsLoadingTeam] = useState(true);
-  const [currentPlan, setCurrentPlan] = useState(orgData?.plan || "Starter");
+  
+  // Per-Asset Billing States
+  const [currentPlan, setCurrentPlan] = useState(orgData?.plan || "Per Asset (₱99/unit)");
   const [seatLimit, setSeatLimit] = useState(orgData?.users_count || 1);
+  const [unitLimit, setUnitLimit] = useState(orgData?.units_count || 0);
 
   // Modal States
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -25,14 +51,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   const [memberRole, setMemberRole] = useState("Property manager");
   const [memberAccess, setMemberAccess] = useState("All properties");
 
-  // Billing Form States
-  const [selectedPlan, setSelectedPlan] = useState(currentPlan);
-
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchTeam();
-      setCurrentPlan(orgData.plan);
-      setSeatLimit(orgData.users_count);
+      setCurrentPlan(orgData.plan || "Per Asset (₱99/unit)");
+      setSeatLimit(orgData.users_count || 1);
+      setUnitLimit(orgData.units_count || 0);
     }
   }, [orgData]);
 
@@ -47,7 +71,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     if (error) {
       console.error("Error fetching team:", error);
     } else {
-      // ✨ FIX: Filter out owners and tenants so they don't count towards paid seats!
+      // Filter out owners and tenants so they don't count towards paid seats
       const filteredTeam = (data || []).filter(member => {
         const role = String(member.role).toLowerCase();
         return !role.includes('owner') && !role.includes('tenant');
@@ -64,7 +88,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
     // Seat Limit Validation
     if (team.length + 1 >= seatLimit) {
-      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats. Please upgrade your tier plan.`);
+      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats. Please contact support to increase your capacity.`);
       setIsSubmitting(false);
       return;
     }
@@ -120,54 +144,34 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  const handleUpdateBilling = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMsg(null);
-
-    // Match new dynamic variables to requested specifications
-    let newUsersCount = 1;
-    let newUnitsCount = 50;
-    
-    if (selectedPlan === 'Growth') {
-      newUsersCount = 5;
-      newUnitsCount = 250;
-    } else if (selectedPlan === 'Enterprise') {
-      newUsersCount = 25;
-      newUnitsCount = 99999; // Represents unlimited configuration logic safely
-    }
-
-    try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ 
-          plan: selectedPlan,
-          users_count: newUsersCount,
-          units_count: newUnitsCount
-        })
-        .eq('admin_email', orgData.admin_email);
-
-      if (error) throw new Error(`Database Error: ${error.message}`);
-
-      setCurrentPlan(selectedPlan);
-      setSeatLimit(newUsersCount);
-      setIsBillingModalOpen(false);
-      
-    } catch (error: any) {
-      console.error(error);
-      setErrorMsg(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // --- PAYMENT HANDLER ---
+  const handlePayment = () => {
+    const amount = unitLimit * 99;
+    // In a real scenario, this would redirect to PayMongo, GCash, or Stripe checkout
+    alert(`Redirecting to secure payment gateway to settle ₱${amount.toLocaleString()}...`);
   };
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
   
-  // Seat metrics calculations
+  // Seat & Billing metrics calculations
   const seatsUsed = team.length + 1; 
   const seatPercentage = (seatsUsed / seatLimit) * 100;
-  const costPerSeat = currentPlan === 'Enterprise' ? 499 : currentPlan === 'Growth' ? 299 : 0;
-  const monthlyCost = seatsUsed * costPerSeat;
+  
+  // New billing model: strictly based on unit count
+  const monthlyCost = unitLimit * 99;
+
+  // Actual Next Billing Date Calculation
+  const nextBillingDateFormatted = calculateNextBillingDate(orgData?.billing_day);
+  
+  const billingStatus = orgData?.billing_status || 'Pending'; // 'Pending', 'Paid', or 'Late'
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'late': return 'bg-red-100 text-red-700 border-red-200';
+      case 'pending': default: return 'bg-amber-100 text-amber-700 border-amber-200';
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -261,14 +265,14 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
             
             <div className="mb-8 relative z-10">
               <span className="text-slate-500 text-sm font-medium">Current plan</span>
-              <h4 className="text-3xl font-extrabold text-[#0a1e3f] mb-1">{currentPlan}</h4>
-              <p className="text-xs text-slate-400 font-medium">₱{costPerSeat} / seat / month · updates dynamically</p>
+              <h4 className="text-3xl font-extrabold text-[#0a1e3f] mb-1">Per Asset</h4>
+              <p className="text-xs text-slate-400 font-medium">₱99 / unit / month · updates dynamically</p>
             </div>
             
             <div className="space-y-5 mb-8 relative z-10">
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600 font-medium">Seats used</span>
+                  <span className="text-slate-600 font-medium">Team seats used</span>
                   <span className="font-bold text-[#0a1e3f]">{seatsUsed} of {seatLimit}</span>
                 </div>
                 <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -276,23 +280,30 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
-                <span className="text-sm text-slate-600 font-medium">Max properties capacity</span>
+                <span className="text-sm text-slate-600 font-medium">Units capacity</span>
                 <span className="font-bold text-[#0a1e3f] bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                  {currentPlan === 'Starter' ? '50 units' : currentPlan === 'Growth' ? '250 units' : 'Unlimited'}
+                  {unitLimit} units
                 </span>
               </div>
+              
+              {/* Actual Date Display */}
               <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-slate-600 font-medium">Next invoice</span>
-                <span className="font-bold text-[#0a1e3f]">01 Jul 2026 · ₱{monthlyCost.toLocaleString()}</span>
+                <span className="text-sm text-slate-600 font-medium">Next Invoice</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="font-bold text-[#0a1e3f] text-sm">{nextBillingDateFormatted}</span>
+                  <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getStatusColor(billingStatus)}`}>
+                    {billingStatus}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="mt-auto pt-4 relative z-10">
+            <div className="mt-auto pt-4 relative z-10 space-y-3">
               <button 
                 onClick={() => setIsBillingModalOpen(true)}
-                className="w-full bg-white border-2 border-slate-200 hover:border-[#359b46] text-slate-700 hover:text-[#359b46] font-bold py-3 rounded-xl transition-colors shadow-sm"
+                className="w-full bg-[#359b46] hover:bg-[#2c813a] text-white font-bold py-3 rounded-xl transition-colors shadow-sm"
               >
-                Manage billing
+                View billing details
               </button>
             </div>
           </div>
@@ -354,75 +365,77 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* MANAGE BILLING MODAL */}
+      {/* VIEW DETAILS MODAL (Read-Only + Payment) */}
       {isBillingModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h2 className="text-xl font-bold text-[#0a1e3f]">Manage Subscription</h2>
-              <button onClick={() => !isSubmitting && setIsBillingModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSubmitting}>
+              <h2 className="text-xl font-bold text-[#0a1e3f]">Subscription Details</h2>
+              <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1">
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-6">
-              <form onSubmit={handleUpdateBilling} className="space-y-5">
-                {errorMsg && <div className="mb-5 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
-
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
-                  <p className="text-sm text-slate-600 mb-1">Current Plan: <span className="font-bold text-[#0a1e3f]">{currentPlan}</span></p>
-                  <p className="text-xs text-slate-500">Upgrading parameters adjusts your property units capacity instantly.</p>
+              <div className="space-y-5">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-2 flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[#0a1e3f]">Per-Asset</span></p>
+                    <p className="text-xs text-slate-500">For limit increases, contact admin.</p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-lg border text-xs font-bold uppercase tracking-wider ${getStatusColor(billingStatus)}`}>
+                    {billingStatus}
+                  </span>
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CreditCard size={16} className="text-[#359b46]" /> Select Plan Tier</label>
-                  <div className="space-y-3 mt-3">
-                    
-                    {/* Starter Option */}
-                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'Starter' ? 'border-[#359b46] bg-[#f0f9f1]' : 'border-slate-200 hover:border-slate-300'}`}>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <input type="radio" name="plan" value="Starter" checked={selectedPlan === 'Starter'} onChange={() => setSelectedPlan('Starter')} className="w-4 h-4 text-[#359b46] focus:ring-[#359b46]" />
-                          <span className="font-bold text-[#0a1e3f]">Starter</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-500">Free</span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 ml-7">1 manager seat · Up to 50 units</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border border-slate-200 rounded-lg bg-white">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                      <Home size={16} className="text-[#359b46]" />
+                      Units Capacity
                     </label>
-
-                    {/* Growth Option */}
-                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'Growth' ? 'border-[#359b46] bg-[#f0f9f1]' : 'border-slate-200 hover:border-slate-300'}`}>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <input type="radio" name="plan" value="Growth" checked={selectedPlan === 'Growth'} onChange={() => setSelectedPlan('Growth')} className="w-4 h-4 text-[#359b46] focus:ring-[#359b46]" />
-                          <span className="font-bold text-[#0a1e3f]">Growth</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-500">₱299/mo</span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 ml-7">5 manager seats · Up to 250 units</p>
+                    <p className="text-2xl font-extrabold text-[#0a1e3f] mt-1">{unitLimit}</p>
+                  </div>
+                  <div className="p-4 border border-slate-200 rounded-lg bg-white">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
+                      <Users size={16} className="text-[#359b46]" />
+                      Team Limit
                     </label>
-
-                    {/* Enterprise Option */}
-                    <label className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlan === 'Enterprise' ? 'border-[#359b46] bg-[#f0f9f1]' : 'border-slate-200 hover:border-slate-300'}`}>
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <input type="radio" name="plan" value="Enterprise" checked={selectedPlan === 'Enterprise'} onChange={() => setSelectedPlan('Enterprise')} className="w-4 h-4 text-[#359b46] focus:ring-[#359b46]" />
-                          <span className="font-bold text-[#0a1e3f]">Enterprise</span>
-                        </div>
-                        <span className="text-sm font-bold text-slate-500">₱499/mo</span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 ml-7">25 manager seats · Unlimited units</p>
-                    </label>
+                    <p className="text-2xl font-extrabold text-[#0a1e3f] mt-1">{seatLimit}</p>
                   </div>
                 </div>
 
-                <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100">
-                  <button type="button" onClick={() => setIsBillingModalOpen(false)} disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                  <button type="submit" disabled={isSubmitting || selectedPlan === currentPlan} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg text-sm font-semibold">
-                    {isSubmitting ? "Updating..." : "Update Tier Plan"}
+                <div className="pt-2">
+                  <label className="flex items-center justify-between text-sm font-bold text-slate-700 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <CreditCard size={16} className="text-[#359b46]" />
+                      Estimated Monthly Total
+                    </div>
+                  </label>
+                  <div className="w-full px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50/60 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Due on {nextBillingDateFormatted}</p>
+                      <p className="text-xs text-emerald-600 font-medium">₱99 per unit / month</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-extrabold text-[#0a1e3f]">
+                        ₱{(unitLimit * 99).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex justify-end pt-4 border-t border-slate-100">
+                  <button 
+                    type="button" 
+                    onClick={handlePayment} 
+                    className="w-full sm:w-auto bg-[#359b46] hover:bg-[#2c813a] text-white px-8 py-3 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={18} />
+                    Pay ₱{(unitLimit * 99).toLocaleString()}
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

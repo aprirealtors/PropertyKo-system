@@ -245,215 +245,314 @@ export default function PayTab() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Billing & Payments</h2>
-          <p className="text-slate-500 text-sm">Manage your assigned statement of account and view transaction records.</p>
-        </div>
-      </div>
-
-      {/* TOP SECTION: Split Summary and History */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* LEFT COLUMN: Payment Action & Summary */}
-        <div className="lg:col-span-5 space-y-6">
-          <section className="bg-[#0b1727] rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-            {/* Status Badge */}
-            <div className="absolute top-6 right-6">
-              {displayStatus === 'Unassigned' && <span className="bg-slate-500/20 text-slate-400 font-bold px-3 py-1 rounded-full text-xs border border-slate-500/30">Unassigned</span>}
-              {displayStatus === 'Overdue' && <span className="bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full text-xs border border-red-500/30">Overdue</span>}
-              {displayStatus === 'Pending' && <span className="bg-amber-500/20 text-amber-400 font-bold px-3 py-1 rounded-full text-xs border border-amber-500/30">Pending</span>}
-              {displayStatus === 'Sent' && <span className="bg-blue-500/20 text-blue-400 font-bold px-3 py-1 rounded-full text-xs border border-blue-500/30">Issued</span>}
-              {displayStatus === 'Paid' && <span className="bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1 rounded-full text-xs border border-emerald-500/30">Settled</span>}
-            </div>
-
-            <p className="text-xs font-semibold opacity-70 uppercase tracking-widest mb-1 mt-2">Total Amount Due</p>
-            <h2 className={`text-4xl font-extrabold mb-6 tracking-tighter ${isPaid ? 'text-emerald-400' : 'text-[#359b46]'}`}>
-              {isLoading ? "..." : (!isAssigned ? "—" : `₱${(isPaid ? 0 : totalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}`)}
-            </h2>
-            
-            <div className="space-y-3 mb-8">
-              {isAssigned ? (
-                <>
-                  {soaConfig.dues && (
-                    <div className="flex justify-between text-sm border-b border-slate-700 pb-2">
-                      <span className="opacity-70">Assoc. Dues ({unitArea} sqm)</span>
-                      <span className="font-bold">₱{dues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                  )}
-                  {soaConfig.parking && (
-                    <div className="flex justify-between text-sm border-b border-slate-700 pb-2">
-                      <span className="opacity-70">Parking</span>
-                      <span className="font-bold">₱{parking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                  )}
-                  {soaConfig.water && (
-                    <div className="flex justify-between text-sm border-b border-slate-700 pb-2">
-                      <span className="opacity-70">Water</span>
-                      <span className="font-bold">₱{water.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                  )}
-                  {soaConfig.electricity && (
-                    <div className="flex justify-between text-sm border-b border-slate-700 pb-2">
-                      <span className="opacity-70">Electricity</span>
-                      <span className="font-bold">₱{electricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                  )}
-                  {soaConfig.penalty && lateFee > 0 && !isPaid && (
-                    <div className="flex justify-between text-sm border-b border-slate-700 pb-2">
-                      <span className="text-red-400 font-semibold">Late Penalty</span>
-                      <span className="font-bold text-red-400">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>
-                  )}
-
-                  {totalDue === 0 && !isLoading && (
-                    <div className="text-sm text-slate-400 italic">No assigned balances for this period.</div>
-                  )}
-                </>
-              ) : (
-                <div className="text-sm text-slate-400 italic">Pending SOA assignment from administration.</div>
-              )}
-            </div>
-            
-            <button 
-              onClick={() => setIsPaymentModalOpen(true)}
-              disabled={!isAssigned || isPaid || totalDue === 0 || isLoading}
-              className="w-full bg-[#359b46] hover:bg-[#2e8a3d] disabled:bg-[#359b46]/20 disabled:text-white/50 disabled:cursor-not-allowed transition-all rounded-2xl py-4 font-bold text-[15px] shadow-lg flex items-center justify-center gap-2"
-            >
-              <CreditCard size={20} /> 
-              {!isAssigned ? "Pending Assignment" : isPaid ? "Payment Settled" : totalDue === 0 ? "No Payment Needed" : "Pay Now"}
-            </button>
-            <p className="flex items-center justify-center gap-2 text-[10px] text-slate-400 mt-4 uppercase tracking-wider">
-              <ShieldCheck size={12} /> Secure Payment
-            </p>
-          </section>
-        </div>
-
-        {/* RIGHT COLUMN: Transaction History */}
-        <div className="lg:col-span-7">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col max-h-[460px]">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-              <h3 className="font-bold text-[#0a1e3f]">Transaction History</h3>
-            </div>
-            
-            <div className="divide-y divide-slate-100 overflow-y-auto custom-scrollbar flex-1">
-              {isLoading ? (
-                <div className="px-6 py-8 text-center text-slate-500 text-sm">Loading transactions...</div>
-              ) : transactions.length === 0 ? (
-                <div className="px-6 py-12 flex flex-col items-center justify-center text-slate-400 h-full">
-                  <AlertCircle size={32} className="mb-2 opacity-50" />
-                  <p className="text-sm font-medium">No payment history found.</p>
-                </div>
-              ) : (
-                transactions.map((tx, idx) => (
-                  <HistoryItem 
-                    key={idx} title={tx.description || "Statement Payment"} method={tx.payment_method || "Online Transfer"} 
-                    date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
-                    amount={`₱${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} status={tx.status || "Paid"} 
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* FULL WIDTH BOTTOM: The Ledger */}
-      <div className="mt-8 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    // ✨ LOCKED LAYOUT WINDOW SHELL
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+      
+      {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
+      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
           <div>
-            <h3 className="font-bold text-[#0a1e3f] flex items-center gap-2">
-              <CalendarClock className="text-[#359b46]" size={18} /> 
-              Billing Ledger & Projection ({new Date().getFullYear()})
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Due: Day {globalComp.collectionDay} | Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm">
+                <Receipt className="text-[#359b46]" size={24} strokeWidth={2.5} />
+              </div>
+              Billing & Payments
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
+              Manage your assigned statement of account and view transaction records.
             </p>
           </div>
-          <button 
-            onClick={handleExportCSV} 
-            className="flex items-center gap-1.5 text-[13px] font-bold text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors border border-blue-100 shadow-sm"
-          >
-            <Download size={14} /> Export CSV
-          </button>
-        </div>
-        
-        <div className="overflow-x-auto relative max-h-[400px] custom-scrollbar">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-              <tr>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">PERIOD</th>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">DUE DATE</th>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">DUES</th>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">PARKING</th>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">UTILITIES</th>
-                <th className="px-4 py-4 whitespace-nowrap bg-red-50 text-red-700 border-r border-red-100">
-                  PENALTY
-                </th>
-                <th className="px-4 py-4 whitespace-nowrap border-r border-slate-200">STATUS</th>
-                <th className="px-4 py-4 text-right whitespace-nowrap font-black">TOTAL</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
-              {ledgerData.map((row, idx) => {
-                const isRowPaid = row.status === 'Paid';
-                const isRowOverdue = row.status === 'Overdue';
-                const activeRow = row.isCurrentMonth;
-                
-                return (
-                  <tr key={idx} className={activeRow ? "bg-blue-50/40" : "hover:bg-slate-50 transition-colors"}>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100 font-bold text-[#0a1e3f] uppercase text-[11px]">
-                      {row.monthName} {row.year} {activeRow && <span className="text-[#359b46] ml-1">*</span>}
-                    </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100 text-slate-500">{row.dueDate}</td>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</td>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
-                    <td className={`px-4 py-3.5 whitespace-nowrap border-r border-slate-100 ${isRowOverdue ? 'text-red-600 font-bold bg-red-50/50' : ''}`}>
-                      {isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
-                    </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap border-r border-slate-100">
-                      {row.status === 'Paid' && <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] uppercase">Paid</span>}
-                      {row.status === 'Overdue' && <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-full text-[10px] uppercase">Overdue</span>}
-                      {row.status === 'Pending' && <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full text-[10px] uppercase">Pending</span>}
-                      {row.status === 'Sent' && <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full text-[10px] uppercase">Sent</span>}
-                      {row.status === 'Unassigned' && <span className="text-slate-500 font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[10px] uppercase">Unassigned</span>}
-                      {row.status === 'Upcoming' && <span className="text-slate-400 text-[10px] uppercase font-bold">Upcoming</span>}
-                    </td>
-                    <td className={`px-4 py-3.5 text-right whitespace-nowrap font-bold ${isRowPaid ? 'text-emerald-600' : 'text-[#0a1e3f]'}`}>
-                      ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          
+          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
+            {/* Premium Profile Badge */}
+            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0 ml-auto sm:ml-0">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
+                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Tenant</span>
+              </div>
+              <div className="w-9 h-9 rounded-[12px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shadow-inner border border-blue-100 group-hover:scale-105 transition-transform duration-300">
+                {unit?.tenant_name ? unit.tenant_name.substring(0, 2).toUpperCase() : "TE"}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Payment Modal */}
+      {/* ✨ KANBAN LAYOUT Main Wrapper */}
+      <div className="flex-1 w-full max-w-full min-h-0 flex flex-col lg:flex-row gap-6 px-1 sm:px-0 overflow-y-auto lg:overflow-hidden pb-12 lg:pb-0">
+        
+        {isLoading ? (
+          /* 🌟 PREMIUM SKELETON LOADING */
+          <>
+            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 animate-pulse">
+              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 sm:p-8 flex flex-col lg:h-full">
+                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-6">
+                  <div className="h-6 w-48 bg-slate-200 rounded-md"></div>
+                  <div className="h-6 w-24 bg-slate-100 rounded-full"></div>
+                </div>
+                <div className="h-48 w-full bg-[#0b1727]/10 rounded-[2rem] mb-8"></div>
+                <div className="h-14 w-full bg-slate-200 rounded-2xl mb-8"></div>
+                <div className="flex-1 min-h-[200px] bg-slate-50 rounded-[1.5rem] border border-slate-100"></div>
+              </div>
+            </div>
+            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col animate-pulse mt-6 lg:mt-0">
+              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 flex flex-col lg:h-full">
+                <div className="h-6 w-32 bg-slate-200 rounded-md mb-6"></div>
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full bg-slate-50 rounded-xl"></div>)}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : !unit ? (
+          /* EMPTY STATE */
+          <div className="w-full flex-1 flex flex-col">
+            <div className="flex-1 bg-white rounded-[2rem] border border-slate-200/60 shadow-sm p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
+              <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-100 relative z-10">
+                <Receipt size={36} strokeWidth={1.5} />
+              </div>
+              <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight relative z-10">No Active Lease Found</h2>
+              <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed mb-8 relative z-10">
+                You are currently not assigned as an active tenant to any property. Please contact administration.
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* ✨ ACTUAL CONTENT (Loaded) */
+          <>
+            {/* LEFT COLUMN: SOA SUMMARY & LEDGER */}
+            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-0">
+              <div className="bg-white rounded-[2rem] border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col lg:h-full">
+                <div className="absolute top-0 left-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -translate-y-20 -translate-x-20 pointer-events-none z-0"></div>
+
+                {/* Internal Scrollable Area */}
+                <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
+                  
+                  {/* Property Header */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 pb-6 border-b border-slate-100 gap-4 shrink-0">
+                    <div>
+                      <h3 className="font-black text-2xl text-[#0a1e3f] tracking-tight">{unit?.property_name} · Unit {unit?.unit_number}</h3>
+                      <p className="text-slate-500 text-sm mt-1 font-medium">Tenant: <span className="font-bold text-[#1d82f5]">{unit?.tenant_name}</span></p>
+                    </div>
+                  </div>
+
+                  {/* PREMIUM PAYMENT CARD */}
+                  <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] rounded-[2rem] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden mb-6 shrink-0">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-6 right-6">
+                      {displayStatus === 'Unassigned' && <span className="bg-slate-500/20 text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-slate-500/30">Unassigned</span>}
+                      {displayStatus === 'Overdue' && <span className="bg-red-500/20 text-red-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-red-500/30 flex items-center gap-1.5"><AlertCircle size={14} /> Overdue</span>}
+                      {displayStatus === 'Pending' && <span className="bg-amber-500/20 text-amber-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-amber-500/30 flex items-center gap-1.5"><CalendarClock size={14} /> Pending</span>}
+                      {displayStatus === 'Sent' && <span className="bg-blue-500/20 text-blue-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-blue-500/30 flex items-center gap-1.5"><Receipt size={14} /> Issued</span>}
+                      {displayStatus === 'Paid' && <span className="bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-emerald-500/30 flex items-center gap-1.5"><CheckCircle size={14} /> Settled</span>}
+                    </div>
+
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 mt-2">Total Amount Due</p>
+                    <h2 className={`text-4xl sm:text-5xl font-black mb-6 tracking-tighter ${isPaid ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]' : 'text-[#359b46] drop-shadow-[0_0_15px_rgba(53,155,70,0.3)]'}`}>
+                      {!isAssigned ? "—" : `₱${(isPaid ? 0 : totalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}`}
+                    </h2>
+                    
+                    <div className="space-y-3 mb-2 opacity-90">
+                      {isAssigned ? (
+                        <>
+                          {soaConfig.dues && (
+                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
+                              <span className="font-medium text-slate-300">Assoc. Dues <span className="text-[10px] ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
+                              <span className="font-bold">₱{dues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            </div>
+                          )}
+                          {soaConfig.parking && (
+                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
+                              <span className="font-medium text-slate-300">Parking</span>
+                              <span className="font-bold">₱{parking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            </div>
+                          )}
+                          {soaConfig.water && (
+                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
+                              <span className="font-medium text-slate-300">Water</span>
+                              <span className="font-bold">₱{water.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            </div>
+                          )}
+                          {soaConfig.electricity && (
+                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
+                              <span className="font-medium text-slate-300">Electricity</span>
+                              <span className="font-bold">₱{electricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            </div>
+                          )}
+                          {soaConfig.penalty && lateFee > 0 && !isPaid && (
+                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
+                              <span className="text-red-400 font-bold">Late Penalty</span>
+                              <span className="font-bold text-red-400">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            </div>
+                          )}
+
+                          {totalDue === 0 && (
+                            <div className="text-xs text-slate-400 italic">No assigned balances for this period.</div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-xs text-slate-400 italic">Pending SOA assignment from administration.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="mb-8 shrink-0">
+                    <button 
+                      onClick={() => setIsPaymentModalOpen(true)}
+                      disabled={!isAssigned || isPaid || totalDue === 0 || isLoading}
+                      className="w-full bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white px-8 py-4 rounded-xl text-sm font-black uppercase tracking-wider shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} /> Payment Settled</> : totalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} /> Pay Now</>}
+                    </button>
+                    <p className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-wider">
+                      <ShieldCheck size={14} /> Secure Payment Processing
+                    </p>
+                  </div>
+
+                  {/* COMBINED LEDGER TABLE */}
+                  <div className="mt-auto border-t border-slate-100 pt-8 w-full shrink-0">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 bg-gradient-to-br from-emerald-50 to-green-100 rounded-lg border border-emerald-200/40">
+                          <CalendarClock className="text-[#359b46]" size={18} />
+                        </div>
+                        <h4 className="font-black text-[#0a1e3f] text-base sm:text-lg tracking-tight">Ledger & Projection <span className="text-slate-400 font-bold text-sm">({new Date().getFullYear()})</span></h4>
+                      </div>
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                          Due: Day {globalComp.collectionDay} <span className="mx-1.5">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                        </div>
+                        <button 
+                          onClick={handleExportCSV}
+                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition-all border border-blue-200/60 shadow-sm active:scale-95"
+                        >
+                          <Download size={14} strokeWidth={2.5} /> Export
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* ✨ FIX: Pinaliit ang horizontal padding (px-2 sm:px-3) para mag-fit sa buong desktop width nang walang horizontal scroll */}
+                    <div className="border border-slate-200/90 rounded-[1.25rem] max-h-[300px] overflow-auto relative w-full shadow-sm">
+                      <table className="w-full text-left text-xs relative">
+                        <thead className="text-emerald-50 bg-[#359b46] font-extrabold uppercase tracking-widest border-b border-[#2c813a] sticky top-0 z-20 shadow-md text-[9px] sm:text-[10px]">
+                          <tr>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Period</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Due Date</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Dues</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Parking</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Utils</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap bg-red-600 text-white border-r border-red-700">Penalty</th>
+                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Status</th>
+                            <th className="px-2 sm:px-3 py-3 text-right whitespace-nowrap text-emerald-50">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-700 bg-white font-medium">
+                          {ledgerData.map((row, idx) => {
+                            const isRowPaid = row.status === 'Paid';
+                            const isRowOverdue = row.status === 'Overdue';
+                            const activeRow = row.isCurrentMonth;
+                            
+                            return (
+                              <tr key={idx} className={`${activeRow ? "bg-blue-50/30" : "hover:bg-slate-50"} transition-colors`}>
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 font-black text-[#0a1e3f] uppercase tracking-wider text-[9px] sm:text-[10px]">
+                                  {row.monthName} {row.year} {activeRow && <span className="text-[#359b46] ml-1 text-base leading-none align-middle">*</span>}
+                                </td>
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 text-slate-500 font-semibold">{row.dueDate}</td>
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</td>
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
+                                
+                                <td className={`px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 ${isRowOverdue ? 'text-red-600 font-black bg-red-50/50' : ''}`}>
+                                  {isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
+                                </td>
+                                
+                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 font-medium text-[9px] sm:text-[10px] tracking-wider uppercase">
+                                  {row.status === 'Paid' && <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Paid</span>}
+                                  {row.status === 'Overdue' && <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-md border border-red-100">Overdue</span>}
+                                  {row.status === 'Pending' && <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Pending</span>}
+                                  {row.status === 'Sent' && <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">Sent</span>}
+                                  {row.status === 'Unassigned' && <span className="text-slate-500 font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">Unassigned</span>}
+                                  {row.status === 'Upcoming' && <span className="text-slate-400 font-bold">Upcoming</span>}
+                                </td>
+
+                                <td className={`px-2 sm:px-3 py-3 text-right whitespace-nowrap font-black text-[11px] sm:text-xs ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                  ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN: TRANSACTION HISTORY */}
+            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0 lg:h-full">
+              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-5 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden w-full">
+                <h3 className="font-black text-[#0a1e3f] text-base mb-4 shrink-0 uppercase tracking-widest px-2 flex items-center gap-2">
+                  <Receipt size={16} className="text-[#359b46] shrink-0"/> Transaction History
+                </h3>
+                
+                {/* Transaction List container with scroll limit */}
+                <div className="max-h-[350px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto custom-scrollbar pr-2 w-full">
+                  <div className="space-y-3 pb-4 w-full">
+                    {transactions.length === 0 ? (
+                      <div className="text-center py-10 px-4 border border-dashed border-slate-200 rounded-2xl w-full">
+                        <AlertCircle className="mx-auto text-slate-300 mb-3" size={28} />
+                        <p className="text-slate-500 font-bold text-sm">No history found</p>
+                        <p className="text-slate-400 text-xs mt-1">You haven't made any payments yet.</p>
+                      </div>
+                    ) : (
+                      transactions.map((tx, idx) => (
+                        <HistoryItem 
+                          key={idx} title={tx.description || "Statement Payment"} method={tx.payment_method || "Online Transfer"} 
+                          date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
+                          amount={`₱${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} status={tx.status || "Paid"} 
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-filter backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 pb-2 flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-[#0a1e3f]">Submit Payment</h2>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSimulating}>
-                <X size={20} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-6 flex justify-between items-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#1d82f5] to-[#359b46]"></div>
+              <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-2">
+                <CreditCard className="text-[#359b46]" size={20} strokeWidth={2.5} />
+                Submit Payment
+              </h2>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+                <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="px-6 pb-6">
-              <p className="text-slate-500 mb-6">{unit?.property_name} · Unit {unit?.unit_number} - total <span className="font-bold text-[#0a1e3f]">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></p>
+            <div className="px-6 pb-8 bg-slate-50/40">
+              <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                {unit?.property_name} · Unit {unit?.unit_number} - total <span className="font-black text-[#0a1e3f]">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              </p>
               
-              <div className="mb-4">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Payment Method</label>
+              <div className="mb-6">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Select Payment Method</label>
                 <div className="flex flex-wrap gap-2">
                   {PAYMENT_METHODS.map((method) => (
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors ${paymentMethod === method ? 'bg-blue-50 text-[#1d82f5] border-blue-200' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
+                      className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${paymentMethod === method ? 'bg-blue-50 text-[#1d82f5] border border-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
                     >
                       {method}
                     </button>
@@ -462,50 +561,54 @@ export default function PayTab() {
               </div>
 
               {/* Conditional Instructions Based on Payment Method */}
-              <div className="mb-6 p-4 rounded-xl border border-slate-100 bg-slate-50 text-sm text-slate-600">
+              <div className="mb-6 p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm text-sm text-slate-600">
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
-                    <p className="mb-3 font-medium text-center">Scan QR code using GCash or QR Ph</p>
-                    <div className="w-32 h-32 bg-white relative overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                    <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[#0a1e3f]">Scan QR code using GCash or QR Ph</p>
+                    <div className="w-40 h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
                       <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
                     </div>
                   </div>
                 )}
                 {paymentMethod === 'Bank Transfer' && (
-                  <div className="space-y-1">
-                    <p className="font-bold text-[#0a1e3f] mb-2">Bank Details:</p>
+                  <div className="space-y-2">
+                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-2">Admin Bank Details</p>
                     {globalComp.bankName || globalComp.bankAccountNumber ? (
-                      <>
-                        <p>Bank: <span className="font-medium">{globalComp.bankName}</span></p>
-                        <p>Account Name: <span className="font-medium">{globalComp.bankAccountName}</span></p>
-                        <p>Account Number: <span className="font-medium">{globalComp.bankAccountNumber}</span></p>
-                      </>
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Bank Name</span> <span className="font-black text-[#0a1e3f]">{globalComp.bankName}</span></p>
+                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Account Name</span> <span className="font-black text-[#0a1e3f]">{globalComp.bankAccountName}</span></p>
+                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Account No.</span> <span className="font-black font-mono text-[#1d82f5] bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{globalComp.bankAccountNumber}</span></p>
+                      </div>
                     ) : (
-                      <p className="text-xs italic text-slate-500">Bank details will be displayed here once configured by the administration.</p>
+                      <p className="text-xs italic text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">Bank details will be displayed here once configured by the administration.</p>
                     )}
                   </div>
                 )}
                 {paymentMethod === 'Check' && (
-                  <div className="space-y-1">
-                    <p>Make checks payable to: <span className="font-bold text-[#0a1e3f]">{globalComp.bankAccountName || 'HOA Administration'}</span></p>
-                    <p className="text-xs mt-2 italic">Please drop off post-dated checks at the admin office within 3 business days.</p>
+                  <div className="space-y-2 text-center py-2">
+                    <p className="text-xs font-bold text-slate-500">Make checks payable to:</p>
+                    <p className="font-black text-lg text-[#0a1e3f]">{globalComp.bankAccountName || 'HOA Administration'}</p>
+                    <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg mt-3 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}
                 {paymentMethod === 'Cash' && (
-                  <p>Please pay in exact amounts at the Administration Office. Retain your physical receipt.</p>
+                  <div className="text-center py-4">
+                    <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3"><ShieldCheck size={24} /></div>
+                    <p className="text-xs font-bold text-slate-600 leading-relaxed px-4">Please pay in exact amounts at the Administration Office. Retain your physical receipt.</p>
+                  </div>
                 )}
               </div>
 
               {/* Reference Number Input */}
               {paymentMethod !== 'Cash' && (
                 <div className="mb-6">
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reference / Transaction Number</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Reference / Transaction Number</label>
                   <input 
                     type="text" 
                     value={referenceNumber}
                     onChange={(e) => setReferenceNumber(e.target.value)}
                     placeholder="e.g. 1002934823"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#1d82f5] focus:ring-1 focus:ring-[#1d82f5]"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] transition-all shadow-sm"
                   />
                 </div>
               )}
@@ -513,29 +616,29 @@ export default function PayTab() {
               <button 
                 onClick={handleSimulatePayment} 
                 disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
-                className="w-full bg-[#1d82f5] hover:bg-blue-600 disabled:bg-blue-300 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex justify-center items-center gap-2"
+                className="w-full bg-[#1d82f5] hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-400 disabled:shadow-none text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] active:scale-95 flex justify-center items-center gap-2"
               >
-                {isSimulating ? "Processing Payment..." : "I've paid, submit receipt →"}
+                {isSimulating ? <span className="animate-pulse">Processing...</span> : "I've paid, submit receipt"} 
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Cash Success Modal */}
+      {/* 🌟 CASH SUCCESS MODAL */}
       {showCashSuccessModal && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-filter backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8">
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle size={32} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
+            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-emerald-100">
+              <CheckCircle size={40} strokeWidth={2} />
             </div>
-            <h2 className="text-2xl font-bold text-[#0a1e3f] mb-3">Request Submitted</h2>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-              Payment method recorded as Cash. Please proceed to the Administration Office to complete your payment.
+            <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Request Submitted</h2>
+            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed px-2">
+              Payment method recorded as <strong className="text-slate-700">Cash</strong>. Please proceed to the Administration Office to complete your payment.
             </p>
             <button 
               onClick={() => setShowCashSuccessModal(false)}
-              className="w-full bg-[#359b46] hover:bg-[#2e8a3d] text-white font-bold py-3.5 rounded-xl transition-all shadow-sm"
+              className="w-full bg-[#359b46] hover:bg-[#2e8a3d] text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] active:scale-95"
             >
               Got it, thanks!
             </button>
@@ -548,17 +651,19 @@ export default function PayTab() {
 
 function HistoryItem({ title, method, date, amount, status }: any) {
   return (
-    <div className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-      <div className="flex items-center gap-4">
-        <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600"><Receipt size={18} /></div>
-        <div>
-          <h4 className="font-bold text-[#0a1e3f] text-sm truncate max-w-[180px] sm:max-w-[220px]">{title}</h4>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5">{method} • {date}</p>
+    <div className="w-full cursor-pointer p-4 rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50 shadow-sm flex items-center justify-between mb-3">
+      <div className="flex items-center gap-3 overflow-hidden">
+        <div className="p-2.5 bg-blue-50 text-blue-500 rounded-xl shrink-0 border border-blue-100"><Receipt size={18} strokeWidth={2.5} /></div>
+        <div className="flex flex-col overflow-hidden">
+          <span className="font-black text-[#0a1e3f] text-sm truncate tracking-tight">{title}</span>
+          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 truncate">{method} • {date}</span>
         </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="font-bold text-[#0a1e3f] text-sm">{amount}</p>
-        <p className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full inline-block mt-1 uppercase tracking-wide">{status}</p>
+      <div className="shrink-0 flex flex-col items-end pl-2">
+        <span className="font-black text-[#359b46] text-sm">{amount}</span>
+        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mt-1 border ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+          {status}
+        </span>
       </div>
     </div>
   );

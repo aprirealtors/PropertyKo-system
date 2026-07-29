@@ -22,6 +22,18 @@ export default function UsersTab({ orgData }: any) {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("Tenant");
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = usersList.filter(user => {
+    const searchLower = searchQuery.toLowerCase();
+    const assignedUnits = user.access_level ? user.access_level.toLowerCase() : "";
+    return (
+      (user.name && user.name.toLowerCase().includes(searchLower)) ||
+      (user.email && user.email.toLowerCase().includes(searchLower)) ||
+      (user.role && user.role.toLowerCase().includes(searchLower)) ||
+      assignedUnits.includes(searchLower)
+    );
+  });
 
   // Initial Load
   useEffect(() => {
@@ -252,105 +264,174 @@ export default function UsersTab({ orgData }: any) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Client Accounts</h2>
-          <p className="text-slate-500 text-sm mt-1">Manage portal access for Owners and Tenants</p>
-        </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input type="text" placeholder="Search accounts..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] bg-white shadow-sm" />
+    // ✨ LOCKED LAYOUT WINDOW SHELL
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+      
+      {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
+      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm">
+                <UserCheck className="text-[#359b46]" size={24} strokeWidth={2.5} />
+              </div>
+              Client Accounts
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
+              Manage portal access for Owners and Tenants
+            </p>
           </div>
-          <div className="hidden sm:flex items-center gap-3">
-            <span className="text-sm font-semibold text-[#359b46]">Manager</span>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-sm border border-emerald-100">{initials}</div>
+          
+          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
+            {/* Search Bar */}
+            <div className="relative flex-1 sm:w-64 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#359b46] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
+              <input 
+                type="text" 
+                placeholder="Search accounts..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[#359b46]/15 focus:border-[#359b46] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative" 
+              />
+            </div>
+
+            {/* Premium Admin Profile Badge */}
+            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
+                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Manager</span>
+              </div>
+              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+                {initials}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h3 className="font-bold text-[#0a1e3f] text-lg">Active Accounts</h3>
-          <button 
-            onClick={() => {
-              setErrorMsg(null);
-              setIsModalOpen(true);
-            }}
-            className="bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2"
-          >
-            <UserPlus size={16} /> Add Account
-          </button>
-        </div>
+      {/* ✨ FULL WIDTH KANBAN DATA TABLE CONTAINER */}
+      <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
+        <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-sm border border-slate-200/80 flex flex-col overflow-hidden relative">
+          
+          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/50 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-slate-400 text-[11px] uppercase font-bold border-b border-slate-100 tracking-wider">
-              <tr>
-                <th className="px-6 py-4 whitespace-nowrap">NAME / EMAIL</th>
-                <th className="px-6 py-4 whitespace-nowrap">ROLE</th>
-                <th className="px-6 py-4 whitespace-nowrap">UNIT(S)</th>
-                <th className="px-6 py-4 text-right whitespace-nowrap">STATUS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Loading accounts...</td></tr>
-              ) : usersList.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500 font-medium">No tenants or owners onboarded yet.</td></tr>
-              ) : (
-                usersList.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-[#0a1e3f]">{user.name}</div>
-                      <div className="text-slate-500 text-xs mt-0.5">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`font-bold text-xs px-2.5 py-1 rounded-full border ${
-                        user.role === 'Owner' 
-                          ? 'bg-purple-50 text-purple-700 border-purple-100' 
-                          : 'bg-blue-50 text-blue-700 border-blue-100'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 font-medium max-w-[200px] truncate" title={user.access_level}>
-                      {formatUnitsForTable(user.access_level)}
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px] px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                        <UserCheck size={12} /> {user.status}
-                      </span>
+          {/* Table Header Section */}
+          <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
+            <h3 className="font-black text-lg text-[#0a1e3f] tracking-tight">Active Accounts</h3>
+            <button 
+              onClick={() => {
+                setErrorMsg(null);
+                setIsModalOpen(true);
+              }}
+              className="bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.25)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
+            >
+              <UserPlus size={16} strokeWidth={2.5} /> Add Account
+            </button>
+          </div>
+          
+          {/* Scrollable Table Area */}
+          <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative z-10 w-full">
+            <table className="w-full text-left text-sm relative min-w-[600px]">
+              <thead className="text-emerald-50 bg-[#359b46] font-extrabold uppercase tracking-widest border-b border-[#2c813a] sticky top-0 z-20 text-[10px] shadow-md">
+                <tr>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Name / Email</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Role</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Unit(s) Assigned</th>
+                  <th className="px-6 py-4 text-right whitespace-nowrap">Status</th>
+                </tr>
+              </thead>
+              
+              <tbody className="divide-y divide-slate-100 text-slate-600 bg-white">
+                {isLoading ? (
+                  /* ✨ SKELETON LOADING ROWS */
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={`skeleton-${idx}`} className="animate-pulse">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 w-40 bg-slate-200 rounded-md mb-2"></div>
+                        <div className="h-3 w-32 bg-slate-100 rounded-md"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-6 w-20 bg-slate-100 rounded-full"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="h-4 w-48 bg-slate-200 rounded-md"></div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap flex justify-end">
+                        <div className="h-6 w-20 bg-emerald-50 rounded-full"></div>
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredUsers.length === 0 ? (
+                  /* EMPTY STATE */
+                  <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center">
+                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 mx-auto mb-4">
+                        <Search size={28} className="text-slate-300" strokeWidth={1.5} />
+                      </div>
+                      <p className="text-slate-500 font-bold text-sm">
+                        {searchQuery ? "No matching accounts found." : "No accounts onboarded yet."}
+                      </p>
+                      <p className="text-slate-400 text-xs mt-1">
+                        {searchQuery ? "Try adjusting your search term." : "Click \"Add Account\" to invite tenants or owners."}
+                      </p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  /* ACTUAL DATA ROWS */
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 border-r border-slate-50">
+                        <div className="font-black text-[#0a1e3f] tracking-tight">{user.name}</div>
+                        <div className="text-slate-500 font-semibold text-xs mt-0.5">{user.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap border-r border-slate-50">
+                        <span className={`font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md border shadow-sm ${
+                          user.role === 'Owner' 
+                            ? 'bg-purple-50 text-purple-700 border-purple-200/60' 
+                            : 'bg-blue-50 text-blue-700 border-blue-200/60'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500 font-bold text-xs max-w-[250px] truncate border-r border-slate-50" title={user.access_level}>
+                        {formatUnitsForTable(user.access_level)}
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 group-hover:bg-[#359b46] group-hover:text-white transition-colors">
+                          <UserCheck size={14} strokeWidth={2.5} /> {user.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* CREATE USER MODAL */}
+      {/* 🌟 PREMIUM CREATE USER MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h2 className="text-xl font-bold text-[#0a1e3f]">Create Account</h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1" disabled={isSubmitting}>
-                <X size={20} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight relative z-10 flex items-center gap-2">
+                <UserPlus className="text-[#359b46]" size={22} strokeWidth={2.5} />
+                Create Account
+              </h2>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+                <X size={16} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
+            <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40">
               {/* TABS FOR OWNER / TENANT */}
-              <div className="flex mb-6 border-b border-slate-200">
+              <div className="flex p-1.5 bg-white border border-slate-200 rounded-xl mb-6 shadow-sm">
                 <button
                   type="button"
                   onClick={() => { setRole("Tenant"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${role === "Tenant" ? "border-[#359b46] text-[#359b46]" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${role === "Tenant" ? "bg-blue-50 text-blue-600 border border-blue-200/60 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}
                   disabled={isSubmitting}
                 >
                   Tenant Account
@@ -358,55 +439,52 @@ export default function UsersTab({ orgData }: any) {
                 <button
                   type="button"
                   onClick={() => { setRole("Owner"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-colors ${role === "Owner" ? "border-[#359b46] text-[#359b46]" : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${role === "Owner" ? "bg-purple-50 text-purple-600 border border-purple-200/60 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}
                   disabled={isSubmitting}
                 >
                   Owner Account
                 </button>
               </div>
 
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
+              <form onSubmit={handleCreateUser} className="space-y-5">
+                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200">{errorMsg}</div>}
 
                 {/* DYNAMIC UNIT SELECTION */}
                 <div>
-                  <div className="flex justify-between items-end mb-1.5">
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                      <Home size={16} className="text-[#359b46]" /> Select Unit
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                    <Home size={14} className={role === 'Owner' ? 'text-purple-500' : 'text-blue-500'} /> Select Unit Allocation
+                  </label>
                   
-                  <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
+                  <div className="max-h-48 overflow-y-auto custom-scrollbar border border-slate-200/80 rounded-xl p-2 space-y-1 bg-white shadow-inner">
                     {availableUnits.length === 0 ? (
-                      <p className="text-xs text-slate-400 text-center py-4">
-                        {role === 'Tenant' ? "No units with active leases found. You must declare a lease before creating a tenant account." : "No available units with assigned owners found."}
+                      <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
+                        {role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners."}
                       </p>
                     ) : (
                       availableUnits.map(unit => {
                         const unitString = `${unit.property_name} - ${unit.unit_number}`;
                         const isSelected = selectedUnits.includes(unitString);
-                        // Clean display of the occupant name directly below the unit property
                         const occupantName = role === "Tenant" ? unit.tenant_name : (unit.owner_name ? unit.owner_name.split(',')[0].trim() : "");
                         
                         return (
                           <div 
                             key={unit.id} 
                             onClick={() => !isSubmitting && handleUnitToggle(unitString, unit)}
-                            className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer transition-colors border ${isSelected ? 'bg-emerald-50 border-emerald-200' : 'hover:bg-white border-transparent'}`}
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${isSelected ? (role === 'Owner' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-blue-50 border-blue-200 shadow-sm') : 'hover:bg-slate-50 border-transparent'}`}
                           >
                             <input 
                               type="checkbox" 
                               checked={isSelected}
                               readOnly
-                              className="w-4 h-4 text-[#359b46] rounded border-slate-300 focus:ring-[#359b46]"
+                              className={`w-4 h-4 rounded border-slate-300 ${role === 'Owner' ? 'text-purple-600 focus:ring-purple-600' : 'text-blue-600 focus:ring-blue-600'}`}
                               disabled={isSubmitting}
                             />
                             <div className="flex flex-col">
-                              <span className={`text-sm font-bold ${isSelected ? 'text-[#0a1e3f]' : 'text-slate-700'}`}>
-                                {unit.property_name} <span className="font-medium text-slate-500">• {unit.unit_number}</span>
+                              <span className={`text-sm font-black tracking-tight ${isSelected ? 'text-[#0a1e3f]' : 'text-slate-700'}`}>
+                                {unit.property_name} <span className="font-bold text-slate-400 ml-1">/ {unit.unit_number}</span>
                               </span>
                               {occupantName && (
-                                <span className="text-xs text-slate-500 font-medium">
+                                <span className="text-[11px] text-slate-500 font-bold mt-0.5">
                                   {occupantName}
                                 </span>
                               )}
@@ -419,49 +497,52 @@ export default function UsersTab({ orgData }: any) {
                 </div>
 
                 {/* FORM FIELDS */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <UserPlus size={16} className="text-[#359b46]" /> Full Name
-                  </label>
-                  <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm" disabled={isSubmitting} />
-                </div>
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
+                    <div className="relative">
+                      <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" disabled={isSubmitting} />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <Mail size={16} className="text-[#359b46]" /> Login Email
-                  </label>
-                  <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm" disabled={isSubmitting} />
-                </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" disabled={isSubmitting} />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <Lock size={16} className="text-[#359b46]" /> Initial Password
-                  </label>
-                  <div className="relative">
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      required 
-                      minLength={6} 
-                      placeholder="Minimum 6 characters" 
-                      value={password} 
-                      onChange={(e) => setPassword(e.target.value)} 
-                      className="w-full px-4 py-2 pr-10 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46] text-sm" 
-                      disabled={isSubmitting} 
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
-                      disabled={isSubmitting}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        minLength={6} 
+                        placeholder="Minimum 6 characters" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" 
+                        disabled={isSubmitting} 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-3 justify-end pt-4 border-t border-slate-100">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] text-white px-6 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-xl transition-all active:scale-95">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
                     {isSubmitting ? "Creating..." : "Create Account"}
                   </button>
                 </div>

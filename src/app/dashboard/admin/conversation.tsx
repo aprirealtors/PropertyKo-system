@@ -32,6 +32,25 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  useEffect(() => {
+    if (orgData?.admin_email) {
+      const storedNames = localStorage.getItem(`custom_chat_names_${orgData.admin_email}`);
+      if (storedNames) {
+        try {
+          setCustomNames(JSON.parse(storedNames));
+        } catch (e) {
+          console.error("Error parsing stored aliases", e);
+        }
+      }
+    }
+  }, [orgData?.admin_email]);
+
+  useEffect(() => {
+    if (orgData?.admin_email && Object.keys(customNames).length > 0) {
+      localStorage.setItem(`custom_chat_names_${orgData.admin_email}`, JSON.stringify(customNames));
+    }
+  }, [customNames, orgData?.admin_email]);
+
   // // ✨ Auto-focus input pagkabukas ng chat o pagkasend ng message
   // useEffect(() => {
   //   if (activeChat && !isLoading && !isSearchActive && !isSending) {
@@ -356,7 +375,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                       {isEditingNames ? (
                         <input 
                           type="text" 
-                          value={customNames[contact.id] || contact.name} 
+                          value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
                           onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
                           className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
                           onClick={(e) => e.stopPropagation()} 

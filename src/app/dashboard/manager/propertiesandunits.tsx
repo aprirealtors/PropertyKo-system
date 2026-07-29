@@ -8,48 +8,48 @@ import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maxi
 const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  if (!ownerName || ownerName === '—' || ownerName.toLowerCase() === 'vacant') {
-    return <span className="text-slate-400 font-medium">Vacant</span>;
-  }
+  if (!ownerName || ownerName === '—') return <span className="text-slate-400 italic font-medium">—</span>;
 
   // Parse comma-separated names
   const owners = ownerName.split(',').map(n => n.trim()).filter(Boolean);
   const primaryDisplay = abbreviation || owners[0];
   const hasMore = owners.length > 1;
 
-  // If there's only 1 owner and no abbreviation, just show plain text (no blue link).
-  if (!hasMore && !abbreviation) return <span className="font-medium text-slate-700">{primaryDisplay}</span>;
+  if (!hasMore && !abbreviation) return <span className="font-bold text-[#0a1e3f]">{primaryDisplay}</span>;
 
   return (
     <div className="relative" onMouseLeave={() => setIsOpen(false)}>
       <button 
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
-        className="flex items-center gap-1.5 text-[#1d82f5] hover:text-blue-700 font-bold text-left transition-colors"
+        className="flex items-center gap-1.5 text-[#1d82f5] hover:text-blue-700 font-extrabold text-left transition-all active:scale-95 bg-blue-50/50 hover:bg-blue-50 px-2.5 py-1 rounded-lg border border-transparent hover:border-blue-100"
       >
-        {/* Removed truncate and max-w classes so the primary name is always fully visible */}
         <span className="inline-block">{primaryDisplay}</span>
         {hasMore && (
-          <span className="bg-blue-50 text-[#1d82f5] text-[10px] font-extrabold px-1.5 py-0.5 rounded border border-blue-100">
+          <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-blue-200 shadow-sm">
             +{owners.length - 1}
           </span>
         )}
       </button>
       
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-[60] animate-in fade-in zoom-in-95 duration-200 whitespace-normal">
-          <div className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">All Registered Owners</div>
-          <ul className="space-y-1.5">
+        <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] rounded-2xl p-5 z-[60] animate-in fade-in zoom-in-95 duration-200 whitespace-normal">
+          <div className="text-[9px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
+            <Users size={12} className="text-blue-400" /> All Registered Owners
+          </div>
+          <ul className="space-y-2">
             {owners.map((o, i) => (
-              <li key={i} className="text-xs text-slate-700 font-semibold flex items-start gap-2 break-words">
-                <span className="text-slate-300 shrink-0">{i + 1}.</span> 
-                <span className="leading-relaxed break-words">{o}</span>
+              <li key={i} className="text-xs text-[#0a1e3f] font-bold flex items-start gap-2.5 break-words bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <span className="text-slate-400 shrink-0 font-black">{i + 1}.</span> 
+                <span className="leading-relaxed break-words mt-0.5">{o}</span>
               </li>
             ))}
           </ul>
           {abbreviation && (
-            <div className="mt-4 pt-3 border-t border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Full Legal Name</span>
-              <span className="text-xs font-medium text-slate-600 leading-relaxed break-words block">{ownerName}</span>
+            <div className="mt-4 pt-4 border-t border-slate-100/80">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 flex items-center gap-2">
+                <Briefcase size={12} className="text-emerald-500" /> Full Legal Name
+              </span>
+              <span className="text-xs font-bold text-slate-600 leading-relaxed break-words block bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/50">{ownerName}</span>
             </div>
           )}
         </div>
@@ -163,7 +163,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setUnitNumber(unit.unit_number || "");
     setUnitType(unit.unit_type || "Studio");
     setUnitArea(unit.unit_area || "");
-    setOwnerName(unit.owner_name === '—' || unit.owner_name === 'Vacant' ? "" : (unit.owner_name || ""));
+    setOwnerName(unit.owner_name === '—' ? "" : (unit.owner_name || ""));
     setOwnerAbbreviation(unit.owner_abbreviation || "");
     setBusinessName(unit.business_name || "");
     setTenantName(unit.tenant_name === '—' || unit.tenant_name === 'Vacant' ? "" : (unit.tenant_name || ""));
@@ -173,7 +173,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setIsModalOpen(true);
   };
 
-  // ✨ INTERCEPT SAVE: Show confirmation instead of directly saving
   const handleSaveUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -184,37 +183,31 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       return;
     }
 
-    // Show the confirmation modal based on Add or Edit
     setConfirmType(editingUnitId ? 'edit' : 'add');
     setShowConfirmModal(true);
   };
 
-  // ✨ ACTUAL DB SAVE LOGIC: Called from the Confirmation Modal
   const executeSaveUnit = async () => {
     setIsSubmitting(true);
     setShowConfirmModal(false);
-
-    const finalOwner = ownerName.trim() || 'Vacant';
-    const finalTenant = editingUnitId ? (tenantName.trim() || 'Vacant') : 'Vacant';
 
     const payload: any = {
       admin_email: orgData.admin_email,
       property_name: propertyName, 
       unit_number: unitNumber, 
       unit_type: unitType, 
-      owner_name: finalOwner,
+      owner_name: ownerName.trim() || '—',
       owner_abbreviation: ownerAbbreviation.trim() || null,
       business_name: businessName.trim() || null,
       unit_area: unitArea.trim(), 
       turnover_date: turnoverDate || null,
       acceptance_date: acceptanceDate || null,
-      remarks: remarks.trim() || null,
-      // Automatically mark as Occupied if there is an Owner OR Tenant
-      status: (finalOwner !== 'Vacant' || (finalTenant !== 'Vacant' && finalTenant !== '—')) ? 'Occupied' : 'Vacant'
+      remarks: remarks.trim() || null
     };
 
     if (!editingUnitId) {
-      payload.tenant_name = 'Vacant';
+      payload.tenant_name = '—';
+      payload.status = 'Vacant';
     }
 
     try {
@@ -252,10 +245,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   };
 
   const formatDate = (dateStr: string) => {
-    if (!dateStr) return '—';
+    if (!dateStr) return <span className="text-slate-300 italic">—</span>;
     const [year, month, day] = dateStr.split('T')[0].split('-');
     if (!year || !month || !day) return dateStr;
-    return `${parseInt(month)}/${parseInt(day)}/${year}`;
+    return <span className="font-medium">{`${parseInt(month)}/${parseInt(day)}/${year}`}</span>;
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -283,10 +276,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         }
 
         const mappedUnits = parsedData.map(row => {
-          const owner = row['OWNER'] && row['OWNER'] !== '—' ? row['OWNER'] : 'Vacant';
-          const tenant = row['TENANT'] && row['TENANT'] !== '—' ? row['TENANT'] : 'Vacant';
+          const tenant = row['TENANT'] || '—';
           const providedStatus = row['STATUS'];
-          const isOccupied = owner !== 'Vacant' || tenant !== 'Vacant' || providedStatus === 'Occupied';
+          const isOccupied = tenant !== '—' || providedStatus === 'Occupied';
 
           return {
             admin_email: orgData.admin_email,
@@ -294,7 +286,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             unit_number: row['UNIT'] || 'N/A',
             unit_type: row['TYPE'] || 'Studio',
             unit_area: row['AREA'] || null,
-            owner_name: owner,
+            owner_name: row['OWNER'] || '—',
             owner_abbreviation: row['OWNER ABBREVIATION'] || null,
             business_name: row['BUSINESS NAME'] || null,
             tenant_name: tenant,
@@ -323,7 +315,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setCsvPreviewData(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // ✨ INTERCEPT CSV IMPORT: Show confirmation instead of directly saving
   const confirmCsvImport = async () => {
     if (csvPreviewData.length === 0) return;
 
@@ -337,7 +328,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setShowConfirmModal(true);
   };
 
-  // ✨ ACTUAL DB IMPORT LOGIC: Called from the Confirmation Modal
   const executeCsvImport = async () => {
     setIsImporting(true);
     setShowConfirmModal(false);
@@ -361,7 +351,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
-  // Search Filtering Logic
   const filteredUnits = units.filter(unit => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -380,259 +369,236 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const remainingUnits = Math.max(0, maxUnits - activeUnits); 
 
   return (
-    <div className="max-w-6xl mx-auto h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 shrink-0">
-        <div>
-          <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Properties & units</h2>
-          <p className="text-slate-500 text-sm mt-1">Vacancy board across the portfolio</p>
-        </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search tenants, units..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] focus:border-transparent bg-white shadow-sm" 
-            />
+    // ✨ LOCKED LAYOUT WINDOW SHELL: Nakasagad sa dulo para iwas double scroll
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+      
+      {/* 🌟 PREMIUM HEADER - Static Shrink Block (Fixed Header Zone) */}
+      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
+          
+          {/* Left Side: Title & Overview */}
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border border-blue-200/50 shadow-sm">
+                <Building className="text-[#1d82f5]" size={24} strokeWidth={2.5} />
+              </div>
+              Properties & Units
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
+              Vacancy board and inventory <span className="w-1 h-1 rounded-full bg-slate-300"></span> 
+              <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-inner">
+                {isOrgLoading ? "..." : maxUnits} units limit
+              </span>
+            </p>
           </div>
-          <div className="hidden sm:flex items-center gap-3">
-            <span className="text-sm font-semibold text-[#359b46]">Manager</span>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-sm border border-emerald-100">{initials}</div>
+          
+          {/* Right Side: Search & Admin Badge */}
+          <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3 sm:gap-4 border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0 mt-2 sm:mt-0">
+            
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-64 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1d82f5] transition-colors" size={16} strokeWidth={2.5} />
+              <input 
+                type="text" 
+                placeholder="Search unit, tenant, owner..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#1d82f5] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white"
+              />
+            </div>
+
+            {/* Premium Admin Profile Badge */}
+            <div className="hidden sm:flex items-center gap-3 bg-white pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group">
+              <div className="flex flex-col items-end">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
+                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Manager</span>
+              </div>
+              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+                {initials}
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <h3 className="font-bold text-[#0a1e3f] text-sm">Property Summary Board · {isOrgLoading ? "..." : maxUnits} units</h3>
-           <span className="bg-[#B7C9E2] text-slate-700 border border-[#A5B8D4] text-xs font-bold px-2.5 py-1 rounded-md shadow-sm">Vacancy Board · {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} units</span>
-          </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <input 
-              type="file" 
-              accept=".csv" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              className="hidden" 
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 sm:flex-none justify-center bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center gap-2"
-            >
-              <ArrowUp size={14} /> Import CSV
-            </button>
-            
-            <button 
-              onClick={openAddModal}
-              disabled={remainingUnits === 0 && !isLoadingUnits}
-              className={`flex-1 sm:flex-none justify-center px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${remainingUnits === 0 && !isLoadingUnits ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-[#359b46] hover:bg-[#2c813a] text-white"}`}
-            >
-              + Add unit
-            </button>
-          </div>
+      {/* 🌟 ACTION CONTROLS ROW */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0 px-1 sm:px-0">
+        <div className="flex items-center gap-3">
+          <h3 className="font-black text-[#0a1e3f] text-base tracking-tight">Property Summary Board</h3>
+          <span className="bg-blue-50 text-[#1d82f5] border border-blue-200/60 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
+            {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} remaining seats
+          </span>
         </div>
+        <div className="flex gap-3 w-full sm:w-auto">
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-1 sm:flex-none justify-center bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center gap-2 active:scale-95"
+          >
+            <ArrowUp size={16} strokeWidth={2.5} /> Import CSV
+          </button>
+          
+          {/* ✨ FIX: Binalik sa Emerald Green ang Button with Glowing Premium Shadow */}
+          <button 
+            onClick={openAddModal}
+            disabled={remainingUnits === 0 && !isLoadingUnits}
+            className={`flex-1 sm:flex-none justify-center px-5 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 ${
+              remainingUnits === 0 && !isLoadingUnits 
+                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
+                : "bg-[#359b46] hover:bg-[#2c813a] text-white shadow-[0_4px_15px_rgba(53,155,70,0.25)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)]"
+            }`}
+          >
+            + Add New Unit
+          </button>
+        </div>
+      </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-          <div className="overflow-auto max-h-[60vh] custom-scrollbar">
-            <table className="w-full text-left text-sm relative">
-              <thead className="bg-white text-slate-500 text-[11px] uppercase font-bold tracking-wider sticky top-0 z-10 shadow-sm border-b border-slate-100">
+      {/* 🌟 PREMIUM TABLE WRAPPER (Scrollable Body) */}
+      {/* ✨ FIX: Tinanggal ang mb-12/mb-16 para sumagad sa bottom. Pinalitan ng rounded-t-[2rem] at inalis ang border-b para seamless ang dikit sa ilalim. */}
+      <div className="flex-1 w-full min-h-0 bg-white rounded-t-[2rem] shadow-sm border border-slate-200/80 border-b-0 overflow-hidden flex flex-col mt-2">
+        
+        {/* ✨ FIX: Explicit overflow-x-auto at overflow-y-auto. Nagdagdag ng pb-24 para kapag sinagad mo ang scroll pababa, may malaking space at hindi nakadikit sa edge ang huling row. */}
+        <div className="flex-1 overflow-x-auto overflow-y-auto pb-24">
+          <table className="w-full text-left text-sm relative">
+            <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 text-[10px] uppercase font-black tracking-widest sticky top-0 z-20 shadow-sm border-b border-slate-200/80">
+              <tr>
+                <th className="px-6 py-4 whitespace-nowrap">Property</th>
+                <th className="px-6 py-4 whitespace-nowrap">Unit</th>
+                <th className="px-6 py-4 whitespace-nowrap">Type</th>
+                <th className="px-6 py-4 whitespace-nowrap">Area</th>
+                <th className="px-6 py-4 whitespace-nowrap">Owner(s)</th>
+                <th className="px-6 py-4 whitespace-nowrap">Business Name</th>
+                <th className="px-6 py-4 whitespace-nowrap">Tenant</th>
+                <th className="px-6 py-4 whitespace-nowrap">Turnover</th>
+                <th className="px-6 py-4 whitespace-nowrap">Acceptance</th>
+                <th className="px-6 py-4 whitespace-nowrap">Remarks</th>
+                <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 whitespace-nowrap text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/80 text-slate-700">
+              {isLoadingUnits ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-12"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-16"></div></td>
+                    <td className="px-6 py-5"><div className="h-5 bg-slate-200 rounded-lg w-32"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-200 rounded w-28"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-20"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-20"></div></td>
+                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-10"></div></td>
+                    <td className="px-6 py-5"><div className="h-5 bg-slate-200 rounded-lg w-16"></div></td>
+                    <td className="px-6 py-5"><div className="h-6 bg-slate-100 rounded-md w-8 ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : units.length === 0 ? (
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">PROPERTY</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">UNIT</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">TYPE</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">AREA</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">OWNER(S)</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">BUSINESS NAME</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">TENANT</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">TURNOVER</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">ACCEPTANCE</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">REMARKS</th>
-                  <th className="px-6 py-4 whitespace-nowrap bg-white">STATUS</th>
-                  <th className="px-6 py-4 whitespace-nowrap text-right bg-white">ACTIONS</th>
+                  <td colSpan={12} className="px-6 py-24 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-2">
+                        <Building size={32} className="text-slate-300" strokeWidth={1.5} />
+                      </div>
+                      <p className="text-slate-500 font-bold text-sm">No units in inventory</p>
+                      <p className="text-slate-400 text-xs">Start adding units or import a CSV file to begin.</p>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {isLoadingUnits ? (
-                  <tr><td colSpan={12} className="px-6 py-8 text-center text-slate-400">Loading units...</td></tr>
-                ) : units.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="px-6 py-16 text-center text-slate-400 font-medium">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Building size={32} className="text-slate-300" />
-                        <p>No units added yet.</p>
+              ) : filteredUnits.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="px-6 py-24 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-2">
+                        <Search size={32} className="text-slate-300" strokeWidth={1.5} />
                       </div>
+                      <p className="text-slate-500 font-bold text-sm">No exact matches found</p>
+                      <p className="text-slate-400 text-xs">Try adjusting your search query: <span className="font-semibold text-slate-500">"{searchQuery}"</span></p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredUnits.map((unit) => (
+                  <tr key={unit.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-4 font-black text-[#0a1e3f] whitespace-nowrap group-hover:text-[#1d82f5] transition-colors">{unit.property_name}</td>
+                    <td className="px-6 py-4 font-bold text-slate-700 whitespace-nowrap">{unit.unit_number}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-500 whitespace-nowrap">{unit.unit_type}</td>
+                    <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{unit.unit_area || <span className="text-slate-300 italic">—</span>}</td>
+                    
+                    {/* Interactive Owner Cell */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <OwnerCell ownerName={unit.owner_name} abbreviation={unit.owner_abbreviation} />
                     </td>
-                  </tr>
-                ) : filteredUnits.length === 0 ? (
-                  <tr>
-                    <td colSpan={12} className="px-6 py-16 text-center text-slate-400 font-medium">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Search size={32} className="text-slate-300" />
-                        <p>No units match your search "{searchQuery}".</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredUnits.map((unit) => (
-                    <tr key={unit.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">{unit.property_name}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_number}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_type}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.unit_area || '—'}</td>
-                      
-                      {/* Interactive Owner Cell */}
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <OwnerCell ownerName={unit.owner_name} abbreviation={unit.owner_abbreviation} />
-                      </td>
 
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{unit.business_name || '—'}</td>
-                      <td className="px-6 py-4 font-medium text-slate-800 whitespace-nowrap">
-                        {unit.tenant_name === '—' || unit.tenant_name?.toLowerCase() === 'vacant' ? <span className="text-slate-400 font-medium">Vacant</span> : unit.tenant_name}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.turnover_date)}</td>
-                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{formatDate(unit.acceptance_date)}</td>
-                      <td className="px-6 py-4 text-slate-600 max-w-[150px] truncate" title={unit.remarks}>{unit.remarks || '—'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${unit.status === 'Vacant' ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
-                          {unit.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <button 
-                          onClick={() => openEditModal(unit)}
-                          className="p-1.5 text-slate-400 hover:text-[#1e88e5] hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit Unit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                    <td className="px-6 py-4 font-semibold text-slate-600 whitespace-nowrap">{unit.business_name || <span className="text-slate-300 italic">—</span>}</td>
+                    <td className="px-6 py-4 font-black text-slate-700 whitespace-nowrap">{unit.tenant_name === '—' ? <span className="text-slate-300 italic">—</span> : unit.tenant_name}</td>
+                    <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{formatDate(unit.turnover_date)}</td>
+                    <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{formatDate(unit.acceptance_date)}</td>
+                    <td className="px-6 py-4 text-slate-500 max-w-[150px] truncate" title={unit.remarks}>{unit.remarks || <span className="text-slate-300 italic">—</span>}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border shadow-sm ${unit.status === 'Vacant' ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'}`}>
+                        {unit.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button 
+                        onClick={() => openEditModal(unit)}
+                        className="p-2 text-slate-400 hover:text-[#1d82f5] hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100 shadow-sm active:scale-95"
+                        title="Edit Unit"
+                      >
+                        <Edit size={16} strokeWidth={2.5} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* CSV IMPORT PREVIEW MODAL */}
-      {isPreviewModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden transform transition-all max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0a1e3f]">Review Import Data</h2>
-                <p className="text-sm text-slate-500 mt-1">Review your CSV entries. Delete any row you do not want to upload.</p>
-              </div>
-              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200" disabled={isImporting}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="overflow-auto custom-scrollbar flex-1 bg-white">
-              <table className="w-full text-left text-xs relative">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase sticky top-0 shadow-sm z-10">
-                  <tr>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Property</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Unit</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Type</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Area</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Owner(s)</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Abbr.</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Business Name</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Tenant</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Turnover</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Acceptance</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Remarks</th>
-                    <th className="px-4 py-3 whitespace-nowrap bg-slate-50">Status</th>
-                    <th className="px-4 py-3 whitespace-nowrap text-right bg-slate-50">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {csvPreviewData.length === 0 ? (
-                    <tr><td colSpan={13} className="px-4 py-8 text-center text-slate-400">No rows remaining.</td></tr>
-                  ) : (
-                    csvPreviewData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">{row.property_name}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.unit_number}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.unit_type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.owner_name}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.tenant_name}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.turnover_date)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{formatDate(row.acceptance_date)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{row.status}</td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 transition-colors" title="Delete Row">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
-              <div className="text-sm font-bold text-slate-600">
-                Ready to import: <span className="text-[#0a1e3f] text-base">{csvPreviewData.length}</span> units
-                {units.length + csvPreviewData.length > maxUnits && (
-                  <span className="text-red-500 block text-xs mt-0.5">Exceeds remaining plan limits! Delete some rows.</span>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-                <button 
-                  onClick={confirmCsvImport} 
-                  disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
-                  className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm"
-                >
-                  Confirm & Import
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ADD / EDIT UNIT MODAL */}
+      {/* 🌟 PREMIUM ADD / EDIT UNIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h2 className="text-xl font-bold text-[#0a1e3f]">{editingUnitId ? "Edit Unit Details" : "Add New Unit"}</h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md hover:bg-slate-200" disabled={isSubmitting}>
-                <X size={20} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight relative z-10 flex items-center gap-2">
+                {editingUnitId ? <Edit size={24} className="text-[#359b46]" /> : <Building size={24} className="text-[#359b46]" />}
+                {editingUnitId ? "Edit Unit Details" : "Add New Unit"}
+              </h2>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+                <X size={18} strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="overflow-y-auto p-6 custom-scrollbar">
-              <form onSubmit={handleSaveUnit} className="space-y-6">
-                {errorMsg && <div className="mb-5 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">{errorMsg}</div>}
+            <div className="overflow-y-auto p-6 sm:p-8 custom-scrollbar bg-slate-50/50">
+              <form onSubmit={handleSaveUnit} className="space-y-6 sm:space-y-7">
+                {errorMsg && <div className="mb-5 p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} /> {errorMsg}</div>}
 
                 {/* Property Name */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><MapPin size={16} className="text-[#359b46]" /> Property Name</label>
-                  <input type="text" required placeholder="e.g. The Grove, Avida Towers" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 mb-2"><MapPin size={14} className="text-[#359b46]" /> Property Name</label>
+                  <input type="text" required placeholder="e.g. The Grove, Avida Towers" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                 </div>
 
                 {/* Unit Details Row */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Building size={16} className="text-[#359b46]" /> Unit Number</label>
-                    <input type="text" required placeholder="e.g. 12B" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Building size={14} className="text-[#359b46]" /> Unit Number</label>
+                    <input type="text" required placeholder="e.g. 12B" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Tag size={16} className="text-[#359b46]" /> Unit Type</label>
-                    <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all bg-white" disabled={isSubmitting}>
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Tag size={14} className="text-[#359b46]" /> Unit Type</label>
+                    <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting}>
                       <option value="Studio">Studio</option>
                       <option value="1BR">1BR</option>
                       <option value="2BR">2BR</option>
@@ -642,83 +608,84 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                     </select>
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><Maximize size={16} className="text-[#359b46]" /> Unit Area</label>
-                    <input type="text" required placeholder="e.g. 50.06 sqm" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Maximize size={14} className="text-[#359b46]" /> Unit Area</label>
+                    <input type="text" required placeholder="e.g. 50.06 sqm" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
                 {/* Ownership Row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                      <User size={16} className="text-[#359b46]" /> Owner Name(s)
+                    <label className="flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <span className="flex items-center gap-2"><User size={14} className="text-[#1d82f5]" /> Owner Name(s)</span>
                     </label>
-                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
-                    <p className="text-[10px] text-slate-400 mt-1">Leave empty if vacant. Separate multiple names with a comma.</p>
+                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-[#1d82f5] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
+                    <p className="text-[10px] font-semibold text-slate-400 mt-2 px-1">Separate multiple names with a comma.</p>
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                      <Briefcase size={16} className="text-slate-400" /> Owner Abbreviation (Optional)
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <Briefcase size={14} className="text-slate-400" /> Owner Abbreviation
                     </label>
-                    <input type="text" placeholder="e.g. CTMRISP" value={ownerAbbreviation} onChange={(e) => setOwnerAbbreviation(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                    <input type="text" placeholder="e.g. CTMRISP (Optional)" value={ownerAbbreviation} onChange={(e) => setOwnerAbbreviation(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-[#1d82f5] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
                 {/* Business Name */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                    <Building size={16} className="text-[#359b46]" /> Business Name (Optional)
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                    <Building size={14} className="text-[#359b46]" /> Business Name (Optional)
                   </label>
-                  <input type="text" placeholder="e.g. Acme Corp" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all" disabled={isSubmitting} />
+                  <input type="text" placeholder="e.g. Acme Corp" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                 </div>
 
                 {/* Tenant Row (Read Only) - ONLY SHOWS ON EDIT */}
                 {editingUnitId && (
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5">
-                      <Users size={16} className="text-[#1d82f5]" /> Tenant Name
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-2xl p-5 shadow-inner">
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-blue-600 mb-2">
+                      <Users size={14} className="text-blue-500" /> Assigned Tenant
                     </label>
                     <input 
                       type="text" 
                       value={tenantName || "Vacant"} 
                       disabled 
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white/50 text-sm font-semibold text-slate-600 cursor-not-allowed" 
+                      className="w-full px-4 py-3 rounded-xl border border-blue-100 bg-white/60 text-sm font-extrabold text-[#0a1e3f] cursor-not-allowed shadow-sm" 
                     />
-                    <p className="text-[10px] text-slate-500 font-medium mt-1.5 ml-1">
-                      * Tenants are managed automatically through the <strong>Leases</strong> tab.
+                    <p className="text-[10px] text-blue-500/80 font-bold mt-2 px-1 tracking-wide">
+                      Tenants are managed automatically through the Leases tab.
                     </p>
                   </div>
                 )}
 
                 {/* Dates Row */}
-                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-5">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CalendarDays size={16} className="text-slate-400" /> Turnover Date (Optional)</label>
-                    <input type="date" value={turnoverDate} onChange={(e) => setTurnoverDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all text-slate-700" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><CalendarDays size={14} className="text-slate-400" /> Turnover Date (Opt)</label>
+                    <input type="date" value={turnoverDate} onChange={(e) => setTurnoverDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold transition-all text-slate-700 bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><CalendarDays size={16} className="text-slate-400" /> Acceptance Date (Optional)</label>
-                    <input type="date" value={acceptanceDate} onChange={(e) => setAcceptanceDate(e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all text-slate-700" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><CalendarDays size={14} className="text-slate-400" /> Acceptance Date (Opt)</label>
+                    <input type="date" value={acceptanceDate} onChange={(e) => setAcceptanceDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold transition-all text-slate-700 bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
                 {/* Remarks */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1.5"><FileText size={16} className="text-slate-400" /> Remarks (Optional)</label>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><FileText size={14} className="text-slate-400" /> Remarks (Optional)</label>
                   <textarea 
                     rows={2} 
-                    placeholder="Enter any additional notes..." 
+                    placeholder="Enter any additional notes or tags..." 
                     value={remarks} 
                     onChange={(e) => setRemarks(e.target.value)} 
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm transition-all resize-none" 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 transition-all resize-none bg-slate-50 focus:bg-white" 
                     disabled={isSubmitting} 
                   />
                 </div>
 
-                <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm">
-                    {editingUnitId ? "Save Changes" : "Add Unit"}
+                {/* Modal Actions */}
+                <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-slate-200/80 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-xl transition-all active:scale-95">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] text-white px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center min-w-[140px]">
+                    {isSubmitting ? <span className="animate-pulse">Saving...</span> : editingUnitId ? "Save Changes" : "Add Unit"}
                   </button>
                 </div>
               </form>
@@ -727,15 +694,108 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       )}
 
+      {/* ✨ CSV IMPORT PREVIEW MODAL */}
+      {isPreviewModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-[90vw] overflow-hidden transform transition-all h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Review Import Data</h2>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Review your CSV entries. Delete any row you do not want to upload.</p>
+              </div>
+              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isImporting}>
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div className="overflow-auto custom-scrollbar flex-1 bg-slate-50/50 p-6">
+              <div className="bg-white border border-slate-200/80 rounded-[1.5rem] overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs relative">
+                  <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 font-black uppercase tracking-widest sticky top-0 shadow-sm z-10 border-b border-slate-200/80">
+                    <tr>
+                      <th className="px-5 py-4 whitespace-nowrap">Property</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Unit</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Type</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Area</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Owner(s)</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Abbr.</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Business Name</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Tenant</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Turnover</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Acceptance</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Remarks</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Status</th>
+                      <th className="px-5 py-4 whitespace-nowrap text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                    {csvPreviewData.length === 0 ? (
+                      <tr><td colSpan={13} className="px-5 py-12 text-center text-slate-400 font-bold">No rows remaining.</td></tr>
+                    ) : (
+                      csvPreviewData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="px-5 py-3 font-black text-[#0a1e3f] whitespace-nowrap">{row.property_name}</td>
+                          <td className="px-5 py-3 font-bold whitespace-nowrap">{row.unit_number}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{row.unit_type}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap font-bold text-slate-800">{row.owner_name}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap font-bold text-slate-800">{row.tenant_name}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.turnover_date)}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.acceptance_date)}</td>
+                          <td className="px-5 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
+                          <td className="px-5 py-3 whitespace-nowrap">
+                            <span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border shadow-sm ${row.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200/60'}`}>
+                              {row.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right whitespace-nowrap">
+                            <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded-lg border border-transparent hover:border-red-100 transition-all active:scale-95" title="Delete Row">
+                              <Trash2 size={16} strokeWidth={2.5} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="px-6 sm:px-8 py-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-white shrink-0 gap-4">
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Ready to import: <span className="text-[#359b46] text-base ml-1 mr-1 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 shadow-sm">{csvPreviewData.length}</span> units
+                {units.length + csvPreviewData.length > maxUnits && (
+                  <span className="text-red-500 flex items-center gap-1.5 mt-2 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 normal-case tracking-normal font-bold">
+                    <AlertTriangle size={14} /> Exceeds remaining plan limits! Delete some rows.
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-xl transition-all active:scale-95">Cancel</button>
+                <button 
+                  onClick={confirmCsvImport} 
+                  disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
+                  className="flex-1 sm:flex-none bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:shadow-none text-white px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center min-w-[180px]"
+                >
+                  {isImporting ? <span className="animate-pulse">Importing...</span> : "Confirm & Import"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ✨ ARE YOU SURE CONFIRMATION MODAL */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 animate-in zoom-in-95 duration-200">
-            <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-100">
-              <AlertTriangle size={28} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-slate-200">
+            <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-[1.2rem] flex items-center justify-center mx-auto mb-5 border-2 border-amber-100 shadow-inner">
+              <AlertTriangle size={32} strokeWidth={2.5} />
             </div>
-            <h2 className="text-xl font-bold text-[#0a1e3f] mb-2">Confirm Action</h2>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            <h2 className="text-2xl font-black text-[#0a1e3f] tracking-tight mb-2">Confirm Action</h2>
+            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
               {confirmType === 'add' && "Are you sure you want to add this new unit to your property database?"}
               {confirmType === 'edit' && "Are you sure you want to save these changes to the unit?"}
               {confirmType === 'import' && `Are you sure you want to import ${csvPreviewData.length} units? Please make sure the data is correct.`}
@@ -744,7 +804,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               <button
                 onClick={() => setShowConfirmModal(false)}
                 disabled={isSubmitting || isImporting}
-                className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-[#0a1e3f] rounded-xl transition-all active:scale-95"
               >
                 Cancel
               </button>
@@ -754,9 +814,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   if (confirmType === 'import') executeCsvImport();
                 }}
                 disabled={isSubmitting || isImporting}
-                className="flex-1 bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center"
+                className="flex-1 bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-3.5 rounded-xl text-xs uppercase tracking-widest font-black transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] flex items-center justify-center active:scale-95"
               >
-                {isSubmitting || isImporting ? "Processing..." : "Yes, I'm sure"}
+                {isSubmitting || isImporting ? <span className="animate-pulse">Processing...</span> : "Yes, I'm sure"}
               </button>
             </div>
           </div>
@@ -765,18 +825,18 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* ✨ SUCCESS MODAL */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in duration-300">
-            <div className="w-16 h-16 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5">
-              <CheckCircle2 size={36} />
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in zoom-in-95 duration-300 border border-slate-200">
+            <div className="w-20 h-20 bg-gradient-to-br from-emerald-50 to-green-100 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-[0_0_20px_rgba(53,155,70,0.2)]">
+              <CheckCircle2 size={40} strokeWidth={3} />
             </div>
-            <h2 className="text-xl font-bold text-[#0a1e3f] mb-2">Success!</h2>
-            <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+            <h2 className="text-2xl font-black text-[#0a1e3f] tracking-tight mb-2">Success!</h2>
+            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
               Your unit details have been successfully saved to the database.
             </p>
             <button
               onClick={() => setShowSuccessModal(false)}
-              className="w-full bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-3 rounded-xl text-sm font-bold transition-all shadow-sm"
+              className="w-full bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-3.5 rounded-xl text-xs uppercase tracking-widest font-black transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] active:scale-95"
             >
               Done
             </button>

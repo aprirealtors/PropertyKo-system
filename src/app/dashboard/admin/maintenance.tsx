@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, User, HardHat, Bell, CheckCircle2, Camera, Clock, AlertCircle, Inbox, PauseCircle } from "lucide-react";
+import { Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, Inbox, PauseCircle } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -26,6 +26,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [priority, setPriority] = useState("Normal"); 
 
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // ✨ ADDED: Filtered Tickets Logic
+  const filteredTickets = tickets.filter(t => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (t.title && t.title.toLowerCase().includes(searchLower)) ||
+      (t.location && t.location.toLowerCase().includes(searchLower)) ||
+      (t.description && t.description.toLowerCase().includes(searchLower)) ||
+      (t.assigned_to && t.assigned_to.toLowerCase().includes(searchLower))
+    );
+  });
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -183,22 +195,23 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     }
   };
 
-  const openTickets = tickets.filter(t => {
+  // ✨ FIX: Ginamit ang filteredTickets imbes na base tickets array
+  const openTickets = filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'pending' || s === 'open';
   }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
   
-  const inProgressTickets = tickets.filter(t => {
+  const inProgressTickets = filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'in_progress' || s === 'in progress' || s === 'working';
   }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
 
-  const onHoldTickets = tickets.filter(t => {
+  const onHoldTickets = filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'on_hold' || s === 'on hold';
   }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
   
-  const resolvedTickets = tickets.filter(t => {
+  const resolvedTickets = filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed';
   });
@@ -236,7 +249,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             <div className="flex items-center gap-4 w-full sm:w-auto shrink-0">
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input type="text" placeholder="Search tenants, units..." className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-white shadow-sm font-medium text-slate-700 placeholder:text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search tasks, units, staff..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-white shadow-sm font-medium text-slate-700 placeholder:text-slate-400" 
+                />
               </div>
               <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
                 <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>

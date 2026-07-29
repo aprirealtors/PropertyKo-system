@@ -81,7 +81,17 @@ export default function ConversationTab({ userData, units }: { userData: any, un
 
         setTenantEmail(foundTenantEmail);
         setRoleEmails(fetchedEmails);
-        setCustomNames(fetchedNames);
+        
+        // ✨ FIX: Basahin muna ang LocalStorage at i-merge sa fetchedNames para priority siya
+        const storedNamesStr = localStorage.getItem(`custom_chat_names_${userData.email}`);
+        let localOverrides = {};
+        if (storedNamesStr) {
+          try {
+            localOverrides = JSON.parse(storedNamesStr);
+          } catch (e) {}
+        }
+        setCustomNames({ ...fetchedNames, ...localOverrides });
+
       } catch (error) {
         console.error("Error fetching actual names:", error);
       } finally {
@@ -356,12 +366,23 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                     <div className="flex items-center justify-start flex-nowrap gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 w-full whitespace-nowrap">
                       {isEditingNames ? (
                         <input 
-                          type="text" 
-                          value={customNames[role.id] || role.label} 
-                          onChange={(e) => setCustomNames(prev => ({ ...prev, [role.id]: e.target.value }))} 
-                          className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
-                          onClick={(e) => e.stopPropagation()} 
-                        />
+                        type="text" 
+                        value={customNames[role.id] !== undefined ? customNames[role.id] : role.label} 
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomNames(prev => ({ ...prev, [role.id]: val }));
+                          
+                          // Save directly to LocalStorage
+                          if (userData?.email) {
+                            const storedStr = localStorage.getItem(`custom_chat_names_${userData.email}`);
+                            const overrides = storedStr ? JSON.parse(storedStr) : {};
+                            overrides[role.id] = val;
+                            localStorage.setItem(`custom_chat_names_${userData.email}`, JSON.stringify(overrides));
+                          }
+                        }} 
+                        className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
+                        onClick={(e) => e.stopPropagation()} 
+                      />
                       ) : (
                         <>
                           <h3 className={`text-[13px] sm:text-[14px] font-bold tracking-tight whitespace-nowrap shrink-0 ${unreadCount > 0 ? 'font-black text-[#0a1e3f]' : isActive ? 'font-bold text-[#0a1e3f]' : 'font-semibold text-slate-700'}`}>{customNames[role.id] || role.label}</h3>
@@ -494,7 +515,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
             </div>
 
             {/* INPUT AREA */}
-            <div className="shrink-0 p-2 sm:p-3 md:p-4 bg-white border-t border-slate-200 pb-safe z-10">
+            <div className="shrink-0 p-3 bg-white border-t border-slate-200 z-10">
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-center">
                 <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center min-h-[40px] sm:min-h-[44px] md:min-h-[46px] focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-500/5 focus-within:border-slate-300 transition-all shadow-inner">
                   <input

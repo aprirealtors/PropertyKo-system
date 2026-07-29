@@ -31,10 +31,28 @@ export default function ConversationTab() {
   // const inputRef = useRef<HTMLInputElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (profileEmail) {
+      const storedNames = localStorage.getItem(`custom_chat_names_${profileEmail}`);
+      if (storedNames) {
+        try {
+          setCustomNames(JSON.parse(storedNames));
+        } catch (e) {
+          console.error("Error parsing stored aliases", e);
+        }
+      }
+    }
+  }, [profileEmail]);
+
+  useEffect(() => {
+    if (profileEmail && Object.keys(customNames).length > 0) {
+      localStorage.setItem(`custom_chat_names_${profileEmail}`, JSON.stringify(customNames));
+    }
+  }, [customNames, profileEmail]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-
   // // ✨ Auto-focus input pagkabukas ng chat o pagkasend ng message
   // useEffect(() => {
   //   if (activeChat && !isLoading && !isSearchActive && !isSending) {
@@ -43,7 +61,6 @@ export default function ConversationTab() {
   //     }, 50);
   //   }
   // }, [activeChat, isLoading, isSearchActive, isSending]);
-
   useEffect(() => {
     setIsSearchActive(false);
     setChatSearchQuery("");
@@ -371,7 +388,7 @@ export default function ConversationTab() {
                       {isEditingNames ? (
                         <input 
                           type="text" 
-                          value={customNames[contact.id] || contact.name} 
+                          value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
                           onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
                           className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
                           onClick={(e) => e.stopPropagation()} 
@@ -517,7 +534,7 @@ export default function ConversationTab() {
             </div>
 
             {/* INPUT AREA */}
-            <div className="shrink-0 p-2 sm:p-3 md:p-4 bg-white border-t border-slate-200 pb-safe z-10">
+            <div className="shrink-0 p-3 bg-white border-t border-slate-200 z-10">
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-center">
                 <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center min-h-[40px] sm:min-h-[44px] md:min-h-[46px] focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-500/5 focus-within:border-slate-300 transition-all shadow-inner">
                   <input

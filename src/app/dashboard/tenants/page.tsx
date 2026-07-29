@@ -453,7 +453,7 @@ export default function TenantDashboard() {
              {activeTab === 'pay' && <PayTab />}
              {activeTab === 'repair' && <RepairTab highlightTicketId={highlightTicketId} />}
              {activeTab === 'conversation' && <ConversationTab userData={userData} unit={unit} />}
-             {activeTab === 'lease' && <LeaseTab />}
+             {activeTab === 'lease' && <LeaseTab setActiveTab={setActiveTab} />} {/* ✨ FIX: Passed setActiveTab to LeaseTab */}
            </div>
         </main>
       </div>
