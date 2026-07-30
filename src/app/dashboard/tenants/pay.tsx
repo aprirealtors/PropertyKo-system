@@ -271,7 +271,9 @@ export default function PayTab() {
                 <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Tenant</span>
               </div>
               <div className="w-9 h-9 rounded-[12px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shadow-inner border border-blue-100 group-hover:scale-105 transition-transform duration-300">
-                {unit?.tenant_name ? unit.tenant_name.substring(0, 2).toUpperCase() : "TE"}
+                {unit?.tenant_name 
+                  ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                  : "TE"}
               </div>
             </div>
           </div>

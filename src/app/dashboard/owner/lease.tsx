@@ -199,7 +199,9 @@ export default function LeaseTab({ userData, units }: any) {
                 <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Owner</span>
               </div>
               <div className="w-9 h-9 rounded-[12px] bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs shadow-inner border border-purple-100 group-hover:scale-105 transition-transform duration-300">
-                {userData?.name ? userData.name.substring(0, 2).toUpperCase() : "OW"}
+                {userData?.name 
+                  ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                  : "OW"}
               </div>
             </div>
           </div>

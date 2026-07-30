@@ -282,13 +282,15 @@ export default function FinancialTab({ userData, units }: any) {
           
           <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
             {/* Premium Profile Badge */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0 ml-auto sm:ml-0">
+            <div className="hidden sm:flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0 ml-auto sm:ml-0">
               <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
                 <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Owner</span>
               </div>
               <div className="w-9 h-9 rounded-[12px] bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs shadow-inner border border-purple-100 group-hover:scale-105 transition-transform duration-300">
-                {userData?.name ? userData.name.substring(0, 2).toUpperCase() : "OW"}
+                {userData?.name 
+                  ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                  : "OW"}
               </div>
             </div>
           </div>
@@ -301,7 +303,7 @@ export default function FinancialTab({ userData, units }: any) {
         {isLoading ? (
           /* 🌟 PREMIUM SKELETON LOADING */
           <>
-            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 animate-pulse">
+            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 animate-pulse order-2 lg:order-1 mt-6 lg:mt-0">
               <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 sm:p-8 flex flex-col lg:h-full">
                 <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-6">
                   <div className="space-y-3">
@@ -319,7 +321,9 @@ export default function FinancialTab({ userData, units }: any) {
                 <div className="flex-1 min-h-[200px] bg-slate-50 rounded-2xl border border-slate-100"></div>
               </div>
             </div>
-            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col animate-pulse mt-6 lg:mt-0">
+
+            {/* ✨ FIX: Nilagyan ng order-1 lg:order-2 para mauna sa mobile */}
+            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col animate-pulse order-1 lg:order-2">
               <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 flex flex-col lg:h-full">
                 <div className="h-6 w-32 bg-slate-200 rounded-md mb-6"></div>
                 <div className="space-y-3">
@@ -345,7 +349,7 @@ export default function FinancialTab({ userData, units }: any) {
           /* ✨ ACTUAL CONTENT (Loaded) */
           <>
             {/* LEFT COLUMN: SOA DETAILS & LEDGER */}
-            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-0">
+            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-0 order-2 lg:order-1 mt-6 lg:mt-0">
               <div className="bg-white rounded-[2rem] border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col lg:h-full">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50/50 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 
@@ -534,7 +538,7 @@ export default function FinancialTab({ userData, units }: any) {
             </div>
 
             {/* RIGHT COLUMN: YOUR PROPERTIES INVENTORY */}
-            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0 lg:h-full">
+            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col lg:h-full order-1 lg:order-2">
               <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-5 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden w-full">
                 <h3 className="font-black text-[#0a1e3f] text-base mb-4 shrink-0 uppercase tracking-widest px-2 flex items-center gap-2">
                   <Home size={16} className="text-[#359b46] shrink-0"/> Your Properties <span className="text-slate-300 font-medium text-sm ml-auto bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">{sortedUnits.length}</span>

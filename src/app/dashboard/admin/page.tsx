@@ -594,7 +594,13 @@ export default function AdminDashboard() {
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
                 
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-white/20 uppercase shadow-inner z-10">
-                  {adminProfile.name.substring(0, 2)}
+                  {/* ✨ FIX: Kukunin ang unang letra ng bawat salita para sa initials */}
+                  {adminProfile.name
+                    .split(' ')
+                    .map((word: string) => word.charAt(0))
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase()}
                 </div>
                 <div className="z-10 mt-1 min-w-0 w-full px-2">
                   <h3 className="font-extrabold text-lg sm:text-xl tracking-tight truncate">{adminProfile.name}</h3>
