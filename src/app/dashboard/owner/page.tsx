@@ -13,7 +13,7 @@ import ConversationTab from "./conversation";
 import FinancialTab from "./financial"; 
 import LeaseTab from "./lease";
 
-// ✨ ADDED: Standardized EmptyState Component for clean UI when there's no data
+// ✨ Standardized EmptyState Component
 const EmptyState = ({ icon: Icon, title, message }: { icon: any, title: string, message: string }) => (
   <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 h-full animate-in fade-in duration-300">
     <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-400 border border-slate-100">
@@ -36,11 +36,13 @@ export default function OwnerDashboard() {
   const [liveTasks, setLiveTasks] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]); 
   
-  const [payoutThisMonth, setPayoutThisMonth] = useState(0);
+  // BILLING & FINANCIAL STATES
+  const [totalDue, setTotalDue] = useState(0);
+  const [collectedGross, setCollectedGross] = useState(0);
+  
   const [myUnitsList, setMyUnitsList] = useState<any[]>([]); 
   const [unitsCount, setUnitsCount] = useState(0);
   const [occupiedCount, setOccupiedCount] = useState(0);
-  const [collectedGross, setCollectedGross] = useState(0);
   const [myTickets, setMyTickets] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
   
@@ -61,7 +63,7 @@ export default function OwnerDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // ✨ UNREAD MESSAGES STATE (Like Tenant Side)
+  // UNREAD MESSAGES STATE
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
@@ -92,75 +94,130 @@ export default function OwnerDashboard() {
         setUserData(data);
         
         if (data.admin_email) {
+          // Fetch Organization Global Rates
           const { data: orgData } = await supabase
             .from('organizations')
-            .select('logo_url')
+            .select('logo_url, dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value')
             .eq('admin_email', data.admin_email)
             .single();
 
           if (orgData?.logo_url) {
             setOrgLogo(orgData.logo_url);
           }
-        }
 
-        const { data: membersData } = await supabase
-          .from('team_members')
-          .select('name, email')
-          .eq('admin_email', data.admin_email);
-        if (membersData) setTeamMembers(membersData);
-        
-        const { data: unitsData } = await supabase
-          .from('units')
-          .select('*')
-          .eq('admin_email', data.admin_email);
-
-        if (unitsData) {
-          const myUnits = unitsData.filter((unit: any) => {
-            const unitFullName = `${unit.property_name} - ${unit.unit_number}`;
-            const inAccessLevel = data.access_level?.includes(unitFullName);
-            const isNamedOwner = unit.owner_name?.toLowerCase().trim() === data.name?.toLowerCase().trim();
-            return inAccessLevel || isNamedOwner;
-          });
-
-          setMyUnitsList(myUnits); 
-          setUnitsCount(myUnits.length);
-          setOccupiedCount(myUnits.filter((u: any) => u.status === 'Occupied').length);
+          const { data: membersData } = await supabase
+            .from('team_members')
+            .select('name, email')
+            .eq('admin_email', data.admin_email);
+          if (membersData) setTeamMembers(membersData);
           
-          const gross = myUnits.reduce((acc: number, curr: any) => acc + (curr.monthly_rent || 0), 0);
-          setCollectedGross(gross);
-          setPayoutThisMonth(gross); 
-        }
+          const { data: unitsData } = await supabase
+            .from('units')
+            .select('*')
+            .eq('admin_email', data.admin_email);
 
-        const { count: msgCount } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('admin_email', data.admin_email)
-          .eq('is_read', false)
-          .neq('sender_email', authData.user.email)
-          .or(`recipient_role.eq.owner,tenant_email.eq.${authData.user.email}`);
-          
-        if (msgCount !== null) {
-          setUnreadMessages(msgCount);
-        }
+          if (unitsData) {
+            const myUnits = unitsData.filter((unit: any) => {
+              const unitFullName = `${unit.property_name} - ${unit.unit_number}`;
+              const inAccessLevel = data.access_level?.includes(unitFullName);
+              const isNamedOwner = unit.owner_name?.toLowerCase().trim() === data.name?.toLowerCase().trim();
+              return inAccessLevel || isNamedOwner;
+            });
 
-        const { data: tasksData } = await supabase
-          .from('maintenance_tasks')
-          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at')
-          .eq('admin_email', data.admin_email);
-        if (tasksData) setLiveTasks(tasksData);
+            setMyUnitsList(myUnits); 
+            setUnitsCount(myUnits.length);
+            setOccupiedCount(myUnits.filter((u: any) => u.status === 'Occupied').length);
+            
+            // ✨ FETCH THE BILL ASSIGNED TO OWNER
+            let totalOwnerBill = 0;
+            let totalGross = 0;
 
-        const { data: ticketsData } = await supabase
-          .from('tickets') 
-          .select('*')
-          .eq('admin_email', data.admin_email)
-          .order('created_at', { ascending: false });
+            if (myUnits.length > 0) {
+              const unitIds = myUnits.map((u: any) => u.id);
+              const { data: soaData } = await supabase
+                .from('soa')
+                .select('*')
+                .in('unit_id', unitIds);
 
-        if (ticketsData) {
-          const ownerTickets = ticketsData.filter((t: any) => 
-            t.reporter_email === authData.user.email || 
-            (String(t.description).includes(data.name) && String(t.description).includes('(Owner)'))
-          );
-          setMyTickets(ownerTickets);
+              myUnits.forEach((unit: any) => {
+                // Calculate gross rent for income tracking
+                totalGross += (unit.monthly_rent || 0);
+
+                // Calculate exact owner bill from SOA config
+                const soa = soaData?.find((s: any) => s.unit_id === unit.id);
+                if (soa) {
+                  const getUnitAreaValue = (areaStr: string) => {
+                    const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
+                    return isNaN(parsed) ? 0 : parsed;
+                  };
+                  
+                  const unitArea = getUnitAreaValue(unit.unit_area);
+
+                  const rawDues = (orgData?.dues_rate || 0) * unitArea;
+                  const rawParking = (orgData?.default_parking || 0);
+                  const rawWater = (orgData?.default_water || 0);
+                  const rawElectricity = (orgData?.default_electricity || 0);
+
+                  // Switch to strictly OWNER toggles
+                  const dues = soa.owner_dues ? rawDues : 0;
+                  const parking = soa.owner_parking ? rawParking : 0;
+                  const water = soa.owner_water ? rawWater : 0;
+                  const electricity = soa.owner_electricity ? rawElectricity : 0;
+
+                  const baseTotal = dues + parking + water + electricity;
+
+                  let lateFee = 0;
+                  if (soa.owner_status === 'Overdue' && soa.owner_penalty) {
+                    if (orgData?.penalty_type === 'percent') {
+                      lateFee = baseTotal * ((orgData?.penalty_value || 0) / 100);
+                    } else {
+                      lateFee = orgData?.penalty_value || 0;
+                    }
+                  }
+
+                  // Only accumulate if the owner has an active, unpaid balance
+                  if (soa.owner_status !== 'Paid' && soa.owner_status !== 'Unassigned') {
+                    totalOwnerBill += (baseTotal + lateFee);
+                  }
+                }
+              });
+            }
+
+            setCollectedGross(totalGross);
+            setTotalDue(totalOwnerBill); 
+          }
+
+          const { count: msgCount } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('admin_email', data.admin_email)
+            .eq('is_read', false)
+            .neq('sender_email', authData.user.email)
+            .or(`recipient_role.eq.owner,tenant_email.eq.${authData.user.email}`);
+            
+          if (msgCount !== null) {
+            setUnreadMessages(msgCount);
+          }
+
+          const { data: tasksData } = await supabase
+            .from('maintenance_tasks')
+            .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at')
+            .eq('admin_email', data.admin_email);
+          if (tasksData) setLiveTasks(tasksData);
+
+          const { data: ticketsData } = await supabase
+            .from('tickets') 
+            .select('*')
+            .eq('admin_email', data.admin_email)
+            .order('created_at', { ascending: false });
+
+          if (ticketsData) {
+            const ownerTickets = ticketsData.filter((t: any) => 
+              t.reporter_email === authData.user.email || 
+              (String(t.description).includes(data.name) && String(t.description).includes('(Owner)'))
+            );
+            setMyTickets(ownerTickets);
+          }
         }
 
         const { data: notifData } = await supabase
@@ -517,24 +574,6 @@ export default function OwnerDashboard() {
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
   const businessNameDisplay = uniqueBusinessNames.join(" | ");
 
-  const KanbanSkeleton = () => (
-    <div className="h-[340px] shrink-0 bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col animate-pulse">
-      <div className="w-full h-32 bg-slate-100 border-b border-slate-100"></div>
-      <div className="p-5 flex-1 flex flex-col gap-3">
-        <div className="flex justify-between items-center mb-1">
-          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-          <div className="h-5 bg-slate-200 rounded-full w-14"></div>
-        </div>
-        <div className="h-3 bg-slate-200 rounded w-1/3"></div>
-        <div className="h-3 bg-slate-200 rounded w-full mt-3"></div>
-        <div className="h-3 bg-slate-200 rounded w-5/6"></div>
-        <div className="mt-auto pt-4 border-t border-slate-100">
-          <div className="h-6 bg-slate-200 rounded-full w-24"></div>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
@@ -602,7 +641,7 @@ export default function OwnerDashboard() {
                     notifications.map((notif) => {
                       const type = notif.type?.toUpperCase() || '';
                       let Icon = Bell;
-                      let iconColor = "text-[#359b46]"; // Default emerald
+                      let iconColor = "text-[#359b46]"; 
                       let iconBg = "bg-emerald-100";
 
                       if (type === 'BILLING' || type === 'STATEMENT') {
@@ -791,7 +830,6 @@ export default function OwnerDashboard() {
             <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               
               {/* Header Section */}
-              {/* ✨ Tinanggal ang whitespace-nowrap at ginawang flex-col sa mobile para hindi lumagpas ang mahabang pangalan */}
               <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end pb-2 gap-3 sm:gap-0">
                 <div className="w-full">
                   <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-widest">Dashboard Overview</p>
@@ -817,8 +855,7 @@ export default function OwnerDashboard() {
                 </div>
               </header>
 
-              {/* Hero Card: Payout Display */}
-              {/* ✨ Inayos ang scaling ng padding (p-5 sa mobile) at text sizes para sa mas maliliit na screen */}
+              {/* Hero Card: Owner Bill Display */}
               <section className="bg-gradient-to-br from-[#0a1e3f] via-[#112d56] to-[#1a3d6c] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl shadow-slate-900/10 relative overflow-hidden group border border-white/5">
                 {/* Decorative background shapes */}
                 <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-emerald-500/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-emerald-500/15 transition-colors duration-500"></div>
@@ -827,16 +864,15 @@ export default function OwnerDashboard() {
                 <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
                   <div>
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit backdrop-blur-sm">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
-                      <p className="text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Your Payout This Month</p>
+                      <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+                      <p className="text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
                     </div>
                     
-                    {/* ✨ Responsive text: text-3xl sa mobile, aakyat hanggang text-5xl sa desktop */}
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight flex items-center min-h-[36px] sm:min-h-[40px] md:min-h-[48px] bg-gradient-to-r from-white via-white to-slate-200 bg-clip-text text-transparent break-all sm:break-normal">
                       {isLoading ? (
                         <div className="h-8 sm:h-10 md:h-12 w-40 sm:w-48 bg-white/10 rounded-xl sm:rounded-2xl animate-pulse"></div>
                       ) : (
-                        `₱${payoutThisMonth.toLocaleString()}`
+                        `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
                       )}
                     </h2>
                     
@@ -846,7 +882,7 @@ export default function OwnerDashboard() {
                         {isLoading ? (
                           <div className="h-3 sm:h-4 bg-white/10 rounded-md animate-pulse w-32 sm:w-48"></div>
                         ) : (
-                          <p className="font-semibold truncate">{fullUnitsDisplay} {payoutThisMonth > 0 && <span className="text-emerald-400 font-bold ml-1">· Remitted</span>}</p>
+                          <p className="font-semibold truncate">{fullUnitsDisplay} {totalDue > 0 && <span className="text-amber-400 font-bold ml-1">· Pending Payment</span>}</p>
                         )}
                       </div>
                     </div>
@@ -854,17 +890,16 @@ export default function OwnerDashboard() {
 
                   <button 
                     onClick={() => setActiveTab('financials')} 
-                    disabled={payoutThisMonth === 0}
+                    disabled={totalDue === 0}
                     className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent text-[#0a1e3f] transition-all rounded-xl sm:rounded-2xl py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-slate-100 shadow-md hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
                   >
-                    {isLoading ? "Checking..." : payoutThisMonth > 0 ? "See Statements" : "All caught up"} 
-                    {!isLoading && payoutThisMonth > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
+                    {isLoading ? "Checking..." : totalDue > 0 ? "View Statements" : "All caught up"} 
+                    {!isLoading && totalDue > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
                   </button>
                 </div>
               </section>
 
               {/* Metric Grid: 4 Interactive Columns */}
-              {/* ✨ Tinanggal ang sumisirang "whitespace-nowrap" para mag-wrap ang mahahabang labels sa maliliit na screen */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
                 
                 {/* Card 1: Report Issue */}
@@ -898,7 +933,7 @@ export default function OwnerDashboard() {
                 </button>
                 
                 {/* Card 3: Collected Gross */}
-                <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/60 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="bg-emerald-50 group-hover:bg-emerald-100 transition-colors w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 border border-emerald-100/50 relative z-10 shrink-0 shadow-sm">
                     <Receipt size={18} className="text-[#359b46] sm:w-5 sm:h-5" />
@@ -906,7 +941,7 @@ export default function OwnerDashboard() {
                   <div className="relative z-10 flex flex-col flex-1 min-w-0">
                     <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Gross Income</h3>
                     <div className="text-sm sm:text-lg font-black text-slate-900 mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px] truncate">
-                      {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-16 sm:w-20"></div> : `₱${collectedGross.toLocaleString()}`}
+                      {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-16 sm:w-20"></div> : `₱${collectedGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
                     </div>
                     <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Total revenue collected</p>
                   </div>
@@ -933,7 +968,7 @@ export default function OwnerDashboard() {
                 <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-slate-100 pb-3 sm:pb-4 gap-2">
                   <div className="min-w-0">
                     <h3 className="font-black text-base sm:text-lg text-[#0a1e3f] tracking-tight truncate">Recent Statements</h3>
-                    <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial payouts</p>
+                    <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial statements</p>
                   </div>
                   <button 
                     onClick={() => setActiveTab('financials')} 
@@ -1009,7 +1044,7 @@ export default function OwnerDashboard() {
             </div>
           )}
 
-          {/* ✨ TAB 3: REPAIRS KANBAN (Main Page/Tab Level Scrolling with Premium UI) */}
+          {/* ✨ TAB 3: REPAIRS KANBAN */}
           {activeTab === 'repair' && (
             <div className="flex flex-col w-full max-w-[1400px] mx-auto overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8">
               
@@ -1029,7 +1064,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              {/* Kanban Board Container - Natural Grid Layout (Mag-iscroll na ang buong page) */}
+              {/* Kanban Board Container */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full overflow-y-auto custom-scrollbar">
                   
                   {/* Column 1: Open & In Progress */}
@@ -1409,7 +1444,6 @@ export default function OwnerDashboard() {
       {/* 1. WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          {/* ✨ MOBILE RESPONSIVE WRAPPER: Nagiging bottom sheet sa mobile, standard rounded modal naman sa desktop view */}
           <div className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-white/20">
             
             {/* HEADER BAR */}
@@ -1419,23 +1453,20 @@ export default function OwnerDashboard() {
                 onClick={() => setIsWorkspaceModalOpen(false)}
                 className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors active:scale-95 shrink-0"
               >
-                {/* ✨ Ginagamitan natin ng className para sa responsive height at width scaling ng SVG ng Lucide! */}
                 <X className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
             
-            {/* CONTENT SPACE - Added our sleek minimalist custom scrollbar layout handler */}
+            {/* CONTENT SPACE */}
             <div className="overflow-y-auto bg-slate-50/50 px-5 pb-6 sm:px-8 sm:pb-8 pt-2 space-y-5 sm:space-y-6 custom-scrollbar">
               
               {/* PROFILE IDENTIFIER BANNER */}
-              {/* ✨ GINAWANG WRAP AT RESPONSIVE PADDING PARA SA CELLPHONE INTERFACES */}
               <div className="bg-gradient-to-br from-[#081832] to-[#122955] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 text-white flex flex-row items-center gap-4 sm:gap-5 shadow-xl shadow-[#081832]/20 relative overflow-hidden shrink-0">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-xl"></div>
                 <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl bg-white/10 flex items-center justify-center font-black text-xl sm:text-3xl border border-white/20 shadow-inner backdrop-blur-sm shrink-0 z-10">
                   {initials}
                 </div>
                 <div className="z-10 min-w-0 flex-1">
-                  {/* ✨ Tinanggal ang whitespace-nowrap at pinalitan ng responsive typography text scaling */}
                   <h3 className="font-black text-lg sm:text-2xl tracking-tight break-words leading-tight">{fullName}</h3>
                   <p className="text-[10px] sm:text-xs font-bold text-blue-200 mt-0.5 sm:mt-1 tracking-widest uppercase">Property Owner</p>
                 </div>
@@ -1461,7 +1492,6 @@ export default function OwnerDashboard() {
                   
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Owned Properties</label>
-                    {/* ✨ Inayos ang dynamic join structure para maging flexible row blocks sa mobile screen grids */}
                     <div className="text-xs sm:text-sm font-bold text-slate-700 break-words leading-relaxed bg-emerald-50/50 py-2 rounded-xl sm:rounded-2xl border border-emerald-100/50">
                       {myUnitsList.length > 0 
                         ? myUnitsList.map(u => `${u.property_name} - Unit ${u.unit_number}`).join(' • ')
@@ -1731,7 +1761,6 @@ export default function OwnerDashboard() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#081832]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-10 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-white/20">
             
-            {/* ✨ Responsive Premium Icon Wrapper */}
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] bg-red-50 flex items-center justify-center mx-auto mb-5 sm:mb-6 border-4 border-red-50/50 shadow-sm">
               <LogOut size={28} className="text-red-500 sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
@@ -1822,7 +1851,6 @@ export default function OwnerDashboard() {
                     </span>
                   </div>
 
-                  {/* ✨ IN-APPLY NA YUNG TENANT-SIDE LOGIC DITO */}
                   <div className="w-full aspect-video sm:h-56 bg-slate-100 rounded-3xl border border-slate-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group">
                     {(reviewOnHoldTicket.liveMatch?.on_hold_photo_url || reviewOnHoldTicket.liveMatch?.resolution_photo_url) ? (
                       <img 
@@ -1846,7 +1874,6 @@ export default function OwnerDashboard() {
                       </p>
                     </div>
                     
-                    {/* ✨ ADDED STAFF IN CHARGE SECTION */}
                     <div className="flex justify-between items-center text-xs sm:text-sm border-t border-purple-200/60 pt-4 mt-2">
                       <span className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">👤 Staff In Charge</span>
                       <span className="font-bold text-purple-900 bg-white px-3 py-1.5 rounded-xl border border-purple-100 shadow-sm">
@@ -1906,7 +1933,7 @@ export default function OwnerDashboard() {
   );
 }
 
-// ✨ FIXED HEIGHT KANBAN SKELETON (Matched to 340px)
+// ✨ FIXED HEIGHT KANBAN SKELETON
 function KanbanSkeleton() {
   return (
     <div className="h-[340px] shrink-0 bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 overflow-hidden flex flex-col animate-pulse">

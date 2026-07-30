@@ -302,9 +302,9 @@ export default function ConversationTab() {
 
   // 🌟 Unified Role Badges
   const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === 'manager') return <span className="shrink-0 text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Manager</span>;
-    if (roleId === 'admin') return <span className="shrink-0 text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Maintenance</span>;
+    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Admin</span>;
+    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Maintenance</span>;
     return null;
   };
 
@@ -372,6 +372,7 @@ export default function ConversationTab() {
                       : 'border border-transparent hover:bg-slate-50'
                   }`}
                 >
+                  {/* 1. AVATAR QUADRANT (Left) */}
                   <div className="relative shrink-0">
                     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       isActive && !isEditingNames 
@@ -380,51 +381,68 @@ export default function ConversationTab() {
                     }`}>
                       <ContactIcon size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
                     </div>
-                    {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
+                    {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>}
                   </div>
 
-                  <div className="flex-1 min-w-[100px] sm:min-w-[120px]">
-                    <div className="flex items-center justify-start flex-nowrap gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 w-full whitespace-nowrap">
-                      {isEditingNames ? (
-                        <input 
-                          type="text" 
-                          value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
-                          onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
-                          className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
-                          onClick={(e) => e.stopPropagation()} 
-                        />
-                      ) : (
-                        <>
-                          <h3 className={`text-[13px] sm:text-[14px] font-bold tracking-tight whitespace-nowrap shrink-0 ${
-                            unreadCount > 0 ? 'font-black text-[#0a1e3f]' : isActive ? 'font-bold text-[#0a1e3f]' : 'font-semibold text-slate-800'
-                          }`}>
+                  {/* RIGHT SECTION: 2-Row Messenger Style */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    
+                    {/* 2. TOP ROW (Name & Time) */}
+                    <div className="flex justify-between items-center w-full mb-1 gap-2">
+                      {/* Name - Naka flex-1 at min-w-0 para piliting mag-truncate kapag umabot sa dulo */}
+                      <div className="flex-1 min-w-0">
+                        {isEditingNames ? (
+                          <input 
+                            type="text" 
+                            value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
+                            onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
+                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
+                            onClick={(e) => e.stopPropagation()} 
+                          />
+                        ) : (
+                          <h3 
+                            className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
+                              unreadCount > 0 ? 'font-black text-[#0a1e3f]' : isActive ? 'font-bold text-[#0a1e3f]' : 'font-semibold text-slate-700'
+                            }`}
+                            title={`${customNames[contact.id] || contact.name} - ${contact.type.charAt(0).toUpperCase() + contact.type.slice(1)}`}
+                          >
                             {customNames[contact.id] || contact.name}
+                            <span className="font-semibold text-[10px] text-slate-400 ml-1.5 uppercase tracking-wider">
+                              {renderRoleBadge(contact.type)}
+                            </span>
                           </h3>
-                          <div className="shrink-0 inline-flex">
-                            {renderRoleBadge(contact.type)}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <p className={`text-[11px] sm:text-[12.5px] truncate font-medium ${unreadCount > 0 ? 'font-bold text-slate-900' : 'text-slate-400'}`}>
-                      {lastMsg ? (
-                        <span>
-                          <span className={unreadCount > 0 ? "text-[#0a1e3f] font-semibold" : "text-slate-500 font-semibold"}>
-                            {getSidebarMessagePrefix()}
-                          </span>
-                          {lastMsg.content}
-                        </span>
-                      ) : contact.unit}
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col items-end shrink-0 gap-1.5 sm:gap-2 min-w-[40px] sm:min-w-[45px]">
-                    <span className={`text-[9px] sm:text-[10px] tracking-wide font-bold ${unreadCount > 0 ? 'text-[#359b46]' : 'text-slate-400'}`}>{displayTime}</span>
-                    {unreadCount > 0 && !isEditingNames && (
-                      <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-3.5 min-w-[14px] sm:h-4 sm:min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-red-500/20 animate-in zoom-in-50">
-                        {unreadCount}
+                        )}
+                      </div>
+                      {/* Time - Naka shrink-0 para kahit gaano kahaba ang pangalan, hindi siya masisiksik o mawawala */}
+                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[#359b46]' : 'font-medium text-slate-400'}`}>
+                        {displayTime}
                       </span>
-                    )}
+                    </div>
+
+                    {/* 3. BOTTOM ROW (Message & Badge) */}
+                    <div className="flex justify-between items-center w-full gap-2">
+                      {/* Last Message - Naka truncate din */}
+                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-400'}`}>
+                        {lastMsg ? (
+                          <span>
+                            <span className={unreadCount > 0 ? "text-[#0a1e3f] mr-1" : "text-slate-500 mr-1"}>
+                              {getSidebarMessagePrefix()}
+                            </span>
+                            {lastMsg.content}
+                          </span>
+                        ) : contact.unit}
+                      </p>
+                      
+                      {/* Unread Badge - Naka-lock din ang pwesto sa kanan */}
+                      <div className="shrink-0 flex items-center justify-end min-w-[16px]">
+                        {unreadCount > 0 && !isEditingNames && (
+                          <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-red-500/20 animate-in zoom-in-50">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               );

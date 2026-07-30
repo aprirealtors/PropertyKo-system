@@ -24,9 +24,14 @@ export default function TenantDashboard() {
   const [userData, setUserData] = useState<any>(null); 
   const [userEmail, setUserEmail] = useState<string>(""); 
   const [tenantName, setTenantName] = useState("");
+  const [userRole, setUserRole] = useState<'owner' | 'tenant'>('tenant');
   const [unit, setUnit] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // SOA / Billing States
+  const [totalDue, setTotalDue] = useState<number>(0);
+  const [soaStatus, setSoaStatus] = useState<string>('Unassigned');
 
   // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -68,27 +73,90 @@ export default function TenantDashboard() {
       if (profile) {
         setUserData(profile);
         setTenantName(profile.name);
+        
+        const cleanProfileName = profile.name.trim().toLowerCase();
 
         if (profile.admin_email) {
+          // Fetch Organization Data & Rates to Match PayTab Logic
           const { data: orgData } = await supabase
             .from('organizations')
-            .select('logo_url')
+            .select('logo_url, dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value')
             .eq('admin_email', profile.admin_email)
             .single();
 
           if (orgData?.logo_url) {
             setOrgLogo(orgData.logo_url);
           }
-        }
 
-        const { data: unitData } = await supabase
-          .from('units')
-          .select('*')
-          .eq('admin_email', profile.admin_email)
-          .ilike('tenant_name', profile.name)
-          .single();
-          
-        if (unitData) setUnit(unitData);
+          // Fetch all units for this admin, then filter JS-side to handle special chars safely
+          const { data: unitsArray } = await supabase
+            .from('units')
+            .select('*')
+            .eq('admin_email', profile.admin_email);
+
+          const unitData = unitsArray?.find(u => 
+            (u.tenant_name || '').trim().toLowerCase() === cleanProfileName ||
+            (u.owner_name || '').trim().toLowerCase() === cleanProfileName
+          );
+            
+          if (unitData) {
+            setUnit(unitData);
+
+            // Determine if the logged-in user is the Owner or Tenant
+            const isOwner = (unitData.owner_name || '').trim().toLowerCase() === cleanProfileName;
+            const role = isOwner ? 'owner' : 'tenant';
+            setUserRole(role);
+
+            // Fetch SOA Configuration to calculate exact totals
+            const { data: soaData } = await supabase
+              .from('soa')
+              .select('*')
+              .eq('unit_id', unitData.id)
+              .single();
+
+            if (soaData && orgData) {
+              const currentStatus = (role === 'owner' ? soaData.owner_status : soaData.tenant_status) || 'Pending';
+              setSoaStatus(currentStatus);
+
+              // Calculate matched totals
+              const getUnitAreaValue = (areaStr: string) => {
+                const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
+                return isNaN(parsed) ? 0 : parsed;
+              };
+              
+              const unitArea = getUnitAreaValue(unitData.unit_area);
+
+              const rawDues = (orgData.dues_rate || 0) * unitArea;
+              const rawParking = (orgData.default_parking || 0);
+              const rawWater = (orgData.default_water || 0);
+              const rawElectricity = (orgData.default_electricity || 0);
+
+              // Map assignments based on dynamic role
+              const dues = soaData[`${role}_dues`] ? rawDues : 0;
+              const parking = soaData[`${role}_parking`] ? rawParking : 0;
+              const water = soaData[`${role}_water`] ? rawWater : 0;
+              const electricity = soaData[`${role}_electricity`] ? rawElectricity : 0;
+
+              const baseTotal = dues + parking + water + electricity;
+
+              let lateFee = 0;
+              if (currentStatus === 'Overdue' && soaData[`${role}_penalty`]) {
+                if (orgData.penalty_type === 'percent') {
+                  lateFee = baseTotal * ((orgData.penalty_value || 0) / 100);
+                } else {
+                  lateFee = orgData.penalty_value || 0;
+                }
+              }
+
+              // Update Total Based on Status
+              const calculatedTotalDue = currentStatus === 'Paid' ? 0 : (baseTotal + lateFee);
+              setTotalDue(calculatedTotalDue);
+            } else {
+              setTotalDue(0);
+              setSoaStatus('Unassigned');
+            }
+          }
+        }
 
         const { count: msgCount } = await supabase
           .from('messages')
@@ -101,11 +169,12 @@ export default function TenantDashboard() {
           setUnreadMessages(msgCount);
         }
 
+        // Fetch transactions matching either owner or tenant names
         const { data: txData } = await supabase
           .from('transactions') 
           .select('*')
           .eq('admin_email', profile.admin_email)
-          .ilike('tenant_name', profile.name)
+          .or(`tenant_name.ilike.%${cleanProfileName}%,owner_name.ilike.%${cleanProfileName}%`)
           .order('created_at', { ascending: false })
           .limit(5);
 
@@ -130,6 +199,32 @@ export default function TenantDashboard() {
       setIsLoading(false);
     }
   };
+
+  // Realtime SOA Updates (Detects Admin changes instantly)
+  useEffect(() => {
+    if (!unit?.id) return;
+
+    const soaChannel = supabase
+      .channel('tenant-soa-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'soa',
+          filter: `unit_id=eq.${unit.id}`
+        },
+        () => {
+          // Instantly re-fetch if admin marks SOA as 'Paid'
+          fetchTenantData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(soaChannel);
+    };
+  }, [unit?.id]);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -370,7 +465,9 @@ export default function TenantDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-500/30 bg-gradient-to-br from-[#1a3d6c] via-[#1565c0] to-[#0d47a1]">Tenant Portal</span>
+          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-500/30 bg-gradient-to-br from-[#1a3d6c] via-[#1565c0] to-[#0d47a1]">
+            {userRole === 'owner' ? 'Owner Portal' : 'Tenant Portal'}
+          </span>
           
           <button 
             onClick={() => setShowLogoutModal(true)} 
@@ -404,9 +501,9 @@ export default function TenantDashboard() {
             <div className="mt-8 mb-4 pt-4 border-t border-white/5">
               <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance & Lease</h3>
             </div>
-
-            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Billing & Payments" />
+            
             <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
+            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Financials" />
           </nav>
 
           {/* Premium Bottom User Tag */}
@@ -424,8 +521,8 @@ export default function TenantDashboard() {
                     <div className="h-4 w-20 bg-white/10 rounded animate-pulse"></div>
                   ) : (
                     <>
-                      <p className="text-sm font-bold text-slate-200 truncate">{tenantName || 'Tenant'}</p>
-                      <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">Tenant Account</p>
+                      <p className="text-sm font-bold text-slate-200 truncate">{tenantName || 'Resident'}</p>
+                      <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Account' : 'Tenant Account'}</p>
                     </>
                   )}
                 </div>
@@ -435,7 +532,6 @@ export default function TenantDashboard() {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        {/* ✨ GINAWANG EXACT MATCH SA MECHANICS NG OWNER SIDE MAIN LAYOUT TAG ✨ */}
         <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-[100px] md:pb-8'}`}>
            <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' ? 'max-w-[1400px] h-full flex flex-col' : 'max-w-5xl'}`}>
              {activeTab === 'home' && (
@@ -448,12 +544,14 @@ export default function TenantDashboard() {
                  unit={unit} 
                  transactions={transactions} 
                  isLoading={isLoading} 
+                 totalDue={totalDue}
+                 soaStatus={soaStatus}
                />
              )}
              {activeTab === 'pay' && <PayTab />}
              {activeTab === 'repair' && <RepairTab highlightTicketId={highlightTicketId} />}
              {activeTab === 'conversation' && <ConversationTab userData={userData} unit={unit} />}
-             {activeTab === 'lease' && <LeaseTab setActiveTab={setActiveTab} />} {/* ✨ FIX: Passed setActiveTab to LeaseTab */}
+             {activeTab === 'lease' && <LeaseTab setActiveTab={setActiveTab} />} 
            </div>
         </main>
       </div>
@@ -462,7 +560,8 @@ export default function TenantDashboard() {
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         <div className="flex justify-around items-center px-1 py-2">
           <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
-          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Pay" />
+          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
+          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Finance" />
           <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={22} />} label="Repairs" />
           <MobileNavItem 
             active={activeTab === 'conversation' && !isWorkspaceModalOpen} 
@@ -471,7 +570,6 @@ export default function TenantDashboard() {
             label="Chat" 
             badge={unreadMessages}
           />
-          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
           <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Account" />
         </div>
       </nav>
@@ -479,12 +577,11 @@ export default function TenantDashboard() {
       {/* STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          {/* ✨ MOBILE RESPONSIVE WRAPPER: Bottom sheet sa mobile (rounded-t-3xl), Center modal sa desktop (rounded-2xl) */}
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
             
             {/* Header */}
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">Tenant Profile</h2>
+              <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
                 className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
@@ -512,7 +609,6 @@ export default function TenantDashboard() {
                     </div>
                   ) : (
                     <>
-                      {/* ✨ Tinanggal natin yung truncate para mag-wrap ang mahabang pangalan imbes na maputol */}
                       <h3 className="font-extrabold text-base sm:text-lg tracking-tight break-words leading-tight">{tenantName}</h3>
                       <p className="text-[10px] sm:text-xs font-bold text-blue-200 mt-0.5 sm:mt-1 tracking-widest uppercase">Active Resident</p>
                     </>
@@ -555,7 +651,7 @@ export default function TenantDashboard() {
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Access Role</label>
                     <span className="inline-flex text-[9px] sm:text-[10px] font-black text-[#1e88e5] bg-blue-50 border border-blue-100 px-2.5 sm:px-2 py-1 sm:py-0.5 rounded-lg sm:rounded tracking-widest uppercase shadow-sm sm:mt-1">
-                      Tenant
+                      {userRole === 'owner' ? 'Owner' : 'Tenant'}
                     </span>
                   </div>
                 </div>
@@ -571,14 +667,13 @@ export default function TenantDashboard() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-300 border border-white/20">
             
-            {/* ✨ Premium Squircle/Circle Icon Wrapper */}
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[2rem] bg-red-50 flex items-center justify-center mx-auto mb-5 sm:mb-6 border border-red-100/60 shadow-inner">
               <LogOut size={28} className="text-red-500 sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
             
             <h3 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-1.5 sm:mb-2 tracking-tight">Sign Out</h3>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
-              Are you sure you want to log out of your tenant account?
+              Are you sure you want to log out of your account?
             </p>
             
             <div className="flex gap-3 sm:gap-4">
@@ -621,16 +716,23 @@ export default function TenantDashboard() {
 // COMPONENTS
 // -------------------------------------------------------------------------------------------------
 
-function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, transactions, isLoading }: any) {
-  const rentAmount = unit?.monthly_rent || 0;
+function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, transactions, isLoading, totalDue, soaStatus }: any) {
+  // Use dynamically calculated total to mirror PayTab logic exactly
+  const rentAmount = totalDue || 0; 
   const propertyName = unit?.property_name || "Unassigned Property";
   const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
   
-  const getDaysUntilDue = () => {
-    const today = new Date();
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-    const diffTime = Math.abs(nextMonth.getTime() - today.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const getStatusColor = (status: string) => {
+    if (status === 'Paid') return 'text-emerald-400';
+    if (status === 'Overdue') return 'text-red-400';
+    if (status === 'Sent') return 'text-blue-400';
+    return 'text-amber-400';
+  };
+
+  const getIndicatorColor = (status: string) => {
+    if (status === 'Paid' || status === 'Unassigned') return 'bg-emerald-400';
+    if (status === 'Overdue') return 'bg-red-400 animate-pulse';
+    return 'bg-amber-400 animate-pulse';
   };
 
   return (
@@ -658,7 +760,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
           <div>
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full w-fit backdrop-blur-sm">
-              <div className={`w-1.5 h-1.5 sm:w-2 h-2 rounded-full shrink-0 ${rentAmount > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+              <div className={`w-1.5 h-1.5 sm:w-2 h-2 rounded-full shrink-0 ${getIndicatorColor(soaStatus)}`}></div>
               <p className="text-slate-200 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
             </div>
             
@@ -670,13 +772,13 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
             ) : (
               <>
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight bg-gradient-to-r from-white via-white to-slate-200 bg-clip-text text-transparent break-all sm:break-normal">
-                  ₱{rentAmount.toLocaleString()}
+                  ₱{rentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </h2>
                 <div className="text-[11px] sm:text-xs md:text-sm text-slate-200 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl backdrop-blur-sm w-fit max-w-full">
                   <Home size={14} className="text-blue-300 shrink-0" />
                   <div className="truncate min-w-0">
                     <p className="font-semibold truncate">
-                      {propertyName} · {unitNumber} {rentAmount > 0 && <span className="text-amber-300 font-bold ml-1">· Due in {getDaysUntilDue()} days</span>}
+                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 ${getStatusColor(soaStatus)}`}>· Status: {soaStatus}</span>}
                     </p>
                   </div>
                 </div>
@@ -686,10 +788,10 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           
           <button 
             onClick={() => setActiveTab('pay')} 
-            disabled={isLoading || rentAmount === 0}
+            disabled={isLoading || soaStatus === 'Unassigned'}
             className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent text-[#1565c0] transition-all rounded-xl sm:rounded-2xl py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-slate-100 shadow-md hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
           >
-            {isLoading ? "Checking balance..." : rentAmount > 0 ? "Pay Now" : "All caught up"} 
+            {isLoading ? "Checking balance..." : (soaStatus === 'Paid' || soaStatus === 'Unassigned' || rentAmount === 0) ? "All caught up" : "See Statements"} 
             {!isLoading && rentAmount > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
           </button>
         </div>
@@ -714,8 +816,8 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
          <ActionCard 
            onClick={() => setActiveTab('pay')} 
            icon={<Receipt size={20} className="w-4 h-4 sm:w-5 sm:h-5" />} 
-           title="History" 
-           subtitle="Track sent receipts" 
+           title="Financials" 
+           subtitle="Track your billings" 
            variant="emerald"
          />
          <ActionCard 
@@ -901,15 +1003,12 @@ function MobileNavItem({ active, onClick, icon, label, badge }: any) {
   return (
     <button 
       onClick={onClick} 
-      // ✨ FIX: Nilagyan natin ng fixed h-14 (56px) ang root button para HINDI lumaki ang buong Nav Bar
       className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors"
     >
       {active && (
-        // Ibinalot natin yung blue highlight sa safe zone
         <span className="absolute inset-1.5 bg-blue-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />
       )}
       
-      {/* ✨ Dito natin inilipat yung animation! Yung inner content lang ang aangat, hindi ang buong layout. */}
       <div 
         className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${
           active 

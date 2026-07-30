@@ -490,7 +490,7 @@ export default function ManagerDashboard() {
     <div className="h-[100dvh] w-full bg-[#f8fafc] flex flex-col font-sans overflow-hidden relative">
       
       {/* 🌟 PREMIUM HEADER */}
-      <header className="w-full bg-[#0a1e3f] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30 shadow-md">
+      <header className="w-full bg-[#0a1e3f] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative shadow-md">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
         
         <div className="flex items-center gap-3">

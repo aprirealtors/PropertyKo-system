@@ -256,7 +256,7 @@ export default function PayTab() {
               <div className="p-1.5 sm:p-2 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm">
                 <Receipt className="text-[#359b46]" size={24} strokeWidth={2.5} />
               </div>
-              Billing & Payments
+              Financial Statements
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
               Manage your assigned statement of account and view transaction records.

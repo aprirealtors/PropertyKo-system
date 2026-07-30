@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, Calendar } from "lucide-react";
+import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, CheckCircle } from "lucide-react";
 
 // Helper function to calculate the actual upcoming date based on the declared billing day
 const calculateNextBillingDate = (billingDay: number | undefined | null) => {
@@ -43,6 +44,14 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Payment UI States (Digital Wallet Only)
+  const PAYMENT_METHODS = ['Digital Wallet'];
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>('Digital Wallet');
+  const [referenceNumber, setReferenceNumber] = useState("");
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false); // NEW STATE FOR SUCCESS UI
 
   // Add User Form States
   const [memberName, setMemberName] = useState("");
@@ -144,11 +153,41 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // --- PAYMENT HANDLER ---
-  const handlePayment = () => {
-    const amount = unitLimit * 99;
-    // In a real scenario, this would redirect to PayMongo, GCash, or Stripe checkout
-    alert(`Redirecting to secure payment gateway to settle ₱${amount.toLocaleString()}...`);
+  // --- PAYMENT HANDLERS ---
+  const handlePaymentClick = () => {
+    setIsBillingModalOpen(false); // Close billing details modal
+    setIsPaymentModalOpen(true);  // Open digital wallet modal
+    setPaymentSuccess(false);     // Reset success state if reopening
+    setReferenceNumber("");       // Reset reference
+  };
+
+  const handleSimulatePayment = async () => {
+    setIsSimulating(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // ONLY save the reference and method to the database. 
+      // Do NOT set billing_status to 'Paid'. The global admin will verify it first.
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ 
+          payment_method: paymentMethod,
+          payment_reference: referenceNumber
+        })
+        .eq('admin_email', orgData.admin_email);
+
+      if (updateError) throw updateError;
+
+      // Show professional success UI
+      setPaymentSuccess(true);
+
+    } catch (error) {
+      console.error("Error processing payment submission:", error);
+      alert("There was an error submitting your payment. Please try again.");
+    } finally {
+      setIsSimulating(false);
+    }
   };
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
@@ -365,7 +404,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* VIEW DETAILS MODAL (Read-Only + Payment) */}
+      {/* VIEW DETAILS MODAL (Read-Only + Initiate Payment) */}
       {isBillingModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -419,7 +458,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-extrabold text-[#0a1e3f]">
-                        ₱{(unitLimit * 99).toLocaleString()}
+                        ₱{monthlyCost.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -428,15 +467,104 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="mt-8 flex justify-end pt-4 border-t border-slate-100">
                   <button 
                     type="button" 
-                    onClick={handlePayment} 
-                    className="w-full sm:w-auto bg-[#359b46] hover:bg-[#2c813a] text-white px-8 py-3 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
+                    onClick={handlePaymentClick} 
+                    disabled={billingStatus.toLowerCase() === 'paid'}
+                    className="w-full sm:w-auto bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:shadow-none text-white px-8 py-3 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
                   >
-                    <CreditCard size={18} />
-                    Pay ₱{(unitLimit * 99).toLocaleString()}
+                    {billingStatus.toLowerCase() === 'paid' ? (
+                       <><CheckCircle size={18} /> Settled</>
+                    ) : (
+                       <><CreditCard size={18} /> Pay ₱{monthlyCost.toLocaleString()}</>
+                    )}
                   </button>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 DIGITAL WALLET PAYMENT MODAL */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            
+            {/* SUCCESS UI OVERLAY */}
+            {paymentSuccess ? (
+              <div className="px-6 py-12 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                  <CheckCircle className="text-[#d97706]" size={40} strokeWidth={2.5} />
+                </div>
+                <h3 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Payment Submitted!</h3>
+                <p className="text-slate-500 text-sm mb-10 leading-relaxed px-4">
+                  Your payment receipt has been submitted successfully and is currently <strong className="text-amber-600">Pending Verification</strong>. Your account status will update once confirmed by the system admin.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full bg-[#359b46] hover:bg-[#2c813a] text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] active:scale-95"
+                >
+                  Return to Dashboard
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="px-6 py-6 flex justify-between items-center relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-[#359b46]"></div>
+                  <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-2">
+                    <CreditCard className="text-[#359b46]" size={20} strokeWidth={2.5} />
+                    Submit Payment
+                  </h2>
+                  <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+                    <X size={16} strokeWidth={2.5} />
+                  </button>
+                </div>
+                
+                <div className="px-6 pb-8 bg-slate-50/40">
+                  <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                    {orgData?.org_name || 'Organization'} · System Subscription - total <span className="font-black text-[#0a1e3f]">₱{monthlyCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </p>
+                  
+                  <div className="mb-6">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Payment Method</label>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider bg-blue-50 text-[#1d82f5] border border-blue-200 shadow-sm">
+                        Digital Wallet
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* QR Code Container */}
+                  <div className="mb-6 p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm text-sm text-slate-600">
+                    <div className="flex flex-col items-center">
+                      <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[#0a1e3f]">Scan QR code using GCash or QR Ph</p>
+                      <div className="w-40 h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
+                        <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reference Number Input */}
+                  <div className="mb-6">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Reference / Transaction Number</label>
+                    <input 
+                      type="text" 
+                      value={referenceNumber}
+                      onChange={(e) => setReferenceNumber(e.target.value)}
+                      placeholder="e.g. 1002934823"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] transition-all shadow-sm"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleSimulatePayment} 
+                    disabled={isSimulating || referenceNumber.length < 3} 
+                    className="w-full bg-[#1d82f5] hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-400 disabled:shadow-none text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] active:scale-95 flex justify-center items-center gap-2"
+                  >
+                    {isSimulating ? <span className="animate-pulse">Processing...</span> : "I've paid, submit receipt"} <ArrowRight size={16} strokeWidth={2.5} className={isSimulating ? "hidden" : "block"} />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

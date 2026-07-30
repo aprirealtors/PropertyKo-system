@@ -376,7 +376,7 @@ export default function AdminDashboard() {
     <div className="h-[100dvh] w-full bg-[#f8fafc] flex flex-col font-sans overflow-hidden relative">
       
       {/* 🌟 PREMIUM HEADER */}
-      <header className="w-full bg-[#0a1e3f] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-30 shadow-md">
+      <header className="w-full bg-[#0a1e3f] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative shadow-md">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
         
         <div className="flex items-center gap-3">
@@ -513,10 +513,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-emerald-50 bg-[#359b46] px-2 py-0.5 rounded-md shadow-sm">
-                  {isLoading ? "..." : orgData?.plan || "Trial"}
-                </span>
-                <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
-                  • {isLoading ? "-" : orgData?.users_count || 1} {orgData?.users_count === 1 ? 'manager' : 'managers'}
+                  ADMIN ACCESS
                 </span>
               </div>
             </div>

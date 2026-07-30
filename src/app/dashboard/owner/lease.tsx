@@ -1,11 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from "@/utils/supabase/client";
 import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays } from 'lucide-react';
 
 export default function LeaseTab({ userData, units }: any) {
-  const [selectedUnit, setSelectedUnit] = useState<any>(units?.[0] || null);
+  // Sort the units alphabetically by Property Name, then numerically by Unit Number
+  const sortedUnits = useMemo(() => {
+    if (!units) return [];
+    return [...units].sort((a, b) => {
+      const nameA = String(a.property_name || "");
+      const nameB = String(b.property_name || "");
+      const nameComparison = nameA.localeCompare(nameB);
+      
+      if (nameComparison !== 0) {
+        return nameComparison; // Sort by Property Name (A-Z)
+      }
+      
+      // If property names are the same, sort by unit number
+      const unitA = String(a.unit_number || "");
+      const unitB = String(b.unit_number || "");
+      return unitA.localeCompare(unitB, undefined, { numeric: true });
+    });
+  }, [units]);
+
+  const [selectedUnit, setSelectedUnit] = useState<any>(sortedUnits?.[0] || null);
   const [activeLease, setActiveLease] = useState<any>(null);
   const [isLoadingLease, setIsLoadingLease] = useState(false);
 
@@ -18,10 +37,10 @@ export default function LeaseTab({ userData, units }: any) {
   const [formEndDate, setFormEndDate] = useState("");
 
   useEffect(() => {
-    if (units && units.length > 0 && !selectedUnit) {
-      setSelectedUnit(units[0]);
+    if (sortedUnits && sortedUnits.length > 0 && !selectedUnit) {
+      setSelectedUnit(sortedUnits[0]);
     }
-  }, [units]);
+  }, [sortedUnits, selectedUnit]);
 
   useEffect(() => {
     if (selectedUnit) {
@@ -119,7 +138,7 @@ export default function LeaseTab({ userData, units }: any) {
     }
   };
 
-  if (!units || units.length === 0) {
+  if (!sortedUnits || sortedUnits.length === 0) {
     return (
       <div className="w-full mx-auto mt-4 md:mt-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-10 md:p-20 text-center flex flex-col items-center">
@@ -172,15 +191,15 @@ export default function LeaseTab({ userData, units }: any) {
           </div>
           
           <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
-            {units.length > 1 && (
+            {sortedUnits.length > 1 && (
               <div className="relative flex-1 sm:w-64 group">
                 <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" size={16} strokeWidth={2.5} />
                 <select
                   value={selectedUnit?.id || ''}
-                  onChange={(e) => setSelectedUnit(units.find((u: any) => u.id === e.target.value))}
+                  onChange={(e) => setSelectedUnit(sortedUnits.find((u: any) => u.id === e.target.value))}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#359b46]/15 focus:border-[#359b46] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white appearance-none cursor-pointer"
                 >
-                  {units.map((u: any) => (
+                  {sortedUnits.map((u: any) => (
                     <option key={u.id} value={u.id}>
                       {u.property_name} - Unit {u.unit_number}
                     </option>

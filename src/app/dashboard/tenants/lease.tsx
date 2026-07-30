@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, CalendarDays } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, CalendarDays, User } from 'lucide-react';
 
 export default function LeaseTab({ setActiveTab }: any) {
   const [lease, setLease] = useState<any>(null);
@@ -34,7 +34,7 @@ export default function LeaseTab({ setActiveTab }: any) {
         // 2. Fetch the Active Lease from the new leases table
         const { data: leaseData } = await supabase
           .from('leases')
-          .select('*, units!inner(*)') // Joins the unit data so we get property name
+          .select('*, units!inner(*)') // Joins the unit data so we get property name AND owner name
           .eq('tenant_email', profile.email)
           .eq('status', 'Active')
           .order('created_at', { ascending: false })
@@ -55,6 +55,7 @@ export default function LeaseTab({ setActiveTab }: any) {
 
   const propertyName = unit?.property_name || "Unassigned Property";
   const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
+  const ownerName = unit?.owner_name || "Administration"; // ✨ Fetched the Owner's Name
   const monthlyRent = lease?.monthly_rent || 0;
   
   const leaseStartDate = lease?.start_date 
@@ -117,6 +118,7 @@ export default function LeaseTab({ setActiveTab }: any) {
                 <div className="space-y-4">
                   <div className="h-16 w-full bg-slate-50 rounded-2xl border border-slate-100"></div>
                   <div className="h-16 w-full bg-slate-50 rounded-2xl border border-slate-100"></div>
+                  <div className="h-16 w-full bg-slate-50 rounded-2xl border border-slate-100"></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="h-16 w-full bg-slate-50 rounded-2xl border border-slate-100"></div>
                     <div className="h-16 w-full bg-slate-50 rounded-2xl border border-slate-100"></div>
@@ -166,6 +168,8 @@ export default function LeaseTab({ setActiveTab }: any) {
                   </div>
                   
                   <div className="flex flex-col gap-4 shrink-0">
+                    {/* ✨ Added Owner Display */}
+                    <FormField label="Property Owner" icon={<User size={18} strokeWidth={2.5} />} value={ownerName} />
                     <FormField label="Unit Address" icon={<Home size={18} strokeWidth={2.5} />} value={`${propertyName} · ${unitNumber}`} />
                     <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[#1e88e5]" />
                     
@@ -208,7 +212,6 @@ export default function LeaseTab({ setActiveTab }: any) {
                   </p>
                   
                   <div className="mt-auto shrink-0">
-                    {/* ✨ FIX: Ginamit ang setActiveTab para lumipat sa Repair/Conversation tab */}
                     <button 
                       onClick={() => setActiveTab('conversation')}
                       className="w-full bg-white text-[#0a1e3f] rounded-xl py-4 font-black uppercase tracking-wider text-[11px] hover:bg-slate-50 transition-all active:scale-[0.98] hover:shadow-xl hover:-translate-y-0.5 shadow-[0_4px_15px_rgba(255,255,255,0.15)] flex justify-center items-center gap-2"
