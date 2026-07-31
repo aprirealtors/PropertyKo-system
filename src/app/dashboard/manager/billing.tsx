@@ -442,30 +442,40 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       const isOverdue = row.status === 'Overdue';
       const rowPenalty = isOverdue ? (ownerPenalty + tenantPenalty) : 0;
       const rowTotal = isOverdue ? totalDue : (ownerBase + tenantBase);
+      const utilsTotal = rawWater + rawElectricity;
 
       return [
         `"${row.monthName} ${row.year}"`,
         `"${row.dueDate}"`,
-        rawDues,
-        rawParking,
-        (rawWater + rawElectricity),
-        rowPenalty,
+        Number(rawDues).toFixed(2),
+        Number(rawParking).toFixed(2),
+        Number(utilsTotal).toFixed(2),
+        Number(rowPenalty).toFixed(2),
         `"${row.status}"`,
-        rowTotal
+        Number(rowTotal).toFixed(2)
       ].join(",");
     });
 
     const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add BOM for correct UTF-8 encoding in Excel
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const currentYear = new Date().getFullYear();
     
+    // Fallbacks in case selectedUnit properties are missing
+    const safePropertyName = (selectedUnit.property_name || "Property").replace(/\s+/g, '_');
+    const safeUnitNumber = String(selectedUnit.unit_number || "Unit").replace(/\s+/g, '');
+    const currentYear = new Date().getFullYear();
+    const fileName = `${safePropertyName}_Unit_${safeUnitNumber}_Ledger_${currentYear}.csv`;
+
+    const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `${selectedUnit.property_name.replace(/\s+/g, '_')}_Unit_${selectedUnit.unit_number}_Ledger_${currentYear}.csv`);
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
+    
+    // Clean up DOM and memory
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleConfirmPayment = async () => {
@@ -875,129 +885,146 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         )}
       </div>
 
-      {/* COMPUTATION MODAL (Global) */}
+      {/* 🌟 PREMIUM COMPUTATION MODAL (Bottom Sheet for Mobile, Center for Desktop) */}
       {isComputationModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white/90 backdrop-blur-md">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0">
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header - Fixed */}
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-slate-100">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <div className="relative z-10 min-w-0 flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
                   <Calculator size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight truncate">Billing Configuration</h2>
+                <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight truncate">Billing Configuration</h2>
               </div>
-              <button onClick={() => setIsComputationModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0">
-                <X size={20} className="w-5 h-5" />
+              <button onClick={() => setIsComputationModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors active:scale-95 shrink-0">
+                <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="p-5 sm:p-8">
-              <form onSubmit={handleSaveComputation} className="space-y-5 sm:space-y-6">
+            {/* Scrollable Form Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
+              <form onSubmit={handleSaveComputation} className="space-y-4 sm:space-y-5">
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pb-5 border-b border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pb-5 border-b border-slate-100/80">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Collection Start Day</label>
-                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={compCollectionDay} onChange={(e) => setCompCollectionDay(e.target.value)} className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
-                    <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium">Day of the month (1-31)</p>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Collection Start Day</label>
+                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={compCollectionDay} onChange={(e) => setCompCollectionDay(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Day of the month (1-31)</p>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Grace Period (Days)</label>
-                    <input type="number" min="0" placeholder="e.g. 15" value={compGracePeriod} onChange={(e) => setCompGracePeriod(e.target.value)} className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
-                    <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium">Days before penalty hits</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Assoc. Dues (sqm)</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Parking Baseline</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
-                    </div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Grace Period (Days)</label>
+                    <input type="number" min="0" placeholder="e.g. 15" value={compGracePeriod} onChange={(e) => setCompGracePeriod(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Days before penalty hits</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Water Baseline</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Assoc. Dues (sqm)</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compWater} onChange={(e) => setCompWater(e.target.value)} className="w-full pl-8 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 sm:mb-2 truncate">Elec. Baseline</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking Baseline</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compElec} onChange={(e) => setCompElec(e.target.value)} className="w-full pl-8 pr-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-slate-50 focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 pt-5">
-                  <label className="block text-[11px] font-bold text-red-500 uppercase tracking-wider mb-2 truncate">Late Penalty Deduction</label>
-                  <div className="flex gap-2">
-                    <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-[100px] shrink-0 px-2 sm:px-3 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-2 focus:ring-red-400/20 focus:border-red-400 text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water Baseline</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compWater} onChange={(e) => setCompWater(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Elec. Baseline</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compElec} onChange={(e) => setCompElec(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100/80 pt-5">
+                  <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 ml-1 truncate">Late Penalty Deduction</label>
+                  {/* ✨ FIX: flex-col sa mobile para hindi masiksik, flex-row sa desktop */}
+                  <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+                    <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-sm bg-white">
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={compPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={compPenaltyValue} onChange={(e) => setCompPenaltyValue(e.target.value)} className="flex-1 min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-2 focus:ring-red-400/20 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <input type="number" step="0.01" min="0" placeholder={compPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={compPenaltyValue} onChange={(e) => setCompPenaltyValue(e.target.value)} className="w-full flex-1 px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
                   </div>
                 </div>
 
                 {/* Bank Transfer Details Section */}
-                <div className="border border-blue-100 bg-blue-50/30 p-4 sm:p-5 rounded-2xl mt-5 sm:mt-6">
-                  <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1.5 sm:mb-2 tracking-tight truncate">Bank Transfer Details</label>
+                <div className="border border-blue-100 bg-blue-50/50 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                  <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1 sm:mb-1.5 tracking-tight truncate">Bank Transfer Details</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 sm:mb-5 font-medium leading-relaxed">
                     Set up your organization's bank details here. These will be securely displayed to owners and tenants when they select "Bank Transfer" during payment.
                   </p>
                   
                   <div className="space-y-3 sm:space-y-4">
                     <div>
-                      <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 truncate">Bank Name</label>
+                      <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 truncate">Bank Name</label>
                       <input 
                         type="text" 
                         placeholder="e.g. BDO Unibank" 
                         value={compBankName} 
                         onChange={(e) => setCompBankName(e.target.value)} 
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                        className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div>
-                        <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 truncate">Account Name</label>
+                        <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 truncate">Account Name</label>
                         <input 
                           type="text" 
                           placeholder="e.g. HOA Admin" 
                           value={compBankAccountName} 
                           onChange={(e) => setCompBankAccountName(e.target.value)} 
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 truncate">Account Number</label>
+                        <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 truncate">Account Number</label>
                         <input 
                           type="text" 
                           placeholder="e.g. 0012-3456" 
                           value={compBankAccountNumber} 
                           onChange={(e) => setCompBankAccountNumber(e.target.value)} 
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1d82f5]/20 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 sm:mt-8 flex gap-2 sm:gap-3 pt-5 sm:pt-6 border-t border-slate-100">
-                  <button type="button" onClick={() => setIsComputationModalOpen(false)} className="w-[100px] shrink-0 py-3 sm:py-3.5 text-[12px] sm:text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors active:scale-95">Cancel</button>
-                  <button type="submit" className="flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:shadow-[0_4px_15px_rgba(29,130,245,0.3)] text-white py-3 sm:py-3.5 rounded-xl text-[12px] sm:text-sm font-bold shadow-[0_2px_8px_rgba(29,130,245,0.2)] transition-all active:scale-95 truncate px-2">Save Global Settings</button>
+                {/* ✨ FIX: Stacked Mobile Buttons (flex-col-reverse), Centered Magkatabi Desktop Buttons */}
+                <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 sm:pt-5 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsComputationModalOpen(false)} 
+                    className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl transition-all active:scale-95 shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="w-full flex-1 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:from-[#1565c0] hover:to-[#0f4d92] text-white py-3.5 sm:py-4 rounded-xl text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] hover:shadow-[0_6px_20px_rgba(29,130,245,0.4)] active:scale-95 flex items-center justify-center truncate px-2"
+                  >
+                    Save Global Settings
+                  </button>
                 </div>
               </form>
             </div>

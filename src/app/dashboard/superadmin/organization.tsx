@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Calendar, Edit2, 
-  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search
+  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff
 } from "lucide-react";
 
 export default function OrganizationDirectory({ organizations, isLoadingOrgs, fetchOrganizations }: any) {
@@ -15,6 +15,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<{orgName: string, email: string} | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   
   // Form State
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     setBillingDay("1"); 
     setEditingOrgId(null);
     setErrorMsg(null);
+    setShowPassword(false);
   };
 
   const handleOnboardSubmit = async (e: React.FormEvent) => {
@@ -351,12 +353,23 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
                     <Lock size={16} className="text-[#359b46]" /> Initial Admin Password
                   </label>
-                  <input
-                    type="password" required placeholder="Create a strong password" minLength={6}
-                    value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm"
-                    disabled={isSubmitting}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} required placeholder="Create a strong password" minLength={6}
+                      value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)}
+                      className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm"
+                      disabled={isSubmitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                      tabIndex={-1}
+                    >
+                      {/* Swapped Icons Here */}
+                      {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-5">
                   <div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { History, Search, Download, CheckCircle2, Loader2, Building, CalendarClock, CreditCard, ShieldCheck, X } from "lucide-react";
 import { createClient } from '@supabase/supabase-js';
+import * as XLSX from 'xlsx'; // Imported the library for true .xlsx export
 
 // Initialize Supabase client 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -31,7 +32,7 @@ export default function PaymentHistory() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   
-  // Dedicated Fetch States (Same as your BillingTab pattern)
+  // Dedicated Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
 
@@ -146,23 +147,48 @@ export default function PaymentHistory() {
     return months;
   };
 
-  const ledgerData = generateLedgerMonths(selectedOrg);
+  // Modern Export to True .xlsx
+  const handleExportExcel = () => {
+    if (!organizations || organizations.length === 0) return;
 
-  const handleExportCSV = () => {
-    if (!selectedOrg || ledgerData.length === 0) return;
-    const headers = ["PERIOD", "DUE DATE", "DATE PAID", "METHOD", "STATUS", "AMOUNT"];
-    const rows = ledgerData.map(row => {
-      return [`"${row.monthName} ${row.year}"`, `"${row.dueDate}"`, `"${row.paidDate}"`, `"${row.method}"`, `"${row.status}"`, `"${row.amount}"`].join(",");
+    // Create a new Workbook
+    const wb = XLSX.utils.book_new();
+    const sheetNames = new Set();
+
+    organizations.forEach((org, index) => {
+      // Clean sheet name: Excel allows max 31 characters and no special chars like \ / ? * [ ]
+      let baseName = (org.org_name || `Org_${index + 1}`).replace(/[\\/?*[\]:]/g, "").substring(0, 28);
+      let sheetName = baseName;
+      let counter = 1;
+      
+      // Ensure completely unique sheet names
+      while(sheetNames.has(sheetName)) {
+         sheetName = `${baseName}_${counter}`;
+         counter++;
+      }
+      sheetNames.add(sheetName);
+
+      const orgLedger = generateLedgerMonths(org);
+
+      // Map our array to exactly match the columns we want in the Excel sheet
+      const excelData = orgLedger.map(row => ({
+        "PERIOD": `${row.monthName} ${row.year}`,
+        "DUE DATE": row.dueDate,
+        "DATE PAID": row.paidDate,
+        "METHOD": row.method,
+        "STATUS": row.status,
+        "AMOUNT": row.amount
+      }));
+
+      // Create a worksheet
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${selectedOrg.org_name.replace(/\s+/g, '_')}_Ledger_${new Date().getFullYear()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    // Trigger download of genuine .xlsx file
+    XLSX.writeFile(wb, `Global_Ledger_${new Date().getFullYear()}.xlsx`);
   };
 
   const handleConfirmPayment = async () => {
@@ -194,6 +220,7 @@ export default function PaymentHistory() {
     }
   };
 
+  const ledgerData = generateLedgerMonths(selectedOrg);
   const currentMonthlyAmount = selectedOrg?.plan?.toLowerCase().includes('enterprise') 
     ? 'Enterprise' 
     : `₱${((selectedOrg?.units_count || 1) * 99).toLocaleString()}`;
@@ -218,11 +245,11 @@ export default function PaymentHistory() {
           
           <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
             <button 
-              onClick={handleExportCSV}
-              disabled={!selectedOrg}
+              onClick={handleExportExcel}
+              disabled={organizations.length === 0}
               className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-5 py-3 rounded-xl transition-all border border-blue-200/60 shadow-sm active:scale-95 disabled:opacity-50"
             >
-              <Download size={16} strokeWidth={2.5} /> Export Ledger
+              <Download size={16} strokeWidth={2.5} /> Export All Orgs (XLSX)
             </button>
           </div>
         </div>

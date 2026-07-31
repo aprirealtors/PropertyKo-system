@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from "@/utils/supabase/client";
-import { Receipt, CreditCard, Download, ShieldCheck, AlertCircle, X, CalendarClock, CheckCircle } from 'lucide-react';
+import { Receipt, CreditCard, Download, ShieldCheck, AlertCircle, X, CalendarClock, CheckCircle, Clock, History, ChevronLeft, ArrowRight } from 'lucide-react';
 
 export default function PayTab() {
   const [unit, setUnit] = useState<any>(null);
@@ -27,6 +27,9 @@ export default function PayTab() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [showCashSuccessModal, setShowCashSuccessModal] = useState(false);
   
+  // ✨ Mobile History Toggle State
+  const [isMobileHistoryVisible, setIsMobileHistoryVisible] = useState(false);
+
   // Updated payment methods and reference state (Removed Credit/Debit Card)
   const PAYMENT_METHODS = [
     'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
@@ -245,316 +248,405 @@ export default function PayTab() {
   };
 
   return (
-    // ✨ LOCKED LAYOUT WINDOW SHELL
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+    // ✨ LOCKED APP SHELL LAYOUT (Flush Edge-to-Edge)
+    <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
       
-      {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
-      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm">
-                <Receipt className="text-[#359b46]" size={24} strokeWidth={2.5} />
-              </div>
-              Financial Statements
-            </h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Manage your assigned statement of account and view transaction records.
-            </p>
-          </div>
+      {/* 🌟 PREMIUM HEADER - Glassmorphism & Fully Responsive */}
+      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
-          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
-            {/* Premium Profile Badge */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0 ml-auto sm:ml-0">
-              <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Tenant</span>
+          <div className="flex justify-between items-center w-full md:w-auto">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 sm:p-2.5 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm shrink-0">
+                <Receipt className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-              <div className="w-9 h-9 rounded-[12px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shadow-inner border border-blue-100 group-hover:scale-105 transition-transform duration-300">
-                {unit?.tenant_name 
-                  ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
-                  : "TE"}
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight whitespace-normal break-words">
+                   Financial Statements
+                </h2>
+                <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium whitespace-normal break-words">
+                  Manage your statement of account and transactions
+                </p>
               </div>
             </div>
+            {/* Mobile Profile Icon */}
+            <div className="md:hidden w-9 h-9 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shadow-inner border border-blue-100 shrink-0 ml-3">
+              {unit?.tenant_name 
+              ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+              : "TE"}
+            </div>
           </div>
+          
+          <div className="hidden md:flex items-center gap-3 border-l border-slate-200 pl-4 shrink-0">
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
+              <span className="text-[11px] font-extrabold text-[#0a1e3f] leading-none">Tenant</span>
+            </div>
+            <div className="w-10 h-10 rounded-[12px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm shadow-inner border border-blue-100">
+              {unit?.tenant_name 
+              ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+              : "TE"}
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* ✨ KANBAN LAYOUT Main Wrapper */}
-      <div className="flex-1 w-full max-w-full min-h-0 flex flex-col lg:flex-row gap-6 px-1 sm:px-0 overflow-y-auto lg:overflow-hidden pb-12 lg:pb-0">
+      {/* ✨ MASTER-DETAIL Wrapper (Desktop = Side-by-Side, Mobile = Unified Scroll) */}
+      <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col md:flex-row overflow-y-auto lg:overflow-hidden relative custom-scrollbar">
         
         {isLoading ? (
           /* 🌟 PREMIUM SKELETON LOADING */
-          <>
-            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 animate-pulse">
-              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 sm:p-8 flex flex-col lg:h-full">
-                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-6">
-                  <div className="h-6 w-48 bg-slate-200 rounded-md"></div>
-                  <div className="h-6 w-24 bg-slate-100 rounded-full"></div>
-                </div>
-                <div className="h-48 w-full bg-[#0b1727]/10 rounded-[2rem] mb-8"></div>
-                <div className="h-14 w-full bg-slate-200 rounded-2xl mb-8"></div>
-                <div className="flex-1 min-h-[200px] bg-slate-50 rounded-[1.5rem] border border-slate-100"></div>
+          <div className="flex-1 flex w-full flex-col lg:flex-row gap-5 sm:gap-6 animate-pulse p-4 sm:p-6 lg:p-8">
+            <div className="flex-1 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm p-5 sm:p-8 flex flex-col">
+              <div className="h-8 w-48 bg-slate-200 rounded-md mb-6"></div>
+              <div className="h-48 w-full bg-slate-50 rounded-2xl mb-6"></div>
+              <div className="h-16 w-full bg-slate-100 rounded-2xl mb-4"></div>
+              <div className="h-40 w-full bg-slate-50 rounded-2xl"></div>
+            </div>
+            <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-200/60 p-5 sm:p-8 flex flex-col">
+              <div className="h-6 w-32 bg-slate-200 rounded-md mb-6"></div>
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map(i => <div key={i} className="h-20 w-full bg-slate-50 rounded-2xl"></div>)}
               </div>
             </div>
-            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col animate-pulse mt-6 lg:mt-0">
-              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-6 flex flex-col lg:h-full">
-                <div className="h-6 w-32 bg-slate-200 rounded-md mb-6"></div>
-                <div className="space-y-3">
-                  {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 w-full bg-slate-50 rounded-xl"></div>)}
-                </div>
-              </div>
-            </div>
-          </>
+          </div>
         ) : !unit ? (
           /* EMPTY STATE */
-          <div className="w-full flex-1 flex flex-col">
-            <div className="flex-1 bg-white rounded-[2rem] border border-slate-200/60 shadow-sm p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
-              <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-6 shadow-inner border border-slate-100 relative z-10">
-                <Receipt size={36} strokeWidth={1.5} />
+          <div className="flex-1 flex items-center justify-center w-full bg-[#f4f7f9] p-4">
+            <div className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-200/60 p-8 sm:p-14 text-center max-w-lg w-full animate-in fade-in duration-500">
+              <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-100">
+                <Receipt size={36} className="w-10 h-10" />
               </div>
-              <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight relative z-10">No Active Lease Found</h2>
-              <p className="text-slate-500 text-sm max-w-md mx-auto leading-relaxed mb-8 relative z-10">
+              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight whitespace-normal break-words">No Active Lease Found</h2>
+              <p className="text-[13px] sm:text-sm text-slate-500 leading-relaxed max-w-[280px] sm:max-w-xs mx-auto whitespace-normal break-words">
                 You are currently not assigned as an active tenant to any property. Please contact administration.
               </p>
             </div>
           </div>
         ) : (
-          /* ✨ ACTUAL CONTENT (Loaded) */
           <>
-            {/* LEFT COLUMN: SOA SUMMARY & LEDGER */}
-            <div className="w-full lg:flex-1 lg:min-w-0 lg:min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-0">
-              <div className="bg-white rounded-[2rem] border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col lg:h-full">
-                <div className="absolute top-0 left-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -translate-y-20 -translate-x-20 pointer-events-none z-0"></div>
+            {/* ✨ LEFT MAIN AREA (SOA Summary & Ledger) */}
+            {/* FIX: Changed overflow handling so the whole page naturally scrolls on mobile. Added pb-24 padding at the bottom so it never gets cut off! */}
+            <div className={`flex-1 flex-col bg-[#f4f7f9] relative lg:overflow-y-auto custom-scrollbar ${!isMobileHistoryVisible ? 'flex' : 'hidden md:flex'}`}>
+              <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-24 lg:pb-12">
+                
+                {/* Header Mobile Toggle Button for History Sidebar */}
+                <div className="md:hidden flex justify-end">
+                  <button 
+                    onClick={() => setIsMobileHistoryVisible(true)}
+                    className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm px-4 py-2.5 rounded-xl text-[11px] font-black text-[#0a1e3f] uppercase tracking-wider active:scale-95 transition-transform"
+                  >
+                    <History size={14} className="text-[#359b46]" /> View History
+                  </button>
+                </div>
 
-                {/* Internal Scrollable Area */}
-                <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
+                {/* PREMIUM SOA CARD */}
+                <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200 overflow-hidden">
                   
-                  {/* Property Header */}
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 pb-6 border-b border-slate-100 gap-4 shrink-0">
-                    <div>
-                      <h3 className="font-black text-2xl text-[#0a1e3f] tracking-tight">{unit?.property_name} · Unit {unit?.unit_number}</h3>
-                      <p className="text-slate-500 text-sm mt-1 font-medium">Tenant: <span className="font-bold text-[#1d82f5]">{unit?.tenant_name}</span></p>
+                  {/* Property Info Bar */}
+                  <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100">
+                    <div className="min-w-0">
+                      <h3 className="font-extrabold text-[#0a1e3f] text-xl sm:text-2xl md:text-3xl tracking-tight leading-tight whitespace-normal break-words">
+                        {unit?.property_name} · Unit {unit?.unit_number}
+                      </h3>
+                      <p className="text-slate-500 text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium whitespace-normal break-words">
+                        Tenant: <span className="font-bold text-[#1d82f5]">{unit?.tenant_name}</span>
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-end gap-2 shrink-0">
+                      {!isAssigned && <span className="bg-slate-50 text-slate-500 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-slate-200 shadow-sm shrink-0">Unassigned</span>}
+                      {isAssigned && displayStatus === 'Overdue' && <span className="bg-red-50 text-red-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-red-200 shadow-sm flex items-center gap-1.5 shrink-0"><AlertCircle size={14} /> Overdue</span>}
+                      {isAssigned && displayStatus === 'Pending' && <span className="bg-amber-50 text-amber-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-amber-200 shadow-sm flex items-center gap-1.5 shrink-0"><CalendarClock size={14} /> Pending</span>}
+                      {isAssigned && displayStatus === 'Sent' && <span className="bg-blue-50 text-blue-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-blue-200 shadow-sm flex items-center gap-1.5 shrink-0"><Receipt size={14} /> SOA Sent</span>}
+                      {isAssigned && displayStatus === 'Paid' && <span className="bg-emerald-50 text-emerald-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-emerald-200 shadow-sm flex items-center gap-1.5 shrink-0"><CheckCircle size={14} /> Settled</span>}
                     </div>
                   </div>
 
-                  {/* PREMIUM PAYMENT CARD */}
-                  <div className="bg-gradient-to-br from-[#0a1e3f] to-[#122955] rounded-[2rem] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden mb-6 shrink-0">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
-                    
-                    {/* Status Badge */}
-                    <div className="absolute top-6 right-6">
-                      {displayStatus === 'Unassigned' && <span className="bg-slate-500/20 text-slate-300 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-slate-500/30">Unassigned</span>}
-                      {displayStatus === 'Overdue' && <span className="bg-red-500/20 text-red-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-red-500/30 flex items-center gap-1.5"><AlertCircle size={14} /> Overdue</span>}
-                      {displayStatus === 'Pending' && <span className="bg-amber-500/20 text-amber-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-amber-500/30 flex items-center gap-1.5"><CalendarClock size={14} /> Pending</span>}
-                      {displayStatus === 'Sent' && <span className="bg-blue-500/20 text-blue-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-blue-500/30 flex items-center gap-1.5"><Receipt size={14} /> Issued</span>}
-                      {displayStatus === 'Paid' && <span className="bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-widest border border-emerald-500/30 flex items-center gap-1.5"><CheckCircle size={14} /> Settled</span>}
+                  {/* Breakdown Area */}
+                  <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col">
+                    <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-200/60">
+                      <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
+                      <p className="font-black text-[#0a1e3f] text-[13px] sm:text-[15px] uppercase tracking-widest whitespace-normal break-words">Assigned to You</p>
                     </div>
 
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 mt-2">Total Amount Due</p>
-                    <h2 className={`text-4xl sm:text-5xl font-black mb-6 tracking-tighter ${isPaid ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]' : 'text-[#359b46] drop-shadow-[0_0_15px_rgba(53,155,70,0.3)]'}`}>
-                      {!isAssigned ? "—" : `₱${(isPaid ? 0 : totalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}`}
-                    </h2>
-                    
-                    <div className="space-y-3 mb-2 opacity-90">
-                      {isAssigned ? (
-                        <>
-                          {soaConfig.dues && (
-                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
-                              <span className="font-medium text-slate-300">Assoc. Dues <span className="text-[10px] ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
-                              <span className="font-bold">₱{dues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            </div>
-                          )}
-                          {soaConfig.parking && (
-                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
-                              <span className="font-medium text-slate-300">Parking</span>
-                              <span className="font-bold">₱{parking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            </div>
-                          )}
-                          {soaConfig.water && (
-                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
-                              <span className="font-medium text-slate-300">Water</span>
-                              <span className="font-bold">₱{water.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            </div>
-                          )}
-                          {soaConfig.electricity && (
-                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
-                              <span className="font-medium text-slate-300">Electricity</span>
-                              <span className="font-bold">₱{electricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            </div>
-                          )}
-                          {soaConfig.penalty && lateFee > 0 && !isPaid && (
-                            <div className="flex justify-between items-center text-xs sm:text-sm border-b border-white/10 pb-3">
-                              <span className="text-red-400 font-bold">Late Penalty</span>
-                              <span className="font-bold text-red-400">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                            </div>
-                          )}
-
-                          {totalDue === 0 && (
-                            <div className="text-xs text-slate-400 italic">No assigned balances for this period.</div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-xs text-slate-400 italic">Pending SOA assignment from administration.</div>
-                      )}
+                    <div className="space-y-3 sm:space-y-3.5 flex-1 opacity-80 hover:opacity-100 transition-opacity">
+                        {isAssigned ? (
+                          <>
+                            {soaConfig.dues && (
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Assoc. Dues <span className="text-[10px] ml-1 opacity-70 hidden sm:inline">({unitArea} sqm)</span></span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                            )}
+                            {soaConfig.parking && (
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Parking</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                            )}
+                            {soaConfig.water && (
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Water</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                            )}
+                            {soaConfig.electricity && (
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                            )}
+                            {soaConfig.penalty && lateFee > 0 && !isPaid && (
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-red-500 font-bold whitespace-normal break-words">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                            )}
+                            {baseTotal === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">No assigned balances for this period.</p>}
+                          </>
+                        ) : (
+                          <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">Pending SOA assignment from administration.</p>
+                        )}
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <div className="mb-8 shrink-0">
-                    <button 
-                      onClick={() => setIsPaymentModalOpen(true)}
-                      disabled={!isAssigned || isPaid || totalDue === 0 || isLoading}
-                      className="w-full bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none text-white px-8 py-4 rounded-xl text-sm font-black uppercase tracking-wider shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] transition-all active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} /> Payment Settled</> : totalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} /> Pay Now</>}
-                    </button>
-                    <p className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 mt-4 uppercase tracking-wider">
-                      <ShieldCheck size={14} /> Secure Payment Processing
-                    </p>
-                  </div>
-
-                  {/* COMBINED LEDGER TABLE */}
-                  <div className="mt-auto border-t border-slate-100 pt-8 w-full shrink-0">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 bg-gradient-to-br from-emerald-50 to-green-100 rounded-lg border border-emerald-200/40">
-                          <CalendarClock className="text-[#359b46]" size={18} />
-                        </div>
-                        <h4 className="font-black text-[#0a1e3f] text-base sm:text-lg tracking-tight">Ledger & Projection <span className="text-slate-400 font-bold text-sm">({new Date().getFullYear()})</span></h4>
-                      </div>
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                          Due: Day {globalComp.collectionDay} <span className="mx-1.5">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
-                        </div>
-                        <button 
-                          onClick={handleExportCSV}
-                          className="flex-1 sm:flex-none flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-xl transition-all border border-blue-200/60 shadow-sm active:scale-95"
-                        >
-                          <Download size={14} strokeWidth={2.5} /> Export
-                        </button>
-                      </div>
+                  {/* Total Due Footer */}
+                  <div className="bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-5 sm:p-6 md:p-8 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-t border-slate-800">
+                    <div className="min-w-0">
+                      <span className="font-black text-blue-200/80 text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 block whitespace-normal break-words">Total Due <span className="font-medium text-slate-400 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
                     </div>
-                    
-                    {/* ✨ FIX: Pinaliit ang horizontal padding (px-2 sm:px-3) para mag-fit sa buong desktop width nang walang horizontal scroll */}
-                    <div className="border border-slate-200/90 rounded-[1.25rem] max-h-[300px] overflow-auto relative w-full shadow-sm">
-                      <table className="w-full text-left text-xs relative">
-                        <thead className="text-emerald-50 bg-[#359b46] font-extrabold uppercase tracking-widest border-b border-[#2c813a] sticky top-0 z-20 shadow-md text-[9px] sm:text-[10px]">
-                          <tr>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Period</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Due Date</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Dues</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Parking</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Utils</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap bg-red-600 text-white border-r border-red-700">Penalty</th>
-                            <th className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-[#43af55]">Status</th>
-                            <th className="px-2 sm:px-3 py-3 text-right whitespace-nowrap text-emerald-50">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700 bg-white font-medium">
-                          {ledgerData.map((row, idx) => {
-                            const isRowPaid = row.status === 'Paid';
-                            const isRowOverdue = row.status === 'Overdue';
-                            const activeRow = row.isCurrentMonth;
-                            
-                            return (
-                              <tr key={idx} className={`${activeRow ? "bg-blue-50/30" : "hover:bg-slate-50"} transition-colors`}>
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 font-black text-[#0a1e3f] uppercase tracking-wider text-[9px] sm:text-[10px]">
-                                  {row.monthName} {row.year} {activeRow && <span className="text-[#359b46] ml-1 text-base leading-none align-middle">*</span>}
-                                </td>
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 text-slate-500 font-semibold">{row.dueDate}</td>
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</td>
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
-                                
-                                <td className={`px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 ${isRowOverdue ? 'text-red-600 font-black bg-red-50/50' : ''}`}>
-                                  {isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
-                                </td>
-                                
-                                <td className="px-2 sm:px-3 py-3 whitespace-nowrap border-r border-slate-100 font-medium text-[9px] sm:text-[10px] tracking-wider uppercase">
-                                  {row.status === 'Paid' && <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Paid</span>}
-                                  {row.status === 'Overdue' && <span className="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded-md border border-red-100">Overdue</span>}
-                                  {row.status === 'Pending' && <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">Pending</span>}
-                                  {row.status === 'Sent' && <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">Sent</span>}
-                                  {row.status === 'Unassigned' && <span className="text-slate-500 font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">Unassigned</span>}
-                                  {row.status === 'Upcoming' && <span className="text-slate-400 font-bold">Upcoming</span>}
-                                </td>
-
-                                <td className={`px-2 sm:px-3 py-3 text-right whitespace-nowrap font-black text-[11px] sm:text-xs ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                  ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                    <span className="font-black text-white text-3xl sm:text-4xl md:text-5xl tracking-tight drop-shadow-md shrink-0 whitespace-normal break-words">
+                      {isAssigned ? `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
+                    </span>
                   </div>
                 </div>
+                
+                {/* Action Button */}
+                <div className="w-full shrink-0">
+                  <button 
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    disabled={!isAssigned || isPaid || totalDue === 0 || isLoading}
+                    className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2a7a37] hover:to-[#22632c] hover:shadow-[0_6px_20px_rgba(53,155,70,0.35)] disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none text-white px-4 sm:px-8 py-4 sm:py-4 rounded-xl sm:rounded-2xl text-[13px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(53,155,70,0.25)]"
+                  >
+                    {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</> : totalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>}
+                  </button>
+                  <p className="flex items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-400 mt-3 sm:mt-4 uppercase tracking-widest whitespace-normal break-words">
+                    <ShieldCheck size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500/50" /> Secure Payment Processing
+                  </p>
+                </div>
+
+                {/* ✨ FINTECH LEDGER TABLE & CARDS */}
+                <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-6 md:p-8">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center border border-emerald-100 shadow-sm shrink-0">
+                        <CalendarClock size={20} className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-[#0a1e3f] text-base sm:text-xl tracking-tight whitespace-normal break-words">Ledger & Projection</h4>
+                        <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 whitespace-normal break-words">
+                          Due: Day {globalComp.collectionDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleExportCSV}
+                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl transition-all active:scale-95 border border-blue-100 shadow-sm shrink-0"
+                    >
+                      <Download size={16} className="w-4 h-4 sm:w-5 sm:h-5" /> Export CSV
+                    </button>
+                  </div>
+                  
+                  {/* DESKTOP TABLE VIEW (Hidden on Mobile) */}
+                  <div className="hidden md:block overflow-x-auto border border-slate-200/80 rounded-2xl custom-scrollbar shadow-sm max-h-[600px] relative">
+                    <table className="w-full text-left text-xs min-w-[800px] border-collapse">
+                      <thead className="bg-[#359b46] text-white font-extrabold border-b border-[#2c813a] sticky top-0 z-20 shadow-sm">
+                        <tr>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">PERIOD</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">DUE DATE</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">DUES</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">PARKING</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">UTILS</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700">PENALTY</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-center whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-[#43af55]">STATUS</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-white text-[9px] sm:text-[10px] uppercase tracking-widest">TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100/80 text-slate-700 bg-white font-medium relative z-0">
+                        {ledgerData.map((row, idx) => {
+                          const isRowPaid = row.status === 'Paid';
+                          const isRowOverdue = row.status === 'Overdue';
+                          const activeRow = row.isCurrentMonth;
+                          
+                          return (
+                            <tr key={idx} className={`transition-colors group ${activeRow ? "bg-[#f0f9f2] hover:bg-[#e6f4e9]" : "hover:bg-slate-50"}`}>
+                              <td className={`relative px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap font-black uppercase text-[10px] sm:text-[11px] tracking-wide border-r border-slate-100 ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                {activeRow && <div className="absolute inset-y-0 left-0 w-1 bg-[#359b46] rounded-r-sm pointer-events-none"></div>}
+                                {row.monthName} {row.year} {activeRow && <span className="ml-1.5 text-[9px] tracking-widest opacity-80">(NOW)</span>}
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap text-slate-500 font-medium text-[11px] sm:text-xs border-r border-slate-100">{row.dueDate}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-bold text-[11px] sm:text-xs border-r border-slate-100 ${isRowOverdue ? 'text-red-600' : 'text-slate-400'}`}>
+                                {isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
+                              </td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-center whitespace-nowrap font-bold text-[9px] sm:text-[10px] tracking-wider uppercase border-r border-slate-100">
+                                {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2 sm:px-3 py-1 rounded-md border border-emerald-100 shadow-sm">Paid</span>}
+                                {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2 sm:px-3 py-1 rounded-md border border-red-100 shadow-sm">Overdue</span>}
+                                {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2 sm:px-3 py-1 rounded-md border border-amber-100 shadow-sm">Pending</span>}
+                                {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2 sm:px-3 py-1 rounded-md border border-blue-100 shadow-sm">Sent</span>}
+                                {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-slate-200 px-2 sm:px-3 py-1 rounded-md shadow-sm">Unassigned</span>}
+                                {row.status === 'Upcoming' && <span className="text-slate-400 font-medium px-2 sm:px-3">Upcoming</span>}
+                              </td>
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* MOBILE CARD VIEW FOR LEDGER (Shown only on Mobile) */}
+                  {/* FIX: Removed max-h so cards flow naturally to the bottom without clipping */}
+                  <div className="block md:hidden space-y-4">
+                    {ledgerData.map((row, idx) => {
+                      const isRowPaid = row.status === 'Paid';
+                      const isRowOverdue = row.status === 'Overdue';
+                      const activeRow = row.isCurrentMonth;
+                      
+                      return (
+                        <div key={idx} className={`relative p-4 sm:p-5 rounded-[1.25rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
+                          {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[#359b46] rounded-l-[1.25rem]"></div>}
+                          
+                          {/* Top: Period and Status */}
+                          <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
+                            <div>
+                              <span className={`font-black uppercase text-[13px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                {row.monthName} {row.year}
+                              </span>
+                              {activeRow && <span className="ml-1.5 text-[9px] font-bold text-[#359b46] tracking-widest opacity-80">(NOW)</span>}
+                              <div className="text-[11px] text-slate-500 font-medium mt-0.5">Due: {row.dueDate}</div>
+                            </div>
+                            <div>
+                              {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">Paid</span>}
+                              {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-md border border-red-100 font-bold text-[9px] uppercase tracking-wider">Overdue</span>}
+                              {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100 font-bold text-[9px] uppercase tracking-wider">Pending</span>}
+                              {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 font-bold text-[9px] uppercase tracking-wider">Sent</span>}
+                              {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md font-bold text-[9px] uppercase tracking-wider">Unassigned</span>}
+                              {row.status === 'Upcoming' && <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Upcoming</span>}
+                            </div>
+                          </div>
+
+                          {/* Middle: Breakdown */}
+                          <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 mb-4">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-slate-500 font-medium">Dues:</span>
+                              <span className="text-[12px] font-bold text-slate-700">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-slate-500 font-medium">Parking:</span>
+                              <span className="text-[12px] font-bold text-slate-700">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-slate-500 font-medium">Utils:</span>
+                              <span className="text-[12px] font-bold text-slate-700">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
+                              <span className={`text-[12px] font-bold ${isRowOverdue && lateFee > 0 ? 'text-red-600' : 'text-slate-700'}`}>{isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}</span>
+                            </div>
+                          </div>
+
+                          {/* Bottom: Total */}
+                          <div className="flex justify-between items-center bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                            <span className="text-[11px] font-black uppercase tracking-widest text-slate-100">Total:</span>
+                            <span className={`font-black text-[16px] tracking-tight ${isRowPaid ? 'text-[#FFFFFF]' : 'text-[#FFFFFF]'}`}>
+                              ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                </div>
+
               </div>
             </div>
 
-            {/* RIGHT COLUMN: TRANSACTION HISTORY */}
-            <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0 lg:h-full">
-              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200/80 p-5 flex flex-col lg:flex-1 lg:min-h-0 lg:overflow-hidden w-full">
-                <h3 className="font-black text-[#0a1e3f] text-base mb-4 shrink-0 uppercase tracking-widest px-2 flex items-center gap-2">
-                  <Receipt size={16} className="text-[#359b46] shrink-0"/> Transaction History
+            {/* ✨ RIGHT SIDEBAR (Transaction History) */}
+            <div className={`w-full md:w-auto md:min-w-[320px] lg:min-w-[360px] lg:max-w-[400px] shrink-0 bg-white border-t md:border-t-0 md:border-l border-slate-200/60 flex-col h-full z-10 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] ${isMobileHistoryVisible ? 'flex' : 'hidden md:flex'} animate-in fade-in slide-in-from-right-4 duration-300`}>
+              
+              <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
+                <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2 whitespace-normal break-words">
+                  <History size={16} className="text-[#359b46] w-4 h-4 sm:w-5 sm:h-5"/> Transaction History
                 </h3>
-                
-                {/* Transaction List container with scroll limit */}
-                <div className="max-h-[350px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto custom-scrollbar pr-2 w-full">
-                  <div className="space-y-3 pb-4 w-full">
-                    {transactions.length === 0 ? (
-                      <div className="text-center py-10 px-4 border border-dashed border-slate-200 rounded-2xl w-full">
-                        <AlertCircle className="mx-auto text-slate-300 mb-3" size={28} />
-                        <p className="text-slate-500 font-bold text-sm">No history found</p>
-                        <p className="text-slate-400 text-xs mt-1">You haven't made any payments yet.</p>
-                      </div>
-                    ) : (
-                      transactions.map((tx, idx) => (
-                        <HistoryItem 
-                          key={idx} title={tx.description || "Statement Payment"} method={tx.payment_method || "Online Transfer"} 
-                          date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
-                          amount={`₱${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} status={tx.status || "Paid"} 
-                        />
-                      ))
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm whitespace-nowrap">{transactions.length} Total</span>
+                  <button 
+                    onClick={() => setIsMobileHistoryVisible(false)}
+                    className="md:hidden p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg active:scale-95 transition-colors"
+                  >
+                    <X size={18} strokeWidth={2.5}/>
+                  </button>
                 </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-visible md:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-slate-50/30 pb-24 md:pb-4">
+                {transactions.length === 0 ? (
+                  <div className="text-center py-10 sm:py-12 px-5 border border-dashed border-slate-200 rounded-2xl w-full bg-white shadow-sm">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                       <AlertCircle className="text-slate-300" size={24} />
+                    </div>
+                    <p className="text-slate-600 font-black text-[13px] sm:text-sm tracking-tight mb-1 whitespace-normal break-words">No history found</p>
+                    <p className="text-slate-400 text-[11px] sm:text-xs font-medium leading-relaxed whitespace-normal break-words">You haven't made any payments yet. Records will appear here.</p>
+                  </div>
+                ) : (
+                  transactions.map((tx, idx) => (
+                    <HistoryItem 
+                      key={idx} title={tx.description || "Statement Payment"} method={tx.payment_method || "Online Transfer"} 
+                      date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
+                      amount={`₱${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} status={tx.status || "Paid"} 
+                    />
+                  ))
+                )}
               </div>
             </div>
           </>
         )}
       </div>
 
-      {/* 🌟 PREMIUM PAYMENT MODAL */}
+      {/* 🌟 PREMIUM PAYMENT MODAL (Bottom Sheet for Mobile, Center Modal for Desktop) */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-6 flex justify-between items-center relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#1d82f5] to-[#359b46]"></div>
-              <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-2">
-                <CreditCard className="text-[#359b46]" size={20} strokeWidth={2.5} />
-                Submit Payment
-              </h2>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-slate-100">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <div className="relative z-10 min-w-0 flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
+                  <CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight whitespace-normal break-words">Submit Payment</h2>
+              </div>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
-            <div className="px-6 pb-8 bg-slate-50/40">
-              <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
-                {unit?.property_name} · Unit {unit?.unit_number} - total <span className="font-black text-[#0a1e3f]">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-              </p>
+            {/* Scrollable Form Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1 flex flex-col">
               
-              <div className="mb-6">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Select Payment Method</label>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] mb-5 sm:mb-6 gap-3 shrink-0">
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 whitespace-normal break-words">Amount Due</span>
+                  <span className="block text-[12px] sm:text-[14px] font-bold text-[#0a1e3f] whitespace-normal break-words">
+                    {unit?.property_name} · Unit {unit?.unit_number}
+                  </span>
+                </div>
+                <span className="font-black text-[#1d82f5] text-2xl sm:text-3xl tracking-tight shrink-0 whitespace-nowrap">
+                  ₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                </span>
+              </div>
+              
+              <div className="mb-5 sm:mb-6 shrink-0">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2.5 ml-1 whitespace-normal break-words">Select Payment Method</label>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   {PAYMENT_METHODS.map((method) => (
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
-                      className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm ${paymentMethod === method ? 'bg-blue-50 text-[#1d82f5] border border-blue-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
+                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-sm whitespace-normal break-words leading-tight ${paymentMethod === method ? 'bg-blue-50 text-[#1d82f5] border-2 border-blue-200 shadow-[0_2px_8px_rgba(29,130,245,0.15)]' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
                     >
                       {method}
                     </button>
@@ -562,66 +654,77 @@ export default function PayTab() {
                 </div>
               </div>
 
-              {/* Conditional Instructions Based on Payment Method */}
-              <div className="mb-6 p-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm text-sm text-slate-600">
+              <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-[13px] sm:text-sm text-slate-600 transition-all shrink-0">
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
-                    <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[#0a1e3f]">Scan QR code using GCash or QR Ph</p>
-                    <div className="w-40 h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
+                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center whitespace-normal break-words">Scan QR code using GCash or QR Ph</p>
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
                       <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
                     </div>
                   </div>
                 )}
                 {paymentMethod === 'Bank Transfer' && (
-                  <div className="space-y-2">
-                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-2">Admin Bank Details</p>
+                  <div className="space-y-3">
+                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 pb-2 whitespace-normal break-words">Admin Bank Details</p>
                     {globalComp.bankName || globalComp.bankAccountNumber ? (
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
-                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Bank Name</span> <span className="font-black text-[#0a1e3f]">{globalComp.bankName}</span></p>
-                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Account Name</span> <span className="font-black text-[#0a1e3f]">{globalComp.bankAccountName}</span></p>
-                        <p className="flex justify-between items-center text-xs"><span className="text-slate-500 font-bold">Account No.</span> <span className="font-black font-mono text-[#1d82f5] bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{globalComp.bankAccountNumber}</span></p>
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Bank</span> <span className="font-black text-[#0a1e3f] text-[11px] sm:text-xs text-right whitespace-normal break-words">{globalComp.bankName}</span></p>
+                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Name</span> <span className="font-black text-[#0a1e3f] text-[11px] sm:text-xs text-right whitespace-normal break-words">{globalComp.bankAccountName}</span></p>
+                        <div className="flex justify-between items-start gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Account No.</span> <span className="font-black font-mono text-[#1d82f5] bg-blue-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md border border-blue-100 text-[11px] sm:text-xs text-right break-all whitespace-normal">{globalComp.bankAccountNumber}</span></div>
                       </div>
                     ) : (
-                      <p className="text-xs italic text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">Bank details will be displayed here once configured by the administration.</p>
+                      <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200 whitespace-normal break-words">Bank details will be displayed here once configured.</p>
                     )}
                   </div>
                 )}
                 {paymentMethod === 'Check' && (
-                  <div className="space-y-2 text-center py-2">
-                    <p className="text-xs font-bold text-slate-500">Make checks payable to:</p>
-                    <p className="font-black text-lg text-[#0a1e3f]">{globalComp.bankAccountName || 'HOA Administration'}</p>
-                    <p className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg mt-3 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
+                  <div className="space-y-2 text-center py-2 sm:py-3">
+                    <p className="text-[11px] sm:text-xs font-bold text-slate-500 whitespace-normal break-words">Make checks payable to:</p>
+                    <p className="font-black text-base sm:text-lg text-[#0a1e3f] px-2 leading-tight whitespace-normal break-words">{globalComp.bankAccountName || 'HOA Administration'}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-lg mt-4 uppercase tracking-wide leading-relaxed whitespace-normal break-words">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}
                 {paymentMethod === 'Cash' && (
-                  <div className="text-center py-4">
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3"><ShieldCheck size={24} /></div>
-                    <p className="text-xs font-bold text-slate-600 leading-relaxed px-4">Please pay in exact amounts at the Administration Office. Retain your physical receipt.</p>
+                  <div className="text-center py-3 sm:py-4">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-100"><ShieldCheck size={24} className="w-5 h-5 sm:w-7 sm:h-7" /></div>
+                    <p className="text-[11px] sm:text-xs font-bold text-slate-600 leading-relaxed px-2 sm:px-4 whitespace-normal break-words">Please pay in exact amounts at the Administration Office. Retain your physical receipt.</p>
                   </div>
                 )}
               </div>
 
               {/* Reference Number Input */}
               {paymentMethod !== 'Cash' && (
-                <div className="mb-6">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Reference / Transaction Number</label>
+                <div className="mb-6 shrink-0">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1 whitespace-normal break-words">Reference / Transaction No.</label>
                   <input 
                     type="text" 
                     value={referenceNumber}
                     onChange={(e) => setReferenceNumber(e.target.value)}
                     placeholder="e.g. 1002934823"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] transition-all shadow-sm"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 sm:py-4 text-[13px] sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] transition-all shadow-sm"
                   />
                 </div>
               )}
 
-              <button 
-                onClick={handleSimulatePayment} 
-                disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
-                className="w-full bg-[#1d82f5] hover:bg-blue-600 disabled:bg-slate-300 disabled:text-slate-400 disabled:shadow-none text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] active:scale-95 flex justify-center items-center gap-2"
-              >
-                {isSimulating ? <span className="animate-pulse">Processing...</span> : "I've paid, submit receipt"} 
-              </button>
+              {/* Stacked Mobile Buttons, Balanced Desktop Buttons */}
+              <div className="mt-auto flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-1 sm:pb-2 z-20">
+                <button 
+                  type="button" 
+                  onClick={() => setIsPaymentModalOpen(false)} 
+                  disabled={isSimulating} 
+                  className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl transition-all active:scale-95 shadow-sm whitespace-nowrap"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSimulatePayment} 
+                  disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
+                  className="w-full flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:from-[#1565c0] hover:to-[#0f4d92] disabled:from-slate-300 disabled:to-slate-300 disabled:text-white/70 disabled:shadow-none text-white py-3.5 sm:py-4 rounded-xl text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] hover:shadow-[0_6px_20px_rgba(29,130,245,0.4)] active:scale-95 flex justify-center items-center gap-2 whitespace-normal break-words"
+                >
+                  {isSimulating ? <span className="animate-pulse">Processing...</span> : "Submit Payment"} <ArrowRight size={16} strokeWidth={2.5} className={`w-4 h-4 sm:w-4 sm:h-4 shrink-0 ${isSimulating ? "hidden" : "block"}`} />
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
@@ -630,17 +733,17 @@ export default function PayTab() {
       {/* 🌟 CASH SUCCESS MODAL */}
       {showCashSuccessModal && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
-            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-emerald-100">
-              <CheckCircle size={40} strokeWidth={2} />
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
+              <CheckCircle size={32} strokeWidth={2.5} className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Request Submitted</h2>
-            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed px-2">
+            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight whitespace-normal break-words">Request Submitted</h2>
+            <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2 whitespace-normal break-words">
               Payment method recorded as <strong className="text-slate-700">Cash</strong>. Please proceed to the Administration Office to complete your payment.
             </p>
             <button 
               onClick={() => setShowCashSuccessModal(false)}
-              className="w-full bg-[#359b46] hover:bg-[#2e8a3d] text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] active:scale-95"
+              className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 whitespace-nowrap"
             >
               Got it, thanks!
             </button>
@@ -651,19 +754,20 @@ export default function PayTab() {
   );
 }
 
+// ✨ FIX: Refined Transaction History Item Component (Removed truncate to avoid cut off, added break-words)
 function HistoryItem({ title, method, date, amount, status }: any) {
   return (
-    <div className="w-full cursor-pointer p-4 rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50 shadow-sm flex items-center justify-between mb-3">
-      <div className="flex items-center gap-3 overflow-hidden">
-        <div className="p-2.5 bg-blue-50 text-blue-500 rounded-xl shrink-0 border border-blue-100"><Receipt size={18} strokeWidth={2.5} /></div>
-        <div className="flex flex-col overflow-hidden">
-          <span className="font-black text-[#0a1e3f] text-sm truncate tracking-tight">{title}</span>
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 truncate">{method} • {date}</span>
+    <div className="w-full cursor-default p-3.5 sm:p-4 rounded-xl sm:rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)] shadow-sm flex items-start sm:items-center justify-between gap-3 group">
+      <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 overflow-hidden min-w-0 pr-2">
+        <div className="p-2 sm:p-2.5 bg-blue-50 text-blue-500 rounded-lg sm:rounded-xl shrink-0 border border-blue-100 group-hover:scale-105 transition-transform mt-0.5 sm:mt-0"><Receipt size={16} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></div>
+        <div className="flex flex-col min-w-0">
+          <span className="font-bold text-[#0a1e3f] text-[12px] sm:text-[13px] tracking-tight whitespace-normal break-words leading-tight">{title}</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-0.5 whitespace-normal break-words">{method} • {date}</span>
         </div>
       </div>
       <div className="shrink-0 flex flex-col items-end pl-2">
-        <span className="font-black text-[#359b46] text-sm">{amount}</span>
-        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mt-1 border ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+        <span className="font-black text-[#359b46] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
+        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-md mt-1 border shadow-sm whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
           {status}
         </span>
       </div>

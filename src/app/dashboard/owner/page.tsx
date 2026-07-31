@@ -126,14 +126,26 @@ export default function OwnerDashboard() {
 
             setMyUnitsList(myUnits); 
             setUnitsCount(myUnits.length);
-            setOccupiedCount(myUnits.filter((u: any) => u.status === 'Occupied').length);
             
-            // ✨ FETCH THE BILL ASSIGNED TO OWNER
+            // ✨ FETCH FINANCIALS & ACTIVE LEASES
             let totalOwnerBill = 0;
             let totalGross = 0;
 
             if (myUnits.length > 0) {
               const unitIds = myUnits.map((u: any) => u.id);
+              
+              // 1. Fetch exact Active Leases from the leases table
+              const { data: activeLeases } = await supabase
+                .from('leases')
+                .select('unit_id')
+                .eq('status', 'Active')
+                .in('unit_id', unitIds);
+
+              // Use Set to ensure we only count unique units with an active lease
+              const occupiedUnitIds = new Set(activeLeases?.map((l: any) => l.unit_id) || []);
+              setOccupiedCount(occupiedUnitIds.size);
+
+              // 2. Fetch SOA for Financials
               const { data: soaData } = await supabase
                 .from('soa')
                 .select('*')
@@ -356,7 +368,7 @@ export default function OwnerDashboard() {
 
   const openRepairModal = () => {
     if (myUnitsList.length === 1) {
-      setSelectedUnitForRepair(`${myUnitsList[0].property_name} - ${myUnitsList[0].unit_number}`);
+      setSelectedUnitForRepair(myUnitsList[0].unit_number);
     } else {
       setSelectedUnitForRepair("");
     }
@@ -567,8 +579,9 @@ export default function OwnerDashboard() {
   };
   const initials = getInitials(userData?.name);
   
+  // ✨ Displays ONLY the unit_number instead of property_name + unit_number
   const fullUnitsDisplay = myUnitsList.length > 0 
-    ? myUnitsList.map(u => `${u.property_name} - Unit ${u.unit_number}`).join(" • ")
+    ? myUnitsList.map(u => u.unit_number).join(" • ")
     : "No assigned units";
 
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
@@ -578,7 +591,7 @@ export default function OwnerDashboard() {
     <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
       {/* UNIFIED TOP NAVIGATION */}
-      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-sm transition-all">
+      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative border-b border-white/5 shadow-sm transition-all">
         <div className="flex items-center gap-3">
           <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
@@ -1494,7 +1507,7 @@ export default function OwnerDashboard() {
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Owned Properties</label>
                     <div className="text-xs sm:text-sm font-bold text-slate-700 break-words leading-relaxed bg-emerald-50/50 py-2 rounded-xl sm:rounded-2xl border border-emerald-100/50">
                       {myUnitsList.length > 0 
-                        ? myUnitsList.map(u => `${u.property_name} - Unit ${u.unit_number}`).join(' • ')
+                        ? myUnitsList.map(u => u.unit_number).join(' • ')
                         : "Not Assigned"}
                     </div>
                   </div>
@@ -1541,8 +1554,8 @@ export default function OwnerDashboard() {
                     >
                       <option value="" disabled>Select which unit needs repair...</option>
                       {myUnitsList.map((u) => (
-                        <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>
-                          {u.property_name} {u.unit_number}
+                        <option key={u.id} value={u.unit_number}>
+                          {u.unit_number}
                         </option>
                       ))}
                     </select>
