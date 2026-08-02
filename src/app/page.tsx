@@ -176,7 +176,7 @@
               <div className="flex justify-center mb-6">
                 <div className="relative w-90 sm:w-94 h-36 sm:h-37">
                   <Image
-                    src="/logoss.jpeg"
+                    src="/logo.jpeg"
                     fill
                     alt="PropertyKo"
                     className="object-contain"

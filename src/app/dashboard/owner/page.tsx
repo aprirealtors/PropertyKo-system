@@ -1411,14 +1411,17 @@ export default function OwnerDashboard() {
           <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors">
             {activeTab === 'messages' && <span className="absolute inset-1 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
-              <div className="relative">
-                <MessageSquare size={20} />
+              
+              {/* ✨ FIX: STRICT 20x20 CONTAINER. Walang flex span para identikal sa ibang raw icons! */}
+              <div className="relative w-5 h-5 block shrink-0">
+                <MessageSquare size={20} className="absolute inset-0" />
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-white animate-pulse shadow-sm">
+                  <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-white shadow-sm z-20">
                     {unreadMessages > 99 ? '99+' : unreadMessages}
                   </span>
                 )}
               </div>
+
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Messages</span>
             </div>
           </button>
@@ -1941,6 +1944,8 @@ export default function OwnerDashboard() {
         .animate-bounce-slow {
           animation: bounce 3s infinite;
         }
+
+        .pb-safe { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
       `}} />
     </div>
   );

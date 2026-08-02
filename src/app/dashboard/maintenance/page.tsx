@@ -253,6 +253,7 @@ export default function MaintenanceDashboard() {
     );
   }
 
+  
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f8fafc] text-slate-800 font-sans overflow-hidden">
       
@@ -504,6 +505,7 @@ export default function MaintenanceDashboard() {
         .animate-bounce-slow {
           animation: bounce 3s infinite;
         }
+          .pb-safe { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
       `}} />
     </div>
   );
@@ -543,15 +545,19 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
     <button onClick={onClick} className={`relative flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
       {active && <span className="absolute inset-0 bg-[#359b46]/10 rounded-xl animate-in zoom-in duration-200" />}
       <div className={`relative z-10 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
-        {icon}
-        {/* MOBILE BADGE */}
-        {badgeCount > 0 && (
-          <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-black h-[18px] min-w-[18px] px-1 rounded-full flex items-center justify-center shadow-md border-2 border-white animate-pulse">
-            {badgeCount > 99 ? '99+' : badgeCount}
-          </span>
-        )}
+        
+        {/* ✨ FIX: Ginawang span at ni-lock ang size para walang extra invisible padding */}
+        <span className="relative leading-none flex items-center justify-center w-5 h-5 shrink-0 block">
+          {icon}
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-black h-[16px] min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-md border-2 border-white animate-pulse z-20">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </span>
+
       </div>
-      <span className="text-[9px] font-bold mt-0.5 relative z-10">{label}</span>
+      <span className="text-[9px] font-bold mt-0.5 relative z-10 uppercase">{label}</span>
     </button>
   );
 }
