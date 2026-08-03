@@ -1422,7 +1422,7 @@ export default function OwnerDashboard() {
                 )}
               </div>
 
-              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Chats</span>
+              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Chat</span>
             </div>
           </button>
 
