@@ -133,7 +133,7 @@
         <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
           <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
             <Image
-              src="/logoss.jpeg"
+              src="/logo.jpeg"
               fill
               alt="PropertyKo Loading"
               className="object-contain"
