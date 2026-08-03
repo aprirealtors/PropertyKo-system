@@ -568,9 +568,9 @@ export default function TenantDashboard() {
             label="Chat" 
             badge={unreadMessages}
           />
-          <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Account" />
-          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
           <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Finance" />
+          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
+          <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Profile" />
         </div>
       </nav>
 

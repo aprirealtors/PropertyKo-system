@@ -1422,7 +1422,16 @@ export default function OwnerDashboard() {
                 )}
               </div>
 
-              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Messages</span>
+              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Chat</span>
+            </div>
+          </button>
+
+          {/* FINANCE */}
+          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors">
+            {activeTab === 'financials' && <span className="absolute inset-1 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'financials' ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
+              <FileText size={20} />
+              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Finance</span>
             </div>
           </button>
 
@@ -1432,15 +1441,6 @@ export default function OwnerDashboard() {
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'leases' ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
               <FileCheck size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Leases</span>
-            </div>
-          </button>
-          
-          {/* FINANCE */}
-          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors">
-            {activeTab === 'financials' && <span className="absolute inset-1 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'financials' ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
-              <FileText size={20} />
-              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Finance</span>
             </div>
           </button>
           

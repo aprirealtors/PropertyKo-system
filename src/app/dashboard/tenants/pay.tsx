@@ -504,7 +504,7 @@ export default function PayTab() {
                       const activeRow = row.isCurrentMonth;
                       
                       return (
-                        <div key={idx} className={`relative p-4 sm:p-5 rounded-[1.25rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
+                        <div key={idx} className={`relative p-4 sm:p-5 rounded-[0.5rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
                           {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[#359b46] rounded-l-[1.25rem]"></div>}
                           
                           {/* Top: Period and Status */}

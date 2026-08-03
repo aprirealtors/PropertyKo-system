@@ -1,4 +1,4 @@
-  "use client";
+"use client";
 
   import { useState } from "react";
   import Image from "next/image";
@@ -24,6 +24,7 @@
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [isPageLoading, setIsPageLoading] = useState(true);
 
     // floating error toast
     useEffect(() => {
@@ -36,6 +37,41 @@
         return () => clearTimeout(timer);
       }
     }, [errorMsg]);
+
+    // ✨ INITIAL SESSION CHECK & 8-SECOND DELAY LOGIC
+    useEffect(() => {
+      const checkSession = async () => {
+        // Kunin ang session sa background
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // ✨ FIX: Hintayin ang eksaktong 8 seconds (8000ms) bago mag-action
+        setTimeout(() => {
+          if (session?.user) {
+            const userRole = session.user.user_metadata?.role;
+            const email = session.user.email;
+            
+            if (email === "superadmin@propertyko.com") {
+              router.push("/dashboard/superadmin");
+            } else if (userRole === "staff") {
+              router.push("/dashboard/maintenance");
+            } else if (userRole === "property_manager") {
+              router.push("/dashboard/manager");
+            } else if (userRole === "owner") {
+              router.push("/dashboard/owner");
+            } else if (userRole === "tenant") {
+              router.push("/dashboard/tenants");
+            } else {
+              router.push("/dashboard/admin");
+            }
+          } else {
+            // Walang active session, itago na ang Splash Screen para makita ang Login Form
+            setIsPageLoading(false);
+          }
+        }, 2000); // 2 seconds delay
+      };
+      
+      checkSession();
+    }, [router]);
 
     const handleLogin = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -91,6 +127,23 @@
         setLoading(false);
       }
     };
+
+    if (isPageLoading) {
+      return (
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
+          <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
+            <Image
+              src="/logoss.jpeg"
+              fill
+              alt="PropertyKo Loading"
+              className="object-contain"
+              priority
+            />
+          </div>
+          <div className="w-10 h-10 border-4 border-[#359b46]/20 border-t-[#359b46] rounded-full animate-spin"></div>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f]">
