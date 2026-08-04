@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, Inbox, PauseCircle } from "lucide-react";
+import { Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, Inbox, PauseCircle, Trash2 } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -24,11 +24,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [reporter, setReporter] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [priority, setPriority] = useState("Normal"); 
+  
+  // State for the uploaded image
+  const [ticketImage, setTicketImage] = useState<File | null>(null);
 
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ✨ ADDED: Filtered Tickets Logic
   const filteredTickets = tickets.filter(t => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -39,13 +41,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     );
   });
 
+  // ✨ Derive the existing photo from the selected inbox ticket
+  const selectedInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
+  const existingPhotoUrl = selectedInboxTicket?.photo_url;
+
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchTickets();
       fetchTeamMembers();
       fetchUnits();
 
-      // 🟦 LIVE TICKETS CHANNEL (Para sa Pending Inbox dropdown/badge)
       const ticketsChannel = supabase
         .channel('manager-live-tickets')
         .on(
@@ -60,8 +65,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             if (payload.eventType === 'INSERT') {
               if (payload.new.status === 'Open') {
                 setInboxTickets((current: any[]) => {
-                  // ✨ KONTRA-DUPLICATION FILTER:
-                  // Tinitiyak na hindi maisasaksak nang dalawang beses ang id kapag nag-trigger ang manual fetch at realtime
                   const exists = current.some(t => t.id === payload.new.id);
                   if (exists) return current;
                   return [payload.new, ...current];
@@ -84,7 +87,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         )
         .subscribe();
 
-      // 🟩 LIVE TASKS CHANNEL (Para sa Kanban Board columns)
       const tasksChannel = supabase
         .channel('manager-live-tasks')
         .on(
@@ -98,8 +100,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           (payload) => {
             if (payload.eventType === 'INSERT') {
               setTickets((current: any[]) => {
-                // ✨ KONTRA-DUPLICATION FILTER:
-                // Sinasala ang mga umiiral nang task ID sa state bago mag-append
                 const exists = current.some(t => t.id === payload.new.id);
                 if (exists) return current;
                 return [payload.new, ...current];
@@ -156,12 +156,31 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       return;
     }
 
+    if (!ticketImage && !selectedInboxId) {
+      setErrorMsg("Please upload or take a photo of the issue.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       let photoUrlToSave = "";
-      if (selectedInboxId) {
+      
+      if (ticketImage) {
+        const fileExt = ticketImage.name.split('.').pop();
+        const fileName = `ticket-upload-${Math.random()}.${fileExt}`;
+        const { data: imgData, error: uploadError } = await supabase.storage.from('tickets').upload(`ticket-uploads/${fileName}`, ticketImage);
+        
+        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
+        
+        if (imgData) {
+          const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
+          photoUrlToSave = publicUrlData.publicUrl;
+        }
+      } else if (selectedInboxId) {
         const matchingInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
         if (matchingInboxTicket && matchingInboxTicket.photo_url) photoUrlToSave = matchingInboxTicket.photo_url;
       }
+      
       const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; 
 
       const { data: newTask, error } = await supabase.from('maintenance_tasks').insert([{ 
@@ -174,7 +193,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
       await fetchTickets(); 
       setIsModalOpen(false);
-      setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); 
+      
+      setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
 
       if (newTask) {
         setTimeout(() => {
@@ -195,7 +215,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     }
   };
 
-  // ✨ FIX: Ginamit ang filteredTickets imbes na base tickets array
   const openTickets = filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'pending' || s === 'open';
@@ -236,10 +255,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   }, [highlightTicketId, isLoadingTickets]);
 
   return (
-      // ✨ LOCKED LAYOUT WINDOW SHELL: Nakakandado ang overall portal shell para hindi gumalaw ang background browser axis
       <div className="flex flex-col w-full h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] relative pb-2 overflow-hidden font-sans selection:bg-[#359b46]/10">
         
-        {/* PREMIUM HEADER - Static Shrink Block (Fixed Header Zone) */}
+        {/* PREMIUM HEADER */}
         <div className="shrink-0 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -265,7 +283,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           </div>
         </div>
   
-        {/* SECONDARY ROW - Controls and Quick Badges */}
+        {/* SECONDARY ROW */}
         <div className="shrink-0 flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
             <h3 className="font-extrabold text-[#0a1e3f] text-base tracking-tight">Repair tickets</h3>
@@ -276,14 +294,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             )}
           </div>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { setIsModalOpen(true); setTicketImage(null); }}
             className="bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 duration-150"
           >
             + New ticket
           </button>
         </div>
   
-        {/* KANBAN BOARD WRAPPER - ✨ DITO ANG IISANG INTEGRATED VERTICAL OVERFLOW SCROLL SA BUONG APARTMENT TICKETS */}
+        {/* KANBAN BOARD WRAPPER */}
         <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-6 custom-scrollbar">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start w-full">
             
@@ -436,7 +454,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-slate-200/40 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
                 <h2 className="text-lg font-black text-[#0a1e3f] tracking-tight">Create New Ticket</h2>
-                <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
+                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); } }} className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
                   <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
@@ -452,6 +470,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         onChange={(e) => {
                           const id = e.target.value;
                           setSelectedInboxId(id);
+                          setTicketImage(null); // Reset manual upload if switching inbox requests
                           if (id) {
                             const t = inboxTickets.find(x => String(x.id) === id);
                             if (t) {
@@ -476,6 +495,105 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       </select>
                     </div>
                   )}
+
+                  {/* ✨ UPDATED: IMAGE UPLOAD BLOCK WITH INBOX PREVIEW */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                      Photo Evidence
+                    </label>
+                    <div>
+                      {ticketImage ? (
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-xl border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-sm">
+                          <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                            <img 
+                              src={URL.createObjectURL(ticketImage)} 
+                              alt="Ticket preview" 
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <span className="text-xs truncate text-emerald-900 font-black">
+                                {ticketImage.name}
+                              </span>
+                              <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 size={12} strokeWidth={3} /> Ready to submit
+                              </span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={(e) => { e.preventDefault(); setTicketImage(null); }} 
+                              className="flex items-center gap-1.5 px-3 py-2 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-lg shadow-sm border border-red-100 transition-all active:scale-95 shrink-0 font-bold text-[10px] uppercase tracking-wider"
+                              title="Remove photo"
+                            >
+                              <Trash2 size={14} strokeWidth={2.5} /> Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : existingPhotoUrl ? (
+                        // ✨ Read-only preview block for inbox photo (No replace button)
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-xl border-2 border-solid border-blue-400 bg-blue-50/50 transition-all shadow-sm">
+                          <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                            <img 
+                              src={existingPhotoUrl} 
+                              alt="Resident's submitted photo" 
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <span className="text-xs truncate text-blue-900 font-black">
+                                Resident's Submitted Photo
+                              </span>
+                              <span className="text-[9px] text-blue-600 font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 size={12} strokeWidth={3} /> From Pending Request
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-3 w-full">
+                          {/* ✨ Take Photo - Mobile Only (Hidden on Desktop via md:hidden) */}
+                          <label className="flex md:hidden flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                              <Camera size={20} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1">
+                                Take Photo
+                              </span>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) => e.target.files && setTicketImage(e.target.files[0])}
+                              className="hidden"
+                              disabled={isSubmitting}
+                            />
+                          </label>
+                          {/* ✨ Gallery - Always visible, fills full width on Desktop */}
+                          <label className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1">
+                                Gallery
+                              </span>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              onChange={(e) => e.target.files && setTicketImage(e.target.files[0])}
+                              className="hidden"
+                              disabled={isSubmitting}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description</label>
@@ -516,7 +634,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     </div>
                   </div>
                   <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100 shrink-0">
-                    <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150">Cancel</button>
                     <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-200 disabled:text-slate-400 border border-transparent text-white py-2.5 px-5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/10 active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
                   </div>
                 </form>
@@ -540,7 +658,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     if (ticket.assigned_to) {
       const memberMatch = teamMembers?.find((m: any) => m.email === ticket.assigned_to);
       if (memberMatch && memberMatch.name) assigneeName = memberMatch.name; 
-      else assigneeName = ticket.assigned_to.split('@');
+      else assigneeName = ticket.assigned_to.split('@')[0];
     }
   
     const formattedCost = ticket.cost !== undefined ? ticket.cost : 0;
@@ -601,7 +719,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     );
 }
 
-// ✨ NEW: SKELETON LOADER COMPONENT
 function SkeletonCard() {
   return (
     <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[250px] animate-pulse">
@@ -620,7 +737,6 @@ function SkeletonCard() {
   );
 }
 
-// ✨ NEW: EMPTY STATE COMPONENT
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
     <div className="flex flex-col items-center justify-center h-[250px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center">

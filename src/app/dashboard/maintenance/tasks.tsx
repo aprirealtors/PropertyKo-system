@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MapPin, X, CheckCircle, PauseCircle, Camera, PhilippinePesoIcon, AlertCircle, AlertTriangle, Wrench, Clock, Activity, Info, Inbox } from "lucide-react";
+import { MapPin, X, CheckCircle, PauseCircle, Camera, PhilippinePesoIcon, AlertCircle, AlertTriangle, Wrench, Clock, Activity, Info, Inbox, Trash2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
 export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoading = false }: any) {
@@ -133,10 +133,10 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
   return (
     // Fixed container framework mapping
-    <div className="flex flex-col w-full h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] relative pb-2 overflow-hidden font-sans selection:bg-[#359b46]/10">
+    <div className="flex flex-col w-full h-[calc(100vh-130px)] md:h-[calc(100vh-130px)] relative pb-2 overflow-hidden font-sans selection:bg-[#359b46]/10">
       
       {/* PREMIUM HEADER - Static Shrink Block */}
-      <div className="mb-6 shrink-0">
+      <div className="mb-2 shrink-0">
         <div className="bg-white px-5 py-4 sm:px-6 sm:py-5 rounded-3xl border border-slate-200/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
           <div>
             <h2 className="text-xl md:text-2xl font-black text-[#0a1e3f] tracking-tight">My Tasks</h2>
@@ -357,7 +357,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* UPDATE / COMPLETE MODAL */}
       {completeModalTask && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a1e3f]/50 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a1e3f]/50 backdrop-blur-sm p-2 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-slate-200/40 animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-black text-[#0a1e3f] tracking-tight">Submit Task Report</h2>
@@ -420,15 +420,85 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Proof of Work / Visit</label>
-                  <label className="w-full p-5 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2.5 text-slate-500 hover:border-[#359b46] hover:bg-emerald-50/30 transition-all cursor-pointer bg-white group shadow-sm">
-                    <div className={`p-2.5 rounded-xl border ${completionImage ? 'bg-emerald-100 border-transparent text-[#359b46]' : 'bg-slate-50 border-slate-100 text-slate-400 group-hover:scale-105 transition-transform'}`}>
-                      <Camera size={20} strokeWidth={2} />
-                    </div>
-                    <span className={`text-xs text-center px-4 leading-normal ${completionImage ? 'text-[#0a1e3f] font-bold' : 'text-slate-400 font-medium'}`}>
-                      {completionImage ? completionImage.name : "Tap to upload photo of the result or visit"}
-                    </span>
-                    <input type="file" accept="image/*" onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])} className="hidden" disabled={isCompleting} />
-                  </label>
+                  <div>
+                    {completionImage ? (
+                      <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-xl border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-sm">
+                        
+                        {/* IMAGE PREVIEW BOX */}
+                        <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                          <img 
+                            src={URL.createObjectURL(completionImage)} 
+                            alt="Resolution preview" 
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                          />
+                        </div>
+
+                        {/* DETAILS & REMOVE BUTTON */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <span className="text-xs truncate text-emerald-900 font-black">
+                              {completionImage.name}
+                            </span>
+                            <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                              <CheckCircle2 size={12} strokeWidth={3} /> Ready to submit
+                            </span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.preventDefault(); setCompletionImage(null); }} 
+                            className="flex items-center gap-1.5 px-3 py-2 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-lg shadow-sm border border-red-100 transition-all active:scale-95 shrink-0 font-bold text-[10px] uppercase tracking-wider"
+                            title="Retake or Remove photo"
+                          >
+                            <Trash2 size={14} strokeWidth={2.5} /> Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3 w-full">
+                        {/* CAMERA BUTTON - ✨ FIX: Nilagyan ng md:hidden para mawala sa desktop */}
+                        <label className="flex-1 flex md:hidden flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                            <Camera size={20} strokeWidth={2.5} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1">
+                              Take Photo
+                            </span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])}
+                            className="hidden"
+                            disabled={isCompleting}
+                          />
+                        </label>
+
+                        {/* GALLERY / UPLOAD BUTTON - ✨ FIX: Automatic mag-isa sa desktop, "Upload Photo" ang text */}
+                        <label className="flex-1 flex flex-col items-center justify-center gap-2 px-2 py-4 md:py-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1 md:hidden">
+                              Gallery
+                            </span>
+                            <span className="text-sm font-black text-slate-700 group-hover:text-emerald-700 hidden md:block leading-none mt-1">
+                              Upload Photo
+                            </span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])}
+                            className="hidden"
+                            disabled={isCompleting}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {completionStatus === "Success" && (

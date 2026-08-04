@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Camera, Clock, Wrench, AlertCircle, Inbox, PauseCircle, CheckCircle2, AlertTriangle, MapPin, X, CheckCircle, User, ChevronRight, Check } from 'lucide-react';
+import { Camera, Clock, Wrench, AlertCircle, Inbox, PauseCircle, CheckCircle2, AlertTriangle, MapPin, X, CheckCircle, User, ChevronRight, Check, Trash2 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 
 export default function RepairTab({ highlightTicketId }: any) {
@@ -299,14 +299,14 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   return (
     // ✨ EXACT OWNER SIDE LAYOUT WRAPPER
-    <div className="flex flex-col w-full max-w-[1400px] mx-auto overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8">
+    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8 md:pb-10">
       
       {/* Kanban Header */}
-      <div className="flex-none pb-4 shrink-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 bg-white p-5 md:p-6 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100/60">
+      <div className="flex-none shrink-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-4 sm:px-6 sm:py-4 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100/60">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Maintenance & Repairs</h2>
-            <p className="text-slate-500 text-sm mt-1.5 font-medium">Track your requested property repairs and updates here.</p>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Maintenance & Repairs</h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium">Track your requested property repairs and updates here.</p>
           </div>
           <button 
             onClick={() => setIsRepairModalOpen(true)} 
@@ -318,7 +318,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       </div>
 
       {/* Kanban Board Container - Natural Grid Layout (Mag-iscroll na ang buong page) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full overflow-y-auto custom-scrollbar">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full overflow-y-auto custom-scrollbar">
           
         {/* Column 1: Open & In Progress */}
         <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
@@ -623,85 +623,163 @@ export default function RepairTab({ highlightTicketId }: any) {
         </div>
       )}
 
-      {/* ✨ 1. REPORT REPAIR MODAL */}
+      {/* ✨ 1. REPORT REPAIR MODAL (Compact Fit) */}
       {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[95vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
             
-            <div className="px-6 py-4 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Report a repair</h2>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
-                <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 shadow-sm z-10">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">Report a repair</h2>
+                <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Submit a maintenance request</p>
+              </div>
+              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-700 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+                <X size={18} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="p-5 sm:p-8 overflow-y-auto custom-scrollbar bg-slate-50/30 pb-safe">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            {/* Form Content */}
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 pb-safe">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 
-                <div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Issue Description</label>
                   <input 
                     type="text" 
                     required 
-                    placeholder="What needs fixing? (e.g. leaking faucet)" 
+                    placeholder="e.g. Leaking faucet in the kitchen" 
                     value={repairIssue} 
                     onChange={(e) => setRepairIssue(e.target.value)}
-                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
+                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
                     disabled={isSubmitting} 
                   />
                 </div>
 
-                <div>
-                  <select
-                    required
-                    value={repairPriority}
-                    onChange={(e) => setRepairPriority(e.target.value)}
-                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 bg-white hover:border-slate-300 transition-all cursor-pointer shadow-sm appearance-none"
-                    disabled={isSubmitting}
-                  >
-                    <option value="Normal">Normal (Can wait)</option>
-                    <option value="Urgent">🚨 Urgent (Needs attention today)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`flex items-center gap-3 sm:gap-4 w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border-2 border-dashed cursor-pointer hover:bg-slate-50 transition-all group ${selectedImage ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-300 hover:border-slate-400'}`}>
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center transition-colors shadow-sm shrink-0 ${selectedImage ? 'bg-emerald-500 text-white shadow-emerald-500/20' : 'bg-slate-100 text-slate-400 group-hover:text-slate-500'}`}>
-                      <Camera size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={selectedImage ? 2.5 : 2} />
-                    </div>
-                    <span className={`text-xs sm:text-sm flex-1 truncate ${selectedImage ? 'text-emerald-800 font-extrabold' : 'text-slate-500 font-bold'}`}>
-                      {selectedImage ? selectedImage.name : "Upload photo evidence"}
-                    </span>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
-                      className="hidden"
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Priority Level</label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={repairPriority}
+                      onChange={(e) => setRepairPriority(e.target.value)}
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 bg-white hover:border-slate-300 transition-all cursor-pointer shadow-sm appearance-none pr-10"
                       disabled={isSubmitting}
-                    />
-                  </label>
+                    >
+                      <option value="Normal">Normal (Can wait)</option>
+                      <option value="Urgent">🚨 Urgent (Needs attention today)</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Photo Evidence</label>
+                  <div>
+                    {selectedImage ? (
+                      <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-xl border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-sm">
+                        
+                        {/* IMAGE PREVIEW BOX */}
+                        <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                          <img 
+                            src={URL.createObjectURL(selectedImage)} 
+                            alt="Repair issue preview" 
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                          />
+                        </div>
+
+                        {/* DETAILS & REMOVE BUTTON */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <span className="text-xs truncate text-emerald-900 font-black">
+                              {selectedImage.name}
+                            </span>
+                            <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                              <CheckCircle2 size={12} strokeWidth={3} /> Ready to submit
+                            </span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={(e) => { e.preventDefault(); setSelectedImage(null); }} 
+                            className="flex items-center gap-1.5 px-3 py-2 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-lg shadow-sm border border-red-100 transition-all active:scale-95 shrink-0 font-bold text-[10px] uppercase tracking-wider"
+                            title="Retake or Remove photo"
+                          >
+                            <Trash2 size={14} strokeWidth={2.5} /> Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3 w-full">
+                        {/* CAMERA BUTTON - ✨ FIX: Nilagyan ng md:hidden para mawala sa desktop */}
+                        <label className="flex-1 flex md:hidden flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                            <Camera size={20} strokeWidth={2.5} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1">
+                              Take Photo
+                            </span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
+                            className="hidden"
+                            disabled={isSubmitting}
+                          />
+                        </label>
+
+                        {/* GALLERY / UPLOAD BUTTON - ✨ FIX: Automatic mag-isa sa desktop, "Upload Photo" ang text */}
+                        <label className="flex-1 flex flex-col items-center justify-center gap-2 px-2 py-4 md:py-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-slate-700 group-hover:text-emerald-700 block leading-none mt-1 md:hidden">
+                              Gallery
+                            </span>
+                            <span className="text-sm font-black text-slate-700 group-hover:text-emerald-700 hidden md:block leading-none mt-1">
+                              Upload Photo
+                            </span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])}
+                            className="hidden"
+                            disabled={isSubmitting}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Preferred Visit Time</label>
                   <input 
                     type="text" 
                     required 
-                    placeholder="Best time for the caretaker to visit" 
+                    placeholder="e.g. Tomorrow morning, Weekends" 
                     value={repairTime} 
                     onChange={(e) => setRepairTime(e.target.value)} 
-                    className="w-full px-4 py-3.5 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-sm font-semibold text-slate-700 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
+                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
                     disabled={isSubmitting} 
                   />
                 </div>
 
-                <div className="pt-2 sm:pt-4">
+                <div className="pt-2 sm:pt-3 mb-5 sm:mb-3">
                   <button 
                     type="submit" 
                     disabled={isSubmitting} 
-                    className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 disabled:from-emerald-300 disabled:to-green-400 text-white py-3.5 sm:py-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-black transition-all shadow-md sm:shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex justify-center items-center gap-2 sm:gap-3"
+                    className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 disabled:from-emerald-300 disabled:to-green-400 text-white py-3.5 rounded-xl text-sm font-black transition-all shadow-md active:scale-[0.98] flex justify-center items-center gap-2 border border-emerald-400/20"
                   >
                     {isSubmitting ? (
-                      <><div className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-3 border-white/30 border-t-white rounded-full animate-spin"></div> Submitting...</>
-                    ) : "Submit Request"}
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Submitting...</>
+                    ) : "Submit Repair Request"}
                   </button>
                 </div>
               </form>
@@ -925,7 +1003,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                     </div>
                     
                     <div className="flex justify-between items-center text-xs sm:text-sm border-t border-purple-200/60 pt-4 mt-2">
-                      <span className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">👤 Staff In Charge</span>
+                      <span className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">👤 Staff</span>
                       <span className="font-bold text-purple-900 bg-white px-3 py-1.5 rounded-xl border border-purple-100 shadow-sm">
                         {reviewOnHoldTicket.staffName || "Pending Assignment"}
                       </span>

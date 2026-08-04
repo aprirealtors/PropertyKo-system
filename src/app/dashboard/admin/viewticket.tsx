@@ -54,7 +54,8 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
       const { data: membersData } = await supabase.from('team_members').select('name, email').eq('admin_email', orgData.admin_email);
       if (membersData) setTeamMembers(membersData);
 
-      const { data: tasksData } = await supabase.from('maintenance_tasks').select('id, title, location, status, assigned_to, cost, resolution_photo_url, description, priority, on_hold_reason, remarks').eq('admin_email', orgData.admin_email);
+      // ✨ FIX: Added photo_url and created_at to query so manual tasks have images & dates
+      const { data: tasksData } = await supabase.from('maintenance_tasks').select('id, title, location, status, assigned_to, cost, resolution_photo_url, description, priority, on_hold_reason, remarks, photo_url, created_at').eq('admin_email', orgData.admin_email);
       if (tasksData) setLiveTasks(tasksData);
 
       const { data: ticketsData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).order('created_at', { ascending: false });
@@ -77,33 +78,68 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
 
   useEffect(() => {
     if (selectedTicketData) {
-      const updatedTicket = tickets.find(t => t.id === selectedTicketData.ticket.id);
-      const updatedLiveMatch = liveTasks.find(lt => lt.title === updatedTicket?.title && lt.location === updatedTicket?.location);
-      if (updatedTicket) {
-        const currentLiveStatus = updatedLiveMatch ? updatedLiveMatch.status : updatedTicket.status;
-        const { label, color } = getStatusDisplay(currentLiveStatus);
-        let staffName = "Unassigned";
-        if (updatedLiveMatch?.assigned_to) {
-          const profile = teamMembers.find(m => m.email === updatedLiveMatch.assigned_to);
-          staffName = profile?.name ? profile.name : updatedLiveMatch.assigned_to.split('@');
-        }
-        setSelectedTicketData({ ticket: updatedTicket, liveMatch: updatedLiveMatch, staffName, label, color });
+      // Look in both tickets and liveTasks to keep the modal data fresh
+      const updatedTicket = tickets.find(t => t.id === selectedTicketData.ticket.id) || selectedTicketData.ticket;
+      const updatedLiveMatch = liveTasks.find(lt => lt.id === selectedTicketData.liveMatch?.id) || liveTasks.find(lt => lt.title === updatedTicket.title && lt.location === updatedTicket.location);
+      
+      const currentLiveStatus = updatedLiveMatch ? updatedLiveMatch.status : updatedTicket.status;
+      const { label, color } = getStatusDisplay(currentLiveStatus);
+      let staffName = "Unassigned";
+      if (updatedLiveMatch?.assigned_to) {
+        const profile = teamMembers.find(m => m.email === updatedLiveMatch.assigned_to);
+        staffName = profile?.name ? profile.name : updatedLiveMatch.assigned_to.split('@')[0];
       }
+      setSelectedTicketData({ ticket: updatedTicket, liveMatch: updatedLiveMatch, staffName, label, color });
     }
   }, [tickets, liveTasks]);
 
+  // ✨ FIX: Merge both tickets and standalone manual tasks
   const enrichedTickets = useMemo(() => {
-    return tickets.map(ticket => {
+    const map = new Map();
+
+    // 1. Process all standard tickets (from residents)
+    tickets.forEach(ticket => {
       const liveMatch = liveTasks.find(task => task.title === ticket.title && task.location === ticket.location);
       const currentLiveStatus = liveMatch ? liveMatch.status : ticket.status;
       const { label, color } = getStatusDisplay(currentLiveStatus);
       let staffName = "Unassigned";
       if (liveMatch?.assigned_to) {
         const profile = teamMembers.find(m => m.email === liveMatch.assigned_to);
-        staffName = profile?.name ? profile.name : liveMatch.assigned_to.split('@');
+        staffName = profile?.name ? profile.name : liveMatch.assigned_to.split('@')[0];
       }
-      return { ...ticket, liveMatch, currentLiveStatus, label, color, staffName, priority: ticket.priority || liveMatch?.priority || 'Normal' };
+      map.set(`${ticket.title}-${ticket.location}`, { ...ticket, liveMatch, currentLiveStatus, label, color, staffName, priority: ticket.priority || liveMatch?.priority || 'Normal' });
     });
+
+    // 2. Append standalone manual tickets (created in MaintenanceTab)
+    liveTasks.forEach(task => {
+      const key = `${task.title}-${task.location}`;
+      if (!map.has(key)) {
+        const { label, color } = getStatusDisplay(task.status);
+        let staffName = "Unassigned";
+        if (task.assigned_to) {
+          const profile = teamMembers.find(m => m.email === task.assigned_to);
+          staffName = profile?.name ? profile.name : task.assigned_to.split('@')[0];
+        }
+        
+        map.set(key, {
+          id: `manual_${task.id}`, 
+          title: task.title,
+          location: task.location,
+          description: task.description,
+          photo_url: task.photo_url, 
+          created_at: task.created_at || new Date().toISOString(),
+          status: task.status,
+          priority: task.priority || 'Normal',
+          liveMatch: task,
+          currentLiveStatus: task.status,
+          label,
+          color,
+          staffName
+        });
+      }
+    });
+
+    return Array.from(map.values());
   }, [tickets, liveTasks, teamMembers]);
 
   const openInProgressTasks = enrichedTickets.filter(t => {
@@ -140,10 +176,9 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
   }, [highlightTicketId, isLoading, enrichedTickets]);
 
     return (
-      // ✨ LOCKED LAYOUT WINDOW SHELL: Nakakandado ang overall portal shell para hindi gumalaw ang background browser axis
       <div className="flex flex-col w-full h-[calc(100vh)] md:h-[calc(100vh)] relative pb-5 overflow-hidden font-sans selection:bg-[#359b46]/10">
         
-        {/* PREMIUM HEADER - Static Shrink Block (Fixed Header Zone) */}
+        {/* PREMIUM HEADER */}
         <div className="shrink-0 mb-6 px-1 sm:px-0">
           <div className="flex flex-row justify-between items-center gap-4">
             <div className="min-w-0">
@@ -157,7 +192,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
           </div>
         </div>
   
-        {/* KANBAN BOARD WRAPPER - ✨ INTEGRATED SCROLL AREA ADAPTED FROM MAINTENANCE LAYOUT */}
+        {/* KANBAN BOARD WRAPPER */}
         <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-6 custom-scrollbar px-1 sm:px-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start w-full">
             
@@ -359,7 +394,6 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                             <div className="flex justify-between items-center mt-0.5 gap-2">
                               <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] uppercase tracking-wide truncate ${isHighlighted ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200'}`}>👤 {t.staffName}</span>
                               
-                              {/* ✨ UPDATED: ALWAYS SHOW COST OR 'NO COST' SA LABAS NG CARD */}
                               <span className={`font-black text-xs sm:text-sm whitespace-nowrap ${(t.liveMatch?.cost > 0 || t.cost > 0) ? 'text-[#0a1e3f]' : 'text-slate-400'}`}>
                                 {(t.liveMatch?.cost > 0 || t.cost > 0) 
                                   ? `₱${(t.liveMatch?.cost || t.cost).toLocaleString()}` 
@@ -381,7 +415,6 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
         {/* 🌟 BEFORE & AFTER MODAL */}
         {selectedTicketData && (
           <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-            {/* Bottom Sheet sa Mobile, Rounded Popup Box sa Desktop view */}
             <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] transform transition-all animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
               
               <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
@@ -459,7 +492,6 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                         </span>
                       </div>
                       
-                      {/* ✨ FIX: EQUIPMENT COST LALABAS LANG KAPAG "RESOLVED" NA ANG TICKET */}
                       {selectedTicketData.label === 'Resolved' && (
                         <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5">
                           <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">Equipment Cost</span>
@@ -470,8 +502,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                           </span>
                         </div>
                       )}
-
-                      {/* ✨ ON HOLD REASON DISPLAY */}
+  
                       {(selectedTicketData.liveMatch?.on_hold_reason || selectedTicketData.ticket.on_hold_reason) && (
                         <div className="flex flex-col border-t border-slate-200/60 pt-3 mt-1">
                           <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -528,7 +559,6 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
           </div>
         )}
   
-        {/* Micro Scrollbar Styles */}
         <style dangerouslySetInnerHTML={{__html: `
           .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
@@ -540,27 +570,19 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
     );
 }
 
-// ✨ NEW: SKELETON LOADER COMPONENT (Matched height with ViewTicket cards)
 function SkeletonCard() {
   return (
     <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[340px] animate-pulse">
-      {/* Image Placeholder */}
       <div className="w-full h-32 bg-slate-200 rounded-xl mb-4 shrink-0"></div>
-      
-      {/* Title & Badge */}
       <div className="flex justify-between items-start mb-3">
         <div className="h-4 bg-slate-200 rounded-md w-3/4"></div>
         <div className="h-4 bg-slate-200 rounded-full w-16"></div>
       </div>
-      
-      {/* Description */}
       <div className="space-y-2 flex-1">
         <div className="h-2.5 bg-slate-100 rounded w-full"></div>
         <div className="h-2.5 bg-slate-100 rounded w-5/6"></div>
         <div className="h-2.5 bg-slate-100 rounded w-4/6"></div>
       </div>
-      
-      {/* Footer Details */}
       <div className="flex flex-col gap-2 mt-auto pt-3 border-t border-slate-100">
         <div className="h-3 bg-slate-200 rounded w-1/2"></div>
         <div className="h-5 bg-slate-200 rounded-full w-24"></div>
@@ -569,7 +591,6 @@ function SkeletonCard() {
   );
 }
 
-// ✨ NEW: EMPTY STATE COMPONENT (Matched height with ViewTicket cards)
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
     <div className="flex flex-col items-center justify-center h-[340px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center">
