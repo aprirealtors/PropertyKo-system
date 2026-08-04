@@ -368,7 +368,7 @@ export default function OwnerDashboard() {
 
   const openRepairModal = () => {
     if (myUnitsList.length === 1) {
-      setSelectedUnitForRepair(myUnitsList[0].unit_number);
+      setSelectedUnitForRepair(`${myUnitsList[0].property_name} - ${myUnitsList[0].unit_number}`);
     } else {
       setSelectedUnitForRepair("");
     }
@@ -579,10 +579,29 @@ export default function OwnerDashboard() {
   };
   const initials = getInitials(userData?.name);
   
-  // ✨ Displays ONLY the unit_number instead of property_name + unit_number
-  const fullUnitsDisplay = myUnitsList.length > 0 
-    ? myUnitsList.map(u => u.unit_number).join(" • ")
-    : "No assigned units";
+  // ✨ Group units by property name to display like: "Future Point - COM-1A & COM-1B"
+  const fullUnitsDisplay = useMemo(() => {
+    if (myUnitsList.length === 0) return "No assigned units";
+    
+    const grouped = myUnitsList.reduce((acc: Record<string, string[]>, unit: any) => {
+      // Kunin ang property name nang walang .toUpperCase() para ma-retain ang original casing
+      const propName = unit.property_name || "Unknown Property";
+      
+      if (!acc[propName]) acc[propName] = [];
+      acc[propName].push(unit.unit_number);
+      
+      return acc;
+    }, {});
+
+    // Pagdugtungin ang mga units gamit ang " & " kapag nasa iisang property
+    return Object.entries(grouped)
+      .map(([prop, units]: [string, string[]]) => {
+        // ✨ FIX: I-sort ng pa-alpabeto (at alphanumeric) bago pagdugtungin
+        const sortedUnits = units.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        return `${prop} - ${sortedUnits.join(' & ')}`;
+      })
+      .join(" • ");
+  }, [myUnitsList]);
 
   const uniqueBusinessNames = Array.from(new Set(myUnitsList.map(u => u.business_name).filter(b => b && b !== "—")));
   const businessNameDisplay = uniqueBusinessNames.join(" | ");
@@ -1556,11 +1575,18 @@ export default function OwnerDashboard() {
                       disabled={isSubmitting}
                     >
                       <option value="" disabled>Select which unit needs repair...</option>
-                      {myUnitsList.map((u) => (
-                        <option key={u.id} value={u.unit_number}>
-                          {u.unit_number}
-                        </option>
-                      ))}
+                      {[...myUnitsList]
+                        .sort((a, b) => {
+                          // ✨ FIX: I-sort ang dropdown options alphabetically and alphanumerically
+                          const nameA = `${a.property_name} - ${a.unit_number}`;
+                          const nameB = `${b.property_name} - ${b.unit_number}`;
+                          return nameA.localeCompare(nameB, undefined, { numeric: true });
+                        })
+                        .map((u) => (
+                          <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>
+                            {u.property_name} - {u.unit_number}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 )}
