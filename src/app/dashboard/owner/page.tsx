@@ -7,7 +7,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, PauseCircle, MessageSquare, FileCheck, AlertCircle,
-  Clock, Check
+  Clock, Check, Lock, Key, Eye, EyeOff // <-- ADDED NEW ICONS
 } from "lucide-react";
 import ConversationTab from "./conversation"; 
 import FinancialTab from "./financial"; 
@@ -72,6 +72,19 @@ export default function OwnerDashboard() {
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [reviewOnHoldTicket, setReviewOnHoldTicket] = useState<any>(null);
+
+  // --- NEW: Change Password States ---
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  // --- NEW: Eye Toggle States ---
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     fetchOwnerData();
@@ -358,6 +371,61 @@ export default function OwnerDashboard() {
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // --- NEW: Handle Password Change ---
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+
+    try {
+      // 1. Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+
+      // Success
+      showToast("Password updated successfully!", "success");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      
+      // Reset toggles
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
+    }
   };
 
   const handleConversationClick = () => {
@@ -838,7 +906,14 @@ export default function OwnerDashboard() {
 
           <div className="mt-auto pt-4 border-t border-white/5">
              <div 
-               onClick={() => setIsWorkspaceModalOpen(true)}
+               onClick={() => {
+                 setIsWorkspaceModalOpen(true);
+                 setIsChangingPassword(false);
+                 setPasswordError(null);
+                 setShowCurrentPassword(false);
+                 setShowNewPassword(false);
+                 setShowConfirmPassword(false);
+               }}
                className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
                title="View Profile Details"
              >
@@ -1431,7 +1506,6 @@ export default function OwnerDashboard() {
             {activeTab === 'messages' && <span className="absolute inset-1 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
               
-              {/* ✨ FIX: STRICT 20x20 CONTAINER. Walang flex span para identikal sa ibang raw icons! */}
               <div className="relative w-5 h-5 block shrink-0">
                 <MessageSquare size={20} className="absolute inset-0" />
                 {unreadMessages > 0 && (
@@ -1464,7 +1538,17 @@ export default function OwnerDashboard() {
           </button>
           
           {/* PROFILE */}
-          <button onClick={() => setIsWorkspaceModalOpen(true)} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors">
+          <button 
+            onClick={() => {
+              setIsWorkspaceModalOpen(true);
+              setIsChangingPassword(false);
+              setPasswordError(null);
+              setShowCurrentPassword(false);
+              setShowNewPassword(false);
+              setShowConfirmPassword(false);
+            }} 
+            className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors"
+          >
             {isWorkspaceModalOpen && <span className="absolute inset-1 bg-emerald-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${isWorkspaceModalOpen ? 'text-[#359b46] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
               <User size={20} />
@@ -1543,6 +1627,130 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* --- Change Password Box --- */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm border border-slate-100 p-5 sm:p-8">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em]">
+                    Security
+                  </h4>
+                  {!isChangingPassword && (
+                    <button 
+                      onClick={() => setIsChangingPassword(true)}
+                      className="text-[#359b46] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <Key size={14} /> Change Password
+                    </button>
+                  )}
+                </div>
+
+                {isChangingPassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {passwordError && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        {passwordError}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"}
+                          required 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-3">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setShowCurrentPassword(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
+                        }}
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-white bg-[#359b46] hover:bg-[#2c813a] transition-all shadow-md shadow-emerald-500/20 text-xs flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        {isSubmittingPassword ? (
+                          <span className="animate-pulse">Updating...</span>
+                        ) : (
+                          <><Lock size={14} strokeWidth={2.5} /> Update Password</>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
               
             </div>
@@ -1670,7 +1878,7 @@ export default function OwnerDashboard() {
                       </div>
                     ) : (
                       <div className="flex gap-3 w-full">
-                        {/* CAMERA BUTTON - ✨ FIX: Nilagyan ng md:hidden para mawala sa desktop */}
+                        {/* CAMERA BUTTON */}
                         <label className="flex-1 flex md:hidden flex-col items-center justify-center gap-2 px-2 py-5 sm:py-6 rounded-xl sm:rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
                           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-4 ring-slate-50 group-hover:ring-emerald-50 shrink-0 mb-1">
                             <Camera size={24} strokeWidth={2.5} className="sm:w-7 sm:h-7" />
@@ -1690,7 +1898,7 @@ export default function OwnerDashboard() {
                           />
                         </label>
 
-                        {/* GALLERY / UPLOAD BUTTON - ✨ FIX: Automatic mag-isa sa desktop, "Upload Photo" ang text */}
+                        {/* GALLERY / UPLOAD BUTTON */}
                         <label className="flex-1 flex flex-col items-center justify-center gap-2 px-2 py-4 md:py-6 rounded-xl border-2 border-dashed border-slate-300 hover:border-emerald-400 hover:bg-emerald-50/50 cursor-pointer transition-all group text-center shadow-sm bg-white">
                           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center text-slate-400 group-hover:text-emerald-600 transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-emerald-50 shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>

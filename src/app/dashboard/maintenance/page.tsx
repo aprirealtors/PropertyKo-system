@@ -6,7 +6,8 @@ import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { 
   Bell, CheckCircle2, AlertTriangle, LogOut, 
-  Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight
+  Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight, Lock, Key,
+  Eye, EyeOff
 } from "lucide-react";
 
 // Import Modular Tabs
@@ -58,6 +59,19 @@ export default function MaintenanceDashboard() {
 
   // Metrics
   const [metrics, setMetrics] = useState({ assigned: 0, dueToday: 0, doneThisWeek: 0 });
+
+  // --- Change Password States ---
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  // --- Eye Toggle States ---
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     fetchUserDataAndTasks();
@@ -218,30 +232,59 @@ export default function MaintenanceDashboard() {
     router.push('/');
   };
 
-  // Notification Actions
-  const markAllAsRead = async () => {
-    if (!userEmail) return;
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
-    setUnreadCount(0);
-    await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
-  };
+  // Handle Password Change
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
 
-  const clearAllNotifications = async () => {
-    if (!userEmail) return;
-    setNotifications([]);
-    setUnreadCount(0);
-    setIsNotifOpen(false);
-    await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
-  };
-
-  const handleNotificationClick = async (notif: any) => {
-    if (!notif.is_read) {
-      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
     }
-    setIsNotifOpen(false);
-    setActiveTab("tasks"); 
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+
+    try {
+      // 1. Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+
+      // Success
+      showToast("Password updated successfully!", "success");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      
+      // Reset toggles
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
+    }
   };
 
   if (isLoading) {
@@ -268,46 +311,6 @@ export default function MaintenanceDashboard() {
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
-          {/* <div onClick={() => setIsNotifOpen(!isNotifOpen)} className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors">
-            <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
-            {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0b1727] animate-pulse">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </div> */}
-
-          {/* Notifications Dropdown */}
-          {/* {isNotifOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
-              <div className="absolute top-14 right-0 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden flex flex-col text-slate-800">
-                <div className="p-3 flex justify-between items-center bg-slate-50 border-b border-slate-200">
-                  <h3 className="font-bold text-[#0a1e3f] text-sm">Notifications</h3>
-                  <div className="flex gap-2 relative z-10">
-                    <button onClick={markAllAsRead} className="text-xs text-slate-500 hover:text-[#359b46] flex items-center gap-1 transition-colors"><CheckCheck size={14} /> Read All</button>
-                    <button onClick={clearAllNotifications} className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"><Trash2 size={14} /> Clear</button>
-                  </div>
-                </div>
-                <div className="max-h-80 overflow-y-auto relative z-10">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-slate-400 text-sm">No new notifications</div>
-                  ) : (
-                    notifications.map((notif) => (
-                      <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors ${!notif.is_read ? 'bg-emerald-50/50' : 'opacity-70'}`}>
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-semibold text-sm text-[#0a1e3f] truncate pr-2">{notif.title}</span>
-                          {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[#359b46] shrink-0 mt-1"></span>}
-                        </div>
-                        <p className="text-xs text-slate-500 line-clamp-2">{notif.message}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </>
-          )} */}
-
           <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-emerald-500/30 text-emerald-50 bg-gradient-to-r from-emerald-600 to-green-700">Maintenance Portal</span>
           
           <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-xl">
@@ -327,17 +330,21 @@ export default function MaintenanceDashboard() {
           
           <nav className="space-y-1.5 flex-1">
             <NavButton active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
-            
-            {/* ✨ UPDATED: Tasks button now receives metrics.assigned as badgeCount */}
             <NavButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} badgeCount={metrics.assigned} icon={<Wrench size={18} strokeWidth={activeTab === 'tasks' ? 2.5 : 2} />} label="My Tasks" />
-            
             <NavButton active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} badgeCount={unreadMessageCount} icon={<MessageSquare size={18} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />} label="Messages" />
           </nav>
 
           {/* Premium Bottom User Tag (Desktop Only) */}
           <div className="mt-auto pt-4 border-t border-white/5">
              <div 
-               onClick={() => setIsWorkspaceModalOpen(true)}
+               onClick={() => {
+                 setIsWorkspaceModalOpen(true);
+                 setIsChangingPassword(false);
+                 setPasswordError(null);
+                 setShowCurrentPassword(false);
+                 setShowNewPassword(false);
+                 setShowConfirmPassword(false);
+               }}
                className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
                title="View Profile Details"
              >
@@ -375,12 +382,18 @@ export default function MaintenanceDashboard() {
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
         <div className="flex justify-around items-center px-1 py-1.5">
           <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
-          
-          {/* ✨ UPDATED: Mobile Tasks button now receives metrics.assigned as badgeCount */}
           <MobileNavItem active={activeTab === 'tasks' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('tasks'); setIsWorkspaceModalOpen(false);}} badgeCount={metrics.assigned} icon={<Wrench size={22} />} label="Tasks" />
-          
           <MobileNavItem active={activeTab === 'messages' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('messages'); setIsWorkspaceModalOpen(false);}} badgeCount={unreadMessageCount} icon={<MessageSquare size={22} />} label="Messages" />
-          <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Account" />
+          <MobileNavItem 
+            active={isWorkspaceModalOpen} 
+            onClick={() => {
+              setIsWorkspaceModalOpen(true); 
+              setIsChangingPassword(false);
+              setPasswordError(null);
+            }} 
+            icon={<User size={22} />} 
+            label="Account" 
+          />
         </div>
       </nav>
 
@@ -388,7 +401,6 @@ export default function MaintenanceDashboard() {
       {/* 1. WORKSPACE PROFILE MODAL (STAFF PROFILE) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          {/* ✨ Bottom sheet sa mobile, Center modal sa desktop */}
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
             
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
@@ -446,6 +458,130 @@ export default function MaintenanceDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* --- Change Password Box --- */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-sm border border-slate-100 p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Security
+                  </h4>
+                  {!isChangingPassword && (
+                    <button 
+                      onClick={() => setIsChangingPassword(true)}
+                      className="text-[#359b46] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <Key size={14} /> Change Password
+                    </button>
+                  )}
+                </div>
+
+                {isChangingPassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {passwordError && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        {passwordError}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Current Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"}
+                          required 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Confirm New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setShowCurrentPassword(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
+                        }}
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-2.5 rounded-xl font-bold text-white bg-[#359b46] hover:bg-[#2c813a] transition-colors shadow-sm text-xs flex items-center justify-center gap-2"
+                      >
+                        {isSubmittingPassword ? (
+                          <span className="animate-pulse">Updating...</span>
+                        ) : (
+                          <><Lock size={14} /> Update Password</>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
               
             </div>
           </div>
@@ -457,7 +593,6 @@ export default function MaintenanceDashboard() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#081832]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-10 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-white/20">
             
-            {/* ✨ Responsive Premium Icon Wrapper */}
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] bg-red-50 flex items-center justify-center mx-auto mb-5 sm:mb-6 border-4 border-red-50/50 shadow-sm">
               <AlertTriangle size={28} className="text-red-500 sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
@@ -492,14 +627,14 @@ export default function MaintenanceDashboard() {
           {toast.message}
         </div>
       )}
-      {/* ✨ GLOBAL CSS: INVISIBLE SCROLLBARS */}
+      
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar {
-          scrollbar-width: none; /* Firefox */
-          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; 
+          -ms-overflow-style: none; 
         }
         .custom-scrollbar::-webkit-scrollbar { 
-          display: none; /* Chrome, Safari, Opera */
+          display: none; 
         }
         
         .animate-bounce-slow {
@@ -527,7 +662,6 @@ function NavButton({ active, onClick, icon, label, badgeCount }: any) {
       </div>
       <span className="tracking-wide flex-1 text-left">{label}</span>
       
-      {/* DESKTOP BADGE */}
       {badgeCount > 0 && (
         <span className="bg-red-500 text-white text-[10px] font-black h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shadow-md animate-pulse">
           {badgeCount > 99 ? '99+' : badgeCount}
@@ -545,8 +679,6 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
     <button onClick={onClick} className={`relative flex flex-col items-center justify-center flex-1 py-2 rounded-2xl transition-all duration-300 ${active ? 'text-[#359b46]' : 'text-slate-400 hover:text-slate-600'}`}>
       {active && <span className="absolute inset-0 bg-[#359b46]/10 rounded-xl animate-in zoom-in duration-200" />}
       <div className={`relative z-10 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
-        
-        {/* ✨ FIX: Ginawang span at ni-lock ang size para walang extra invisible padding */}
         <span className="relative leading-none flex items-center justify-center w-5 h-5 shrink-0 block">
           {icon}
           {badgeCount > 0 && (
@@ -555,7 +687,6 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
             </span>
           )}
         </span>
-
       </div>
       <span className="text-[9px] font-bold mt-0.5 relative z-10 uppercase">{label}</span>
     </button>

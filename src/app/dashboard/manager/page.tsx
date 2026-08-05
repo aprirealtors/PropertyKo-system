@@ -7,7 +7,8 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
-  Upload, Building, CheckCircle2, User, MessageSquare, ChevronRight, LogOut, Users
+  Upload, Building, CheckCircle2, User, MessageSquare, ChevronRight, LogOut, Users,
+  Lock, Key, Eye, EyeOff // <-- ADDED NEW ICONS
 } from "lucide-react";
 
 import DashboardTab from "./dashboard";
@@ -53,6 +54,19 @@ export default function ManagerDashboard() {
 
   // TICKETS & MAINTENANCE HIGHLIGHT STATE
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+
+  // --- NEW: Change Password States ---
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  // --- NEW: Eye Toggle States ---
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Fetch the logged-in user and their parent organization data
   useEffect(() => {
@@ -289,57 +303,6 @@ export default function ManagerDashboard() {
     };
   }, [managerProfile.email, orgData]);
 
-  // FETCH UNREAD MESSAGES & SETUP REAL-TIME LISTENER
-  // useEffect(() => {
-  //   if (!managerProfile.email) return;
-
-  //   const fetchUnreadMessages = async () => {
-  //     const { data, error } = await supabase
-  //       .from('messages')
-  //       .select('id')
-  //       .eq('receiver_email', managerProfile.email)
-  //       .eq('is_read', false);
-
-  //     if (!error && data) {
-  //       setUnreadMessageCount(data.length);
-  //     }
-  //   };
-
-  //   fetchUnreadMessages();
-
-  //   const messagesChannel = supabase
-  //     .channel('manager-unread-messages')
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'INSERT',
-  //         schema: 'public',
-  //         table: 'messages',
-  //         filter: `receiver_email=eq.${managerProfile.email}`
-  //       },
-  //       () => {
-  //         fetchUnreadMessages();
-  //       }
-  //     )
-  //     .on(
-  //       'postgres_changes',
-  //       {
-  //         event: 'UPDATE',
-  //         schema: 'public',
-  //         table: 'messages',
-  //         filter: `receiver_email=eq.${managerProfile.email}`
-  //       },
-  //       () => {
-  //         fetchUnreadMessages();
-  //       }
-  //     )
-  //     .subscribe();
-
-  //   return () => {
-  //     supabase.removeChannel(messagesChannel);
-  //   };
-  // }, [managerProfile.email]);
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/");
@@ -358,6 +321,61 @@ export default function ManagerDashboard() {
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000); 
+  };
+
+  // --- NEW: Handle Password Change ---
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+
+    try {
+      // 1. Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: managerProfile.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+
+      // Success
+      showToast("Password updated successfully!", "success");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      
+      // Reset toggles
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
+    }
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -398,10 +416,18 @@ export default function ManagerDashboard() {
     }
   };
 
-  // ✨ FIX: Awtomatikong isasara ang mobile menu/sidebar kapag binuksan ang profiles sa mobile view
   const openUserProfileFromSidebar = () => {
     setIsUserProfileModalOpen(true);
     setIsMobileMenuOpen(false); 
+    // Reset password states
+    setIsChangingPassword(false);
+    setPasswordError(null);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const openWorkspaceFromSidebar = () => {
@@ -751,6 +777,131 @@ export default function ManagerDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* --- Change Password Box --- */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200/60 p-5 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Security
+                  </h4>
+                  {!isChangingPassword && (
+                    <button 
+                      onClick={() => setIsChangingPassword(true)}
+                      className="text-[#359b46] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <Key size={14} /> Change Password
+                    </button>
+                  )}
+                </div>
+
+                {isChangingPassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {passwordError && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        {passwordError}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"}
+                          required 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-3">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setShowCurrentPassword(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
+                        }}
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-white bg-[#359b46] hover:bg-[#2c813a] transition-all shadow-md shadow-emerald-500/20 text-xs flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        {isSubmittingPassword ? (
+                          <span className="animate-pulse">Updating...</span>
+                        ) : (
+                          <><Lock size={14} strokeWidth={2.5} /> Update Password</>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+              
             </div>
           </div>
         </div>
@@ -983,35 +1134,3 @@ function NavItem({ icon, label, isActive, onClick, badgeCount }: { icon: React.R
     </button>
   );
 }
-
-// ✨ UPDATED NAV ITEM: Support for badgeCount alongside Admin's premium styling
-// function NavItem({ icon, label, isActive, onClick, badgeCount }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number }) {
-//   return (
-//     <button 
-//       onClick={onClick} 
-//       className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
-//         isActive 
-//           ? "bg-gradient-to-r from-[#359b46] to-[#277534] text-white shadow-lg shadow-emerald-900/20 border border-[#359b46]" 
-//           : "text-slate-400 hover:bg-white/5 hover:text-slate-100 border border-transparent"
-//       }`}
-//     >
-//       <span className={`shrink-0 transition-transform duration-300 ${isActive ? "text-white scale-110" : "text-slate-400 group-hover:scale-110 group-hover:text-slate-200"}`}>
-//         {icon}
-//       </span>
-      
-//       <span className="tracking-wide truncate whitespace-nowrap flex-1 text-left">{label}</span>
-      
-//       {/* Messages Badge Injection */}
-//       {badgeCount !== undefined && badgeCount > 0 && (
-//         <span className="ml-auto bg-red-500 text-white text-[11px] font-black px-2 py-0.5 rounded-full shadow-md animate-pulse shrink-0">
-//           {badgeCount > 99 ? '99+' : badgeCount}
-//         </span>
-//       )}
-      
-//       {/* Normal Chevron for unselected tabs without badges */}
-//       {!isActive && (!badgeCount || badgeCount === 0) && (
-//         <ChevronRight size={16} className="shrink-0 ml-auto opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-slate-500" />
-//       )}
-//     </button>
-//   );
-// }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, Inbox, PauseCircle, Trash2 } from "lucide-react";
+import { Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, Inbox, PauseCircle, Trash2, Clock, CheckCircle } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -44,6 +44,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   // ✨ Derive the existing photo from the selected inbox ticket
   const selectedInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
   const existingPhotoUrl = selectedInboxTicket?.photo_url;
+
+  const capitalizeWords = (str: string) => {
+    if (!str) return "";
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  };
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -255,7 +260,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   }, [highlightTicketId, isLoadingTickets]);
 
   return (
-      <div className="flex flex-col w-full h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] relative pb-2 overflow-hidden font-sans selection:bg-[#359b46]/10">
+      <div className="flex flex-col w-full h-[calc(100vh-130px)] md:h-[calc(100vh-130px)] relative pb-2 overflow-hidden font-sans selection:bg-[#359b46]/10">
         
         {/* PREMIUM HEADER */}
         <div className="shrink-0 mb-6">
@@ -302,8 +307,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         </div>
   
         {/* KANBAN BOARD WRAPPER */}
-        <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-6 custom-scrollbar">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start w-full">
+        <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-3 custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start w-full h-full min-h-[400px]">
             
             {/* COLUMN 1: OPEN */}
             <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
@@ -387,7 +392,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   <EmptyState icon={CheckCircle2} title="No resolved tickets" message="Successfully completed tasks will be logged here." />
                 ) : (
                   resolvedTickets.map((ticket) => (
-                    <TicketCard key={ticket.id} id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="green" statusLabel="Closed" showCost onClick={() => setReviewTicket(ticket)} />
+                    <TicketCard 
+                      key={ticket.id} 
+                      id={`maintenance-card-${ticket.id}`} 
+                      isHighlighted={activeHighlightId === String(ticket.id)} 
+                      ticket={ticket} 
+                      teamMembers={teamMembers} 
+                      statusColor="green" 
+                      statusLabel="Closed" 
+                      showCost 
+                       
+                    />
                   ))
                 )}
               </div>
@@ -474,15 +489,20 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           if (id) {
                             const t = inboxTickets.find(x => String(x.id) === id);
                             if (t) {
-                              setTitle(t.title || ""); setLocation(t.location || ""); setPriority(t.priority || "Normal");
+                              // ✨ FIX: Capitalized title
+                              setTitle(t.title ? capitalizeWords(t.title) : ""); 
+                              setLocation(t.location || ""); 
+                              setPriority(t.priority || "Normal");
                               const desc = t.description || "";
                               if (desc.includes("Best time to visit:")) {
                                 const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
-                                if (timeMatch) setVisitTime(timeMatch.trim());
+                                // ✨ FIX: Capitalized visit time
+                              if (timeMatch) setVisitTime(capitalizeWords(timeMatch.trim()));
                               } else setVisitTime("");
                               if (desc.includes("Reported by ")) {
                                 const repMatch = desc.split("Reported by ")[1]?.split(".")[0];
-                                if (repMatch) setReporter(repMatch.trim());
+                                // ✨ FIX: Capitalized reporter
+                              if (repMatch) setReporter(capitalizeWords(repMatch.trim()));
                               } else setReporter("Resident"); 
                             }
                           } else { setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setPriority("Normal"); }
@@ -597,7 +617,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description</label>
-                    <input type="text" required placeholder="e.g. Aircon leaking" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
+                    <input type="text" required placeholder="e.g. Aircon leaking" value={title} onChange={(e) => setTitle(capitalizeWords(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit</label>
@@ -610,11 +630,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Best Time to Visit (Optional)</label>
-                    <input type="text" placeholder="e.g. Tomorrow morning, Weekends only" value={visitTime} onChange={(e) => setVisitTime(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
+                    <input type="text" placeholder="e.g. Tomorrow morning, Weekends only" value={visitTime} onChange={(e) => setVisitTime(capitalizeWords(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
-                    <input type="text" placeholder="e.g. Deivid Valderama (Owner)" value={reporter} onChange={(e) => setReporter(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
+                    <input type="text" placeholder="e.g. Deivid Valderama (Owner)" value={reporter} onChange={(e) => setReporter(capitalizeWords(e.target.value))} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-medium text-slate-700 shadow-sm" disabled={isSubmitting} />
                   </div>
                   <div className="flex gap-4">
                     <div className="flex-1">
@@ -648,10 +668,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   
   function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, showCost, onClick, isHighlighted }: any) {
     const colors: any = {
-      yellow: 'bg-amber-50 text-amber-700 border border-amber-100',
-      blue: 'bg-blue-50 text-[#1d82f5] border border-blue-100',
-      purple: 'bg-purple-50 text-purple-700 border border-purple-100',
-      green: 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:shadow-emerald-500/20 hover:border-emerald-300 transition-all cursor-pointer',
+      yellow: 'bg-amber-50 text-amber-700 border-amber-200/60',
+      blue: 'bg-blue-50 text-blue-600 border-blue-200/60',
+      purple: 'bg-purple-50 text-purple-700 border-purple-200/60',
+      green: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:shadow-emerald-500/20 hover:border-emerald-300 transition-all cursor-pointer',
     };
   
     let assigneeName = "Unassigned";
@@ -661,59 +681,53 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       else assigneeName = ticket.assigned_to.split('@')[0];
     }
   
-    const formattedCost = ticket.cost !== undefined ? ticket.cost : 0;
-  
     return (
       <div 
         id={id}
         onClick={onClick} 
-        className={`bg-white p-4 rounded-2xl shadow-sm border transition-all duration-500 flex flex-col h-auto min-h-[250px] ${
+        // ✨ FIX: Sinet sa compact h-[150px] dahil 4 na data points na lang ang laman
+        className={`bg-white p-4 sm:p-5 rounded-3xl border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden ${
           isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-          : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'
-        } ${onClick ? 'cursor-pointer hover:shadow-md active:scale-[0.98]' : ''}`}
+          : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-slate-100 border-r-slate-100 shadow-sm' : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 hover:shadow-[0_12px_30px_rgb(0,0,0,0.06)]'
+        } ${onClick ? 'cursor-pointer' : ''}`}
       >
-        <div className="flex justify-between items-start mb-1 gap-2 shrink-0">
-          <h5 className="font-bold text-[#0a1e3f] text-sm line-clamp-2 leading-tight">{ticket.title}</h5>
-          {ticket.priority === 'Urgent' && statusColor !== 'green' && (
-            <span className="bg-red-100 text-red-700 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0 mt-0.5">🚨 URGENT</span>
-          )}
-        </div>
-        
-        <div className="mb-2 shrink-0">
-          <span className="text-xs font-semibold text-[#359b46] truncate block"><MapPin size={12} className="inline mr-1 -mt-0.5" />{ticket.location}</span>
-        </div>
-        
-        <div className="flex-1 flex flex-col">
-          <p className={`text-xs mb-3 line-clamp-2 ${isHighlighted ? 'text-blue-700' : 'text-slate-500'}`}>{ticket.description}</p>
-          
-          {(statusColor === 'blue' || statusColor === 'yellow') && (
-            <div className="px-3 py-2.5 bg-blue-50/70 rounded-xl border border-blue-100 text-[11px] text-blue-700 leading-snug mt-auto mb-3 shrink-0">
-              <span className="font-extrabold text-blue-800 block mb-0.5 flex items-center gap-1.5 uppercase tracking-wider"><AlertCircle size={12} /> Status Update</span>
-              <span className="font-bold tracking-wide">● {statusColor === 'yellow' ? 'Awaiting Action' : 'Currently Working'}</span>
-            </div>
-          )}
-  
-          {statusColor === 'purple' && ticket.on_hold_reason && (
-            <div className="px-3 py-2.5 bg-purple-50/70 rounded-xl border border-purple-100 text-[11px] text-purple-700 leading-snug mt-auto mb-3 shrink-0">
-              <span className="font-extrabold text-purple-800 block mb-0.5 flex items-center gap-1.5 uppercase tracking-wider"><AlertCircle size={12} /> Hold Reason</span>
-              <span className="font-medium line-clamp-2">● {ticket.on_hold_reason}</span>
-            </div>
-          )}
-  
-          {statusColor === 'green' && ticket.remarks && (
-            <div className="px-3 py-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100 text-[11px] text-emerald-700 leading-snug mt-auto mb-3 shrink-0">
-              <span className="font-extrabold text-emerald-800 block mb-0.5 flex items-center gap-1.5 uppercase tracking-wider"><CheckCircle2 size={12} /> Staff Remarks</span>
-              <span className="font-medium line-clamp-2">● {ticket.remarks}</span>
-            </div>
-          )}
-        </div>
-  
-        <div className={`flex justify-between items-center mt-auto shrink-0 border-t pt-3 ${isHighlighted ? 'border-blue-200' : 'border-slate-100'}`}>
-          <div className="flex gap-2 items-center flex-wrap">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[statusColor]}`}>{statusLabel}</span>
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isHighlighted ? 'border-blue-200 bg-blue-100 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {assigneeName}</span>
+        {/* 1 & 2: TITLE & STATUS */}
+        <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+          <div className="flex items-start gap-2 min-w-0">
+            {statusColor === 'green' && <CheckCircle size={16} className="text-emerald-600 mt-0.5 shrink-0" strokeWidth={2.5} />}
+            <h4 className={`font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-2 transition-colors ${onClick ? 'group-hover:text-blue-600' : ''}`}>
+              {ticket.title}
+            </h4>
           </div>
-          {showCost && <span className="text-[12px] text-[#0a1e3f] font-black tracking-tight">₱{formattedCost.toLocaleString()}</span>}
+          <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${colors[statusColor]}`}>
+            {statusLabel}
+          </span>
+        </div>
+        
+        {/* 3: LOCATION */}
+        <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
+          <p className="text-slate-500 font-bold text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate">
+            <MapPin size={12} className="text-[#359b46] shrink-0" />
+            <span className="truncate">{ticket.location}</span>
+          </p>
+          {ticket.priority === 'Urgent' && statusColor !== 'green' && (
+            <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider animate-pulse shrink-0" title="Urgent">
+              🚨
+            </span>
+          )}
+        </div>
+  
+        {/* 4: ASSIGNED TO */}
+        <div className={`flex justify-between items-center shrink-0 border-t pt-3 ${isHighlighted ? 'border-blue-200' : 'border-slate-100/80'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold shadow-sm shrink-0">
+              {assigneeName !== "Unassigned" ? assigneeName.substring(0, 1) : "?"}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned To</span>
+              <span className="text-xs font-bold text-slate-600 truncate">{assigneeName}</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -721,17 +735,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
 function SkeletonCard() {
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[250px] animate-pulse">
-      <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-3"></div>
-      <div className="h-3 bg-slate-200 rounded-md w-1/2 mb-4"></div>
-      <div className="space-y-2 flex-1">
-        <div className="h-2.5 bg-slate-100 rounded w-full"></div>
-        <div className="h-2.5 bg-slate-100 rounded w-5/6"></div>
+    // ✨ FIX: Strict h-[150px] din para pumantay
+    <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[150px] animate-pulse shrink-0 overflow-hidden">
+      <div className="flex justify-between items-start mb-3 shrink-0">
+        <div className="h-4 bg-slate-200 rounded-md w-3/4"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-16"></div>
       </div>
-      <div className="h-14 bg-slate-50 rounded-xl w-full mt-auto mb-3"></div>
-      <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-auto">
-        <div className="h-5 bg-slate-200 rounded-full w-16"></div>
-        <div className="h-5 bg-slate-200 rounded-full w-24"></div>
+      <div className="h-3 bg-slate-200 rounded-md w-1/2 mt-auto mb-4 shrink-0"></div>
+      <div className="flex justify-between items-center border-t border-slate-100 pt-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-slate-200 rounded-full"></div>
+          <div className="h-4 bg-slate-200 rounded-md w-24"></div>
+        </div>
       </div>
     </div>
   );
@@ -739,12 +754,13 @@ function SkeletonCard() {
 
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
-    <div className="flex flex-col items-center justify-center h-[250px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center">
-      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
-        <Icon size={20} className="text-slate-400" />
+    // ✨ FIX: Strict h-[150px] din para pumantay
+    <div className="flex flex-col items-center justify-center h-[180px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-3xl p-4 text-center shrink-0">
+      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-2">
+        <Icon size={18} className="text-slate-400" />
       </div>
       <h4 className="text-sm font-bold text-slate-600 mb-1">{title}</h4>
-      <p className="text-xs text-slate-400">{message}</p>
+      <p className="text-[10px] text-slate-400 max-w-[200px] leading-tight">{message}</p>
     </div>
   );
 }

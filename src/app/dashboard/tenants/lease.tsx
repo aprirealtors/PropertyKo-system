@@ -58,6 +58,9 @@ export default function LeaseTab({ setActiveTab }: any) {
   const ownerName = unit?.owner_name || "Administration"; // ✨ Fetched the Owner's Name
   const monthlyRent = lease?.monthly_rent || 0;
   
+  // ✨ Check if the owner uploaded a document
+  const hasDocument = !!lease?.document_url;
+  
   const leaseStartDate = lease?.start_date 
     ? new Date(lease.start_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
     : "Not specified";
@@ -186,21 +189,38 @@ export default function LeaseTab({ setActiveTab }: any) {
                       <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />} value={leaseEndDate} />
                     </div>
                     
-                    {/* Full Width Document Button */}
+                    {/* View Full Contract Button */}
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-slate-100">
-                      <button className="w-full bg-blue-50/50 hover:bg-blue-50 text-[#1e88e5] p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-blue-200/60 flex items-center justify-between group transition-all active:scale-[0.98]">
+                      <button 
+                        onClick={() => {
+                          if (hasDocument) window.open(lease.document_url, '_blank');
+                        }}
+                        disabled={!hasDocument}
+                        className={`w-full p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border flex items-center justify-between group transition-all ${
+                          hasDocument 
+                            ? "bg-blue-50/50 hover:bg-blue-50 text-[#1e88e5] border-blue-200/60 active:scale-[0.98] cursor-pointer" 
+                            : "bg-slate-50 text-slate-400 border-slate-200/60 cursor-not-allowed opacity-80"
+                        }`}
+                      >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className="p-2.5 sm:p-3 bg-white shadow-sm border border-blue-100 rounded-xl shrink-0 text-[#1e88e5]">
+                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-xl shrink-0 ${hasDocument ? "border-blue-100 text-[#1e88e5]" : "border-slate-200 text-slate-400"}`}>
                             <FileCheck size={20} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div className="text-left min-w-0">
-                            <span className="font-black text-[13px] sm:text-base text-[#0a1e3f] block tracking-tight truncate">View Full Contract</span>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 truncate">PDF • Official Copy</span>
+                            <span className={`font-black text-[13px] sm:text-base block tracking-tight truncate ${hasDocument ? "text-[#0a1e3f]" : "text-slate-400"}`}>
+                              {hasDocument ? "View Full Contract" : "No Contract Uploaded"}
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 truncate">
+                              {hasDocument ? "PDF • Official Copy" : "Pending owner upload"}
+                            </span>
                           </div>
                         </div>
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-blue-100 group-hover:scale-105 group-hover:bg-[#1e88e5] group-hover:text-white group-hover:border-[#1e88e5] transition-all shrink-0">
-                          <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
+                        
+                        {hasDocument && (
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-blue-100 group-hover:scale-105 group-hover:bg-[#1e88e5] group-hover:text-white group-hover:border-[#1e88e5] transition-all shrink-0">
+                            <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        )}
                       </button>
                     </div>
                   </div>

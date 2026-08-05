@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle } from 'lucide-react';
 
 export default function LeaseTab({ userData, units }: any) {
   // Sort the units alphabetically by Property Name, then numerically by Unit Number
@@ -27,6 +27,11 @@ export default function LeaseTab({ userData, units }: any) {
   const [selectedUnit, setSelectedUnit] = useState<any>(sortedUnits?.[0] || null);
   const [activeLease, setActiveLease] = useState<any>(null);
   const [isLoadingLease, setIsLoadingLease] = useState(false);
+
+  // File Upload State
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false); // ✨ Added success state
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Declare Lease Modal States
   const [isDeclareModalOpen, setIsDeclareModalOpen] = useState(false);
@@ -138,6 +143,67 @@ export default function LeaseTab({ userData, units }: any) {
     }
   };
 
+  // Upload Logic for PDF Documents
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      alert("Only PDF files are allowed.");
+      return;
+    }
+
+    if (!activeLease) {
+      alert("No active lease found to attach the document to.");
+      return;
+    }
+
+    setIsUploadingDoc(true);
+    setUploadSuccess(false);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `lease-${activeLease.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`; // Ensure you have a 'documents' bucket created in Supabase
+
+      // 1. Upload the file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('documents') 
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Retrieve the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      const documentUrl = publicUrlData.publicUrl;
+
+      // 3. Save the document URL to the leases table
+      const { error: updateError } = await supabase
+        .from('leases')
+        .update({ document_url: documentUrl })
+        .eq('id', activeLease.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Update the local state so the View button works immediately
+      setActiveLease({ ...activeLease, document_url: documentUrl });
+      
+      // ✨ Professional Success State Trigger
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000); // Revert back to normal after 3 seconds
+
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert("Error uploading document: " + error.message);
+    } finally {
+      setIsUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Reset input
+    }
+  };
+
   if (!sortedUnits || sortedUnits.length === 0) {
     return (
       <div className="w-full max-w-2xl mx-auto mt-6 sm:mt-10 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -162,6 +228,7 @@ export default function LeaseTab({ userData, units }: any) {
   const isPending = activeLease?.status === 'Pending';
   const monthlyRent = activeLease?.monthly_rent || 0;
   const tenantName = activeLease?.tenant_name || "—";
+  const hasDocument = !!activeLease?.document_url;
   
   const leaseStartDate = activeLease?.start_date 
     ? new Date(activeLease.start_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
@@ -196,20 +263,18 @@ export default function LeaseTab({ userData, units }: any) {
             {/* Mobile Profile Icon */}
             <div className="md:hidden w-9 h-9 rounded-[10px] bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs shadow-inner border border-purple-100 shrink-0">
               {userData?.name 
-                  ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
-                  : "OW"}
+                ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                : "OW"}
             </div>
           </div>
           
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full md:w-auto gap-3">
             {sortedUnits.length > 1 && (
-              // ✨ FIX: Tinanggal ang sm:w-64, pinalitan ng sm:w-auto para flexible.
               <div className="relative w-full sm:w-auto min-w-[240px] max-w-full group">
                 <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#359b46] z-10 pointer-events-none w-4 h-4" strokeWidth={2.5} />
                 <select
                   value={selectedUnit?.id || ''}
                   onChange={(e) => setSelectedUnit(sortedUnits.find((u: any) => u.id === e.target.value))}
-                  // ✨ FIX: Tinanggal ang "truncate" class dito para lumabas ang buong text.
                   className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#359b46]/15 focus:border-[#359b46] bg-slate-50 transition-all hover:bg-white appearance-none cursor-pointer shadow-inner"
                 >
                   {sortedUnits.map((u: any) => (
@@ -318,21 +383,40 @@ export default function LeaseTab({ userData, units }: any) {
                       <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />} value={leaseEndDate} />
                     </div>
                     
-                    {/* Full Width Document Button */}
+                    {/* View Full Contract Button */}
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-slate-100">
-                      <button className="w-full bg-emerald-50/50 hover:bg-emerald-50 text-[#359b46] p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-emerald-200/60 flex items-center justify-between group transition-all active:scale-[0.98]">
+                      <button 
+                        onClick={() => {
+                          if (hasDocument) {
+                            window.open(activeLease.document_url, '_blank');
+                          }
+                        }}
+                        disabled={!hasDocument}
+                        className={`w-full p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border flex items-center justify-between group transition-all ${
+                          hasDocument 
+                            ? "bg-emerald-50/50 hover:bg-emerald-50 text-[#359b46] border-emerald-200/60 active:scale-[0.98] cursor-pointer" 
+                            : "bg-slate-50 text-slate-400 border-slate-200/60 cursor-not-allowed opacity-80"
+                        }`}
+                      >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className="p-2.5 sm:p-3 bg-white shadow-sm border border-emerald-100 rounded-xl shrink-0 text-[#359b46]">
+                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-xl shrink-0 ${hasDocument ? "border-emerald-100 text-[#359b46]" : "border-slate-200 text-slate-400"}`}>
                             <FileCheck size={20} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div className="text-left min-w-0">
-                            <span className="font-black text-[13px] sm:text-base text-[#0a1e3f] block tracking-tight truncate">View Full Contract</span>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 truncate">PDF • Official Copy</span>
+                            <span className={`font-black text-[13px] sm:text-base block tracking-tight truncate ${hasDocument ? "text-[#0a1e3f]" : "text-slate-400"}`}>
+                              {hasDocument ? "View Full Contract" : "No Contract Available"}
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 truncate">
+                              {hasDocument ? "PDF • Official Copy" : "Upload document to view"}
+                            </span>
                           </div>
                         </div>
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-emerald-100 group-hover:scale-105 group-hover:bg-[#359b46] group-hover:text-white group-hover:border-[#359b46] transition-all shrink-0">
-                          <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" />
-                        </div>
+                        
+                        {hasDocument && (
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center shadow-sm border border-emerald-100 group-hover:scale-105 group-hover:bg-[#359b46] group-hover:text-white group-hover:border-[#359b46] transition-all shrink-0">
+                            <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -366,8 +450,39 @@ export default function LeaseTab({ userData, units }: any) {
                       {isPending ? "Awaiting Approval" : "Update Lease"} <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
 
-                    <button className="w-full bg-white/5 hover:bg-white/10 text-white rounded-xl py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 border border-white/10 hover:border-white/20">
-                      Upload Signed Doc
+                    {/* Hidden file input for PDF only */}
+                    <input 
+                      type="file" 
+                      accept="application/pdf"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden" 
+                    />
+                    
+                    {/* ✨ Professional Upload Button State */}
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingDoc || uploadSuccess}
+                      className={`w-full rounded-xl py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all duration-300 active:scale-[0.98] flex justify-center items-center gap-2 border ${
+                        uploadSuccess 
+                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-400/30" 
+                          : "bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      }`}
+                    >
+                      {isUploadingDoc ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-slate-300" />
+                          Uploading...
+                        </>
+                      ) : uploadSuccess ? (
+                        <>
+                          <CheckCircle size={16} className="text-emerald-400" /> Uploaded Successfully
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={16} /> Upload Signed Doc
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -377,7 +492,7 @@ export default function LeaseTab({ userData, units }: any) {
         )}
       </div>
 
-      {/* 🌟 PREMIUM DECLARE LEASE MODAL (Bottom Sheet for Mobile, Center for Desktop) */}
+      {/* 🌟 PREMIUM DECLARE LEASE MODAL */}
       {isDeclareModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>

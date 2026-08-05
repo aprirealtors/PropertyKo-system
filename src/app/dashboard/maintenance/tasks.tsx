@@ -173,7 +173,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               ) : (
                 openTasks.map((task: any) => (
                   // ✨ FIXED CARD SIZE: Ginawang h-[460px] para magkakapantay lahat
-                  <div key={task.id} className={`h-[460px] bg-white rounded-2xl border border-slate-200/80 transition-all duration-300 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl shrink-0 ${task.priority === 'Urgent' ? 'ring-2 ring-red-500/20 border-red-200 shadow-sm shadow-red-500/5' : 'hover:border-blue-400/60 shadow-sm'}`}>
+                  <div key={task.id} className={`h-[420px] bg-white rounded-2xl border border-slate-200/80 transition-all duration-300 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl shrink-0 ${task.priority === 'Urgent' ? 'ring-2 ring-red-500/20 border-red-200 shadow-sm shadow-red-500/5' : 'hover:border-blue-400/60 shadow-sm'}`}>
                     {task.photo_url ? (
                       <div className="relative w-full h-36 shrink-0 bg-slate-100 border-b border-slate-100 overflow-hidden">
                         <img src={task.photo_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Task" />
@@ -239,7 +239,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   // ✨ FIXED CARD SIZE: Ginawang h-[460px] para magkakapantay lahat
                   <div key={task.id} 
                        onClick={() => setReviewTask(task)}
-                       className={`h-[460px] bg-white rounded-2xl border border-slate-200/80 transition-all duration-300 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl cursor-pointer shrink-0 ${task.priority === 'Urgent' ? 'ring-2 ring-red-500/20 border-red-200 shadow-sm' : 'hover:border-amber-400/60 shadow-sm'}`}>
+                       className={`h-[420px] bg-white rounded-2xl border border-slate-200/80 transition-all duration-300 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl cursor-pointer shrink-0 ${task.priority === 'Urgent' ? 'ring-2 ring-red-500/20 border-red-200 shadow-sm' : 'hover:border-amber-400/60 shadow-sm'}`}>
                     {task.photo_url ? (
                       <div className="relative w-full h-36 shrink-0 bg-slate-100 border-b border-slate-100 overflow-hidden">
                         <img src={task.photo_url} className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-500" alt="Task photo" />
@@ -302,7 +302,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               ) : (
                 resolvedTasks.map((task: any) => (
                   // ✨ FIXED CARD SIZE: Ginawang h-[460px] para magkakapantay lahat
-                  <div key={task.id} onClick={() => setReviewTask(task)} className="h-[460px] bg-white rounded-2xl border border-slate-200/80 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 cursor-pointer hover:border-[#359b46]/40 active:scale-[0.99] shadow-sm shrink-0">
+                  <div key={task.id} onClick={() => setReviewTask(task)} className="h-[420px] bg-white rounded-2xl border border-slate-200/80 flex flex-col group overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 cursor-pointer hover:border-[#359b46]/40 active:scale-[0.99] shadow-sm shrink-0">
                     {(task.resolution_photo_url || task.photo_url) ? (
                       <div className="relative w-full h-36 shrink-0 bg-emerald-50/20 border-b border-emerald-100/30 overflow-hidden">
                         <img src={task.resolution_photo_url || task.photo_url} alt="Resolved issue" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />

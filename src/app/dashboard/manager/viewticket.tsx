@@ -256,7 +256,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                               {t.priority === 'Urgent' && <span className="shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 shadow-sm animate-pulse">🚨 URGENT</span>}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] uppercase tracking-wide truncate ${isHighlighted ? 'border-blue-200 bg-blue-100/50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
+                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] tracking-wide truncate ${isHighlighted ? 'border-blue-200 bg-blue-100/50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
                             </div>
                           </div>
                         </div>
@@ -325,7 +325,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                               {t.priority === 'Urgent' && <span className="shrink-0 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-red-100 text-red-700 border border-red-200 shadow-sm animate-pulse">🚨 URGENT</span>}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] uppercase tracking-wide truncate ${isHighlighted ? 'border-blue-200 bg-blue-100/50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
+                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] tracking-wide truncate ${isHighlighted ? 'border-blue-200 bg-blue-100/50 text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>👤 {t.staffName}</span>
                             </div>
                           </div>
                         </div>
@@ -392,7 +392,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                           <div className={`flex flex-col gap-1.5 mt-auto pt-3 shrink-0 border-t text-[11px] ${isHighlighted ? 'border-blue-200' : 'border-emerald-200/50'}`}>
                             <div className="flex items-center gap-1 text-slate-500 min-w-0"><MapPin size={12} className="text-slate-400 shrink-0" /> <span className="truncate font-semibold">{t.location}</span></div>
                             <div className="flex justify-between items-center mt-0.5 gap-2">
-                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] uppercase tracking-wide truncate ${isHighlighted ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200'}`}>👤 {t.staffName}</span>
+                              <span className={`font-bold px-2 py-0.5 rounded-lg border text-[10px] tracking-wide truncate ${isHighlighted ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-slate-500 border-slate-200'}`}>👤 {t.staffName}</span>
                               
                               <span className={`font-black text-xs sm:text-sm whitespace-nowrap ${(t.liveMatch?.cost > 0 || t.cost > 0) ? 'text-[#0a1e3f]' : 'text-slate-400'}`}>
                                 {(t.liveMatch?.cost > 0 || t.cost > 0) 

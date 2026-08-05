@@ -7,7 +7,8 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
-  Upload, Building, CheckCircle2, User, MessageSquare, ChevronRight, LogOut
+  Upload, Building, CheckCircle2, User, MessageSquare, ChevronRight, LogOut,
+  Lock, Key, Eye, EyeOff // <-- ADDED NEW ICONS
 } from "lucide-react";
 
 import DashboardTab from "./dashboard";
@@ -47,6 +48,19 @@ export default function AdminDashboard() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+
+  // --- NEW: Change Password States ---
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  // --- NEW: Eye Toggle States ---
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const fetchOrgData = async () => {
@@ -259,6 +273,61 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // --- NEW: Handle Password Change ---
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+
+    try {
+      // 1. Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminProfile.email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+
+      // Success
+      showToast("Password updated successfully!", "success");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      
+      // Reset toggles
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
+
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !orgData?.id) return;
@@ -297,10 +366,18 @@ export default function AdminDashboard() {
     }
   };
 
-  // ✨ FIX: Bagong helper triggers para awtomatikong isara ang mobile menu kapag binuksan ang modals
   const openUserProfileFromSidebar = () => {
     setIsUserProfileModalOpen(true);
     setIsMobileMenuOpen(false); 
+    // Reset password states
+    setIsChangingPassword(false);
+    setPasswordError(null);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const openWorkspaceFromSidebar = () => {
@@ -345,6 +422,7 @@ export default function AdminDashboard() {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
+
   const formatNotificationMessage = (text: string) => {
     if (!text) return { __html: "" };
     
@@ -524,9 +602,7 @@ export default function AdminDashboard() {
             <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} />
             <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
-            {/* <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} /> */}
             <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} />
-
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
             <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
@@ -629,6 +705,131 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* --- Change Password Box --- */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200/60 p-5 sm:p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Security
+                  </h4>
+                  {!isChangingPassword && (
+                    <button 
+                      onClick={() => setIsChangingPassword(true)}
+                      className="text-[#359b46] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <Key size={14} /> Change Password
+                    </button>
+                  )}
+                </div>
+
+                {isChangingPassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {passwordError && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        {passwordError}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"}
+                          required 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-3">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setShowCurrentPassword(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
+                        }}
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-3 rounded-xl font-black text-white bg-[#359b46] hover:bg-[#2c813a] transition-all shadow-md shadow-emerald-500/20 text-xs flex items-center justify-center gap-2 active:scale-95"
+                      >
+                        {isSubmittingPassword ? (
+                          <span className="animate-pulse">Updating...</span>
+                        ) : (
+                          <><Lock size={14} strokeWidth={2.5} /> Update Password</>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
@@ -677,8 +878,8 @@ export default function AdminDashboard() {
                           type="file" 
                           accept="image/*" 
                           className="hidden" 
-                          onChange={handleLogoUpload}
-                          disabled={isUploadingLogo}
+                          onChange={handleLogoUpload} 
+                          disabled={isUploadingLogo} 
                         />
                       </label>
                     </div>
@@ -756,7 +957,6 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   </div>
-
                 </div>
               </div>
               
@@ -830,8 +1030,6 @@ export default function AdminDashboard() {
   );
 }
 
-// ✨ UPDATED NAV ITEM: 1-line enforce (truncate + whitespace-nowrap) & flex-1 to prevent wrap
-// function NavItem({ icon, label, isActive, onClick }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void }) {
 // ✨ REFACTORED NAV ITEM: Idinagdag ang optional custom operational badgeCount container trap
 function NavItem({ icon, label, isActive, onClick, badgeCount }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number }) {
   return (

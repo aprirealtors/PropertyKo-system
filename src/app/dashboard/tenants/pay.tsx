@@ -13,7 +13,8 @@ export default function PayTab() {
   const [globalComp, setGlobalComp] = useState({
     duesRate: 0, water: 0, electricity: 0, parking: 0,
     penaltyType: 'percent', penaltyValue: 0, collectionDay: 1, gracePeriod: 15,
-    bankName: '', bankAccountName: '', bankAccountNumber: ''
+    bankName: '', bankAccountName: '', bankAccountNumber: '',
+    qrCodeUrl: '' // ✨ Added QR Code URL state
   });
 
   const [soaConfig, setSoaConfig] = useState({
@@ -61,7 +62,8 @@ export default function PayTab() {
       if (profile) {
         const { data: orgData } = await supabase
           .from('organizations')
-          .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number')
+          // ✨ Added qr_code_url to fetch fields
+          .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
           .eq('admin_email', profile.admin_email)
           .single();
 
@@ -71,7 +73,8 @@ export default function PayTab() {
             electricity: orgData.default_electricity || 0, parking: orgData.default_parking || 0,
             penaltyType: orgData.penalty_type || 'percent', penaltyValue: orgData.penalty_value || 0,
             collectionDay: orgData.collection_day || 1, gracePeriod: orgData.grace_period_days || 15,
-            bankName: orgData.bank_name || '', bankAccountName: orgData.bank_account_name || '', bankAccountNumber: orgData.bank_account_number || ''
+            bankName: orgData.bank_name || '', bankAccountName: orgData.bank_account_name || '', bankAccountNumber: orgData.bank_account_number || '',
+            qrCodeUrl: orgData.qr_code_url || '' // ✨ Set fetched QR Code URL
           });
         }
 
@@ -655,11 +658,18 @@ export default function PayTab() {
               </div>
 
               <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-[13px] sm:text-sm text-slate-600 transition-all shrink-0">
+                {/* ✨ FIX: Updated Digital Wallet Section using Fetched QR Code */}
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
-                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center whitespace-normal break-words">Scan QR code using GCash or QR Ph</p>
+                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center whitespace-normal break-words">Scan QR code using GCash, Maya, or QR Ph</p>
                     <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
-                      <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
+                      {globalComp.qrCodeUrl ? (
+                        <img src={globalComp.qrCodeUrl} alt="Scan to pay" className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                          <span className="text-[10px] font-bold uppercase text-center mt-2">No QR Setup</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

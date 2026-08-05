@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2 } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -29,7 +29,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     gracePeriod: 15,
     bankName: '',
     bankAccountName: '',
-    bankAccountNumber: ''
+    bankAccountNumber: '',
+    qrCodeUrl: '' // ✨ Added QR Code URL State
   });
 
   // Modal States
@@ -64,6 +65,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [compBankName, setCompBankName] = useState("");
   const [compBankAccountName, setCompBankAccountName] = useState("");
   const [compBankAccountNumber, setCompBankAccountNumber] = useState("");
+  
+  // ✨ QR Code Upload States
+  const [compQrUrl, setCompQrUrl] = useState("");
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+  const qrInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -108,7 +114,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const fetchBillingConfig = async () => {
     const { data, error } = await supabase
       .from('organizations')
-      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number')
+      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
       .eq('admin_email', orgData.admin_email)
       .single();
 
@@ -124,7 +130,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         gracePeriod: data.grace_period_days || 15,
         bankName: data.bank_name || '',
         bankAccountName: data.bank_account_name || '',
-        bankAccountNumber: data.bank_account_number || ''
+        bankAccountNumber: data.bank_account_number || '',
+        qrCodeUrl: data.qr_code_url || ''
       });
     }
   };
@@ -164,7 +171,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       setAllUnits(sortedData);
       
-      // ✨ FIX: Wag i-auto select ang unang unit kapag nasa mobile view para malinis ang listahan
       if (typeof window !== 'undefined' && window.innerWidth >= 768) {
         setSelectedUnit(sortedData[0]); 
       } else {
@@ -259,6 +265,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setCompBankName(globalComp.bankName);
     setCompBankAccountName(globalComp.bankAccountName);
     setCompBankAccountNumber(globalComp.bankAccountNumber);
+    setCompQrUrl(globalComp.qrCodeUrl); // Load existing QR URL
     setIsComputationModalOpen(true);
   };
 
@@ -353,6 +360,46 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
+  // ✨ Handle QR Image Upload to Supabase Storage
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a valid image file for the QR code.");
+      return;
+    }
+
+    setIsUploadingQr(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `qr-${orgData.admin_email}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to 'documents' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('documents') 
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+
+      setCompQrUrl(publicUrlData.publicUrl);
+
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert("Error uploading QR image: " + error.message);
+    } finally {
+      setIsUploadingQr(false);
+      if (qrInputRef.current) qrInputRef.current.value = ''; // Reset input
+    }
+  };
+
   const handleSaveComputation = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -367,11 +414,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       grace_period_days: parseInt(compGracePeriod) || 15,
       bank_name: compBankName,
       bank_account_name: compBankAccountName,
-      bank_account_number: compBankAccountNumber
+      bank_account_number: compBankAccountNumber,
+      qr_code_url: compQrUrl // ✨ Save QR URL to database
     };
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('organizations')
         .update(payload)
         .eq('admin_email', orgData.admin_email)
@@ -390,7 +438,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         gracePeriod: payload.grace_period_days,
         bankName: payload.bank_name || '',
         bankAccountName: payload.bank_account_name || '',
-        bankAccountNumber: payload.bank_account_number || ''
+        bankAccountNumber: payload.bank_account_number || '',
+        qrCodeUrl: payload.qr_code_url || ''
       });
 
       setIsComputationModalOpen(false);
@@ -457,11 +506,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     });
 
     const csvContent = [headers.join(","), ...rows].join("\n");
-    // Add BOM for correct UTF-8 encoding in Excel
     const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
-    // Fallbacks in case selectedUnit properties are missing
     const safePropertyName = (selectedUnit.property_name || "Property").replace(/\s+/g, '_');
     const safeUnitNumber = String(selectedUnit.unit_number || "Unit").replace(/\s+/g, '');
     const currentYear = new Date().getFullYear();
@@ -473,7 +520,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     document.body.appendChild(link);
     link.click();
     
-    // Clean up DOM and memory
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -512,7 +558,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   return (
     <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
       
-      {/* TOP HEADER - Premium Glassmorphism */}
+      {/* TOP HEADER */}
       <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-[1600px] mx-auto w-full">
           <div className="w-full sm:w-auto flex justify-between items-center">
@@ -520,7 +566,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Billing & payments</h2>
               <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">SOA, collection and owner remittance</p>
             </div>
-            {/* Mobile Profile Icon */}
             <div className="sm:hidden w-9 h-9 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-xs border border-emerald-200 shadow-sm shrink-0">{initials}</div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
@@ -536,7 +581,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       </div>
 
-      {/* MAIN WORKSPACE - Mobile Master-Detail App Pattern */}
+      {/* MAIN WORKSPACE */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-[1600px] mx-auto w-full relative">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider gap-3">
@@ -554,7 +599,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           </div>
         ) : (
           <>
-            {/* SIDEBAR (All Units) - Shows on Mobile if isMobileListVisible is true */}
+            {/* SIDEBAR */}
             <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-3 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
                 <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
@@ -565,7 +610,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   const isSelected = selectedUnit?.id === unit.id;
                   const isRowOwnerVacant = !unit.owner_name || unit.owner_name === '—';
                   const isRowTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
-                  
                   const rowSoa = allSoaConfigs[unit.id];
                   const rOwnerStat = rowSoa?.owner_status || 'Pending';
                   const rTenantStat = rowSoa?.tenant_status || 'Pending';
@@ -575,7 +619,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       key={unit.id} 
                       onClick={() => {
                         setSelectedUnit(unit);
-                        setIsMobileListVisible(false); // Hide list on mobile when clicked
+                        setIsMobileListVisible(false);
                       }}
                       className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 shadow-sm shadow-emerald-500/5' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}
                     >
@@ -614,9 +658,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               </div>
             </div>
 
-            {/* MAIN DETAILS (Unit Breakdown & Ledger) - Shows on Mobile if list is hidden */}
+            {/* MAIN DETAILS */}
            <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${!isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
-              {/* ✨ FIX: Empty State Check - Ipapakita kapag walang naka-select na unit */}
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
@@ -628,10 +671,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               ) : (
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
                 
-                {/* ✨ FIX: NEW UNIT DETAILS CARD (Stacked on Mobile, Columns on Desktop) */}
                 <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-800 overflow-hidden mb-4 sm:mb-6">
                   
-                  {/* Top Header - Property Name & Back Button */}
                   <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-slate-800">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <button 
@@ -651,10 +692,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     )}
                   </div>
 
-                  {/* Split Breakdown - Flex Col on Mobile / Grid 2 Columns on Desktop */}
                   <div className={`grid grid-cols-1 ${!isTenantVacant ? 'lg:grid-cols-2 lg:divide-x lg:divide-slate-800' : ''}`}>
                     
-                    {/* OWNER COLUMN */}
                     <div className="p-4 sm:p-6 md:p-8 relative flex flex-col">
                        <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-400 flex justify-between items-start gap-3">
                            <div className="min-w-0">
@@ -701,7 +740,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                        </div>
                     </div>
 
-                    {/* TENANT COLUMN */}
                     {!isTenantVacant && (
                        <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col border-t lg:border-t-0 border-slate-800 lg:rounded-br-3xl">
                            <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-400 flex justify-between items-start gap-3">
@@ -879,13 +917,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
 
               </div>
-              )} {/* ✨ FIX: Dito isasara yung !selectedUnit ternary operator */}
+              )}
             </div>
           </>
         )}
       </div>
 
-      {/* 🌟 PREMIUM COMPUTATION MODAL (Bottom Sheet for Mobile, Center for Desktop) */}
+      {/* 🌟 PREMIUM COMPUTATION MODAL */}
       {isComputationModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
@@ -957,7 +995,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
                 <div className="border-t border-slate-100/80 pt-5">
                   <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 ml-1 truncate">Late Penalty Deduction</label>
-                  {/* ✨ FIX: flex-col sa mobile para hindi masiksik, flex-row sa desktop */}
                   <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                     <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-sm bg-white">
                       <option value="fixed">Fixed (₱)</option>
@@ -1010,7 +1047,45 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </div>
                 </div>
 
-                {/* ✨ FIX: Stacked Mobile Buttons (flex-col-reverse), Centered Magkatabi Desktop Buttons */}
+                {/* ✨ NEW: QR Code Upload Section */}
+                <div className="border border-green-100 bg-green-50/50 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                  <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1 sm:mb-1.5 tracking-tight truncate">Digital Wallet QR Code</label>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">
+                    Upload your GCash, Maya, or QR Ph barcode. This will be displayed to tenants when they select "Digital Wallet" during payment.
+                  </p>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-2 shadow-inner">
+                      {compQrUrl ? (
+                        <img src={compQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
+                      ) : (
+                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center">No QR</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        ref={qrInputRef} 
+                        onChange={handleQrUpload} 
+                        className="hidden" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => qrInputRef.current?.click()} 
+                        disabled={isUploadingQr} 
+                        className="w-full bg-white border border-green-200 hover:border-green-300 text-green-700 font-bold text-[11px] sm:text-xs py-2.5 sm:py-3 rounded-xl transition-all shadow-sm flex justify-center items-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        {isUploadingQr ? (
+                          <><Loader2 size={16} className="animate-spin text-green-400" /> Uploading...</>
+                        ) : (
+                          <><Upload size={16} className="text-green-500" /> {compQrUrl ? 'Replace QR Image' : 'Upload QR Image'}</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 sm:pt-5 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
                   <button 
                     type="button" 
@@ -1032,7 +1107,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* SOA MODAL (Per Unit Setup with Two Columns) */}
+      {/* SOA MODAL */}
       {isSOAModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
@@ -1214,7 +1289,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* PAYMENT MODAL (Specific to Owner or Tenant) */}
+      {/* PAYMENT MODAL (Admin Verifying) */}
       {isPaymentModalOpen && paymentModalParty && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
-  ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck
+  ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2 // <-- ADDED NEW ICONS
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -47,6 +48,22 @@ export default function TenantDashboard() {
   // White Label & User Modal States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
+
+  // --- NEW: Global Toast State ---
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  // --- NEW: Change Password States ---
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
+
+  // --- NEW: Eye Toggle States ---
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     fetchTenantData();
@@ -354,6 +371,67 @@ export default function TenantDashboard() {
   
   const initials = getInitials(tenantName);
 
+  // --- NEW: Show Toast Function ---
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // --- NEW: Handle Password Change ---
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New passwords do not match.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    setIsSubmittingPassword(true);
+
+    try {
+      // 1. Verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) {
+        throw new Error(`Failed to update password: ${updateError.message}`);
+      }
+
+      // Success
+      showToast("Password updated successfully!", "success");
+      setIsChangingPassword(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      
+      // Reset toggles
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+    } catch (err: any) {
+      setPasswordError(err.message);
+    } finally {
+      setIsSubmittingPassword(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
@@ -509,7 +587,14 @@ export default function TenantDashboard() {
           {/* Premium Bottom User Tag */}
           <div className="mt-auto pt-4 border-t border-white/5">
              <div 
-               onClick={() => setIsWorkspaceModalOpen(true)}
+               onClick={() => {
+                 setIsWorkspaceModalOpen(true);
+                 setIsChangingPassword(false);
+                 setPasswordError(null);
+                 setShowCurrentPassword(false);
+                 setShowNewPassword(false);
+                 setShowConfirmPassword(false);
+               }}
                className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
                title="View Profile Details"
              >
@@ -540,7 +625,14 @@ export default function TenantDashboard() {
                  handleConversationClick={handleConversationClick}
                  tenantName={tenantName} 
                  initials={initials}
-                 openProfileModal={() => setIsWorkspaceModalOpen(true)}
+                 openProfileModal={() => {
+                   setIsWorkspaceModalOpen(true);
+                   setIsChangingPassword(false);
+                   setPasswordError(null);
+                   setShowCurrentPassword(false);
+                   setShowNewPassword(false);
+                   setShowConfirmPassword(false);
+                 }}
                  unit={unit} 
                  transactions={transactions} 
                  isLoading={isLoading} 
@@ -570,11 +662,23 @@ export default function TenantDashboard() {
           />
           <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Finance" />
           <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
-          <MobileNavItem active={isWorkspaceModalOpen} onClick={() => setIsWorkspaceModalOpen(true)} icon={<User size={22} />} label="Profile" />
+          <MobileNavItem 
+            active={isWorkspaceModalOpen} 
+            onClick={() => {
+              setIsWorkspaceModalOpen(true);
+              setIsChangingPassword(false);
+              setPasswordError(null);
+              setShowCurrentPassword(false);
+              setShowNewPassword(false);
+              setShowConfirmPassword(false);
+            }} 
+            icon={<User size={22} />} 
+            label="Profile" 
+          />
         </div>
       </nav>
 
-      {/* STATIC WORKSPACE PROFILE MODAL (READ-ONLY) */}
+      {/* WORKSPACE PROFILE MODAL (WITH CHANGE PASSWORD) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
@@ -656,6 +760,130 @@ export default function TenantDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* --- Change Password Box --- */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-sm border border-slate-100 p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Security
+                  </h4>
+                  {!isChangingPassword && (
+                    <button 
+                      onClick={() => setIsChangingPassword(true)}
+                      className="text-[#1e88e5] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                    >
+                      <Key size={14} /> Change Password
+                    </button>
+                  )}
+                </div>
+
+                {isChangingPassword && (
+                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {passwordError && (
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                        <AlertTriangle size={14} className="shrink-0" />
+                        {passwordError}
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Current Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"}
+                          required 
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Confirm New Password</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"}
+                          required 
+                          minLength={6}
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          disabled={isSubmittingPassword} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        >
+                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsChangingPassword(false);
+                          setPasswordError(null);
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmNewPassword("");
+                          setShowCurrentPassword(false);
+                          setShowNewPassword(false);
+                          setShowConfirmPassword(false);
+                        }}
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingPassword}
+                        className="flex-1 py-2.5 rounded-xl font-bold text-white bg-[#1e88e5] hover:bg-blue-600 transition-colors shadow-sm text-xs flex items-center justify-center gap-2"
+                      >
+                        {isSubmittingPassword ? (
+                          <span className="animate-pulse">Updating...</span>
+                        ) : (
+                          <><Lock size={14} /> Update Password</>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
               
             </div>
           </div>
@@ -694,6 +922,14 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      {/* TOAST UI */}
+      {toast && (
+        <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${toast.type === "success" ? "border-l-4 border-l-[#1e88e5] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"}`}>
+          {toast.type === "success" ? <CheckCircle2 className="text-[#1e88e5]" size={22} /> : <AlertTriangle className="text-red-500" size={22} />}
+          {toast.message}
+        </div>
+      )}
+
       {/* ✨ GLOBAL CSS: INVISIBLE SCROLLBARS */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar {
@@ -718,7 +954,7 @@ export default function TenantDashboard() {
 // COMPONENTS
 // -------------------------------------------------------------------------------------------------
 
-function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, transactions, isLoading, totalDue, soaStatus }: any) {
+function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, transactions, isLoading, totalDue, soaStatus, openProfileModal }: any) {
   // Use dynamically calculated total to mirror PayTab logic exactly
   const rentAmount = totalDue || 0; 
   const propertyName = unit?.property_name || "Unassigned Property";
@@ -1018,7 +1254,6 @@ function MobileNavItem({ active, onClick, icon, label, badge }: any) {
             : 'text-slate-400 hover:text-slate-600'
         }`}
       >
-        {/* ✨ FIX: Ginawang span at ni-lock ang size para walang extra invisible padding */}
         <span className="relative leading-none flex items-center justify-center w-5 h-5 shrink-0 block">
           {icon}
           {badge > 0 && (
