@@ -266,6 +266,17 @@ export default function FinancialTab({ userData, units }: any) {
         }
       }));
 
+      // ✨ NEW: Notify Admin / Manager about the submitted payment
+      await supabase.from('notifications').insert([{
+        admin_email: userData.admin_email,
+        recipient: 'MANAGER', // Or 'ADMIN' depending on your routing catch
+        type: 'BILLING',
+        title: 'Payment Verification Required',
+        message: `${userData.name || 'An Owner'} submitted a ${paymentMethod} payment of ₱${ownerTotalDue.toLocaleString()} for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number}.`,
+        reference_id: selectedUnit.id,
+        is_read: false
+      }]);
+
       // Show success modal uniformly for all submission types
       setShowSuccessModal(true);
 
@@ -554,7 +565,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </button>
                     </div>
                     
-                    <div className="overflow-x-auto border border-slate-200/80 rounded-2xl custom-scrollbar relative shadow-inner">
+                    <div className="hidden md:block overflow-x-auto border border-slate-200/80 rounded-2xl custom-scrollbar relative shadow-inner">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#359b46] text-white font-extrabold border-b border-[#2c813a] sticky top-0 z-10 shadow-md">
                           <tr>

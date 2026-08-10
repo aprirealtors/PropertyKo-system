@@ -222,6 +222,17 @@ export default function PayTab() {
 
       if (soaError) throw soaError;
 
+      // ✨ NEW: Notify Admin / Manager about the submitted payment
+      await supabase.from('notifications').insert([{
+        admin_email: unit.admin_email,
+        recipient: 'MANAGER', // Or 'ADMIN' depending on your routing catch
+        type: 'BILLING',
+        title: 'Payment Verification Required',
+        message: `${unit.tenant_name || 'A Tenant'} submitted a ${paymentMethod} payment of ₱${totalDue.toLocaleString()} for ${unit.property_name} Unit ${unit.unit_number}.`,
+        reference_id: unit.id,
+        is_read: false
+      }]);
+
       setShowSuccessModal(true);
 
     } catch (error) {
@@ -535,43 +546,55 @@ export default function PayTab() {
               </div>
             </div>
 
-            {/* ✨ RIGHT SIDEBAR (Transaction History) */}
+            {/* ✨ RIGHT SIDEBAR (Transaction History via Ledger) */}
             <div className={`w-full md:w-auto md:min-w-[320px] lg:min-w-[360px] lg:max-w-[400px] shrink-0 bg-white border-t md:border-t-0 md:border-l border-slate-200/60 flex-col h-full z-10 shadow-[-4px_0_24px_rgba(0,0,0,0.02)] ${isMobileHistoryVisible ? 'flex' : 'hidden md:flex'} animate-in fade-in slide-in-from-right-4 duration-300`}>
               
-              <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
-                <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2 whitespace-normal break-words">
-                  <History size={16} className="text-[#359b46] w-4 h-4 sm:w-5 sm:h-5"/> Transaction History
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm whitespace-nowrap">{transactions.length} Total</span>
-                  <button 
-                    onClick={() => setIsMobileHistoryVisible(false)}
-                    className="md:hidden p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg active:scale-95 transition-colors"
-                  >
-                    <X size={18} strokeWidth={2.5}/>
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-visible md:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-slate-50/30 pb-24 md:pb-4">
-                {transactions.length === 0 ? (
-                  <div className="text-center py-10 sm:py-12 px-5 border border-dashed border-slate-200 rounded-2xl w-full bg-white shadow-sm">
-                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-100">
-                       <AlertCircle className="text-slate-300" size={24} />
+              {(() => {
+                // Filter the ledger for only "Paid" statuses
+                const paidHistory = ledgerData.filter(row => row.status === 'Paid');
+
+                return (
+                  <>
+                    <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
+                      <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2 whitespace-normal break-words">
+                        <History size={16} className="text-[#359b46] w-4 h-4 sm:w-5 sm:h-5"/> Transaction History
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm whitespace-nowrap">{paidHistory.length} Total</span>
+                        <button 
+                          onClick={() => setIsMobileHistoryVisible(false)}
+                          className="md:hidden p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg active:scale-95 transition-colors"
+                        >
+                          <X size={18} strokeWidth={2.5}/>
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-slate-600 font-black text-[13px] sm:text-sm tracking-tight mb-1 whitespace-normal break-words">No history found</p>
-                    <p className="text-slate-400 text-[11px] sm:text-xs font-medium leading-relaxed whitespace-normal break-words">You haven't made any payments yet. Records will appear here.</p>
-                  </div>
-                ) : (
-                  transactions.map((tx, idx) => (
-                    <HistoryItem 
-                      key={idx} title={tx.description || "Statement Payment"} method={tx.payment_method || "Online Transfer"} 
-                      date={new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })} 
-                      amount={`₱${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}`} status={tx.status || "Paid"} 
-                    />
-                  ))
-                )}
-              </div>
+                    
+                    <div className="flex-1 overflow-y-visible md:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-slate-50/30 pb-24 md:pb-4">
+                      {paidHistory.length === 0 ? (
+                        <div className="text-center py-10 sm:py-12 px-5 border border-dashed border-slate-200 rounded-2xl w-full bg-white shadow-sm">
+                          <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                             <AlertCircle className="text-slate-300" size={24} />
+                          </div>
+                          <p className="text-slate-600 font-black text-[13px] sm:text-sm tracking-tight mb-1 whitespace-normal break-words">No history found</p>
+                          <p className="text-slate-400 text-[11px] sm:text-xs font-medium leading-relaxed whitespace-normal break-words">You haven't made any payments yet. Records will appear here.</p>
+                        </div>
+                      ) : (
+                        paidHistory.map((tx, idx) => (
+                          <HistoryItem 
+                            key={idx} 
+                            title={`Statement Payment`} 
+                            method={`${tx.monthName} ${tx.year}`} 
+                            date={`Posted: ${tx.dueDate}`} 
+                            amount={`₱${(tx.isCurrentMonth ? ledgerTotal : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
+                            status="Paid" 
+                          />
+                        ))
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </>
         )}

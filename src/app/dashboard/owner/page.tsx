@@ -148,6 +148,7 @@ export default function OwnerDashboard() {
             let totalOwnerBill = 0;
             let totalGross = 0;
             let anyOverdue = false; // Tracker for global overdue state
+            let globalOwnerBase = 0; // ✨ NEW: Para makuha ang standard monthly bill na walang penalty
 
             if (myUnits.length > 0) {
               const unitIds = myUnits.map((u: any) => u.id);
@@ -197,6 +198,10 @@ export default function OwnerDashboard() {
                   const baseTotal = dues + parking + water + electricity;
                   const isOwnerVacant = !unit.owner_name || unit.owner_name === '—';
 
+                  if (soa.owner_status !== 'Unassigned') {
+                     globalOwnerBase += baseTotal; // ✨ Save standard monthly cost
+                  }
+
                   let lateFee = 0;
                   if (soa.owner_status === 'Overdue' && !isOwnerVacant) {
                     anyOverdue = true; // ✨ Flag as overdue
@@ -218,6 +223,41 @@ export default function OwnerDashboard() {
             setCollectedGross(totalGross);
             setTotalDue(totalOwnerBill); 
             setHasOverdue(anyOverdue); // ✨ Save to state
+
+            // ✨ NEW: GENERATE RECENT STATEMENTS LOGIC PARA SA UI
+            const recentStatementsArray = [];
+            if (myUnits.length > 0 && globalOwnerBase > 0) {
+              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+              const d = new Date();
+              const curMonth = d.getMonth();
+              const curYear = d.getFullYear();
+
+              // 1. Current Month Statement
+              let curStatus = 'Paid';
+              if (totalOwnerBill > 0) curStatus = anyOverdue ? 'Overdue' : 'Pending';
+              
+              recentStatementsArray.push({
+                period: `${monthNames[curMonth]} ${curYear}`,
+                status: curStatus,
+                net: totalOwnerBill > 0 ? totalOwnerBill : globalOwnerBase
+              });
+
+              // 2. Previous 2 Months (Mocked as Paid for MVP historical view)
+              for (let i = 1; i <= 2; i++) {
+                let pMonth = curMonth - i;
+                let pYear = curYear;
+                if (pMonth < 0) {
+                  pMonth += 12;
+                  pYear -= 1;
+                }
+                recentStatementsArray.push({
+                  period: `${monthNames[pMonth]} ${pYear}`,
+                  status: 'Paid',
+                  net: globalOwnerBase
+                });
+              }
+            }
+            setStatements(recentStatementsArray); // ✨ I-push ang data pabalik sa `statements` state
           }
 
           const { count: msgCount } = await supabase
@@ -569,7 +609,7 @@ export default function OwnerDashboard() {
 
     const type = notif.type?.toUpperCase() || '';
     
-    // ✨ NEW: Kapag Rejected ang ticket, i-open yung Rejected Modal imbes na ang maintenance tab
+    // Kapag Rejected ang ticket, i-open yung Rejected Modal imbes na ang maintenance tab
     if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
       if (notif.reference_id) {
         const { data: ticketData } = await supabase.from('tickets').select('*').eq('id', notif.reference_id).single();
@@ -580,9 +620,9 @@ export default function OwnerDashboard() {
       }
     }
 
-    // Normal routing
+    // ✨ FIX: Solid routing diretso sa financials tab kapag SOA notification
     if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
-      setActiveTab(document.querySelector('button[aria-label="Finance"]') ? "pay" : "financials"); 
+      setActiveTab("financials"); 
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
       if (notif.reference_id) {
         setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); 

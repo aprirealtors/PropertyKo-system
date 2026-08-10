@@ -13,7 +13,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
-  
+    // Search State
+  const [searchQuery, setSearchQuery] = useState("");
   // Mobile Master-Detail State
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
   
@@ -208,6 +209,18 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     return isNaN(parsed) ? 0 : parsed;
   };
 
+  // ✨ NEW: Filter units based on Search Query
+  const filteredUnits = allUnits.filter(u => {
+    if (!searchQuery) return true;
+    const lowerQ = searchQuery.toLowerCase();
+    return (
+      (u.unit_number && u.unit_number.toLowerCase().includes(lowerQ)) ||
+      (u.property_name && u.property_name.toLowerCase().includes(lowerQ)) ||
+      (u.owner_name && u.owner_name.toLowerCase().includes(lowerQ)) ||
+      (u.tenant_name && u.tenant_name.toLowerCase().includes(lowerQ))
+    );
+  });
+
   const isOwnerVacant = !selectedUnit?.owner_name || selectedUnit?.owner_name === '—';
   const isTenantVacant = selectedUnit?.status === 'Vacant' || !selectedUnit?.tenant_name || selectedUnit?.tenant_name === '—';
   const unitArea = getUnitAreaValue(selectedUnit?.unit_area);
@@ -358,6 +371,75 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setIsSendingSOA(true);
     try {
       await saveSoaToDatabase('Pending');
+
+      // ✨ FIX: Gamitin ang "soaConfig" (modal check state) imbes na database state para sigurado
+      const ownerHasBill = soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity || soaConfig.owner.penalty;
+      const tenantHasBill = soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity || soaConfig.tenant.penalty;
+
+      const notificationsToInsert = [];
+      let ownerEmail = null;
+      let tenantEmail = null;
+
+      // Fetch all team members under this admin for a safe case-insensitive match
+      const { data: members } = await supabase
+        .from('team_members')
+        .select('name, email')
+        .eq('admin_email', orgData.admin_email);
+
+      if (members && members.length > 0) {
+        // Find owner email safely
+        if (ownerHasBill && !isOwnerVacant) {
+          const ownerMatch = members.find(m => 
+            m.name?.trim().toLowerCase() === selectedUnit?.owner_name?.trim().toLowerCase()
+          );
+          if (ownerMatch) ownerEmail = ownerMatch.email;
+        }
+        
+        // Find tenant email safely
+        if (tenantHasBill && !isTenantVacant) {
+          const tenantMatch = members.find(m => 
+            m.name?.trim().toLowerCase() === selectedUnit?.tenant_name?.trim().toLowerCase()
+          );
+          if (tenantMatch) tenantEmail = tenantMatch.email;
+        }
+      }
+
+      // Recompute ang sakto at exact na Total Due base sa kung ano ang nai-check sa modal
+      const finalOwnerTotal = (soaConfig.owner.dues ? rawDues : 0) + (soaConfig.owner.parking ? rawParking : 0) + (soaConfig.owner.water ? rawWater : 0) + (soaConfig.owner.electricity ? rawElectricity : 0) + (soaConfig.owner.penalty ? ownerPenalty : 0);
+      const finalTenantTotal = (soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0);
+
+      // Prepare Notification for Owner
+      if (ownerHasBill && ownerEmail) {
+        notificationsToInsert.push({
+          admin_email: orgData.admin_email,
+          recipient: ownerEmail,
+          type: 'BILLING',
+          title: 'New Statement of Account',
+          message: `Your billing statement for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} is now available. Total Due: ₱${finalOwnerTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+          reference_id: selectedUnit.id,
+          is_read: false
+        });
+      }
+
+      // Prepare Notification for Tenant
+      if (tenantHasBill && tenantEmail) {
+        notificationsToInsert.push({
+          admin_email: orgData.admin_email,
+          recipient: tenantEmail,
+          type: 'BILLING',
+          title: 'New Statement of Account',
+          message: `Your billing statement for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} is now available. Total Due: ₱${finalTenantTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+          reference_id: selectedUnit.id,
+          is_read: false
+        });
+      }
+
+      // Fire Notifications to Database
+      if (notificationsToInsert.length > 0) {
+        const { error: notifError } = await supabase.from('notifications').insert(notificationsToInsert);
+        if (notifError) console.error("Error sending SOA notifications:", notifError);
+      }
+
       setIsSOAModalOpen(false);
     } catch (err) {
       console.error("Failed to send SOA:", err);
@@ -622,7 +704,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
             <div className="relative w-full sm:w-64 shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input type="text" placeholder="Search units, tenants..." className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search units, tenants, owners..." 
+                className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" 
+              />
             </div>
             <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 shrink-0">
               <span className="text-sm font-bold text-[#359b46]">Admin</span>
@@ -660,66 +748,72 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     <span className="text-[10px] font-bold uppercase tracking-wider">Config</span>
                   </button>
                 </div>
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{allUnits.length} Total</span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{filteredUnits.length} Total</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
-                {allUnits.map((unit) => {
-                  const isSelected = selectedUnit?.id === unit.id;
-                  const isRowOwnerVacant = !unit.owner_name || unit.owner_name === '—';
-                  const isRowTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
-                  const rowSoa = allSoaConfigs[unit.id];
-                  const rOwnerStat = rowSoa?.owner_status || 'Pending';
-                  const rTenantStat = rowSoa?.tenant_status || 'Pending';
-                  
-                  const hasRowOwnerAssign = rowSoa && (rowSoa.owner_dues || rowSoa.owner_parking || rowSoa.owner_water || rowSoa.owner_electricity || rowSoa.owner_penalty);
-                  const hasRowTenantAssign = rowSoa && (rowSoa.tenant_dues || rowSoa.tenant_parking || rowSoa.tenant_water || rowSoa.tenant_electricity || rowSoa.tenant_penalty);
-                  
-                  return (
-                    <div 
-                      key={unit.id} 
-                      onClick={() => {
-                        setSelectedUnit(unit);
-                        setIsMobileListVisible(false);
-                      }}
-                      className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 shadow-sm shadow-emerald-500/5' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight ${isSelected ? 'font-black text-[#2a7a37]' : 'font-bold text-slate-700'}`}>
-                          {unit.property_name} {unit.unit_number}
-                        </h4>
-                        <div className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate mt-1">
-                          <span className="font-bold text-slate-400">O:</span> {isRowOwnerVacant ? 'Vacant' : unit.owner_name} 
-                          {!isRowTenantVacant && <span className="ml-1.5"><span className="font-bold text-slate-400">T:</span> {unit.tenant_name}</span>}
+                {filteredUnits.length === 0 ? (
+                  <div className="text-center py-10 px-4">
+                    <p className="text-xs font-bold text-slate-400">No units match your search.</p>
+                  </div>
+                ) : (
+                  filteredUnits.map((unit) => {
+                    const isSelected = selectedUnit?.id === unit.id;
+                    const isRowOwnerVacant = !unit.owner_name || unit.owner_name === '—';
+                    const isRowTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
+                    const rowSoa = allSoaConfigs[unit.id];
+                    const rOwnerStat = rowSoa?.owner_status || 'Pending';
+                    const rTenantStat = rowSoa?.tenant_status || 'Pending';
+                    
+                    const hasRowOwnerAssign = rowSoa && (rowSoa.owner_dues || rowSoa.owner_parking || rowSoa.owner_water || rowSoa.owner_electricity || rowSoa.owner_penalty);
+                    const hasRowTenantAssign = rowSoa && (rowSoa.tenant_dues || rowSoa.tenant_parking || rowSoa.tenant_water || rowSoa.tenant_electricity || rowSoa.tenant_penalty);
+                    
+                    return (
+                      <div 
+                        key={unit.id} 
+                        onClick={() => {
+                          setSelectedUnit(unit);
+                          setIsMobileListVisible(false);
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 shadow-sm shadow-emerald-500/5' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight ${isSelected ? 'font-black text-[#2a7a37]' : 'font-bold text-slate-700'}`}>
+                            {unit.property_name} {unit.unit_number}
+                          </h4>
+                          <div className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate mt-1">
+                            <span className="font-bold text-slate-400">O:</span> {isRowOwnerVacant ? 'Vacant' : unit.owner_name} 
+                            {!isRowTenantVacant && <span className="ml-1.5"><span className="font-bold text-slate-400">T:</span> {unit.tenant_name}</span>}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0 gap-1.5">
+                          {isRowOwnerVacant && isRowTenantVacant ? (
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
+                              VACANT
+                            </span>
+                          ) : (
+                            <>
+                              {!isRowOwnerVacant && hasRowOwnerAssign && (
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                  O: {rOwnerStat}
+                                </span>
+                              )}
+                              {!isRowTenantVacant && hasRowTenantAssign && (
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                  T: {rTenantStat}
+                                </span>
+                              )}
+                              {(!isRowOwnerVacant || !isRowTenantVacant) && !hasRowOwnerAssign && !hasRowTenantAssign && (
+                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+                                  Unassigned
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 gap-1.5">
-                        {isRowOwnerVacant && isRowTenantVacant ? (
-                          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
-                            VACANT
-                          </span>
-                        ) : (
-                          <>
-                            {!isRowOwnerVacant && hasRowOwnerAssign && (
-                              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                                O: {rOwnerStat}
-                              </span>
-                            )}
-                            {!isRowTenantVacant && hasRowTenantAssign && (
-                              <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                                T: {rTenantStat}
-                              </span>
-                            )}
-                            {(!isRowOwnerVacant || !isRowTenantVacant) && !hasRowOwnerAssign && !hasRowTenantAssign && (
-                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
-                                Unassigned
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })
+                )}
               </div>
             </div>
 
