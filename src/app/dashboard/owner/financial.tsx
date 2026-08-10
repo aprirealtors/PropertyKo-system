@@ -35,17 +35,17 @@ export default function FinancialTab({ userData, units }: any) {
     duesRate: 0, water: 0, electricity: 0, parking: 0,
     penaltyType: 'percent', penaltyValue: 3, collectionDay: 1, gracePeriod: 15,
     bankName: '', bankAccountName: '', bankAccountNumber: '',
-    qrCodeUrl: '' // ✨ Added QR Code URL state
+    qrCodeUrl: '' 
   });
 
   const [isLoading, setIsLoading] = useState(true);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [showCashSuccessModal, setShowCashSuccessModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
-  // ✨ Mobile Master-Detail State
+  // Mobile Master-Detail State
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
   
-  // Updated payment methods (Removed Credit/Debit Card)
+  // Updated payment methods
   const PAYMENT_METHODS = [
     'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
   ];
@@ -61,7 +61,6 @@ export default function FinancialTab({ userData, units }: any) {
     }
     
     if (sortedUnits && sortedUnits.length > 0) {
-      // ✨ FIX: Wag mag-auto select kapag mobile para malinis ang empty state listahan
       if (!selectedUnit) {
         if (typeof window !== 'undefined' && window.innerWidth >= 768) {
           setSelectedUnit(sortedUnits[0]); 
@@ -93,7 +92,6 @@ export default function FinancialTab({ userData, units }: any) {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('organizations')
-      // ✨ Added qr_code_url to fetch fields
       .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
       .eq('admin_email', userData.admin_email)
       .single();
@@ -105,7 +103,7 @@ export default function FinancialTab({ userData, units }: any) {
         penaltyType: data.penalty_type || 'percent', penaltyValue: data.penalty_value || 0,
         collectionDay: data.collection_day || 1, gracePeriod: data.grace_period_days || 15,
         bankName: data.bank_name || '', bankAccountName: data.bank_account_name || '', bankAccountNumber: data.bank_account_number || '',
-        qrCodeUrl: data.qr_code_url || '' // ✨ Set fetched QR Code URL
+        qrCodeUrl: data.qr_code_url || ''
       });
     }
     setIsLoading(false);
@@ -159,8 +157,14 @@ export default function FinancialTab({ userData, units }: any) {
     (!isVacant && soaConfig.tenant.electricity ? rawElectricity : 0);
 
   let ownerPenalty = 0;
-  if (isAssigned && ownerStatus === 'Overdue' && soaConfig.owner.penalty) {
+  if (ownerStatus === 'Overdue' && !isVacant) {
     ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+  }
+
+  const tenantStatus = existingSoa?.tenant_status || 'Pending';
+  let tenantPenalty = 0;
+  if (tenantStatus === 'Overdue' && !isVacant) {
+    tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
   const ownerTotalDue = ownerBase + ownerPenalty;
@@ -186,14 +190,12 @@ export default function FinancialTab({ userData, units }: any) {
   const handleExportCSV = () => {
     if (!selectedUnit || ledgerData.length === 0) return;
     
-    // Define headers
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     
-    // Map ledger data into rows
     const rows = ledgerData.map(row => {
       const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue ? ownerPenalty : 0;
-      const rowTotal = isOverdue ? ownerTotalDue : ownerBase;
+      const rowPenalty = isOverdue && row.isCurrentMonth ? ownerPenalty : 0;
+      const rowTotal = isOverdue && row.isCurrentMonth ? ownerTotalDue : ownerBase;
       const utilsTotal = ownerWater + ownerElectricity;
       
       return [
@@ -208,26 +210,21 @@ export default function FinancialTab({ userData, units }: any) {
       ].join(",");
     });
     
-    // Combine headers and rows
     const csvContent = [headers.join(","), ...rows].join("\n");
     
-    // Add BOM (\ufeff) so Excel parses the UTF-8 encoding correctly (prevents character issues)
     const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
-    // Safely generate a filename (preventing crashes if property_name or unit_number is undefined)
     const safePropertyName = (selectedUnit.property_name || "Property").replace(/\s+/g, '_');
     const safeUnitNumber = String(selectedUnit.unit_number || "Unit").replace(/\s+/g, '');
     const fileName = `${safePropertyName}_Unit_${safeUnitNumber}_SOA_${new Date().getFullYear()}.csv`;
     
-    // Create a temporary link, trigger download, and clean up
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     
-    // Cleanup DOM and free memory
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
@@ -245,38 +242,23 @@ export default function FinancialTab({ userData, units }: any) {
         unit_name: `${selectedUnit.property_name} - Unit ${selectedUnit.unit_number}` 
       };
 
-      if (!isCash) {
-        updatePayload.owner_status = 'Paid';
-      }
-
       const { error: soaError } = await supabase.from('soa').update(updatePayload).eq('unit_id', selectedUnit.id);
 
       if (soaError) throw soaError;
 
-      if (!isCash) {
-        setLocalStatuses(prev => ({ ...prev, [selectedUnit.id]: 'Paid' }));
-        setAllSoaConfigs(prev => ({
-          ...prev,
-          [selectedUnit.id]: {
-            ...prev[selectedUnit.id],
-            owner_status: 'Paid',
-            owner_payment_method: paymentMethod,
-            owner_reference_number: referenceNumber,
-            owner_payment_amount: ownerTotalDue
-          }
-        }));
-      } else {
-        setAllSoaConfigs(prev => ({
-          ...prev,
-          [selectedUnit.id]: {
-            ...prev[selectedUnit.id],
-            owner_payment_method: paymentMethod,
-            owner_reference_number: 'N/A',
-            owner_payment_amount: ownerTotalDue
-          }
-        }));
-        setShowCashSuccessModal(true);
-      }
+      // Update local configuration without assuming it's instantly paid
+      setAllSoaConfigs(prev => ({
+        ...prev,
+        [selectedUnit.id]: {
+          ...prev[selectedUnit.id],
+          owner_payment_method: paymentMethod,
+          owner_reference_number: isCash ? 'N/A' : referenceNumber,
+          owner_payment_amount: ownerTotalDue
+        }
+      }));
+
+      // Show success modal uniformly for all submission types
+      setShowSuccessModal(true);
 
     } catch (error) {
       console.error("Error processing payment submission:", error);
@@ -305,10 +287,9 @@ export default function FinancialTab({ userData, units }: any) {
   }
 
   return (
-    // ✨ LOCKED LAYOUT WINDOW SHELL
     <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
       
-      {/* 🌟 PREMIUM HEADER - Glassmorphism & Fully Responsive */}
+      {/* 🌟 PREMIUM HEADER */}
       <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
@@ -349,17 +330,16 @@ export default function FinancialTab({ userData, units }: any) {
         </div>
       </div>
 
-      {/* ✨ KANBAN LAYOUT Main Wrapper - Mobile Stack, Desktop Side-by-Side */}
+      {/* KANBAN LAYOUT Main Wrapper */}
       <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col md:flex-row overflow-hidden relative">
         
         {isLoading ? (
-          /* 🌟 PREMIUM SKELETON LOADING */
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider gap-3">
             <Clock size={24} className="animate-spin text-[#359b46]" /> Loading financial data...
           </div>
         ) : (
           <>
-            {/* ✨ FIX: SIDEBAR (Properties Inventory) - Shows on Mobile if isMobileListVisible is true */}
+            {/* SIDEBAR (Properties Inventory) */}
             <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
                 <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
@@ -403,7 +383,7 @@ export default function FinancialTab({ userData, units }: any) {
               </div>
             </div>
 
-            {/* ✨ FIX: MAIN DETAILS - Shows on Mobile if list is hidden */}
+            {/* MAIN DETAILS */}
             <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${!isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full animate-in fade-in duration-300">
@@ -416,7 +396,7 @@ export default function FinancialTab({ userData, units }: any) {
               ) : (
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
                   
-                  {/* ✨ FIX: NEW SOA DETAILS CARD (Stacked Mobile, Border Divider Desktop) */}
+                  {/* SOA DETAILS CARD */}
                   <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-800 overflow-hidden">
                     
                     {/* Header with Mobile Back Button */}
@@ -446,7 +426,6 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
                     </div>
 
-                    {/* Split Breakdown - Flex Col on Mobile / Grid 2 Columns + Line Divider on Desktop */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-800">
                       
                       {/* OWNER COLUMN */}
@@ -474,7 +453,7 @@ export default function FinancialTab({ userData, units }: any) {
                                 {soaConfig.owner.electricity && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
-                                {soaConfig.owner.penalty && ownerPenalty > 0 && (
+                                {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isVacant && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>}
@@ -507,8 +486,11 @@ export default function FinancialTab({ userData, units }: any) {
                                 {soaConfig.tenant.electricity && !isVacant && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-700 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
-                                {soaConfig.tenant.penalty && existingSoa?.tenant_status === 'Overdue' && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-400 font-bold truncate">Late Penalty</span><span className="font-black text-red-500 shrink-0">Pending</span></div>
+                                {tenantStatus === 'Overdue' && tenantPenalty > 0 && (
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-red-400 font-bold truncate">Late Penalty</span>
+                                    <span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {tenantBase === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>}
                               </>
@@ -596,7 +578,7 @@ export default function FinancialTab({ userData, units }: any) {
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
                                 
                                 <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[11px] sm:text-xs ${isRowOverdue ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}`}>
-                                  {isRowOverdue && ownerPenalty > 0 ? `₱${ownerPenalty.toLocaleString()}` : "0"}
+                                  {isRowOverdue && activeRow && ownerPenalty > 0 ? `₱${ownerPenalty.toLocaleString()}` : "0"}
                                 </td>
                                 
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[9px] sm:text-[10px] tracking-wider uppercase">
@@ -609,7 +591,7 @@ export default function FinancialTab({ userData, units }: any) {
                                 </td>
 
                                 <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                  ₱{(isRowOverdue ? ownerTotalDue : ownerBase).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                  ₱{(isRowOverdue && activeRow ? ownerTotalDue : ownerBase).toLocaleString(undefined, {minimumFractionDigits: 2})}
                                 </td>
                               </tr>
                             );
@@ -626,7 +608,7 @@ export default function FinancialTab({ userData, units }: any) {
         )}
       </div>
 
-      {/* 🌟 PREMIUM PAYMENT MODAL (Bottom Sheet for Mobile, Center for Desktop) */}
+      {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
@@ -680,7 +662,6 @@ export default function FinancialTab({ userData, units }: any) {
               {/* Conditional Instructions Based on Payment Method */}
               <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-[13px] sm:text-sm text-slate-600 transition-all shrink-0">
                 
-                {/* ✨ FIX: Updated Digital Wallet Section using Fetched QR Code */}
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
                     <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
@@ -763,8 +744,8 @@ export default function FinancialTab({ userData, units }: any) {
         </div>
       )}
 
-      {/* 🌟 CASH SUCCESS MODAL */}
-      {showCashSuccessModal && (
+      {/* 🌟 UNIFIED SUCCESS MODAL */}
+      {showSuccessModal && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
@@ -772,10 +753,13 @@ export default function FinancialTab({ userData, units }: any) {
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Request Submitted</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
-              Payment method recorded as <strong className="text-slate-700">Cash</strong>. Please proceed to the Administration Office to complete your payment.
+              Payment details for <strong className="text-slate-700">{paymentMethod}</strong> submitted successfully. 
+              {paymentMethod === 'Cash' || paymentMethod === 'Check'
+                ? " Please proceed to the Administration Office to complete your payment." 
+                : " Please wait for the Administration to verify and confirm your transaction."}
             </p>
             <button 
-              onClick={() => setShowCashSuccessModal(false)}
+              onClick={() => setShowSuccessModal(false)}
               className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95"
             >
               Got it, thanks!

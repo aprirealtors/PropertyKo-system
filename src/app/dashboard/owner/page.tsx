@@ -7,7 +7,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, PauseCircle, MessageSquare, FileCheck, AlertCircle,
-  Clock, Check, Lock, Key, Eye, EyeOff // <-- ADDED NEW ICONS
+  Clock, Check, Lock, Key, Eye, EyeOff
 } from "lucide-react";
 import ConversationTab from "./conversation"; 
 import FinancialTab from "./financial"; 
@@ -39,6 +39,7 @@ export default function OwnerDashboard() {
   // BILLING & FINANCIAL STATES
   const [totalDue, setTotalDue] = useState(0);
   const [collectedGross, setCollectedGross] = useState(0);
+  const [hasOverdue, setHasOverdue] = useState(false); // ✨ Keeps overdue tracker
   
   const [myUnitsList, setMyUnitsList] = useState<any[]>([]); 
   const [unitsCount, setUnitsCount] = useState(0);
@@ -53,6 +54,7 @@ export default function OwnerDashboard() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); 
   const [repairPriority, setRepairPriority] = useState("Normal");
+  const [issueCategory, setIssueCategory] = useState(""); // ✨ NEW: State for Category Dropdown
 
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -67,13 +69,15 @@ export default function OwnerDashboard() {
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  // ✨ NEW: Rejected Ticket Modal State
+  const [rejectedTicketModalData, setRejectedTicketModalData] = useState<any | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [reviewOnHoldTicket, setReviewOnHoldTicket] = useState<any>(null);
 
-  // --- NEW: Change Password States ---
+  // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -81,7 +85,7 @@ export default function OwnerDashboard() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
-  // --- NEW: Eye Toggle States ---
+  // --- Eye Toggle States ---
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -143,6 +147,7 @@ export default function OwnerDashboard() {
             // ✨ FETCH FINANCIALS & ACTIVE LEASES
             let totalOwnerBill = 0;
             let totalGross = 0;
+            let anyOverdue = false; // Tracker for global overdue state
 
             if (myUnits.length > 0) {
               const unitIds = myUnits.map((u: any) => u.id);
@@ -190,9 +195,11 @@ export default function OwnerDashboard() {
                   const electricity = soa.owner_electricity ? rawElectricity : 0;
 
                   const baseTotal = dues + parking + water + electricity;
+                  const isOwnerVacant = !unit.owner_name || unit.owner_name === '—';
 
                   let lateFee = 0;
-                  if (soa.owner_status === 'Overdue' && soa.owner_penalty) {
+                  if (soa.owner_status === 'Overdue' && !isOwnerVacant) {
+                    anyOverdue = true; // ✨ Flag as overdue
                     if (orgData?.penalty_type === 'percent') {
                       lateFee = baseTotal * ((orgData?.penalty_value || 0) / 100);
                     } else {
@@ -210,6 +217,7 @@ export default function OwnerDashboard() {
 
             setCollectedGross(totalGross);
             setTotalDue(totalOwnerBill); 
+            setHasOverdue(anyOverdue); // ✨ Save to state
           }
 
           const { count: msgCount } = await supabase
@@ -373,7 +381,7 @@ export default function OwnerDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- NEW: Handle Password Change ---
+  // --- Handle Password Change ---
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -441,6 +449,8 @@ export default function OwnerDashboard() {
       setSelectedUnitForRepair("");
     }
     setRepairPriority("Normal");
+    setIssueCategory(""); // ✨ FIX: Reset category state
+    setRepairIssue(""); // ✨ FIX: Reset text state
     setIsRepairModalOpen(true);
   };
 
@@ -480,12 +490,20 @@ export default function OwnerDashboard() {
       const { data: currentAuth } = await supabase.auth.getUser();
       const finalEmail = currentAuth.user?.email || userEmail;
 
+      // ✨ NEW: Mas matibay na 6-digit Unique ID (900,000 combinations)
+      const uniqueId = Math.floor(100000 + Math.random() * 900000);
+
+      // ✨ NEW: Lahat ng category (pati "Other") may Unique ID na sa dulo!
+      const finalTitle = issueCategory && issueCategory !== "Other" 
+        ? `${issueCategory} Ticket #${uniqueId}` 
+        : `${capitalizedIssue} Ticket #${uniqueId}`;
+
       const { data: newTicket, error } = await supabase
         .from('tickets') 
         .insert([{
           admin_email: userData?.admin_email,
           reporter_email: finalEmail,
-          title: capitalizedIssue,
+          title: finalTitle,
           location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
           description: `Best time to visit: ${capitalizedTime}. Reported by ${userData?.name || 'Owner'} (Owner).`, 
           status: 'Open', 
@@ -550,15 +568,28 @@ export default function OwnerDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    if (type === 'TICKET' || type === 'MAINTENANCE') {
-      setActiveTab("repair"); 
+    
+    // ✨ NEW: Kapag Rejected ang ticket, i-open yung Rejected Modal imbes na ang maintenance tab
+    if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
+      if (notif.reference_id) {
+        const { data: ticketData } = await supabase.from('tickets').select('*').eq('id', notif.reference_id).single();
+        if (ticketData) {
+          setRejectedTicketModalData({ ...ticketData, reason: notif.message });
+          return; // Stop logic here para hindi na lumipat ng tab
+        }
+      }
+    }
+
+    // Normal routing
+    if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
+      setActiveTab(document.querySelector('button[aria-label="Finance"]') ? "pay" : "financials"); 
+    } else if (type === 'MAINTENANCE' || type === 'TICKET') {
       if (notif.reference_id) {
         setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); 
       }
-    } else if (type === 'BILLING' || type === 'STATEMENT') {
-      setActiveTab("financials");
+      setActiveTab("repair");
     } else if (type === 'MESSAGE' || type === 'CHAT') {
-      handleConversationClick(); 
+      handleConversationClick();
     } else {
       setActiveTab("home");
     }
@@ -647,12 +678,11 @@ export default function OwnerDashboard() {
   };
   const initials = getInitials(userData?.name);
   
-  // ✨ Group units by property name to display like: "Future Point - COM-1A & COM-1B"
+  // ✨ Group units by property name
   const fullUnitsDisplay = useMemo(() => {
     if (myUnitsList.length === 0) return "No assigned units";
     
     const grouped = myUnitsList.reduce((acc: Record<string, string[]>, unit: any) => {
-      // Kunin ang property name nang walang .toUpperCase() para ma-retain ang original casing
       const propName = unit.property_name || "Unknown Property";
       
       if (!acc[propName]) acc[propName] = [];
@@ -661,7 +691,6 @@ export default function OwnerDashboard() {
       return acc;
     }, {});
 
-    // Pagdugtungin ang mga units gamit ang " & " kapag nasa iisang property
     return Object.entries(grouped)
       .map(([prop, units]: [string, string[]]) => {
         // ✨ FIX: I-sort ng pa-alpabeto (at alphanumeric) bago pagdugtungin
@@ -971,7 +1000,8 @@ export default function OwnerDashboard() {
                 <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
                   <div>
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit backdrop-blur-sm">
-                      <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+                      {/* ✨ DYNAMIC DOT: Red if overdue, yellow if pending, green if paid */}
+                      <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? (hasOverdue ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-pulse') : 'bg-emerald-400'}`}></div>
                       <p className="text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
                     </div>
                     
@@ -989,7 +1019,15 @@ export default function OwnerDashboard() {
                         {isLoading ? (
                           <div className="h-3 sm:h-4 bg-white/10 rounded-md animate-pulse w-32 sm:w-48"></div>
                         ) : (
-                          <p className="font-semibold truncate">{fullUnitsDisplay} {totalDue > 0 && <span className="text-amber-400 font-bold ml-1">· Pending Payment</span>}</p>
+                          <p className="font-semibold truncate">
+                            {fullUnitsDisplay} 
+                            {/* ✨ DYNAMIC STATUS TEXT */}
+                            {totalDue > 0 && (
+                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-red-400' : 'text-amber-400'}`}>
+                                · {hasOverdue ? 'Overdue Payment' : 'Pending Payment'}
+                              </span>
+                            )}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -1761,7 +1799,7 @@ export default function OwnerDashboard() {
       {/* 2. REPORT REPAIR MODAL (Compact Fit) */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[95vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[85vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
             
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 shadow-sm z-10">
@@ -1810,17 +1848,46 @@ export default function OwnerDashboard() {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Issue Description</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g. Leaking faucet in the kitchen" 
-                    value={repairIssue} 
-                    onChange={(e) => setRepairIssue(e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
-                    disabled={isSubmitting} 
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Issue Category</label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={issueCategory}
+                      onChange={(e) => {
+                        setIssueCategory(e.target.value);
+                        setRepairIssue(""); 
+                      }}
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 bg-white hover:border-slate-300 transition-all cursor-pointer shadow-sm appearance-none pr-10"
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>Select issue category...</option>
+                      <option value="Billing">Billing</option>
+                      <option value="Maintenance">Maintenance</option>
+                      <option value="House Keeping">House Keeping</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
                 </div>
+
+                {/* ✨ SPECIFIC ISSUE DETAILS IF 'OTHER' IS SELECTED */}
+                {issueCategory === "Other" && (
+                  <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
+                      <span>Specific Issue Details</span>
+                    </label>
+                    <textarea 
+                      required 
+                      placeholder="Please describe the issue in detail..." 
+                      value={repairIssue} 
+                      onChange={(e) => setRepairIssue(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm min-h-[80px] custom-scrollbar" 
+                      disabled={isSubmitting} 
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Priority Level</label>
@@ -1929,7 +1996,7 @@ export default function OwnerDashboard() {
                   <input 
                     type="text" 
                     required 
-                    placeholder="e.g. Tomorrow morning, Weekends" 
+                    placeholder="e.g. Now, Tomorrow, Day, Weekend etc..." 
                     value={repairTime} 
                     onChange={(e) => setRepairTime(e.target.value)} 
                     className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
@@ -1957,18 +2024,18 @@ export default function OwnerDashboard() {
       {/* 3. REVIEW RESOLUTION MODAL */}
       {reviewTicket && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] flex items-center gap-2 truncate tracking-tight">
                   {reviewTicket.title}
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
                   <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewTicket.location}
                 </div>
               </div>
-              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -2124,18 +2191,18 @@ export default function OwnerDashboard() {
       {/* 6. REVIEW ON HOLD MODAL (2-Column Layout) */}
       {reviewOnHoldTicket && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] flex items-center gap-2 truncate tracking-tight">
                   {reviewOnHoldTicket.title}
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
                   <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewOnHoldTicket.location}
                 </div>
               </div>
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -2232,6 +2299,76 @@ export default function OwnerDashboard() {
         </div>
       )}
 
+      {/* ✨ REJECTED TICKET MODAL (Triggered by Notification) */}
+      {rejectedTicketModalData && (
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-white/20 animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
+            
+            {/* Red Header */}
+            <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <AlertTriangle size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-red-600 tracking-tight">Request Rejected</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-widest mt-0.5">Admin Action</p>
+                </div>
+              </div>
+              <button onClick={() => setRejectedTicketModalData(null)} className="w-10 h-10 flex items-center justify-center bg-white hover:bg-red-100 rounded-full text-red-400 hover:text-red-600 transition-colors shadow-sm active:scale-95 shrink-0">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div className="p-6 sm:p-8 overflow-y-auto bg-slate-50/50 custom-scrollbar pb-10 sm:pb-8">
+              
+              {/* Reason Box */}
+              <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-md shadow-red-500/20">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
+                <p className="text-sm font-semibold leading-relaxed">
+                  {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
+                </p>
+              </div>
+
+              {/* Original Report Details */}
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm space-y-4">
+                
+                {rejectedTicketModalData.photo_url && (
+                  <div className="w-full h-40 bg-slate-100 rounded-xl overflow-hidden mb-4 border border-slate-200">
+                    <img src={rejectedTicketModalData.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Issue Title</span>
+                  <p className="font-extrabold text-slate-800">{rejectedTicketModalData.title}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Location</span>
+                    <p className="font-bold text-slate-600 text-xs">{rejectedTicketModalData.location}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Reported On</span>
+                    <p className="font-bold text-slate-600 text-xs">{new Date(rejectedTicketModalData.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</span>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {rejectedTicketModalData.description}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* ✨ TOAST NOTIFICATION */}
       {toast && (
         <div 

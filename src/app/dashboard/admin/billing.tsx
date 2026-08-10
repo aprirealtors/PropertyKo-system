@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2 } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -30,7 +30,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     bankName: '',
     bankAccountName: '',
     bankAccountNumber: '',
-    qrCodeUrl: '' // ✨ Added QR Code URL State
+    qrCodeUrl: ''
   });
 
   // Modal States
@@ -38,10 +38,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [paymentModalParty, setPaymentModalParty] = useState<'owner' | 'tenant' | null>(null);
   const [isComputationModalOpen, setIsComputationModalOpen] = useState(false);
   const [isSOAModalOpen, setIsSOAModalOpen] = useState(false);
+  const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
+  const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   
   const [isSimulating, setIsSimulating] = useState(false);
   const [isSendingSOA, setIsSendingSOA] = useState(false);
   const [isSavingDefault, setIsSavingDefault] = useState(false); 
+  const [isWaiving, setIsWaiving] = useState(false);
 
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
@@ -66,7 +69,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [compBankAccountName, setCompBankAccountName] = useState("");
   const [compBankAccountNumber, setCompBankAccountNumber] = useState("");
   
-  // ✨ QR Code Upload States
+  // QR Code Upload States
   const [compQrUrl, setCompQrUrl] = useState("");
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
@@ -213,6 +216,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const isAssigned = !!currentSoa; 
   const ownerStatus = currentSoa?.owner_status || 'Pending';
   const tenantStatus = currentSoa?.tenant_status || 'Pending';
+
+  const hasOwnerAssign = isAssigned && (currentSoa.owner_dues || currentSoa.owner_parking || currentSoa.owner_water || currentSoa.owner_electricity || currentSoa.owner_penalty);
+  const hasTenantAssign = isAssigned && (currentSoa.tenant_dues || currentSoa.tenant_parking || currentSoa.tenant_water || currentSoa.tenant_electricity || currentSoa.tenant_penalty);
   
   const rawDues = globalComp.duesRate * unitArea;
   const rawWater = globalComp.water;
@@ -239,13 +245,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
+  // Auto-calculate penalty based entirely on Overdue Status
   let ownerPenalty = 0;
-  if (ownerStatus === 'Overdue' && activeConfig.owner.penalty && !isOwnerVacant) {
+  if (ownerStatus === 'Overdue' && !isOwnerVacant) {
     ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
   let tenantPenalty = 0;
-  if (tenantStatus === 'Overdue' && activeConfig.tenant.penalty && !isTenantVacant) {
+  if (tenantStatus === 'Overdue' && !isTenantVacant) {
     tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
@@ -265,7 +272,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setCompBankName(globalComp.bankName);
     setCompBankAccountName(globalComp.bankAccountName);
     setCompBankAccountNumber(globalComp.bankAccountNumber);
-    setCompQrUrl(globalComp.qrCodeUrl); // Load existing QR URL
+    setCompQrUrl(globalComp.qrCodeUrl); 
     setIsComputationModalOpen(true);
   };
 
@@ -313,9 +320,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       tenant_penalty: soaConfig.tenant.penalty,
     };
 
-    if (statusOverride === 'Sent') {
-      if (!isOwnerVacant) payload.owner_status = 'Sent';
-      if (!isTenantVacant) payload.tenant_status = 'Sent';
+    if (statusOverride) {
+      if (!isOwnerVacant) payload.owner_status = statusOverride;
+      if (!isTenantVacant) payload.tenant_status = statusOverride;
     }
 
     if (existing?.id) {
@@ -350,7 +357,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const handleSendSOA = async () => {
     setIsSendingSOA(true);
     try {
-      await saveSoaToDatabase('Sent');
+      await saveSoaToDatabase('Pending');
       setIsSOAModalOpen(false);
     } catch (err) {
       console.error("Failed to send SOA:", err);
@@ -360,7 +367,36 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // ✨ Handle QR Image Upload to Supabase Storage
+  const handleWaivePenalty = async (party: 'owner' | 'tenant') => {
+    setIsWaiving(true);
+    try {
+      const updateField = { 
+        [`${party}_penalty`]: false
+      };
+      
+      const { error } = await supabase
+        .from('soa')
+        .update(updateField)
+        .eq('unit_id', selectedUnit.id);
+        
+      if (error) throw error;
+      
+      setAllSoaConfigs(prev => ({
+        ...prev,
+        [selectedUnit.id]: { ...prev[selectedUnit.id], ...updateField }
+      }));
+      
+      setIsPenaltyModalOpen(false);
+      setWaiveSuccess({ party });
+
+    } catch (err: any) {
+      console.error("Error waiving penalty", err);
+      alert(`Failed to waive penalty: ${err.message || 'Check your database permissions'}`);
+    } finally {
+      setIsWaiving(false);
+    }
+  };
+
   const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -377,14 +413,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       const fileName = `qr-${orgData.admin_email}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload to 'documents' bucket
       const { error: uploadError } = await supabase.storage
         .from('documents') 
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
@@ -396,7 +430,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       alert("Error uploading QR image: " + error.message);
     } finally {
       setIsUploadingQr(false);
-      if (qrInputRef.current) qrInputRef.current.value = ''; // Reset input
+      if (qrInputRef.current) qrInputRef.current.value = '';
     }
   };
 
@@ -415,7 +449,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       bank_name: compBankName,
       bank_account_name: compBankAccountName,
       bank_account_number: compBankAccountNumber,
-      qr_code_url: compQrUrl // ✨ Save QR URL to database
+      qr_code_url: compQrUrl
     };
 
     try {
@@ -462,9 +496,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       if (i < currentMonthIndex) {
         stat = "Paid"; 
       } else if (i === currentMonthIndex) {
-        if (ownerStatus === 'Overdue' || (!isTenantVacant && tenantStatus === 'Overdue')) stat = 'Overdue';
-        else if (ownerStatus === 'Paid' && (isTenantVacant || tenantStatus === 'Paid')) stat = 'Paid';
-        else stat = 'Pending';
+        if ((hasOwnerAssign && ownerStatus === 'Overdue') || (hasTenantAssign && tenantStatus === 'Overdue')) stat = 'Overdue';
+        else if ((hasOwnerAssign && ownerStatus === 'Pending') || (hasTenantAssign && tenantStatus === 'Pending')) stat = 'Pending';
+        else if ((hasOwnerAssign && ownerStatus === 'Sent') || (hasTenantAssign && tenantStatus === 'Sent')) stat = 'Sent';
+        else if (!hasOwnerAssign && !hasTenantAssign) stat = 'Unassigned';
+        else stat = 'Paid';
       }
       
       const dueDate = `${monthName} ${globalComp.collectionDay}, ${currentYear}`;
@@ -530,14 +566,21 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     
     try {
       const updateField = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
-      await supabase.from('soa').update(updateField).eq('unit_id', selectedUnit.id);
+      
+      const { error } = await supabase
+        .from('soa')
+        .update(updateField)
+        .eq('unit_id', selectedUnit.id);
+        
+      if (error) throw error;
       
       setAllSoaConfigs(prev => ({
         ...prev,
         [selectedUnit.id]: { ...prev[selectedUnit.id], ...updateField }
       }));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating payment status", err);
+      alert(`Failed to confirm payment: ${err.message || 'Check your database permissions'}`);
     } finally {
       setIsSimulating(false);
       setPaymentModalParty(null);
@@ -602,7 +645,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
             {/* SIDEBAR */}
             <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-3 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
-                <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
+                  <button onClick={openComputationModal} className="text-slate-400 hover:text-[#1d82f5] hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors active:scale-95 flex items-center gap-1.5 border border-transparent hover:border-blue-100" title="Billing Settings">
+                    <Calculator size={13} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Config</span>
+                  </button>
+                </div>
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{allUnits.length} Total</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
@@ -613,6 +662,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   const rowSoa = allSoaConfigs[unit.id];
                   const rOwnerStat = rowSoa?.owner_status || 'Pending';
                   const rTenantStat = rowSoa?.tenant_status || 'Pending';
+                  
+                  const hasRowOwnerAssign = rowSoa && (rowSoa.owner_dues || rowSoa.owner_parking || rowSoa.owner_water || rowSoa.owner_electricity || rowSoa.owner_penalty);
+                  const hasRowTenantAssign = rowSoa && (rowSoa.tenant_dues || rowSoa.tenant_parking || rowSoa.tenant_water || rowSoa.tenant_electricity || rowSoa.tenant_penalty);
                   
                   return (
                     <div 
@@ -639,14 +691,19 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           </span>
                         ) : (
                           <>
-                            {!isRowOwnerVacant && (
+                            {!isRowOwnerVacant && hasRowOwnerAssign && (
                               <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                 O: {rOwnerStat}
                               </span>
                             )}
-                            {!isRowTenantVacant && (
+                            {!isRowTenantVacant && hasRowTenantAssign && (
                               <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                 T: {rTenantStat}
+                              </span>
+                            )}
+                            {(!isRowOwnerVacant || !isRowTenantVacant) && !hasRowOwnerAssign && !hasRowTenantAssign && (
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+                                Unassigned
                               </span>
                             )}
                           </>
@@ -700,7 +757,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                <h4 className="font-black text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
                                <p className="font-bold text-[#0a1e3f] text-[13px] sm:text-base truncate">{isOwnerVacant ? 'Vacant' : selectedUnit?.owner_name}</p>
                            </div>
-                           {!isOwnerVacant && renderStatusBadge(ownerStatus)}
+                           {!isOwnerVacant && hasOwnerAssign && renderStatusBadge(ownerStatus)}
                        </div>
 
                        <h5 className="font-black text-[#0a1e3f] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-50 truncate">
@@ -708,7 +765,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                        </h5>
 
                        <div className="space-y-3 sm:space-y-3.5 flex-1">
-                          {isAssigned ? (
+                          {isAssigned && hasOwnerAssign ? (
                             <>
                               {activeConfig.owner.dues && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -722,13 +779,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {activeConfig.owner.electricity && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
-                              {activeConfig.owner.penalty && ownerPenalty > 0 && !isOwnerVacant && (
+                              {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isOwnerVacant && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
                             </>
                           ) : (
-                            <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">Pending SOA assignment.</p>
+                            <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>
                           )}
                        </div>
                        
@@ -747,7 +804,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                    <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
                                    <p className="font-bold text-slate-800 text-[13px] sm:text-base truncate">{selectedUnit?.tenant_name}</p>
                                </div>
-                               {renderStatusBadge(tenantStatus)}
+                               {hasTenantAssign && renderStatusBadge(tenantStatus)}
                            </div>
 
                            <h5 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-60 truncate">
@@ -755,7 +812,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                            </h5>
 
                            <div className="space-y-3 sm:space-y-3.5 flex-1">
-                              {isAssigned ? (
+                              {isAssigned && hasTenantAssign ? (
                                 <>
                                   {activeConfig.tenant.dues && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-slate-800 shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -769,13 +826,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                   {activeConfig.tenant.electricity && !isTenantVacant && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-800 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
-                                  {activeConfig.tenant.penalty && tenantPenalty > 0 && (
+                                  {tenantStatus === 'Overdue' && tenantPenalty > 0 && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-400 font-bold truncate">Late Penalty</span><span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {tenantTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
                                 </>
                               ) : (
-                                <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">Pending SOA assignment.</p>
+                                <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>
                               )}
                            </div>
 
@@ -818,12 +875,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     </button>
                   )}
 
-                  <button 
-                    onClick={openComputationModal}
-                    className="w-full justify-center sm:w-auto bg-white border border-[#1d82f5]/30 hover:border-[#1d82f5]/60 hover:bg-blue-50 text-[#1d82f5] px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
-                  >
-                    <Calculator className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Config</span>
-                  </button>
+                  {(ownerStatus === 'Overdue' || tenantStatus === 'Overdue') && (
+                    <button 
+                      onClick={() => setIsPenaltyModalOpen(true)}
+                      className="w-full justify-center sm:w-auto bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
+                    >
+                      <AlertCircle className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Penalties</span>
+                    </button>
+                  )}
                   
                   <button 
                     onClick={openSOAModal}
@@ -887,17 +946,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
                               
                               <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${isOverdue ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
-                                {isOverdue && (ownerPenalty + tenantPenalty) > 0 ? `₱${(ownerPenalty + tenantPenalty).toLocaleString()}` : "—"}
+                                {isOverdue && row.isCurrentMonth && (ownerPenalty > 0 || tenantPenalty > 0) ? (
+                                  <div className="flex flex-col gap-0.5 text-[10px] sm:text-[11px]">
+                                    {ownerPenalty > 0 && <span>O: ₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
+                                    {tenantPenalty > 0 && <span>T: ₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
+                                  </div>
+                                ) : (
+                                   isOverdue && (ownerPenalty + tenantPenalty) > 0 ? `₱${(ownerPenalty + tenantPenalty).toLocaleString()}` : "—"
+                                )}
                               </td>
                               
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                 {row.isCurrentMonth ? (
                                   isOwnerVacant && isTenantVacant ? (
-                                     <span className="text-slate-400">VACANT</span>
+                                      <span className="text-slate-400">VACANT</span>
                                   ) : (
                                     <div className="flex flex-col gap-1">
-                                      {!isOwnerVacant && <span>O: <span className={ownerStatus === 'Paid' ? 'text-emerald-500' : ownerStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{ownerStatus}</span></span>}
-                                      {!isTenantVacant && <span>T: <span className={tenantStatus === 'Paid' ? 'text-emerald-500' : tenantStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{tenantStatus}</span></span>}
+                                      {!isOwnerVacant && hasOwnerAssign && <span>O: <span className={ownerStatus === 'Paid' ? 'text-emerald-500' : ownerStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{ownerStatus}</span></span>}
+                                      {!isTenantVacant && hasTenantAssign && <span>T: <span className={tenantStatus === 'Paid' ? 'text-emerald-500' : tenantStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{tenantStatus}</span></span>}
+                                      {(!isOwnerVacant || !isTenantVacant) && !hasOwnerAssign && !hasTenantAssign && <span className="text-slate-400">UNASSIGNED</span>}
                                     </div>
                                   )
                                 ) : (
@@ -1107,6 +1174,69 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
+      {/* PENALTY MODAL (Manage Penalties) */}
+      {isPenaltyModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shrink-0">
+                  <AlertCircle size={16} />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight">Manage Penalties</h2>
+              </div>
+              <button onClick={() => setIsPenaltyModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isWaiving}>
+                <X size={20} className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4">
+              <p className="text-[12px] sm:text-[13px] text-slate-500 font-medium leading-relaxed">
+                You can waive the penalty for this billing period. The base balance will remain due until a payment is verified.
+              </p>
+              
+              {ownerPenalty > 0 && ownerStatus === 'Overdue' && (
+                <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-red-800 text-[13px] sm:text-sm">Owner Penalty</span>
+                    <span className="font-black text-red-600 text-lg sm:text-xl">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleWaivePenalty('owner')}
+                    disabled={isWaiving}
+                    className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : "Waive Penalty & Verify Payment"}
+                  </button>
+                </div>
+              )}
+
+              {tenantPenalty > 0 && tenantStatus === 'Overdue' && (
+                <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-red-800 text-[13px] sm:text-sm">Tenant Penalty</span>
+                    <span className="font-black text-red-600 text-lg sm:text-xl">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleWaivePenalty('tenant')}
+                    disabled={isWaiving}
+                    className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : "Waive Penalty & Verify Payment"}
+                  </button>
+                </div>
+              )}
+
+              {!(ownerPenalty > 0 && ownerStatus === 'Overdue') && !(tenantPenalty > 0 && tenantStatus === 'Overdue') && (
+                <div className="text-center py-6 text-[13px] sm:text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                  No active penalties to waive.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SOA MODAL */}
       {isSOAModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
@@ -1269,18 +1399,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </button>
                 <div className="flex gap-2.5 sm:gap-3 w-full">
                   <button 
-                    onClick={handleSaveDefaultSOA}
-                    disabled={isSendingSOA || isSavingDefault}
-                    className="flex-1 min-w-0 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3 sm:py-3.5 rounded-xl text-[11px] sm:text-[13px] font-bold shadow-sm transition-colors flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
-                  >
-                    {isSavingDefault ? "Saving..." : "Save Config Only"}
-                  </button>
-                  <button 
                     onClick={handleSendSOA}
-                    disabled={isSendingSOA || isSavingDefault || (ownerTotalDue === 0 && tenantTotalDue === 0)}
+                    disabled={isSendingSOA || isSavingDefault}
                     className="flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:shadow-[0_4px_15px_rgba(29,130,245,0.3)] disabled:from-blue-300 disabled:to-blue-300 disabled:shadow-none text-white py-3 sm:py-3.5 rounded-xl text-[11px] sm:text-[13px] font-bold shadow-[0_2px_8px_rgba(29,130,245,0.2)] transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
                   >
-                    {isSendingSOA ? "Sending..." : "Send SOA"}
+                    {isSendingSOA ? "Saving & Sending..." : "Save and Send"}
                   </button>
                 </div>
               </div>
@@ -1350,6 +1473,32 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid in Database</>}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM SUCCESS MODAL FOR WAIVING PENALTY */}
+      {waiveSuccess && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
+              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Penalty Waived</h2>
+            <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
+              The late penalty for the <strong className="text-slate-700 capitalize">{waiveSuccess.party}</strong> has been successfully removed. You may now proceed to verify the base payment.
+            </p>
+            <button 
+              onClick={() => {
+                const party = waiveSuccess.party;
+                setWaiveSuccess(null);
+                setPaymentModalParty(party);
+                setIsPaymentModalOpen(true);
+              }}
+              className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95"
+            >
+              Continue to Payment
+            </button>
           </div>
         </div>
       )}

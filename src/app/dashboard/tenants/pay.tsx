@@ -14,24 +14,21 @@ export default function PayTab() {
     duesRate: 0, water: 0, electricity: 0, parking: 0,
     penaltyType: 'percent', penaltyValue: 0, collectionDay: 1, gracePeriod: 15,
     bankName: '', bankAccountName: '', bankAccountNumber: '',
-    qrCodeUrl: '' // ✨ Added QR Code URL state
+    qrCodeUrl: '' 
   });
 
   const [soaConfig, setSoaConfig] = useState({
     dues: false, parking: false, water: true, electricity: true, penalty: true
   });
   
-  // New independent status
   const [tenantStatus, setTenantStatus] = useState('Pending');
   const [isAssigned, setIsAssigned] = useState(false);
 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [showCashSuccessModal, setShowCashSuccessModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // ✨ Unified Success Modal State
   
-  // ✨ Mobile History Toggle State
   const [isMobileHistoryVisible, setIsMobileHistoryVisible] = useState(false);
 
-  // Updated payment methods and reference state (Removed Credit/Debit Card)
   const PAYMENT_METHODS = [
     'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
   ];
@@ -62,7 +59,6 @@ export default function PayTab() {
       if (profile) {
         const { data: orgData } = await supabase
           .from('organizations')
-          // ✨ Added qr_code_url to fetch fields
           .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
           .eq('admin_email', profile.admin_email)
           .single();
@@ -74,7 +70,7 @@ export default function PayTab() {
             penaltyType: orgData.penalty_type || 'percent', penaltyValue: orgData.penalty_value || 0,
             collectionDay: orgData.collection_day || 1, gracePeriod: orgData.grace_period_days || 15,
             bankName: orgData.bank_name || '', bankAccountName: orgData.bank_account_name || '', bankAccountNumber: orgData.bank_account_number || '',
-            qrCodeUrl: orgData.qr_code_url || '' // ✨ Set fetched QR Code URL
+            qrCodeUrl: orgData.qr_code_url || '' 
           });
         }
 
@@ -139,7 +135,6 @@ export default function PayTab() {
   const rawWater = globalComp.water;
   const rawElectricity = globalComp.electricity;
 
-  // Zero out the values if SOA hasn't been assigned
   const dues = isAssigned && soaConfig.dues ? rawDues : 0;
   const parking = isAssigned && soaConfig.parking ? rawParking : 0;
   const water = isAssigned && soaConfig.water ? rawWater : 0;
@@ -148,8 +143,7 @@ export default function PayTab() {
   const baseTotal = dues + parking + water + electricity;
 
   let lateFee = 0;
-  // Penalty computed specifically on the TENANT'S base total, using TENANT'S status
-  if (isAssigned && tenantStatus === 'Overdue' && soaConfig.penalty) {
+  if (tenantStatus === 'Overdue') {
     if (globalComp.penaltyType === 'percent') {
       lateFee = baseTotal * (globalComp.penaltyValue / 100);
     } else {
@@ -182,8 +176,8 @@ export default function PayTab() {
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     const rows = ledgerData.map(row => {
       const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue ? lateFee : 0;
-      const rowTotal = isOverdue ? totalDue : baseTotal;
+      const rowPenalty = isOverdue && row.isCurrentMonth ? lateFee : 0;
+      const rowTotal = isOverdue && row.isCurrentMonth ? totalDue : baseTotal;
       return [`"${row.monthName} ${row.year}"`, `"${row.dueDate}"`, dues, parking, (water + electricity), rowPenalty, `"${row.status}"`, rowTotal].join(",");
     });
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -210,35 +204,13 @@ export default function PayTab() {
         unit_name: `${unit.property_name} - Unit ${unit.unit_number}`
       };
 
-      // Only mark as Paid if the method is NOT cash
-      if (!isCash) {
-        updatePayload.tenant_status = 'Paid';
-      }
-
-      // 1. Update the SOA table
+      // ✨ FIX: We no longer auto-mark as paid or attempt to write to the transactions table.
+      // This sends the data directly to SOA so the Admin can manually verify it first!
       const { error: soaError } = await supabase.from('soa').update(updatePayload).eq('unit_id', unit.id);
 
       if (soaError) throw soaError;
-      
-      if (!isCash) {
-        // 2. Insert into transactions table to maintain ledger history (Skip if cash, admin will generate upon receiving)
-        const newTx = {
-          admin_email: unit.admin_email,
-          tenant_name: unit.tenant_name,
-          amount: totalDue,
-          description: `Statement Payment for ${unit.property_name} - ${unit.unit_number}`,
-          payment_method: paymentMethod,
-          status: 'Paid'
-        };
 
-        const { data: txData, error: txError } = await supabase.from('transactions').insert([newTx]).select().single();
-        if (txError) throw txError;
-        
-        setTenantStatus('Paid');
-        if (txData) setTransactions((prev: any) => [txData, ...prev]);
-      } else {
-        setShowCashSuccessModal(true);
-      }
+      setShowSuccessModal(true);
 
     } catch (error) {
       console.error("Error processing payment submission:", error);
@@ -246,15 +218,14 @@ export default function PayTab() {
     } finally {
       setIsSimulating(false);
       setIsPaymentModalOpen(false);
-      setReferenceNumber(""); // reset after submission
+      setReferenceNumber(""); 
     }
   };
 
   return (
-    // ✨ LOCKED APP SHELL LAYOUT (Flush Edge-to-Edge)
     <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
       
-      {/* 🌟 PREMIUM HEADER - Glassmorphism & Fully Responsive */}
+      {/* 🌟 PREMIUM HEADER */}
       <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
@@ -272,7 +243,6 @@ export default function PayTab() {
                 </p>
               </div>
             </div>
-            {/* Mobile Profile Icon */}
             <div className="md:hidden w-9 h-9 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shadow-inner border border-blue-100 shrink-0 ml-3">
               {unit?.tenant_name 
               ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
@@ -295,11 +265,10 @@ export default function PayTab() {
         </div>
       </div>
 
-      {/* ✨ MASTER-DETAIL Wrapper (Desktop = Side-by-Side, Mobile = Unified Scroll) */}
+      {/* ✨ MASTER-DETAIL Wrapper */}
       <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col md:flex-row overflow-y-auto lg:overflow-hidden relative custom-scrollbar">
         
         {isLoading ? (
-          /* 🌟 PREMIUM SKELETON LOADING */
           <div className="flex-1 flex w-full flex-col lg:flex-row gap-5 sm:gap-6 animate-pulse p-4 sm:p-6 lg:p-8">
             <div className="flex-1 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-sm p-5 sm:p-8 flex flex-col">
               <div className="h-8 w-48 bg-slate-200 rounded-md mb-6"></div>
@@ -315,7 +284,6 @@ export default function PayTab() {
             </div>
           </div>
         ) : !unit ? (
-          /* EMPTY STATE */
           <div className="flex-1 flex items-center justify-center w-full bg-[#f4f7f9] p-4">
             <div className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-200/60 p-8 sm:p-14 text-center max-w-lg w-full animate-in fade-in duration-500">
               <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-100">
@@ -330,11 +298,9 @@ export default function PayTab() {
         ) : (
           <>
             {/* ✨ LEFT MAIN AREA (SOA Summary & Ledger) */}
-            {/* FIX: Changed overflow handling so the whole page naturally scrolls on mobile. Added pb-24 padding at the bottom so it never gets cut off! */}
             <div className={`flex-1 flex-col bg-[#f4f7f9] relative lg:overflow-y-auto custom-scrollbar ${!isMobileHistoryVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-24 lg:pb-12">
                 
-                {/* Header Mobile Toggle Button for History Sidebar */}
                 <div className="md:hidden flex justify-end">
                   <button 
                     onClick={() => setIsMobileHistoryVisible(true)}
@@ -344,10 +310,8 @@ export default function PayTab() {
                   </button>
                 </div>
 
-                {/* PREMIUM SOA CARD */}
                 <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200 overflow-hidden">
                   
-                  {/* Property Info Bar */}
                   <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100">
                     <div className="min-w-0">
                       <h3 className="font-extrabold text-[#0a1e3f] text-xl sm:text-2xl md:text-3xl tracking-tight leading-tight whitespace-normal break-words">
@@ -366,7 +330,6 @@ export default function PayTab() {
                     </div>
                   </div>
 
-                  {/* Breakdown Area */}
                   <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col">
                     <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-200/60">
                       <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
@@ -388,7 +351,7 @@ export default function PayTab() {
                             {soaConfig.electricity && (
                               <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
-                            {soaConfig.penalty && lateFee > 0 && !isPaid && (
+                            {tenantStatus === 'Overdue' && lateFee > 0 && (
                               <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-red-500 font-bold whitespace-normal break-words">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
                             {baseTotal === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">No assigned balances for this period.</p>}
@@ -399,7 +362,6 @@ export default function PayTab() {
                     </div>
                   </div>
 
-                  {/* Total Due Footer */}
                   <div className="bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-5 sm:p-6 md:p-8 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-t border-slate-800">
                     <div className="min-w-0">
                       <span className="font-black text-blue-200/80 text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 block whitespace-normal break-words">Total Due <span className="font-medium text-slate-400 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
@@ -410,7 +372,6 @@ export default function PayTab() {
                   </div>
                 </div>
                 
-                {/* Action Button */}
                 <div className="w-full shrink-0">
                   <button 
                     onClick={() => setIsPaymentModalOpen(true)}
@@ -424,7 +385,6 @@ export default function PayTab() {
                   </p>
                 </div>
 
-                {/* ✨ FINTECH LEDGER TABLE & CARDS */}
                 <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-6 md:p-8">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
                     <div className="flex items-center gap-3 min-w-0">
@@ -446,7 +406,6 @@ export default function PayTab() {
                     </button>
                   </div>
                   
-                  {/* DESKTOP TABLE VIEW (Hidden on Mobile) */}
                   <div className="hidden md:block overflow-x-auto border border-slate-200/80 rounded-2xl custom-scrollbar shadow-sm max-h-[600px] relative">
                     <table className="w-full text-left text-xs min-w-[800px] border-collapse">
                       <thead className="bg-[#359b46] text-white font-extrabold border-b border-[#2c813a] sticky top-0 z-20 shadow-sm">
@@ -478,7 +437,7 @@ export default function PayTab() {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
                               <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-bold text-[11px] sm:text-xs border-r border-slate-100 ${isRowOverdue ? 'text-red-600' : 'text-slate-400'}`}>
-                                {isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
+                                {isRowOverdue && activeRow && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
                               </td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-center whitespace-nowrap font-bold text-[9px] sm:text-[10px] tracking-wider uppercase border-r border-slate-100">
                                 {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2 sm:px-3 py-1 rounded-md border border-emerald-100 shadow-sm">Paid</span>}
@@ -489,7 +448,7 @@ export default function PayTab() {
                                 {row.status === 'Upcoming' && <span className="text-slate-400 font-medium px-2 sm:px-3">Upcoming</span>}
                               </td>
                               <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                ₱{(isRowOverdue && activeRow ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
                           );
@@ -498,8 +457,6 @@ export default function PayTab() {
                     </table>
                   </div>
 
-                  {/* MOBILE CARD VIEW FOR LEDGER (Shown only on Mobile) */}
-                  {/* FIX: Removed max-h so cards flow naturally to the bottom without clipping */}
                   <div className="block md:hidden space-y-4">
                     {ledgerData.map((row, idx) => {
                       const isRowPaid = row.status === 'Paid';
@@ -510,7 +467,6 @@ export default function PayTab() {
                         <div key={idx} className={`relative p-4 sm:p-5 rounded-[0.5rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
                           {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[#359b46] rounded-l-[1.25rem]"></div>}
                           
-                          {/* Top: Period and Status */}
                           <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
                             <div>
                               <span className={`font-black uppercase text-[13px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
@@ -529,7 +485,6 @@ export default function PayTab() {
                             </div>
                           </div>
 
-                          {/* Middle: Breakdown */}
                           <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 mb-4">
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-slate-500 font-medium">Dues:</span>
@@ -545,22 +500,20 @@ export default function PayTab() {
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
-                              <span className={`text-[12px] font-bold ${isRowOverdue && lateFee > 0 ? 'text-red-600' : 'text-slate-700'}`}>{isRowOverdue && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}</span>
+                              <span className={`text-[12px] font-bold ${isRowOverdue && activeRow && lateFee > 0 ? 'text-red-600' : 'text-slate-700'}`}>{isRowOverdue && activeRow && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}</span>
                             </div>
                           </div>
 
-                          {/* Bottom: Total */}
                           <div className="flex justify-between items-center bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-3.5 rounded-xl border border-slate-100 shadow-sm">
                             <span className="text-[11px] font-black uppercase tracking-widest text-slate-100">Total:</span>
                             <span className={`font-black text-[16px] tracking-tight ${isRowPaid ? 'text-[#FFFFFF]' : 'text-[#FFFFFF]'}`}>
-                              ₱{(isRowOverdue ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                              ₱{(isRowOverdue && activeRow ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
                             </span>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-
                 </div>
 
               </div>
@@ -608,12 +561,11 @@ export default function PayTab() {
         )}
       </div>
 
-      {/* 🌟 PREMIUM PAYMENT MODAL (Bottom Sheet for Mobile, Center Modal for Desktop) */}
+      {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
-            {/* Modal Header */}
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-slate-100">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
@@ -627,7 +579,6 @@ export default function PayTab() {
               </button>
             </div>
             
-            {/* Scrollable Form Body */}
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1 flex flex-col">
               
               <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] mb-5 sm:mb-6 gap-3 shrink-0">
@@ -658,7 +609,6 @@ export default function PayTab() {
               </div>
 
               <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-[13px] sm:text-sm text-slate-600 transition-all shrink-0">
-                {/* ✨ FIX: Updated Digital Wallet Section using Fetched QR Code */}
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
                     <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center whitespace-normal break-words">Scan QR code using GCash, Maya, or QR Ph</p>
@@ -702,7 +652,6 @@ export default function PayTab() {
                 )}
               </div>
 
-              {/* Reference Number Input */}
               {paymentMethod !== 'Cash' && (
                 <div className="mb-6 shrink-0">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1 whitespace-normal break-words">Reference / Transaction No.</label>
@@ -716,7 +665,6 @@ export default function PayTab() {
                 </div>
               )}
 
-              {/* Stacked Mobile Buttons, Balanced Desktop Buttons */}
               <div className="mt-auto flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-1 sm:pb-2 z-20">
                 <button 
                   type="button" 
@@ -740,8 +688,8 @@ export default function PayTab() {
         </div>
       )}
 
-      {/* 🌟 CASH SUCCESS MODAL */}
-      {showCashSuccessModal && (
+      {/* 🌟 UNIFIED SUCCESS MODAL */}
+      {showSuccessModal && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
@@ -749,10 +697,13 @@ export default function PayTab() {
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight whitespace-normal break-words">Request Submitted</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2 whitespace-normal break-words">
-              Payment method recorded as <strong className="text-slate-700">Cash</strong>. Please proceed to the Administration Office to complete your payment.
+              Payment details for <strong className="text-slate-700">{paymentMethod}</strong> submitted successfully. 
+              {paymentMethod === 'Cash' || paymentMethod === 'Check'
+                ? " Please proceed to the Administration Office to complete your payment." 
+                : " Please wait for the Administration to verify and confirm your transaction."}
             </p>
             <button 
-              onClick={() => setShowCashSuccessModal(false)}
+              onClick={() => setShowSuccessModal(false)}
               className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 whitespace-nowrap"
             >
               Got it, thanks!
@@ -764,7 +715,6 @@ export default function PayTab() {
   );
 }
 
-// ✨ FIX: Refined Transaction History Item Component (Removed truncate to avoid cut off, added break-words)
 function HistoryItem({ title, method, date, amount, status }: any) {
   return (
     <div className="w-full cursor-default p-3.5 sm:p-4 rounded-xl sm:rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)] shadow-sm flex items-start sm:items-center justify-between gap-3 group">

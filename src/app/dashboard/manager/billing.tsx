@@ -30,7 +30,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     bankName: '',
     bankAccountName: '',
     bankAccountNumber: '',
-    qrCodeUrl: '' // ✨ Added QR Code URL State
+    qrCodeUrl: ''
   });
 
   // Modal States
@@ -66,7 +66,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [compBankAccountName, setCompBankAccountName] = useState("");
   const [compBankAccountNumber, setCompBankAccountNumber] = useState("");
   
-  // ✨ QR Code Upload States
+  // QR Code Upload States
   const [compQrUrl, setCompQrUrl] = useState("");
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
@@ -213,6 +213,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const isAssigned = !!currentSoa; 
   const ownerStatus = currentSoa?.owner_status || 'Pending';
   const tenantStatus = currentSoa?.tenant_status || 'Pending';
+
+  const hasOwnerAssign = isAssigned && (currentSoa.owner_dues || currentSoa.owner_parking || currentSoa.owner_water || currentSoa.owner_electricity || currentSoa.owner_penalty);
+  const hasTenantAssign = isAssigned && (currentSoa.tenant_dues || currentSoa.tenant_parking || currentSoa.tenant_water || currentSoa.tenant_electricity || currentSoa.tenant_penalty);
   
   const rawDues = globalComp.duesRate * unitArea;
   const rawWater = globalComp.water;
@@ -265,7 +268,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setCompBankName(globalComp.bankName);
     setCompBankAccountName(globalComp.bankAccountName);
     setCompBankAccountNumber(globalComp.bankAccountNumber);
-    setCompQrUrl(globalComp.qrCodeUrl); // Load existing QR URL
+    setCompQrUrl(globalComp.qrCodeUrl); 
     setIsComputationModalOpen(true);
   };
 
@@ -360,7 +363,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // ✨ Handle QR Image Upload to Supabase Storage
   const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -377,14 +379,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       const fileName = `qr-${orgData.admin_email}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      // Upload to 'documents' bucket
       const { error: uploadError } = await supabase.storage
         .from('documents') 
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
@@ -396,7 +396,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       alert("Error uploading QR image: " + error.message);
     } finally {
       setIsUploadingQr(false);
-      if (qrInputRef.current) qrInputRef.current.value = ''; // Reset input
+      if (qrInputRef.current) qrInputRef.current.value = '';
     }
   };
 
@@ -415,7 +415,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       bank_name: compBankName,
       bank_account_name: compBankAccountName,
       bank_account_number: compBankAccountNumber,
-      qr_code_url: compQrUrl // ✨ Save QR URL to database
+      qr_code_url: compQrUrl
     };
 
     try {
@@ -462,9 +462,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       if (i < currentMonthIndex) {
         stat = "Paid"; 
       } else if (i === currentMonthIndex) {
-        if (ownerStatus === 'Overdue' || (!isTenantVacant && tenantStatus === 'Overdue')) stat = 'Overdue';
-        else if (ownerStatus === 'Paid' && (isTenantVacant || tenantStatus === 'Paid')) stat = 'Paid';
-        else stat = 'Pending';
+        if ((hasOwnerAssign && ownerStatus === 'Overdue') || (hasTenantAssign && tenantStatus === 'Overdue')) stat = 'Overdue';
+        else if ((hasOwnerAssign && ownerStatus === 'Pending') || (hasTenantAssign && tenantStatus === 'Pending')) stat = 'Pending';
+        else if ((hasOwnerAssign && ownerStatus === 'Sent') || (hasTenantAssign && tenantStatus === 'Sent')) stat = 'Sent';
+        else if (!hasOwnerAssign && !hasTenantAssign) stat = 'Unassigned';
+        else stat = 'Paid';
       }
       
       const dueDate = `${monthName} ${globalComp.collectionDay}, ${currentYear}`;
@@ -614,6 +616,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   const rOwnerStat = rowSoa?.owner_status || 'Pending';
                   const rTenantStat = rowSoa?.tenant_status || 'Pending';
                   
+                  const hasRowOwnerAssign = rowSoa && (rowSoa.owner_dues || rowSoa.owner_parking || rowSoa.owner_water || rowSoa.owner_electricity || rowSoa.owner_penalty);
+                  const hasRowTenantAssign = rowSoa && (rowSoa.tenant_dues || rowSoa.tenant_parking || rowSoa.tenant_water || rowSoa.tenant_electricity || rowSoa.tenant_penalty);
+                  
                   return (
                     <div 
                       key={unit.id} 
@@ -639,14 +644,19 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           </span>
                         ) : (
                           <>
-                            {!isRowOwnerVacant && (
+                            {!isRowOwnerVacant && hasRowOwnerAssign && (
                               <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                 O: {rOwnerStat}
                               </span>
                             )}
-                            {!isRowTenantVacant && (
+                            {!isRowTenantVacant && hasRowTenantAssign && (
                               <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                 T: {rTenantStat}
+                              </span>
+                            )}
+                            {(!isRowOwnerVacant || !isRowTenantVacant) && !hasRowOwnerAssign && !hasRowTenantAssign && (
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+                                Unassigned
                               </span>
                             )}
                           </>
@@ -700,7 +710,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                <h4 className="font-black text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
                                <p className="font-bold text-[#0a1e3f] text-[13px] sm:text-base truncate">{isOwnerVacant ? 'Vacant' : selectedUnit?.owner_name}</p>
                            </div>
-                           {!isOwnerVacant && renderStatusBadge(ownerStatus)}
+                           {!isOwnerVacant && hasOwnerAssign && renderStatusBadge(ownerStatus)}
                        </div>
 
                        <h5 className="font-black text-[#0a1e3f] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-50 truncate">
@@ -708,7 +718,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                        </h5>
 
                        <div className="space-y-3 sm:space-y-3.5 flex-1">
-                          {isAssigned ? (
+                          {isAssigned && hasOwnerAssign ? (
                             <>
                               {activeConfig.owner.dues && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -728,7 +738,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
                             </>
                           ) : (
-                            <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">Pending SOA assignment.</p>
+                            <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>
                           )}
                        </div>
                        
@@ -747,7 +757,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                    <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
                                    <p className="font-bold text-slate-800 text-[13px] sm:text-base truncate">{selectedUnit?.tenant_name}</p>
                                </div>
-                               {renderStatusBadge(tenantStatus)}
+                               {hasTenantAssign && renderStatusBadge(tenantStatus)}
                            </div>
 
                            <h5 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-60 truncate">
@@ -755,7 +765,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                            </h5>
 
                            <div className="space-y-3 sm:space-y-3.5 flex-1">
-                              {isAssigned ? (
+                              {isAssigned && hasTenantAssign ? (
                                 <>
                                   {activeConfig.tenant.dues && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-slate-800 shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -775,7 +785,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                   {tenantTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
                                 </>
                               ) : (
-                                <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">Pending SOA assignment.</p>
+                                <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>
                               )}
                            </div>
 
@@ -893,11 +903,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                 {row.isCurrentMonth ? (
                                   isOwnerVacant && isTenantVacant ? (
-                                     <span className="text-slate-400">VACANT</span>
+                                      <span className="text-slate-400">VACANT</span>
                                   ) : (
                                     <div className="flex flex-col gap-1">
-                                      {!isOwnerVacant && <span>O: <span className={ownerStatus === 'Paid' ? 'text-emerald-500' : ownerStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{ownerStatus}</span></span>}
-                                      {!isTenantVacant && <span>T: <span className={tenantStatus === 'Paid' ? 'text-emerald-500' : tenantStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{tenantStatus}</span></span>}
+                                      {!isOwnerVacant && hasOwnerAssign && <span>O: <span className={ownerStatus === 'Paid' ? 'text-emerald-500' : ownerStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{ownerStatus}</span></span>}
+                                      {!isTenantVacant && hasTenantAssign && <span>T: <span className={tenantStatus === 'Paid' ? 'text-emerald-500' : tenantStatus === 'Overdue' ? 'text-red-500' : 'text-amber-500'}>{tenantStatus}</span></span>}
+                                      {(!isOwnerVacant || !isTenantVacant) && !hasOwnerAssign && !hasTenantAssign && <span className="text-slate-400">UNASSIGNED</span>}
                                     </div>
                                   )
                                 ) : (

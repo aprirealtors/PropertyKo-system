@@ -10,13 +10,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]); 
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+  // ✨ NEW: Reject Ticket States
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
   const [reviewTicket, setReviewTicket] = useState<any | null>(null);
-
   const [selectedInboxId, setSelectedInboxId] = useState(""); 
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
@@ -24,13 +25,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [reporter, setReporter] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [priority, setPriority] = useState("Normal"); 
-  
   // State for the uploaded image
   const [ticketImage, setTicketImage] = useState<File | null>(null);
-
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
   const filteredTickets = tickets.filter(t => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -148,6 +146,60 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const fetchUnits = async () => {
     const { data } = await supabase.from('units').select('*').eq('admin_email', orgData.admin_email).order('property_name', { ascending: true }).order('unit_number', { ascending: true }); 
     if (data) setUnits(data);
+  };
+
+  // ✨ NEW: Handle Reject Ticket Logic
+  const handleRejectTicket = async () => {
+    if (!selectedInboxId || !rejectReason.trim()) {
+      setErrorMsg("Please provide a reason for rejecting the request.");
+      return;
+    }
+    setIsRejecting(true);
+    setErrorMsg(null);
+
+    try {
+      const ticketToReject = inboxTickets.find(t => String(t.id) === selectedInboxId);
+      if (!ticketToReject) throw new Error("Ticket not found.");
+
+      // 1. Update ticket status to Rejected AND save the reason
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({ 
+          status: 'Rejected',
+          remarks: rejectReason // ✨ FIX: I-save natin yung reason dito para mabasa ng View Tickets Tab!
+        })
+        .eq('id', selectedInboxId);
+
+      if (updateError) throw updateError;
+
+      // 2. Notify the reporter directly (Ibabato papunta sa pulang modal ni Owner/Tenant)
+      if (ticketToReject.reporter_email) {
+        await supabase.from('notifications').insert([{
+          admin_email: orgData.admin_email,
+          recipient: ticketToReject.reporter_email,
+          type: 'TICKET',
+          title: 'Repair Request Rejected',
+          message: `Your request "${ticketToReject.title}" was not approved. Reason: ${rejectReason}`,
+          reference_id: ticketToReject.id,
+          is_read: false
+        }]);
+      }
+
+      // 3. Clean up at isara ang modals
+      setIsRejectModalOpen(false);
+      setIsModalOpen(false);
+      setRejectReason("");
+      setSelectedInboxId("");
+      setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+      
+      await fetchTickets(); // Refresh ang view
+
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || "Failed to reject ticket.");
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleAddTicket = async (e: React.FormEvent) => {
@@ -274,7 +326,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
                   type="text" 
-                  placeholder="Search tasks, units, staff..." 
+                  placeholder="Search name, title, id, units..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-white shadow-sm font-medium text-slate-700 placeholder:text-slate-400" 
@@ -511,7 +563,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         disabled={isSubmitting}
                       >
                         <option value="">-- Create custom ticket from scratch --</option>
-                        {inboxTickets.map(t => <option key={t.id} value={String(t.id)}>{t.priority === 'Urgent' ? '🚨 URGENT - ' : ''}{t.title} ({t.location})</option>)}
+                        {inboxTickets.map(t => <option key={t.id} value={String(t.id)}>{t.title} ({t.location}){t.priority === 'Urgent' ? ' 🚨URGENT' : ''}</option>)}
                       </select>
                     </div>
                   )}
@@ -655,9 +707,60 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
                   <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-100 shrink-0">
                     <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150">Cancel</button>
+                    
+                    {/* ✨ NEW: Reject Button (Lalabas lang kung may piniling Pending Request na may ID) */}
+                    {selectedInboxId && (
+                      <button 
+                        type="button" 
+                        onClick={() => setIsRejectModalOpen(true)} 
+                        disabled={isSubmitting} 
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-4 rounded-xl text-xs font-bold transition-all active:scale-[0.98]"
+                      >
+                        Reject Request
+                      </button>
+                    )}
+
                     <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-200 disabled:text-slate-400 border border-transparent text-white py-2.5 px-5 rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/10 active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ✨ REJECT TICKET MODAL */}
+        {isRejectModalOpen && (
+          <div className="fixed inset-0 bg-[#0a1e3f]/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-slate-200/40 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertCircle size={18} strokeWidth={2.5} />
+                  <h2 className="text-base font-black tracking-tight">Reject Request</h2>
+                </div>
+                <button onClick={() => !isRejecting && setIsRejectModalOpen(false)} className="text-red-400 hover:text-red-600 transition-colors p-1.5 rounded-full hover:bg-red-100 active:scale-90" disabled={isRejecting}>
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-xs text-slate-500 mb-4 font-medium leading-relaxed">
+                  Please provide a reason for rejecting this request. This will be sent directly to the tenant or owner to inform them.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason for Rejection</label>
+                  <textarea 
+                    autoFocus
+                    placeholder="e.g. This issue is outside HOA coverage and must be handled privately." 
+                    value={rejectReason} 
+                    onChange={(e) => setRejectReason(capitalizeWords(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-400 text-sm font-medium text-slate-700 shadow-sm min-h-[100px] resize-none"
+                    disabled={isRejecting}
+                  />
+                </div>
+                <div className="mt-6 flex gap-3">
+                  <button type="button" onClick={() => setIsRejectModalOpen(false)} disabled={isRejecting} className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 transition-all">Cancel</button>
+                  <button type="button" onClick={handleRejectTicket} disabled={isRejecting || !rejectReason.trim()} className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 active:scale-95 transition-all shadow-md shadow-red-500/20">
+                    {isRejecting ? "Rejecting..." : "Confirm Reject"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -695,7 +798,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
           <div className="flex items-start gap-2 min-w-0">
             {statusColor === 'green' && <CheckCircle size={16} className="text-emerald-600 mt-0.5 shrink-0" strokeWidth={2.5} />}
-            <h4 className={`font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-2 transition-colors ${onClick ? 'group-hover:text-blue-600' : ''}`}>
+            <h4 title={ticket.title} className={`font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-2 transition-colors cursor-help ${onClick ? 'group-hover:text-blue-600' : ''}`}>
               {ticket.title}
             </h4>
           </div>

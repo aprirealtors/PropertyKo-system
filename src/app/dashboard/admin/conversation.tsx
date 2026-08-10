@@ -544,31 +544,51 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {/* INPUT AREA */}
+            {/* ✨ UPGRADED MESSENGER-TYPE INPUT AREA */}
             {/* ✨ FIX: Tinanggal ang pb-safe at pb padding buffers para sumagad ang input box sa bottom ng layout frame */}
-            <div className="shrink-0 p-3 bg-white border-t border-slate-200 z-10">
-              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-center">
-                <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center min-h-[40px] sm:min-h-[44px] md:min-h-[46px] focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-500/5 focus-within:border-slate-300 transition-all shadow-inner">
-                  <input
-                    ref={inputRef}
-                    type="text"
+            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-slate-200/80 z-10">
+              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
+                <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#359b46]/5 focus-within:border-slate-300 transition-all shadow-inner">
+                  <textarea
+                    ref={inputRef as any}
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      // Auto-resize magic:
+                      e.target.style.height = 'auto';
+                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                    }}
+                    onKeyDown={(e) => {
+                      // Allow send via 'Enter' key without holding Shift
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (newMessage.trim() && !isSending) {
+                          handleSendMessage(e as any);
+                          e.currentTarget.style.height = 'auto'; // reset height after send
+                        }
+                      }
+                    }}
                     placeholder="Type a message..."
-                    className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-slate-800 font-medium placeholder:text-slate-400"
+                    className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-slate-800 font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
+                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} // Dynamic height limits
                     disabled={isSending || isLoading}
+                    rows={1}
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={!newMessage.trim() || isSending}
-                  className={`h-[38px] w-[38px] sm:h-[42px] sm:w-[42px] rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-sm duration-200 ${
+                  className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-sm duration-200 mb-0.5 ${
                     newMessage.trim() 
-                      ? 'bg-[#359b46] text-white border-transparent shadow-emerald-500/10 hover:bg-[#2e853c]' 
+                      ? 'bg-[#359b46] text-white border-transparent shadow-emerald-500/20 hover:bg-[#2e853c]' 
                       : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  {isSending ? <Clock size={16} className="animate-spin sm:w-[18px] sm:h-[18px]" /> : <Send size={14} strokeWidth={2.5} className={`sm:w-4 sm:h-4 ${newMessage.trim() ? 'translate-x-0.5' : ''}`} />}
+                  {isSending ? (
+                    <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
+                  ) : (
+                    <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
+                  )}
                 </button>
               </form>
             </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { MapPin, AlertCircle, X, Wrench, Camera, CheckCircle2, ArrowRight, Inbox, PauseCircle } from "lucide-react";
+import { MapPin, AlertCircle, X, Wrench, Camera, CheckCircle2, ArrowRight, Inbox, PauseCircle, Search } from "lucide-react";
 
 export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }: any) {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -12,6 +12,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
   
   const [selectedTicketData, setSelectedTicketData] = useState<any | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState(""); // ✨ NEW: Search State
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -73,6 +74,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
     if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') return { label: 'In Progress', color: 'bg-blue-50 text-blue-700 border-blue-100' };
     if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'bg-purple-50 text-purple-700 border-purple-100' };
     if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', color: 'bg-emerald-50 text-[#359b46] border-emerald-100' };
+    if (s === 'rejected') return { label: 'Rejected', color: 'bg-red-50 text-red-600 border-red-200' }; // ✨ NEW: Red badge for Rejected
     return { label: statusValue, color: 'bg-slate-50 text-slate-600 border-slate-200' };
   };
 
@@ -142,19 +144,37 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
     return Array.from(map.values());
   }, [tickets, liveTasks, teamMembers]);
 
-  const openInProgressTasks = enrichedTickets.filter(t => {
+  // ✨ NEW: Filter logic base sa search bar
+  const filteredTickets = enrichedTickets.filter(t => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (t.title && t.title.toLowerCase().includes(searchLower)) ||
+      (t.location && t.location.toLowerCase().includes(searchLower)) ||
+      (t.description && t.description.toLowerCase().includes(searchLower)) ||
+      (t.staffName && t.staffName.toLowerCase().includes(searchLower)) ||
+      (t.label && t.label.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // ✨ FIX: Gamitin ang "filteredTickets" imbes na "enrichedTickets"
+  const openInProgressTasks = filteredTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
   }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
 
-  const onHoldTasks = enrichedTickets.filter(t => {
+  const onHoldTasks = filteredTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'on_hold' || s === 'on hold';
   }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
 
-  const resolvedTasks = enrichedTickets.filter(t => {
+  const resolvedTasks = filteredTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success';
+  });
+
+  const rejectedTasks = filteredTickets.filter(t => {
+    const s = String(t.currentLiveStatus).toLowerCase();
+    return s === 'rejected';
   });
 
   useEffect(() => {
@@ -180,24 +200,40 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
         
         {/* PREMIUM HEADER */}
         <div className="shrink-0 mb-6 px-1 sm:px-0">
-          <div className="flex flex-row justify-between items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight truncate">Assigned Tickets</h2>
               <p className="text-slate-400 text-xs sm:text-sm mt-0.5 font-medium truncate">View and monitor maintenance requests</p>
             </div>
-            <div className="bg-white border border-slate-200/80 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm shrink-0 flex items-center gap-1.5 sm:gap-2">
-              <span className="text-[10px] sm:text-xs md:text-sm font-bold text-slate-500 uppercase sm:normal-case tracking-wider sm:tracking-normal sm:text-slate-700">Total Open</span>
-              <span className="text-xs sm:text-sm font-black bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg">{isLoading ? "-" : openInProgressTasks.length}</span>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+              {/* ✨ NEW: Search Bar */}
+              <div className="relative w-full sm:w-64 md:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search name, title, id, units..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-white shadow-sm font-medium text-slate-700 placeholder:text-slate-400 transition-all" 
+                />
+              </div>
+              
+              <div className="hidden sm:flex bg-white border border-slate-200/80 px-3.5 py-2 sm:py-2.5 rounded-xl shadow-sm shrink-0 items-center gap-2">
+                <span className="text-xs sm:text-sm font-bold text-slate-500 uppercase sm:normal-case tracking-wider sm:tracking-normal sm:text-slate-700">Total Open</span>
+                <span className="text-xs sm:text-sm font-black bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-lg">{isLoading ? "-" : openInProgressTasks.length}</span>
+              </div>
             </div>
           </div>
         </div>
   
-        {/* KANBAN BOARD WRAPPER */}
-        <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-6 custom-scrollbar px-1 sm:px-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start w-full">
+        {/* KANBAN BOARD WRAPPER (Premium Horizontal Scroll on Mobile/Tablet, Grid on Desktop) */}
+        <div className="flex-1 w-full h-full min-h-0 overflow-x-auto overflow-y-auto pb-6 custom-scrollbar px-1 sm:px-0 snap-x snap-mandatory">
+          {/* ✨ FIX: Changed items-start to items-stretch para laging magkakapantay ang taas ng grey columns */}
+          <div className="flex xl:grid xl:grid-cols-4 gap-5 sm:gap-6 items-stretch min-w-max xl:min-w-full pr-6 xl:pr-0">
             
             {/* COLUMN 1: OPEN & IN PROGRESS */}
-            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-[85vw] sm:w-[340px] xl:w-full shrink-0 shadow-sm snap-center">
               <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
                 <h4 className="font-black text-blue-600 text-sm flex items-center gap-2">● Open & In Progress</h4>
                 <span className="bg-blue-50 text-[#1d82f5] px-2.5 py-0.5 rounded-xl text-xs font-black border border-blue-100 shadow-inner">{isLoading ? "-" : openInProgressTasks.length}</span>
@@ -217,7 +253,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                       <div 
                         key={t.id} id={`ticket-${t.id}`}
                         onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer active:scale-[0.98] duration-300 h-[340px] shrink-0 ${
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer active:scale-[0.98] duration-300 h-[300px] shrink-0 ${
                           isHighlighted 
                             ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.01] shadow-xl animate-pulse z-10' 
                             : t.priority === 'Urgent' 
@@ -234,19 +270,16 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                         )}
                         <div className="p-4 flex-1 flex flex-col overflow-hidden">
                           <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
-                            <h3 className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
+                            <h3 title={t.title} className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1 cursor-help">{t.title}</h3>
                             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap shadow-sm ${t.color}`}>{t.label}</span>
                           </div>
-                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2">
-                            <p className={`text-xs ${isHighlighted ? 'text-blue-700 font-medium' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
-                          </div>
                           
-                          <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-2.5 shrink-0 mb-3">
-                            <span className="font-black text-blue-600 block mb-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider">
+                          <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-2.5 shrink-0 mb-3 mt-auto">
+                            <span className="font-black text-blue-600 block mb-0.5 flex items-center gap-1.5 text-[9px] uppercase tracking-wider">
                               <AlertCircle size={12} strokeWidth={2.5} /> Status Update
                             </span>
-                            <p className="text-xs text-blue-800 font-extrabold tracking-wide flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Awaiting Action
+                            <p className="text-xs text-blue-800 font-extrabold tracking-wide flex items-center gap-1 text-[10px]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse "></span> Awaiting Action
                             </p>
                           </div>
   
@@ -268,7 +301,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
             </div>
   
             {/* COLUMN 2: ON HOLD */}
-            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-[85vw] sm:w-[340px] xl:w-full shrink-0 shadow-sm snap-center">
               <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
                 <h4 className="font-black text-purple-600 text-sm flex items-center gap-2">● On Hold</h4>
                 <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-xl text-xs font-black border border-purple-100 shadow-inner">{isLoading ? "-" : onHoldTasks.length}</span>
@@ -290,7 +323,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                       <div 
                         key={t.id} id={`ticket-${t.id}`} 
                         onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer opacity-95 hover:opacity-100 duration-300 h-[340px] shrink-0 relative ${
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer opacity-95 hover:opacity-100 duration-300 h-[300px] shrink-0 relative ${
                           isHighlighted 
                             ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.01] shadow-xl animate-pulse opacity-100 z-10' 
                             : t.priority === 'Urgent' 
@@ -307,11 +340,10 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                         )}
                         <div className="p-4 flex-1 flex flex-col overflow-hidden">
                           <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
-                            <h3 className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
+                            <h3 title={t.title} className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1 cursor-help">{t.title}</h3>
                             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap shadow-sm ${t.color}`}>{t.label}</span>
                           </div>
-                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 space-y-2">
-                            <p className={`text-xs ${isHighlighted ? 'text-blue-700 font-medium' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
+                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 mt-2">
                             {holdReason && (
                               <div className="px-3 py-2 bg-purple-50/70 rounded-xl border border-purple-100 text-[11px] text-purple-700 leading-snug">
                                 <span className="font-black text-purple-800 block mb-0.5 flex items-center gap-1.5 uppercase tracking-wider text-[9px]"><AlertCircle size={12} strokeWidth={2.5} /> Hold Reason:</span>
@@ -337,7 +369,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
             </div>
   
             {/* COLUMN 3: RESOLVED */}
-            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-[85vw] sm:w-[340px] xl:w-full shrink-0 shadow-sm snap-center">
               <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
                 <h4 className="font-black text-[#359b46] text-sm flex items-center gap-2">● Resolved</h4>
                 <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-xl text-xs font-black border border-emerald-100 shadow-inner">{isLoading ? "-" : resolvedTasks.length}</span>
@@ -359,7 +391,7 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                       <div 
                         key={t.id} id={`ticket-${t.id}`} 
                         onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
-                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer duration-300 h-[340px] shrink-0 relative ${
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer duration-300 h-[300px] shrink-0 relative ${
                           isHighlighted 
                             ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.01] shadow-xl animate-pulse z-10' 
                             : 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-400'
@@ -376,12 +408,11 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                           <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
                             <div className="flex items-start gap-1.5 min-w-0">
                               <CheckCircle2 size={14} strokeWidth={3} className={`${isHighlighted ? 'text-blue-500' : 'text-[#359b46]'} shrink-0 mt-0.5`} />
-                              <h3 className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1">{t.title}</h3>
+                              <h3 title={t.title} className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1 cursor-help">{t.title}</h3>
                             </div>
                             <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap shadow-sm ${t.color}`}>{t.label}</span>
                           </div>
-                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 space-y-2">
-                            <p className={`text-xs ${isHighlighted ? 'text-blue-700 font-medium' : 'text-slate-500'} leading-relaxed`}>{t.description}</p>
+                          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-2 mt-2">
                             {staffRemarks && (
                               <div className="px-3 py-2 bg-emerald-50/70 rounded-xl border border-emerald-100 text-[11px] text-emerald-700 leading-snug">
                                 <span className="font-black text-emerald-800 block mb-0.5 flex items-center gap-1.5 uppercase tracking-wider text-[9px]"><CheckCircle2 size={12} strokeWidth={2.5} /> Remarks:</span>
@@ -408,153 +439,280 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
                 )}
               </div>
             </div>
+
+            {/* ✨ NEW: COLUMN 4: REJECTED */}
+            <div className="flex flex-col bg-slate-50 border border-slate-200/60 rounded-3xl p-4 sm:p-5 w-[85vw] sm:w-[340px] xl:w-full shrink-0 shadow-sm snap-center">
+              <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
+                <h4 className="font-black text-red-600 text-sm flex items-center gap-2">● Rejected</h4>
+                <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-xl text-xs font-black border border-red-100 shadow-inner">{isLoading ? "-" : rejectedTasks.length}</span>
+              </div>
+              <div className="flex flex-col space-y-4">
+                {isLoading ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : rejectedTasks.length === 0 ? (
+                  <EmptyState icon={AlertCircle} title="No rejected tasks" message="Tickets that are denied by the admin will appear here." />
+                ) : (
+                  rejectedTasks.map((t: any) => {
+                    const isHighlighted = activeHighlightId === String(t.id);
+                    return (
+                      <div 
+                        key={t.id} id={`ticket-${t.id}`} 
+                        onClick={() => setSelectedTicketData({ ticket: t, liveMatch: t.liveMatch, staffName: t.staffName, label: t.label, color: t.color })}
+                        className={`rounded-2xl shadow-sm border overflow-hidden flex flex-col hover:shadow-md md:hover:-translate-y-0.5 transition-all cursor-pointer duration-300 h-[300px] shrink-0 relative ${
+                          isHighlighted 
+                            ? 'ring-4 ring-red-500/50 bg-red-50 border-red-400 scale-[1.01] shadow-xl animate-pulse z-10' 
+                            : 'bg-white border-red-200 hover:border-red-400'
+                        }`}
+                      >
+                        {t.photo_url ? (
+                          <div className="relative w-full h-28 shrink-0 bg-slate-100 border-b border-slate-100">
+                            <img src={t.photo_url} alt="Rejected issue" className="w-full h-full object-cover grayscale-[40%]" />
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-14 shrink-0 bg-red-50 border-b border-red-100 flex items-center justify-center"><span className="text-[10px] font-black text-red-300 uppercase tracking-widest">No Photo</span></div>
+                        )}
+                        <div className="p-4 flex-1 flex flex-col overflow-hidden">
+                          <div className="flex justify-between items-start mb-2 gap-2 shrink-0">
+                            <h3 title={t.title} className="font-extrabold text-[#0a1e3f] text-sm leading-tight line-clamp-1 cursor-help">{t.title}</h3>
+                            <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border whitespace-nowrap shadow-sm ${t.color}`}>{t.label}</span>
+                          </div>
+                          
+                          <div className="bg-red-50/60 border border-red-100 rounded-xl p-2.5 shrink-0 mb-3 mt-auto">
+                            <span className="font-black text-red-600 block mb-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider">
+                              <AlertCircle size={12} strokeWidth={2.5} /> Ticket Denied
+                            </span>
+                            <p className="text-[10px] text-red-800 font-semibold tracking-wide">
+                              Action was stopped by administration.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5 mt-auto pt-3 shrink-0 border-t border-slate-100 text-[11px]">
+                            <div className="flex items-center gap-1 text-slate-500 min-w-0"><MapPin size={12} className="text-slate-400 shrink-0" /> <span className="truncate font-semibold">{t.location}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
   
           </div>
         </div>
   
-        {/* 🌟 BEFORE & AFTER MODAL */}
+        {/* 🌟 BEFORE & AFTER / REJECTED MODAL */}
         {selectedTicketData && (
           <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] transform transition-all animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
               
-              <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
-                <div className="min-w-0 flex-1 pr-2">
-                  <h2 className="text-base sm:text-lg md:text-xl font-black text-[#0a1e3f] tracking-tight truncate">
-                    {selectedTicketData.ticket.title}
-                  </h2>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-0.5 sm:mt-1 truncate">
-                    <MapPin size={13} className="text-slate-400 shrink-0" /> <span className="truncate">{selectedTicketData.ticket.location}</span>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedTicketData(null)} 
-                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
-                >
-                  <X size={16} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
-                </button>
-              </div>
-  
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-6 sm:space-y-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 md:gap-8">
-                  
-                  {/* Before Column */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                      <span className="bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm">Before</span>
-                      <span className="text-xs sm:text-sm font-black text-slate-700 tracking-tight">Reported Issue</span>
-                    </div>
-                    <div className="w-full h-48 sm:h-56 md:h-64 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center shadow-inner relative">
-                      {selectedTicketData.ticket.photo_url ? (
-                        <img src={selectedTicketData.ticket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-center p-4 text-slate-400">
-                          <Camera size={28} className="mx-auto mb-1.5 opacity-40" />
-                          <span className="text-xs font-semibold uppercase tracking-wider">No photo submitted</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="bg-slate-50/50 rounded-xl sm:rounded-2xl p-4 border border-slate-100">
-                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium mb-3 break-words">
-                        {selectedTicketData.ticket.description}
-                      </p>
-                      <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 border-t border-slate-200/60 pt-2.5 uppercase tracking-wide">
-                        Submitted on: {new Date(selectedTicketData.ticket.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </div>
-                  </div>
-  
-                  {/* After Column */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm shrink-0">After</span>
-                        <span className="text-xs sm:text-sm font-black text-slate-700 tracking-tight truncate">Maintenance Update</span>
-                      </div>
-                      <span className={`shrink-0 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shadow-sm ${selectedTicketData.color}`}>
-                        {selectedTicketData.label}
-                      </span>
-                    </div>
-                    <div className="w-full h-48 sm:h-56 md:h-64 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center shadow-inner relative">
-                      {selectedTicketData.liveMatch?.resolution_photo_url ? (
-                        <img src={selectedTicketData.liveMatch.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-center p-4 text-slate-400">
-                          <Wrench size={28} className="mx-auto mb-1.5 opacity-40" />
-                          <span className="text-xs font-semibold uppercase tracking-wider">No maintenance photo yet</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="bg-slate-50/50 rounded-xl sm:rounded-2xl p-4 border border-slate-100 space-y-2.5">
-                      <div className="flex justify-between items-center gap-2">
-                        <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">Assigned Staff</span>
-                        <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
-                          👤 {selectedTicketData.staffName}
-                        </span>
-                      </div>
-                      
-                      {selectedTicketData.label === 'Resolved' && (
-                        <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5">
-                          <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">Equipment Cost</span>
-                          <span className={`text-sm font-black ${(selectedTicketData.liveMatch?.cost > 0 || selectedTicketData.ticket?.cost > 0) ? 'text-[#0a1e3f]' : 'text-slate-400'}`}>
-                            {(selectedTicketData.liveMatch?.cost > 0 || selectedTicketData.ticket?.cost > 0) 
-                              ? `₱${(selectedTicketData.liveMatch?.cost || selectedTicketData.ticket?.cost).toLocaleString()}` 
-                              : 'No Cost'}
-                          </span>
-                        </div>
-                      )}
-  
-                      {(selectedTicketData.liveMatch?.on_hold_reason || selectedTicketData.ticket.on_hold_reason) && (
-                        <div className="flex flex-col border-t border-slate-200/60 pt-3 mt-1">
-                          <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                            <AlertCircle size={12} className="text-purple-500" strokeWidth={2.5} /> Hold Reason
-                          </span>
-                          <span className="text-xs sm:text-[13px] font-semibold text-slate-600 bg-white p-3 rounded-xl border border-slate-200/50 block leading-relaxed shadow-sm">
-                            ● {selectedTicketData.liveMatch?.on_hold_reason || selectedTicketData.ticket.on_hold_reason}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-  
-                </div>
-              </div>
-  
-              {/* MODAL ACTION FOOTER */}
               {(() => {
-                const statusStr = String(selectedTicketData.ticket.status).toLowerCase();
-                const isResolved = statusStr === 'completed' || statusStr === 'resolved' || statusStr === 'closed' || statusStr === 'success';
-                const isUnassigned = statusStr === 'open' || statusStr === 'pending';
-  
-                if (isResolved) return null;
-  
+                const isRejected = String(selectedTicketData.ticket.status).toLowerCase() === 'rejected';
+
                 return (
-                  <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0 pb-7 sm:pb-4">
-                    {isUnassigned ? (
-                      <button
-                        onClick={() => {
-                          setSelectedTicketData(null);
-                          if (onNavigate) onNavigate("Maintenance", `NEW_TICKET_${Date.now()}`);
-                        }}
-                        className="w-full sm:w-auto bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2 active:scale-[0.97]"
+                  <>
+                    {/* ✨ DYNAMIC HEADER (Nagiging Red kapag Rejected) */}
+                    <div className={`px-5 py-4 sm:px-6 sm:py-5 border-b flex justify-between items-center shrink-0 ${isRejected ? 'bg-red-50 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
+                      <div className="min-w-0 flex-1 pr-2 flex items-center gap-3">
+                        {isRejected && (
+                          <div className="w-9 h-9 bg-red-100 text-red-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm shrink-0">
+                            <AlertCircle size={18} strokeWidth={2.5} />
+                          </div>
+                        )}
+                        <div>
+                          <h2 className={`text-base sm:text-lg md:text-xl font-black tracking-tight truncate ${isRejected ? 'text-red-600' : 'text-[#0a1e3f]'}`}>
+                            {isRejected ? 'Request Rejected' : selectedTicketData.ticket.title}
+                          </h2>
+                          <div className={`flex items-center gap-1.5 text-xs font-semibold mt-0.5 sm:mt-1 truncate ${isRejected ? 'text-red-400' : 'text-slate-500'}`}>
+                            {isRejected ? (
+                              <span className="uppercase tracking-widest">Admin Action</span>
+                            ) : (
+                              <><MapPin size={13} className="shrink-0" /> <span className="truncate">{selectedTicketData.ticket.location}</span></>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedTicketData(null)} 
+                        className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center border rounded-full transition-colors active:scale-95 shrink-0 ${isRejected ? 'bg-white border-red-200 text-red-400 hover:text-red-600 hover:bg-red-100' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'}`}
                       >
-                        <Wrench size={16} strokeWidth={2.5} /> Process & Assign Ticket
+                        <X size={16} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
                       </button>
+                    </div>
+
+                    {isRejected ? (
+                      /* ✨ REJECTED TICKET UI (Katulad sa Owner/Tenant Side) */
+                      <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar pb-10">
+                        {/* Reason Box */}
+                        <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-md shadow-red-500/20">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
+                          <p className="text-sm font-semibold leading-relaxed">
+                            {selectedTicketData.ticket.remarks || "This request was not approved by the administration."}
+                          </p>
+                        </div>
+
+                        {/* Original Report Details */}
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
+                        <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm space-y-4">
+                          {selectedTicketData.ticket.photo_url && (
+                            <div className="w-full h-full bg-slate-100 rounded-xl overflow-hidden mb-4 border border-slate-200">
+                              <img src={selectedTicketData.ticket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                            </div>
+                          )}
+
+                          <div>
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Issue Title</span>
+                            <p className="font-extrabold text-slate-800">{selectedTicketData.ticket.title}</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Location</span>
+                              <p className="font-bold text-slate-600 text-xs">{selectedTicketData.ticket.location}</p>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Reported On</span>
+                              <p className="font-bold text-slate-600 text-xs">{new Date(selectedTicketData.ticket.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</span>
+                            <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                              {selectedTicketData.ticket.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setSelectedTicketData(null);
-                          const passId = selectedTicketData.liveMatch?.id || selectedTicketData.ticket.id;
-                          if (onNavigate) onNavigate("Maintenance", `${passId}_${Date.now()}`);
-                        }}
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 active:scale-[0.97]"
-                      >
-                        <ArrowRight size={16} strokeWidth={2.5} /> Open in Maintenance Board
-                      </button>
+                      /* ✨ ORIGINAL BEFORE & AFTER UI (Para sa Open, In Progress, Resolved) */
+                      <>
+                        <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-6 sm:space-y-0">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 md:gap-8">
+                            
+                            {/* Before Column */}
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm">Before</span>
+                                <span className="text-xs sm:text-sm font-black text-slate-700 tracking-tight">Reported Issue</span>
+                              </div>
+                              <div className="w-full h-48 sm:h-56 md:h-64 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center shadow-inner relative">
+                                {selectedTicketData.ticket.photo_url ? (
+                                  <img src={selectedTicketData.ticket.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="text-center p-4 text-slate-400">
+                                    <Camera size={28} className="mx-auto mb-1.5 opacity-40" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider">No photo submitted</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="bg-slate-50/50 rounded-xl sm:rounded-2xl p-4 border border-slate-100">
+                                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium mb-3 break-words">
+                                  {selectedTicketData.ticket.description}
+                                </p>
+                                <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 border-t border-slate-200/60 pt-2.5 uppercase tracking-wide">
+                                  Submitted on: {new Date(selectedTicketData.ticket.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* After Column */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between mb-2 sm:mb-3 gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="bg-blue-50 text-blue-700 border border-blue-200/60 px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm shrink-0">After</span>
+                                  <span className="text-xs sm:text-sm font-black text-slate-700 tracking-tight truncate">Maintenance Update</span>
+                                </div>
+                                <span className={`shrink-0 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border shadow-sm ${selectedTicketData.color}`}>
+                                  {selectedTicketData.label}
+                                </span>
+                              </div>
+                              <div className="w-full h-48 sm:h-56 md:h-64 bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden flex items-center justify-center shadow-inner relative">
+                                {selectedTicketData.liveMatch?.resolution_photo_url ? (
+                                  <img src={selectedTicketData.liveMatch.resolution_photo_url} alt="Resolution" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="text-center p-4 text-slate-400">
+                                    <Wrench size={28} className="mx-auto mb-1.5 opacity-40" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider">No maintenance photo yet</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="bg-slate-50/50 rounded-xl sm:rounded-2xl p-4 border border-slate-100 space-y-2.5">
+                                <div className="flex justify-between items-center gap-2">
+                                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">Assigned Staff</span>
+                                  <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate bg-white px-2.5 py-1 rounded-lg border border-slate-100 shadow-sm">
+                                    👤 {selectedTicketData.staffName}
+                                  </span>
+                                </div>
+                                
+                                {selectedTicketData.label === 'Resolved' && (
+                                  <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5">
+                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider">Equipment Cost</span>
+                                    <span className={`text-sm font-black ${(selectedTicketData.liveMatch?.cost > 0 || selectedTicketData.ticket?.cost > 0) ? 'text-[#0a1e3f]' : 'text-slate-400'}`}>
+                                      {(selectedTicketData.liveMatch?.cost > 0 || selectedTicketData.ticket?.cost > 0) 
+                                        ? `₱${(selectedTicketData.liveMatch?.cost || selectedTicketData.ticket?.cost).toLocaleString()}` 
+                                        : 'No Cost'}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {(selectedTicketData.liveMatch?.on_hold_reason || selectedTicketData.ticket.on_hold_reason) && (
+                                  <div className="flex flex-col border-t border-slate-200/60 pt-3 mt-1">
+                                    <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                                      <AlertCircle size={12} className="text-purple-500" strokeWidth={2.5} /> Hold Reason
+                                    </span>
+                                    <span className="text-xs sm:text-[13px] font-semibold text-slate-600 bg-white p-3 rounded-xl border border-slate-200/50 block leading-relaxed shadow-sm">
+                                      ● {selectedTicketData.liveMatch?.on_hold_reason || selectedTicketData.ticket.on_hold_reason}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* MODAL ACTION FOOTER FOR ACTIVE TICKETS */}
+                        {(() => {
+                          const statusStr = String(selectedTicketData.ticket.status).toLowerCase();
+                          const isResolved = statusStr === 'completed' || statusStr === 'resolved' || statusStr === 'closed' || statusStr === 'success';
+                          const isUnassigned = statusStr === 'open' || statusStr === 'pending';
+
+                          if (isResolved) return null;
+
+                          return (
+                            <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0 pb-7 sm:pb-4">
+                              {isUnassigned ? (
+                                <button
+                                  onClick={() => {
+                                    setSelectedTicketData(null);
+                                    if (onNavigate) onNavigate("Maintenance", `NEW_TICKET_${Date.now()}`);
+                                  }}
+                                  className="w-full sm:w-auto bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2 active:scale-[0.97]"
+                                >
+                                  <Wrench size={16} strokeWidth={2.5} /> Process & Assign Ticket
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSelectedTicketData(null);
+                                    const passId = selectedTicketData.liveMatch?.id || selectedTicketData.ticket.id;
+                                    if (onNavigate) onNavigate("Maintenance", `${passId}_${Date.now()}`);
+                                  }}
+                                  className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2 active:scale-[0.97]"
+                                >
+                                  <ArrowRight size={16} strokeWidth={2.5} /> Open in Maintenance Board
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
                     )}
-                  </div>
+                  </>
                 );
               })()}
-  
             </div>
           </div>
         )}
@@ -572,7 +730,8 @@ export default function ViewTicketTab({ orgData, highlightTicketId, onNavigate }
 
 function SkeletonCard() {
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[340px] animate-pulse">
+    // FIX: Changed h-[340px] to h-[300px] para pumantay sa ticket cards
+    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[300px] animate-pulse shrink-0">
       <div className="w-full h-32 bg-slate-200 rounded-xl mb-4 shrink-0"></div>
       <div className="flex justify-between items-start mb-3">
         <div className="h-4 bg-slate-200 rounded-md w-3/4"></div>
@@ -593,7 +752,8 @@ function SkeletonCard() {
 
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
-    <div className="flex flex-col items-center justify-center h-[340px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center">
+    // {/* ✨ FIX: Changed h-[340px] to h-[300px] */}
+    <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-2xl p-6 text-center shrink-0">
       <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
         <Icon size={20} className="text-slate-400" />
       </div>

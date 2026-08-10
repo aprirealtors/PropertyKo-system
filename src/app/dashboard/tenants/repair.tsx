@@ -20,6 +20,7 @@ export default function RepairTab({ highlightTicketId }: any) {
   const [repairTime, setRepairTime] = useState("");
   const [repairPriority, setRepairPriority] = useState("Normal");
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [issueCategory, setIssueCategory] = useState(""); // ✨ NEW: State for Category Dropdown
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false); // Changed to modal like Owner side
 
   const [reviewTicket, setReviewTicket] = useState<any | null>(null);
@@ -177,12 +178,20 @@ export default function RepairTab({ highlightTicketId }: any) {
       const unitLoc = unit?.property_name ? `${unit.property_name} - ${unit.unit_number}` : (profile?.access_level || "Tenant Unit");
       const fullDesc = `Best time to visit: ${capitalizedTime}. Reported by ${profile?.name || 'Tenant'} (Tenant).`;
 
+      // ✨ NEW: Mas matibay na 6-digit Unique ID (900,000 combinations)
+      const uniqueId = Math.floor(100000 + Math.random() * 900000);
+
+      // ✨ NEW: Lahat ng category (pati "Other") may Unique ID na sa dulo!
+      const finalTitle = issueCategory && issueCategory !== "Other" 
+        ? `${issueCategory} Ticket #${uniqueId}` 
+        : `${capitalizedIssue} Ticket #${uniqueId}`;
+
       const { data: newTicket, error } = await supabase
         .from('tickets')
         .insert([{
           admin_email: profile?.admin_email,
           reporter_email: currentEmail, 
-          title: capitalizedIssue,
+          title: finalTitle,
           location: unitLoc,
           description: fullDesc,
           status: 'Open',
@@ -309,7 +318,11 @@ export default function RepairTab({ highlightTicketId }: any) {
             <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium">Track your requested property repairs and updates here.</p>
           </div>
           <button 
-            onClick={() => setIsRepairModalOpen(true)} 
+            onClick={() => {
+              setIssueCategory(""); // ✨ FIX: Reset category pag open
+              setRepairIssue(""); 
+              setIsRepairModalOpen(true);
+            }} 
             className="w-full sm:w-auto justify-center bg-gradient-to-br from-[#1a3d6c] via-[#1565c0] to-[#0d47a1] hover:from-blue-800 hover:to-blue-900 text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-blue-500/25 hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2 active:scale-95"
           >
             <Wrench size={16} /> New Request
@@ -626,7 +639,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 1. REPORT REPAIR MODAL (Compact Fit) */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[95vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[85vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
             
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 shadow-sm z-10">
@@ -644,17 +657,46 @@ export default function RepairTab({ highlightTicketId }: any) {
               <form onSubmit={handleSubmit} className="space-y-4">
                 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Issue Description</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g. Leaking faucet in the kitchen" 
-                    value={repairIssue} 
-                    onChange={(e) => setRepairIssue(e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
-                    disabled={isSubmitting} 
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Issue Category</label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={issueCategory}
+                      onChange={(e) => {
+                        setIssueCategory(e.target.value);
+                        setRepairIssue(""); // Reset the text field kapag nag-iba ng category
+                      }}
+                      className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-700 bg-white hover:border-slate-300 transition-all cursor-pointer shadow-sm appearance-none pr-10"
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>Select issue category...</option>
+                      <option value="Billing">Billing</option>
+                      <option value="Maintenance">Maintenance</option>
+                      <option value="House Keeping">House Keeping</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </div>
+                  </div>
                 </div>
+
+                {/* ✨ LALABAS LANG ITO KAPAG "OTHER" ANG PINILI */}
+                {issueCategory === "Other" && (
+                  <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex justify-between">
+                      <span>Specific Issue Details</span>
+                    </label>
+                    <textarea 
+                      required 
+                      placeholder="Please describe the issue in detail..." 
+                      value={repairIssue} 
+                      onChange={(e) => setRepairIssue(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm min-h-[80px] custom-scrollbar" 
+                      disabled={isSubmitting} 
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Priority Level</label>
@@ -763,7 +805,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                   <input 
                     type="text" 
                     required 
-                    placeholder="e.g. Tomorrow morning, Weekends" 
+                    placeholder="e.g. Now, Tomorrow, Day, Weekend etc..."
                     value={repairTime} 
                     onChange={(e) => setRepairTime(e.target.value)} 
                     className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
@@ -791,18 +833,18 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 2. REVIEW RESOLUTION MODAL */}
       {reviewTicket && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[60] flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] flex items-center gap-2 truncate tracking-tight">
                   {reviewTicket.title}
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
                   <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewTicket.location}
                 </div>
               </div>
-              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -919,18 +961,18 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 3. REVIEW ON HOLD MODAL (2-Column Layout) */}
       {reviewOnHoldTicket && (
         <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[93vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-white/20">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 z-10 shadow-sm">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 truncate">
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] flex items-center gap-2 truncate tracking-tight">
                   {reviewOnHoldTicket.title}
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
                   <MapPin size={16} className="text-slate-400 shrink-0" /> {reviewOnHoldTicket.location}
                 </div>
               </div>
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-2xl shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>

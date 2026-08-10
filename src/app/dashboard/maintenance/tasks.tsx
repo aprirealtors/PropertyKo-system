@@ -357,8 +357,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* UPDATE / COMPLETE MODAL */}
       {completeModalTask && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a1e3f]/50 backdrop-blur-sm p-2 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-slate-200/40 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0a1e3f]/50 backdrop-blur-sm p-2 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[85vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-white/10">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
               <h2 className="text-lg font-black text-[#0a1e3f] tracking-tight">Submit Task Report</h2>
               <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-colors active:scale-90" disabled={isCompleting}>
@@ -366,7 +366,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </button>
             </div>
 
-            <div className="p-6 bg-slate-50/50 overflow-y-auto">
+            <div className="p-6 bg-slate-50/50 overflow-y-auto custom-scrollbar">
               <form onSubmit={handleCompleteTask} className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Repair Result</label>

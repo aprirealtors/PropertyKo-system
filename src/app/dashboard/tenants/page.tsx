@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
-  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2 // <-- ADDED NEW ICONS
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -44,6 +44,9 @@ export default function TenantDashboard() {
 
   // State to hold Highlight ID for Repairs
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  
+  // ✨ NEW: Rejected Ticket Modal State
+  const [rejectedTicketModalData, setRejectedTicketModalData] = useState<any | null>(null);
 
   // White Label & User Modal States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
@@ -156,8 +159,12 @@ export default function TenantDashboard() {
 
               const baseTotal = dues + parking + water + electricity;
 
+              const isOwnerVacant = !unitData.owner_name || unitData.owner_name === '—';
+              const isTenantVacant = unitData.status === 'Vacant' || !unitData.tenant_name || unitData.tenant_name === '—';
+              const isRoleVacant = role === 'owner' ? isOwnerVacant : isTenantVacant;
+
               let lateFee = 0;
-              if (currentStatus === 'Overdue' && soaData[`${role}_penalty`]) {
+              if (currentStatus === 'Overdue' && !isRoleVacant) {
                 if (orgData.penalty_type === 'percent') {
                   lateFee = baseTotal * ((orgData.penalty_value || 0) / 100);
                 } else {
@@ -348,6 +355,18 @@ export default function TenantDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
+    
+    // ✨ NEW: Kapag Rejected ang ticket, i-open yung Rejected Modal imbes na ang maintenance tab
+    if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
+      if (notif.reference_id) {
+        const { data: ticketData } = await supabase.from('tickets').select('*').eq('id', notif.reference_id).single();
+        if (ticketData) {
+          setRejectedTicketModalData({ ...ticketData, reason: notif.message });
+          return; // Stop logic here para hindi na lumipat ng tab
+        }
+      }
+    }
+
     if (type === 'BILLING' || type === 'SOA') {
       setActiveTab("pay");
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
@@ -922,6 +941,76 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      {/* ✨ REJECTED TICKET MODAL (Triggered by Notification) */}
+      {rejectedTicketModalData && (
+        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-white/20 animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
+            
+            {/* Red Header */}
+            <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <AlertTriangle size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-red-600 tracking-tight">Request Rejected</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-widest mt-0.5">Admin Action</p>
+                </div>
+              </div>
+              <button onClick={() => setRejectedTicketModalData(null)} className="w-10 h-10 flex items-center justify-center bg-white hover:bg-red-100 rounded-full text-red-400 hover:text-red-600 transition-colors shadow-sm active:scale-95 shrink-0">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div className="p-6 sm:p-8 overflow-y-auto bg-slate-50/50 custom-scrollbar pb-10 sm:pb-8">
+              
+              {/* Reason Box */}
+              <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-md shadow-red-500/20">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
+                <p className="text-sm font-semibold leading-relaxed">
+                  {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
+                </p>
+              </div>
+
+              {/* Original Report Details */}
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm space-y-4">
+                
+                {rejectedTicketModalData.photo_url && (
+                  <div className="w-full h-40 bg-slate-100 rounded-xl overflow-hidden mb-4 border border-slate-200">
+                    <img src={rejectedTicketModalData.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Issue Title</span>
+                  <p className="font-extrabold text-slate-800">{rejectedTicketModalData.title}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Location</span>
+                    <p className="font-bold text-slate-600 text-xs">{rejectedTicketModalData.location}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Reported On</span>
+                    <p className="font-bold text-slate-600 text-xs">{new Date(rejectedTicketModalData.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</span>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    {rejectedTicketModalData.description}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* TOAST UI */}
       {toast && (
         <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${toast.type === "success" ? "border-l-4 border-l-[#1e88e5] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"}`}>
