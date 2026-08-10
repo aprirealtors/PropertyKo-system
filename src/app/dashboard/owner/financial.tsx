@@ -169,6 +169,14 @@ export default function FinancialTab({ userData, units }: any) {
 
   const ownerTotalDue = ownerBase + ownerPenalty;
 
+  // ✨ LEDGER SPECIFIC COMPUTATION
+  // Retain penalty amounts and update total if a penalty was historically applied (soaConfig.owner.penalty is true)
+  let ledgerOwnerPenalty = 0;
+  if ((ownerStatus === 'Overdue' || soaConfig.owner.penalty) && !isVacant) {
+    ledgerOwnerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+  }
+  const ledgerOwnerTotalDue = ownerBase + ledgerOwnerPenalty;
+
   const generateLedgerMonths = () => {
     const months = [];
     const currentYear = new Date().getFullYear();
@@ -193,9 +201,10 @@ export default function FinancialTab({ userData, units }: any) {
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     
     const rows = ledgerData.map(row => {
-      const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue && row.isCurrentMonth ? ownerPenalty : 0;
-      const rowTotal = isOverdue && row.isCurrentMonth ? ownerTotalDue : ownerBase;
+      const activeRow = row.isCurrentMonth;
+      // Use the ledger-specific computation
+      const rowPenalty = activeRow ? ledgerOwnerPenalty : 0;
+      const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
       const utilsTotal = ownerWater + ownerElectricity;
       
       return [
@@ -564,8 +573,10 @@ export default function FinancialTab({ userData, units }: any) {
                         <tbody className="divide-y divide-slate-100 text-slate-700 bg-white font-medium">
                           {ledgerData.map((row, idx) => {
                             const isRowPaid = row.status === 'Paid';
-                            const isRowOverdue = row.status === 'Overdue';
                             const activeRow = row.isCurrentMonth;
+                            // Use ledger specific computation for history retention
+                            const rowPenalty = activeRow ? ledgerOwnerPenalty : 0;
+                            const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
                             
                             return (
                               <tr key={idx} className={`transition-colors ${activeRow ? "bg-blue-50/40 hover:bg-blue-50/60" : "hover:bg-slate-50"}`}>
@@ -577,8 +588,8 @@ export default function FinancialTab({ userData, units }: any) {
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</td>
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
                                 
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[11px] sm:text-xs ${isRowOverdue ? 'text-red-600 bg-red-50/50' : 'text-slate-400'}`}>
-                                  {isRowOverdue && activeRow && ownerPenalty > 0 ? `₱${ownerPenalty.toLocaleString()}` : "0"}
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[11px] sm:text-xs ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                  {rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}
                                 </td>
                                 
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[9px] sm:text-[10px] tracking-wider uppercase">
@@ -591,13 +602,72 @@ export default function FinancialTab({ userData, units }: any) {
                                 </td>
 
                                 <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                  ₱{(isRowOverdue && activeRow ? ownerTotalDue : ownerBase).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                  ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                                 </td>
                               </tr>
                             );
                           })}
                         </tbody>
                       </table>
+                    </div>
+
+                    <div className="block md:hidden space-y-4">
+                      {ledgerData.map((row, idx) => {
+                        const isRowPaid = row.status === 'Paid';
+                        const activeRow = row.isCurrentMonth;
+                        const rowPenalty = activeRow ? ledgerOwnerPenalty : 0;
+                        const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
+                        
+                        return (
+                          <div key={idx} className={`relative p-4 sm:p-5 rounded-[0.5rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
+                            {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[#359b46] rounded-l-[1.25rem]"></div>}
+                            
+                            <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
+                              <div>
+                                <span className={`font-black uppercase text-[13px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                  {row.monthName} {row.year}
+                                </span>
+                                {activeRow && <span className="ml-1.5 text-[9px] font-bold text-[#359b46] tracking-widest opacity-80">(NOW)</span>}
+                                <div className="text-[11px] text-slate-500 font-medium mt-0.5">Due: {row.dueDate}</div>
+                              </div>
+                              <div>
+                                {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">Paid</span>}
+                                {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-md border border-red-100 font-bold text-[9px] uppercase tracking-wider">Overdue</span>}
+                                {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100 font-bold text-[9px] uppercase tracking-wider">Pending</span>}
+                                {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 font-bold text-[9px] uppercase tracking-wider">Sent</span>}
+                                {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md font-bold text-[9px] uppercase tracking-wider">Unassigned</span>}
+                                {row.status === 'Upcoming' && <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Upcoming</span>}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 mb-4">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-slate-500 font-medium">Dues:</span>
+                                <span className="text-[12px] font-bold text-slate-700">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-slate-500 font-medium">Parking:</span>
+                                <span className="text-[12px] font-bold text-slate-700">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-slate-500 font-medium">Utils:</span>
+                                <span className="text-[12px] font-bold text-slate-700">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
+                                <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-700'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                              <span className="text-[11px] font-black uppercase tracking-widest text-slate-100">Total:</span>
+                              <span className={`font-black text-[16px] tracking-tight ${isRowPaid ? 'text-[#FFFFFF]' : 'text-[#FFFFFF]'}`}>
+                                ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

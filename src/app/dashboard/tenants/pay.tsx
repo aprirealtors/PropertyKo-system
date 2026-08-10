@@ -153,6 +153,18 @@ export default function PayTab() {
 
   const totalDue = baseTotal + lateFee;
 
+  // ✨ LEDGER SPECIFIC COMPUTATION
+  // Retain penalty amounts and update total if a penalty was historically applied (soaConfig.penalty is true)
+  let ledgerLateFee = 0;
+  if (tenantStatus === 'Overdue' || soaConfig.penalty) {
+    if (globalComp.penaltyType === 'percent') {
+      ledgerLateFee = baseTotal * (globalComp.penaltyValue / 100);
+    } else {
+      ledgerLateFee = globalComp.penaltyValue;
+    }
+  }
+  const ledgerTotal = baseTotal + ledgerLateFee;
+
   const generateLedgerMonths = () => {
     const months = [];
     const currentYear = new Date().getFullYear();
@@ -175,9 +187,9 @@ export default function PayTab() {
     if (!unit || ledgerData.length === 0) return;
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     const rows = ledgerData.map(row => {
-      const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue && row.isCurrentMonth ? lateFee : 0;
-      const rowTotal = isOverdue && row.isCurrentMonth ? totalDue : baseTotal;
+      // Use the ledger-specific computation
+      const rowPenalty = row.isCurrentMonth ? ledgerLateFee : 0;
+      const rowTotal = row.isCurrentMonth ? ledgerTotal : baseTotal;
       return [`"${row.monthName} ${row.year}"`, `"${row.dueDate}"`, dues, parking, (water + electricity), rowPenalty, `"${row.status}"`, rowTotal].join(",");
     });
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -236,7 +248,7 @@ export default function PayTab() {
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight whitespace-normal break-words">
-                   Financial Statements
+                  Financial Statements
                 </h2>
                 <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium whitespace-normal break-words">
                   Manage your statement of account and transactions
@@ -423,8 +435,10 @@ export default function PayTab() {
                       <tbody className="divide-y divide-slate-100/80 text-slate-700 bg-white font-medium relative z-0">
                         {ledgerData.map((row, idx) => {
                           const isRowPaid = row.status === 'Paid';
-                          const isRowOverdue = row.status === 'Overdue';
                           const activeRow = row.isCurrentMonth;
+                          // Use ledger specific computation for history retention
+                          const rowPenalty = activeRow ? ledgerLateFee : 0;
+                          const rowTotal = activeRow ? ledgerTotal : baseTotal;
                           
                           return (
                             <tr key={idx} className={`transition-colors group ${activeRow ? "bg-[#f0f9f2] hover:bg-[#e6f4e9]" : "hover:bg-slate-50"}`}>
@@ -436,8 +450,8 @@ export default function PayTab() {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{dues > 0 ? `₱${dues.toLocaleString()}` : "0"}</td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{parking > 0 ? `₱${parking.toLocaleString()}` : "0"}</td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-medium text-[11px] sm:text-xs text-slate-600 border-r border-slate-100">{(water + electricity) > 0 ? `₱${(water + electricity).toLocaleString()}` : "0"}</td>
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-bold text-[11px] sm:text-xs border-r border-slate-100 ${isRowOverdue ? 'text-red-600' : 'text-slate-400'}`}>
-                                {isRowOverdue && activeRow && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-bold text-[11px] sm:text-xs border-r border-slate-100 ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                {rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}
                               </td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-center whitespace-nowrap font-bold text-[9px] sm:text-[10px] tracking-wider uppercase border-r border-slate-100">
                                 {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2 sm:px-3 py-1 rounded-md border border-emerald-100 shadow-sm">Paid</span>}
@@ -448,7 +462,7 @@ export default function PayTab() {
                                 {row.status === 'Upcoming' && <span className="text-slate-400 font-medium px-2 sm:px-3">Upcoming</span>}
                               </td>
                               <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                ₱{(isRowOverdue && activeRow ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
                           );
@@ -460,8 +474,10 @@ export default function PayTab() {
                   <div className="block md:hidden space-y-4">
                     {ledgerData.map((row, idx) => {
                       const isRowPaid = row.status === 'Paid';
-                      const isRowOverdue = row.status === 'Overdue';
                       const activeRow = row.isCurrentMonth;
+                      // Use ledger specific computation for history retention
+                      const rowPenalty = activeRow ? ledgerLateFee : 0;
+                      const rowTotal = activeRow ? ledgerTotal : baseTotal;
                       
                       return (
                         <div key={idx} className={`relative p-4 sm:p-5 rounded-[0.5rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
@@ -500,14 +516,14 @@ export default function PayTab() {
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
-                              <span className={`text-[12px] font-bold ${isRowOverdue && activeRow && lateFee > 0 ? 'text-red-600' : 'text-slate-700'}`}>{isRowOverdue && activeRow && lateFee > 0 ? `₱${lateFee.toLocaleString()}` : "0"}</span>
+                              <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-700'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
                             </div>
                           </div>
 
                           <div className="flex justify-between items-center bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-3.5 rounded-xl border border-slate-100 shadow-sm">
                             <span className="text-[11px] font-black uppercase tracking-widest text-slate-100">Total:</span>
                             <span className={`font-black text-[16px] tracking-tight ${isRowPaid ? 'text-[#FFFFFF]' : 'text-[#FFFFFF]'}`}>
-                              ₱{(isRowOverdue && activeRow ? totalDue : baseTotal).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                              ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                             </span>
                           </div>
                         </div>

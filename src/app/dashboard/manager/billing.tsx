@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2 } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -38,10 +38,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [paymentModalParty, setPaymentModalParty] = useState<'owner' | 'tenant' | null>(null);
   const [isComputationModalOpen, setIsComputationModalOpen] = useState(false);
   const [isSOAModalOpen, setIsSOAModalOpen] = useState(false);
+  const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
+  const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   
   const [isSimulating, setIsSimulating] = useState(false);
   const [isSendingSOA, setIsSendingSOA] = useState(false);
   const [isSavingDefault, setIsSavingDefault] = useState(false); 
+  const [isWaiving, setIsWaiving] = useState(false);
 
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
@@ -242,13 +245,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
+  // Auto-calculate penalty based on Overdue Status OR explicitly saved penalty history
   let ownerPenalty = 0;
-  if (ownerStatus === 'Overdue' && activeConfig.owner.penalty && !isOwnerVacant) {
+  if ((ownerStatus === 'Overdue' || currentSoa?.owner_penalty) && !isOwnerVacant) {
     ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
   let tenantPenalty = 0;
-  if (tenantStatus === 'Overdue' && activeConfig.tenant.penalty && !isTenantVacant) {
+  if ((tenantStatus === 'Overdue' || currentSoa?.tenant_penalty) && !isTenantVacant) {
     tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
@@ -316,9 +320,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       tenant_penalty: soaConfig.tenant.penalty,
     };
 
-    if (statusOverride === 'Sent') {
-      if (!isOwnerVacant) payload.owner_status = 'Sent';
-      if (!isTenantVacant) payload.tenant_status = 'Sent';
+    if (statusOverride) {
+      if (!isOwnerVacant) payload.owner_status = statusOverride;
+      if (!isTenantVacant) payload.tenant_status = statusOverride;
     }
 
     if (existing?.id) {
@@ -353,13 +357,44 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const handleSendSOA = async () => {
     setIsSendingSOA(true);
     try {
-      await saveSoaToDatabase('Sent');
+      await saveSoaToDatabase('Pending');
       setIsSOAModalOpen(false);
     } catch (err) {
       console.error("Failed to send SOA:", err);
       alert("There was an error saving the SOA configuration.");
     } finally {
       setIsSendingSOA(false);
+    }
+  };
+
+  const handleWaivePenalty = async (party: 'owner' | 'tenant') => {
+    setIsWaiving(true);
+    try {
+      const updateField = { 
+        [`${party}_penalty`]: false,
+        [`${party}_status`]: 'Pending'
+      };
+      
+      const { error } = await supabase
+        .from('soa')
+        .update(updateField)
+        .eq('unit_id', selectedUnit.id);
+        
+      if (error) throw error;
+      
+      setAllSoaConfigs(prev => ({
+        ...prev,
+        [selectedUnit.id]: { ...prev[selectedUnit.id], ...updateField }
+      }));
+      
+      setIsPenaltyModalOpen(false);
+      setWaiveSuccess({ party });
+
+    } catch (err: any) {
+      console.error("Error waiving penalty", err);
+      alert(`Failed to waive penalty: ${err.message || 'Check your database permissions'}`);
+    } finally {
+      setIsWaiving(false);
     }
   };
 
@@ -490,9 +525,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     
     const rows = ledgerData.map(row => {
-      const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue ? (ownerPenalty + tenantPenalty) : 0;
-      const rowTotal = isOverdue ? totalDue : (ownerBase + tenantBase);
+      const rowPenalty = row.isCurrentMonth ? (ownerPenalty + tenantPenalty) : 0;
+      const rowTotal = row.isCurrentMonth ? totalDue : (ownerBase + tenantBase);
       const utilsTotal = rawWater + rawElectricity;
 
       return [
@@ -531,15 +565,30 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setIsSimulating(true);
     
     try {
-      const updateField = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
-      await supabase.from('soa').update(updateField).eq('unit_id', selectedUnit.id);
+      const updateField: any = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
+      
+      if (paymentModalParty === 'owner' && ownerPenalty > 0) {
+        updateField.owner_penalty = true;
+      }
+      
+      if (paymentModalParty === 'tenant' && tenantPenalty > 0) {
+        updateField.tenant_penalty = true;
+      }
+      
+      const { error } = await supabase
+        .from('soa')
+        .update(updateField)
+        .eq('unit_id', selectedUnit.id);
+        
+      if (error) throw error;
       
       setAllSoaConfigs(prev => ({
         ...prev,
         [selectedUnit.id]: { ...prev[selectedUnit.id], ...updateField }
       }));
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating payment status", err);
+      alert(`Failed to confirm payment: ${err.message || 'Check your database permissions'}`);
     } finally {
       setIsSimulating(false);
       setPaymentModalParty(null);
@@ -604,7 +653,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
             {/* SIDEBAR */}
             <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-3 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
-                <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
+                  <button onClick={openComputationModal} className="text-slate-400 hover:text-[#1d82f5] hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors active:scale-95 flex items-center gap-1.5 border border-transparent hover:border-blue-100" title="Billing Settings">
+                    <Calculator size={13} strokeWidth={2.5} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Config</span>
+                  </button>
+                </div>
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{allUnits.length} Total</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
@@ -732,7 +787,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {activeConfig.owner.electricity && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
-                              {activeConfig.owner.penalty && ownerPenalty > 0 && !isOwnerVacant && (
+                              {ownerPenalty > 0 && !isOwnerVacant && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
@@ -779,7 +834,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                   {activeConfig.tenant.electricity && !isTenantVacant && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-800 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
-                                  {activeConfig.tenant.penalty && tenantPenalty > 0 && (
+                                  {tenantPenalty > 0 && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-400 font-bold truncate">Late Penalty</span><span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {tenantTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
@@ -828,12 +883,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     </button>
                   )}
 
-                  <button 
-                    onClick={openComputationModal}
-                    className="w-full justify-center sm:w-auto bg-white border border-[#1d82f5]/30 hover:border-[#1d82f5]/60 hover:bg-blue-50 text-[#1d82f5] px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
-                  >
-                    <Calculator className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Config</span>
-                  </button>
+                  {(ownerPenalty > 0 || tenantPenalty > 0) && (
+                    <button 
+                      onClick={() => setIsPenaltyModalOpen(true)}
+                      className="w-full justify-center sm:w-auto bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
+                    >
+                      <AlertCircle className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Penalties</span>
+                    </button>
+                  )}
                   
                   <button 
                     onClick={openSOAModal}
@@ -883,8 +940,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                         {ledgerData.map((row, idx) => {
-                          const isOverdue = row.status === 'Overdue';
                           const activeRow = row.isCurrentMonth;
+                          const hasPenalty = row.isCurrentMonth && (ownerPenalty > 0 || tenantPenalty > 0);
                           
                           return (
                             <tr key={idx} className={`transition-colors ${activeRow ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
@@ -896,8 +953,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
                               
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${isOverdue ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
-                                {isOverdue && (ownerPenalty + tenantPenalty) > 0 ? `₱${(ownerPenalty + tenantPenalty).toLocaleString()}` : "—"}
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
+                                {hasPenalty ? (
+                                  <div className="flex flex-col gap-0.5 text-[10px] sm:text-[11px]">
+                                    {ownerPenalty > 0 && <span>O: ₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
+                                    {tenantPenalty > 0 && <span>T: ₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
+                                  </div>
+                                ) : "—"}
                               </td>
                               
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
@@ -917,7 +979,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               </td>
 
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[#0a1e3f] text-[13px] sm:text-sm">
-                                ₱{(isOverdue ? totalDue : (ownerBase + tenantBase)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                ₱{(row.isCurrentMonth ? totalDue : (ownerBase + tenantBase)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
                           );
@@ -1118,6 +1180,69 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
+      {/* PENALTY MODAL (Manage Penalties) */}
+      {isPenaltyModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shrink-0">
+                  <AlertCircle size={16} />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight">Manage Penalties</h2>
+              </div>
+              <button onClick={() => setIsPenaltyModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isWaiving}>
+                <X size={20} className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4">
+              <p className="text-[12px] sm:text-[13px] text-slate-500 font-medium leading-relaxed">
+                You can waive the penalty for this billing period. The base balance will remain due until a payment is verified.
+              </p>
+              
+              {ownerPenalty > 0 && (
+                <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-red-800 text-[13px] sm:text-sm">Owner Penalty</span>
+                    <span className="font-black text-red-600 text-lg sm:text-xl">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleWaivePenalty('owner')}
+                    disabled={isWaiving}
+                    className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : (ownerStatus === 'Paid' ? "Waive Penalty" : "Waive Penalty & Verify Payment")}
+                  </button>
+                </div>
+              )}
+
+              {tenantPenalty > 0 && (
+                <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-red-800 text-[13px] sm:text-sm">Tenant Penalty</span>
+                    <span className="font-black text-red-600 text-lg sm:text-xl">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleWaivePenalty('tenant')}
+                    disabled={isWaiving}
+                    className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : (tenantStatus === 'Paid' ? "Waive Penalty" : "Waive Penalty & Verify Payment")}
+                  </button>
+                </div>
+              )}
+
+              {!(ownerPenalty > 0) && !(tenantPenalty > 0) && (
+                <div className="text-center py-6 text-[13px] sm:text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                  No active penalties to waive.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SOA MODAL */}
       {isSOAModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
@@ -1280,18 +1405,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </button>
                 <div className="flex gap-2.5 sm:gap-3 w-full">
                   <button 
-                    onClick={handleSaveDefaultSOA}
-                    disabled={isSendingSOA || isSavingDefault}
-                    className="flex-1 min-w-0 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3 sm:py-3.5 rounded-xl text-[11px] sm:text-[13px] font-bold shadow-sm transition-colors flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
-                  >
-                    {isSavingDefault ? "Saving..." : "Save Config Only"}
-                  </button>
-                  <button 
                     onClick={handleSendSOA}
-                    disabled={isSendingSOA || isSavingDefault || (ownerTotalDue === 0 && tenantTotalDue === 0)}
+                    disabled={isSendingSOA || isSavingDefault}
                     className="flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:shadow-[0_4px_15px_rgba(29,130,245,0.3)] disabled:from-blue-300 disabled:to-blue-300 disabled:shadow-none text-white py-3 sm:py-3.5 rounded-xl text-[11px] sm:text-[13px] font-bold shadow-[0_2px_8px_rgba(29,130,245,0.2)] transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
                   >
-                    {isSendingSOA ? "Sending..." : "Send SOA"}
+                    {isSendingSOA ? "Saving & Sending..." : "Save and Send"}
                   </button>
                 </div>
               </div>
@@ -1355,12 +1473,38 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
               <button 
                 onClick={handleConfirmPayment}
-                disabled={isSimulating || isFetchingPayment}
+                disabled={isSimulating || isFetchingPayment || !fetchedPayment}
                 className="w-full bg-gradient-to-b from-[#359b46] to-[#2a7a37] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-[#86c48f] disabled:to-[#86c48f] disabled:shadow-none text-white font-bold py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_2px_8px_rgba(53,155,70,0.2)] flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-sm"
               >
                 {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid in Database</>}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM SUCCESS MODAL FOR WAIVING PENALTY */}
+      {waiveSuccess && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
+              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Penalty Waived</h2>
+            <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
+              The late penalty for the <strong className="text-slate-700 capitalize">{waiveSuccess.party}</strong> has been successfully removed. You may now proceed to verify the base payment.
+            </p>
+            <button 
+              onClick={() => {
+                const party = waiveSuccess.party;
+                setWaiveSuccess(null);
+                setPaymentModalParty(party);
+                setIsPaymentModalOpen(true);
+              }}
+              className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95"
+            >
+              Continue to Payment
+            </button>
           </div>
         </div>
       )}

@@ -245,14 +245,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
-  // Auto-calculate penalty based entirely on Overdue Status
+  // Auto-calculate penalty based on Overdue Status OR explicitly saved penalty history
   let ownerPenalty = 0;
-  if (ownerStatus === 'Overdue' && !isOwnerVacant) {
+  if ((ownerStatus === 'Overdue' || currentSoa?.owner_penalty) && !isOwnerVacant) {
     ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
   let tenantPenalty = 0;
-  if (tenantStatus === 'Overdue' && !isTenantVacant) {
+  if ((tenantStatus === 'Overdue' || currentSoa?.tenant_penalty) && !isTenantVacant) {
     tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
   }
 
@@ -371,7 +371,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setIsWaiving(true);
     try {
       const updateField = { 
-        [`${party}_penalty`]: false
+        [`${party}_penalty`]: false,
+        [`${party}_status`]: 'Pending'
       };
       
       const { error } = await supabase
@@ -524,9 +525,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     const headers = ["PERIOD", "DUE DATE", "DUES", "PARKING", "UTILITIES", "PENALTY", "STATUS", "TOTAL"];
     
     const rows = ledgerData.map(row => {
-      const isOverdue = row.status === 'Overdue';
-      const rowPenalty = isOverdue ? (ownerPenalty + tenantPenalty) : 0;
-      const rowTotal = isOverdue ? totalDue : (ownerBase + tenantBase);
+      const rowPenalty = row.isCurrentMonth ? (ownerPenalty + tenantPenalty) : 0;
+      const rowTotal = row.isCurrentMonth ? totalDue : (ownerBase + tenantBase);
       const utilsTotal = rawWater + rawElectricity;
 
       return [
@@ -565,7 +565,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     setIsSimulating(true);
     
     try {
-      const updateField = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
+      const updateField: any = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
+      
+      if (paymentModalParty === 'owner' && ownerPenalty > 0) {
+        updateField.owner_penalty = true;
+      }
+      
+      if (paymentModalParty === 'tenant' && tenantPenalty > 0) {
+        updateField.tenant_penalty = true;
+      }
       
       const { error } = await supabase
         .from('soa')
@@ -779,7 +787,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {activeConfig.owner.electricity && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
-                              {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isOwnerVacant && (
+                              {ownerPenalty > 0 && !isOwnerVacant && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
@@ -826,7 +834,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                   {activeConfig.tenant.electricity && !isTenantVacant && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-800 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
-                                  {tenantStatus === 'Overdue' && tenantPenalty > 0 && (
+                                  {tenantPenalty > 0 && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-400 font-bold truncate">Late Penalty</span><span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {tenantTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic">No assigned balances.</p>}
@@ -875,7 +883,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     </button>
                   )}
 
-                  {(ownerStatus === 'Overdue' || tenantStatus === 'Overdue') && (
+                  {(ownerPenalty > 0 || tenantPenalty > 0) && (
                     <button 
                       onClick={() => setIsPenaltyModalOpen(true)}
                       className="w-full justify-center sm:w-auto bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
@@ -932,8 +940,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
                         {ledgerData.map((row, idx) => {
-                          const isOverdue = row.status === 'Overdue';
                           const activeRow = row.isCurrentMonth;
+                          const hasPenalty = row.isCurrentMonth && (ownerPenalty > 0 || tenantPenalty > 0);
                           
                           return (
                             <tr key={idx} className={`transition-colors ${activeRow ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
@@ -945,15 +953,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
                               
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${isOverdue ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
-                                {isOverdue && row.isCurrentMonth && (ownerPenalty > 0 || tenantPenalty > 0) ? (
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
+                                {hasPenalty ? (
                                   <div className="flex flex-col gap-0.5 text-[10px] sm:text-[11px]">
                                     {ownerPenalty > 0 && <span>O: ₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
                                     {tenantPenalty > 0 && <span>T: ₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
                                   </div>
-                                ) : (
-                                   isOverdue && (ownerPenalty + tenantPenalty) > 0 ? `₱${(ownerPenalty + tenantPenalty).toLocaleString()}` : "—"
-                                )}
+                                ) : "—"}
                               </td>
                               
                               <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
@@ -973,7 +979,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               </td>
 
                               <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[#0a1e3f] text-[13px] sm:text-sm">
-                                ₱{(isOverdue ? totalDue : (ownerBase + tenantBase)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                ₱{(row.isCurrentMonth ? totalDue : (ownerBase + tenantBase)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
                           );
@@ -1195,7 +1201,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 You can waive the penalty for this billing period. The base balance will remain due until a payment is verified.
               </p>
               
-              {ownerPenalty > 0 && ownerStatus === 'Overdue' && (
+              {ownerPenalty > 0 && (
                 <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-red-800 text-[13px] sm:text-sm">Owner Penalty</span>
@@ -1206,12 +1212,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     disabled={isWaiving}
                     className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
                   >
-                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : "Waive Penalty & Verify Payment"}
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : (ownerStatus === 'Paid' ? "Waive Penalty" : "Waive Penalty & Verify Payment")}
                   </button>
                 </div>
               )}
 
-              {tenantPenalty > 0 && tenantStatus === 'Overdue' && (
+              {tenantPenalty > 0 && (
                 <div className="bg-red-50 border border-red-100 p-4 sm:p-5 rounded-xl flex flex-col gap-4 shadow-inner">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-red-800 text-[13px] sm:text-sm">Tenant Penalty</span>
@@ -1222,12 +1228,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     disabled={isWaiving}
                     className="w-full bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-lg text-xs transition-colors shadow-sm active:scale-95 flex items-center justify-center gap-2"
                   >
-                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : "Waive Penalty & Verify Payment"}
+                    {isWaiving ? <><Loader2 size={14} className="animate-spin" /> Processing...</> : (tenantStatus === 'Paid' ? "Waive Penalty" : "Waive Penalty & Verify Payment")}
                   </button>
                 </div>
               )}
 
-              {!(ownerPenalty > 0 && ownerStatus === 'Overdue') && !(tenantPenalty > 0 && tenantStatus === 'Overdue') && (
+              {!(ownerPenalty > 0) && !(tenantPenalty > 0) && (
                 <div className="text-center py-6 text-[13px] sm:text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
                   No active penalties to waive.
                 </div>
@@ -1467,7 +1473,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
               <button 
                 onClick={handleConfirmPayment}
-                disabled={isSimulating || isFetchingPayment}
+                disabled={isSimulating || isFetchingPayment || !fetchedPayment}
                 className="w-full bg-gradient-to-b from-[#359b46] to-[#2a7a37] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-[#86c48f] disabled:to-[#86c48f] disabled:shadow-none text-white font-bold py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_2px_8px_rgba(53,155,70,0.2)] flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-sm"
               >
                 {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid in Database</>}
