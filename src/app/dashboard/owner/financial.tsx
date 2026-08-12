@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { CalendarClock, Download, X, Receipt, ShieldCheck, AlertCircle, CheckCircle, CreditCard, ArrowRight, Home, ChevronLeft, Clock } from "lucide-react";
+import { CalendarClock, Download, X, Receipt, ShieldCheck, AlertCircle, CheckCircle, CreditCard, ArrowRight, Home, ChevronLeft, Clock, History } from "lucide-react";
 
 export default function FinancialTab({ userData, units }: any) {
   
@@ -44,7 +44,8 @@ export default function FinancialTab({ userData, units }: any) {
   
   // Mobile Master-Detail State
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
-  
+  const [isMobileHistoryVisible, setIsMobileHistoryVisible] = useState(false);
+
   // Updated payment methods
   const PAYMENT_METHODS = [
     'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
@@ -194,7 +195,7 @@ export default function FinancialTab({ userData, units }: any) {
   };
 
   const ledgerData = generateLedgerMonths();
-
+  const paidHistory = ledgerData.filter(row => row.status === 'Paid');
   const handleExportCSV = () => {
     if (!selectedUnit || ledgerData.length === 0) return;
     
@@ -350,61 +351,131 @@ export default function FinancialTab({ userData, units }: any) {
         </div>
       </div>
 
-      {/* KANBAN LAYOUT Main Wrapper */}
+      {/* ✨ KANBAN LAYOUT Main Wrapper */}
       <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col md:flex-row overflow-hidden relative">
         
         {isLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider gap-3">
-            <Clock size={24} className="animate-spin text-[#359b46]" /> Loading financial data...
-          </div>
+          <>
+            {/* SKELETON SIDEBAR */}
+            <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-slate-200/80 p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="h-4 w-32 bg-slate-200 rounded-md animate-pulse"></div>
+                  <div className="h-4 w-12 bg-slate-100 rounded-md animate-pulse"></div>
+                </div>
+                <div className="space-y-3 flex-1 overflow-hidden">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="h-[72px] w-full bg-slate-50 rounded-2xl animate-pulse border border-slate-100"></div>
+                  ))}
+                </div>
+              </div>
+              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-slate-50/30 p-5">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="h-4 w-36 bg-slate-200 rounded-md animate-pulse"></div>
+                  <div className="h-4 w-12 bg-slate-200 rounded-md animate-pulse"></div>
+                </div>
+                <div className="space-y-3 flex-1 overflow-hidden">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="h-[72px] w-full bg-white rounded-2xl animate-pulse border border-slate-100 shadow-sm"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* SKELETON MAIN DETAILS */}
+            <div className="hidden md:flex flex-1 flex-col overflow-y-auto bg-[#f4f7f9] p-6 lg:p-8 space-y-6">
+              <div className="h-[300px] w-full bg-white rounded-3xl border border-slate-200 animate-pulse shadow-sm"></div>
+              <div className="h-[100px] w-full bg-slate-300/40 rounded-3xl animate-pulse"></div>
+              <div className="h-[56px] w-full bg-slate-200 rounded-2xl animate-pulse"></div>
+              <div className="h-[400px] w-full bg-white rounded-3xl border border-slate-100 animate-pulse shadow-sm flex-1"></div>
+            </div>
+          </>
         ) : (
           <>
-            {/* SIDEBAR (Properties Inventory) */}
+            {/* 1. SIDEBAR (Split: Top = Properties, Bottom = Desktop History) */}
             <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
-              <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
-                <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
-                  <Home size={14} className="text-[#359b46]"/> Your Properties
-                </h3>
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{sortedUnits.length} Total</span>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
-                {sortedUnits.map((unit: any) => {
-                  const status = localStatuses[unit.id];
-                  const isSelected = selectedUnit?.id === unit.id;
-                  const isRowTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
-                  
-                  return (
-                    <div 
-                      key={unit.id} 
-                      onClick={() => {
-                        setSelectedUnit(unit);
-                        setIsMobileListVisible(false); // Hide list on mobile
-                      }}
-                      className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-[#359b46] to-[#2c813a] border-transparent shadow-md text-white' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] text-slate-700'}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight font-black ${isSelected ? 'text-white' : 'text-[#0a1e3f]'}`}>
-                          {unit.property_name} {unit.unit_number}
-                        </h4>
-                        <div className={`text-[10px] sm:text-[11px] font-medium truncate mt-1 ${isSelected ? 'text-green-100' : 'text-slate-500'}`}>
-                          <span className="font-bold opacity-70">T:</span> {isRowTenantVacant ? 'Vacant' : unit.tenant_name}
+              
+              {/* TOP HALF: PROPERTIES */}
+              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-slate-200/80">
+                <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center z-10 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
+                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
+                    <Home size={14} className="text-[#359b46]"/> Select Your Properties
+                  </h3>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">
+                    {sortedUnits.length} Total
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
+                  {sortedUnits.map((unit: any) => {
+                    const status = localStatuses[unit.id];
+                    const isSelected = selectedUnit?.id === unit.id;
+                    const isRowTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
+                    
+                    return (
+                      <div 
+                        key={unit.id} 
+                        onClick={() => {
+                          setSelectedUnit(unit);
+                          setIsMobileListVisible(false);
+                          setIsMobileHistoryVisible(false);
+                        }}
+                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-[#359b46] to-[#2c813a] border-transparent shadow-md text-white' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] text-slate-700'}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight font-black ${isSelected ? 'text-white' : 'text-[#0a1e3f]'}`}>
+                            {unit.property_name} {unit.unit_number}
+                          </h4>
+                          <div className={`text-[10px] sm:text-[11px] font-medium truncate mt-1 ${isSelected ? 'text-green-100' : 'text-slate-500'}`}>
+                            <span className="font-bold opacity-70">T:</span> {isRowTenantVacant ? 'Vacant' : unit.tenant_name}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0 gap-1.5">
+                          {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
+                          {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
+                          {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
+                          {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
+                          {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end shrink-0 gap-1.5">
-                        {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
-                        {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
-                        {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
-                        {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
-                        {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
-                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* BOTTOM HALF: HISTORY (DESKTOP ONLY) */}
+              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-slate-50/30">
+                <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center z-10 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
+                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
+                    <History size={14} className="text-[#359b46]"/> Transaction History
+                  </h3>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">
+                    {paidHistory.length} Total
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
+                  {paidHistory.length === 0 ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="text-slate-300 mx-auto mb-2" size={24} />
+                      <p className="text-[11px] font-bold text-slate-400">No verified payments yet.</p>
                     </div>
-                  )
-                })}
+                  ) : (
+                    paidHistory.map((tx, idx) => (
+                      <HistoryItem 
+                        key={idx} 
+                        title="Statement Payment" 
+                        method={`${tx.monthName} ${tx.year}`} 
+                        date={`Posted: ${tx.dueDate}`} 
+                        amount={`₱${(tx.isCurrentMonth ? ledgerOwnerTotalDue : ownerBase).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
+                        status="Paid" 
+                      />
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* MAIN DETAILS */}
-            <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${!isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
+            {/* 2. MAIN DETAILS (SOA & Ledger) */}
+            <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${(!isMobileListVisible && !isMobileHistoryVisible) ? 'flex' : 'hidden md:flex'}`}>
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full animate-in fade-in duration-300">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
@@ -416,11 +487,21 @@ export default function FinancialTab({ userData, units }: any) {
               ) : (
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
                   
+                  {/* ✨ MOBILE VIEW HISTORY BUTTON */}
+                  <div className="md:hidden flex justify-end">
+                    <button 
+                      onClick={() => setIsMobileHistoryVisible(true)}
+                      className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm px-4 py-2.5 rounded-xl text-[11px] font-black text-[#0a1e3f] uppercase tracking-wider active:scale-95 transition-transform"
+                    >
+                      <History size={14} className="text-[#359b46]" /> View History
+                    </button>
+                  </div>
+
                   {/* SOA DETAILS CARD */}
-                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-800 overflow-hidden">
+                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200 overflow-hidden">
                     
                     {/* Header with Mobile Back Button */}
-                    <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-slate-800">
+                    <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-slate-200">
                       <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                         <button 
                           onClick={() => setIsMobileListVisible(true)}
@@ -446,7 +527,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-800">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-200/80">
                       
                       {/* OWNER COLUMN */}
                       <div className="p-4 sm:p-6 md:p-8 relative flex flex-col">
@@ -485,7 +566,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
 
                       {/* TENANT COLUMN */}
-                      <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col border-t lg:border-t-0 border-slate-800">
+                      <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col border-t lg:border-t-0 border-slate-200">
                          <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-200/60">
                              <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
                              <p className="font-black text-[#1d82f5] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to Tenant</p>
@@ -536,7 +617,7 @@ export default function FinancialTab({ userData, units }: any) {
                   <div className="w-full shrink-0">
                     <button 
                       onClick={() => setIsPaymentModalOpen(true)}
-                      disabled={!isAssigned || isPaid || ownerTotalDue === 0 || isLoading}
+                      disabled={!isAssigned || isPaid || ownerTotalDue === 0}
                       className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-400 disabled:shadow-none text-white px-4 py-4 rounded-xl sm:rounded-2xl text-[12px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                       {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</> : ownerTotalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>}
@@ -544,7 +625,7 @@ export default function FinancialTab({ userData, units }: any) {
                   </div>
 
                   {/* COMBINED LEDGER TABLE */}
-                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-6 md:p-8 overflow-hidden mb-14">
+                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-6 md:p-8 overflow-hidden">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center border border-emerald-100 shadow-sm shrink-0">
@@ -622,7 +703,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </table>
                     </div>
 
-                    <div className="block md:hidden space-y-4">
+                    <div className="block md:hidden space-y-4 mb-14">
                       {ledgerData.map((row, idx) => {
                         const isRowPaid = row.status === 'Paid';
                         const activeRow = row.isCurrentMonth;
@@ -685,6 +766,60 @@ export default function FinancialTab({ userData, units }: any) {
                 </div>
               )}
             </div>
+
+            {/* ✨ 3. MOBILE HISTORY PANE (Slide In for Mobile) */}
+            <div className={`w-full shrink-0 bg-white flex-col h-full z-10 animate-in fade-in slide-in-from-right-4 duration-300 ${isMobileHistoryVisible ? 'flex md:hidden' : 'hidden'}`}>
+              <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center shadow-[0_4px_15px_rgba(0,0,0,0.02)] z-10">
+                 <div className="flex items-center gap-2">
+                   <button onClick={() => setIsMobileHistoryVisible(false)} className="mr-1 text-slate-400 hover:bg-slate-100 p-1.5 rounded-xl transition-colors active:scale-95">
+                     <ChevronLeft size={22} strokeWidth={2.5} />
+                   </button>
+                   <h3 className="font-black text-[#0a1e3f] text-[13px] uppercase tracking-wider flex items-center gap-2">
+                     <History size={16} className="text-[#359b46]"/> Transaction History
+                   </h3>
+                 </div>
+                 <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shadow-sm">
+                   {isLoading ? '...' : paidHistory.length} Total
+                 </span>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3 bg-slate-50/30 mb-16">
+                 {isLoading ? (
+                   [1, 2, 3, 4, 5].map((i) => (
+                     <div key={i} className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-white border-slate-100 shadow-sm animate-pulse">
+                       <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div>
+                         <div className="space-y-2">
+                           <div className="h-3 bg-slate-200 rounded w-24"></div>
+                           <div className="h-2 bg-slate-100 rounded w-16"></div>
+                         </div>
+                       </div>
+                       <div className="h-4 bg-slate-200 rounded w-12 shrink-0"></div>
+                     </div>
+                   ))
+                 ) : paidHistory.length === 0 ? (
+                    <div className="text-center py-10 px-5 border border-dashed border-slate-200 rounded-2xl w-full bg-white shadow-sm">
+                       <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                          <AlertCircle className="text-slate-300" size={24} />
+                       </div>
+                       <p className="text-slate-600 font-black text-[13px] tracking-tight mb-1">No history found</p>
+                       <p className="text-slate-400 text-[11px] font-medium leading-relaxed">Approved payments will appear here.</p>
+                    </div>
+                 ) : (
+                    paidHistory.map((tx, idx) => (
+                       <HistoryItem 
+                         key={idx} 
+                         title="Statement Payment" 
+                         method={`${tx.monthName} ${tx.year}`} 
+                         date={`Posted: ${tx.dueDate}`} 
+                         amount={`₱${(tx.isCurrentMonth ? ledgerOwnerTotalDue : ownerBase).toLocaleString(undefined, {minimumFractionDigits: 2})}`} 
+                         status="Paid" 
+                       />
+                    ))
+                 )}
+              </div>
+            </div>
+
           </>
         )}
       </div>
@@ -848,6 +983,31 @@ export default function FinancialTab({ userData, units }: any) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// -------------------------------------------------------------------------------------------------
+// COMPONENTS
+// -------------------------------------------------------------------------------------------------
+function HistoryItem({ title, method, date, amount, status }: any) {
+  return (
+    <div className="w-full cursor-default p-3.5 sm:p-4 rounded-xl sm:rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)] shadow-sm flex items-start sm:items-center justify-between gap-3 group">
+      <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 overflow-hidden min-w-0 pr-2">
+        <div className="p-2 sm:p-2.5 bg-blue-50 text-[#359b46] rounded-lg sm:rounded-xl shrink-0 border border-blue-100 group-hover:scale-105 transition-transform mt-0.5 sm:mt-0">
+          <Receipt size={16} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="font-bold text-[#0a1e3f] text-[12px] sm:text-[13px] tracking-tight whitespace-normal break-words leading-tight">{title}</span>
+          <span className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-0.5 whitespace-normal break-words">{method} • {date}</span>
+        </div>
+      </div>
+      <div className="shrink-0 flex flex-col items-end pl-2">
+        <span className="font-black text-[#359b46] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
+        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-md mt-1 border shadow-sm whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+          {status}
+        </span>
+      </div>
     </div>
   );
 }

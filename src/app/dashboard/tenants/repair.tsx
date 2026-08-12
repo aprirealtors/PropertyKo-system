@@ -376,7 +376,8 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                     <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white relative z-20">
                       <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
-                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                        {/* ✨ FIX: Removed line-clamp-1 to show full title on Tenant Side */}
+                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight">{t.title}</h4>
                         <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest border ${t.color}`}>{t.label}</span>
                       </div>
 
@@ -473,7 +474,8 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                     <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white relative z-20">
                       <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
-                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                        {/* ✨ FIX: Removed line-clamp-1 to show full title on Tenant Side */}
+                        <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight">{t.title}</h4>
                         <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${t.color}`}>{t.label}</span>
                       </div>
 
@@ -569,7 +571,8 @@ export default function RepairTab({ highlightTicketId }: any) {
                       <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
                         <div className="flex items-start gap-2">
                           <CheckCircle size={16} className={`${isHighlighted ? 'text-emerald-500' : 'text-emerald-600'} mt-0.5 shrink-0`} strokeWidth={2.5} />
-                          <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight line-clamp-1">{t.title}</h4>
+                          {/* ✨ FIX: Removed line-clamp-1 to show full title on Tenant Side */}
+                          <h4 className="font-extrabold text-[#0a1e3f] text-[15px] leading-snug tracking-tight">{t.title}</h4>
                         </div>
                         <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${t.color}`}>{t.label}</span>
                       </div>
