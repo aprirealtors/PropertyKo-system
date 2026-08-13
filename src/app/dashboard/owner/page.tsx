@@ -939,23 +939,6 @@ export default function OwnerDashboard() {
             </div>
 
             <button 
-              onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} 
-              className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
-                activeTab === 'leases' 
-                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`transition-transform duration-300 ${activeTab === 'leases' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
-                  <FileCheck size={18} strokeWidth={activeTab === 'leases' ? 2.5 : 2} />
-                </div>
-                <span className="tracking-wide">Leases</span>
-              </div>
-              {activeTab === 'leases' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
-            </button>
-
-            <button 
               onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} 
               className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
                 activeTab === 'financials' 
@@ -970,6 +953,23 @@ export default function OwnerDashboard() {
                 <span className="tracking-wide">Financials</span>
               </div>
               {activeTab === 'financials' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
+            </button>
+            
+            <button 
+              onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} 
+              className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+                activeTab === 'leases' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/5' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`transition-transform duration-300 ${activeTab === 'leases' ? 'text-[#359b46] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+                  <FileCheck size={18} strokeWidth={activeTab === 'leases' ? 2.5 : 2} />
+                </div>
+                <span className="tracking-wide">My Lease</span>
+              </div>
+              {activeTab === 'leases' && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#359b46] rounded-r-full shadow-[0_0_10px_#359b46]" />}
             </button>
           </nav>
 

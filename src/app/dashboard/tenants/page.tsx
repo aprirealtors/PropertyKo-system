@@ -598,9 +598,8 @@ export default function TenantDashboard() {
             <div className="mt-8 mb-4 pt-4 border-t border-white/5">
               <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance & Lease</h3>
             </div>
-            
-            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
             <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Financials" />
+            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
           </nav>
 
           {/* Premium Bottom User Tag */}
