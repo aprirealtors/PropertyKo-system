@@ -663,7 +663,40 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         .eq('unit_id', selectedUnit.id);
         
       if (error) throw error;
-      
+
+      // ✨ NEW: AUTO-NOTIFY OWNER OR TENANT UPON PAYMENT VERIFICATION
+      // 1. Fetch team members securely to match the target's email
+      const { data: members } = await supabase
+        .from('team_members')
+        .select('name, email')
+        .eq('admin_email', orgData.admin_email);
+
+      let targetEmail = null;
+      if (members && members.length > 0) {
+        // Alamin kung sino ang nagbayad (Owner or Tenant) at kunin ang pangalan
+        const targetName = paymentModalParty === 'owner' ? selectedUnit.owner_name : selectedUnit.tenant_name;
+        
+        // Match the name carefully to get their exact registered email
+        const match = members.find(m => m.name?.trim().toLowerCase() === targetName?.trim().toLowerCase());
+        if (match) targetEmail = match.email;
+      }
+
+      // 2. Fire the notification into the database if we found their email
+      if (targetEmail) {
+        const { error: notifError } = await supabase.from('notifications').insert([{
+          admin_email: orgData.admin_email,
+          recipient: targetEmail,
+          type: 'BILLING',
+          title: 'Payment Verified',
+          message: `Your payment for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} has been verified and settled. Thank you!`,
+          reference_id: selectedUnit.id,
+          is_read: false
+        }]);
+        
+        if (notifError) console.error("Error sending payment success notification:", notifError);
+      }
+      // ✨ END OF NEW NOTIFICATION LOGIC
+
       setAllSoaConfigs(prev => ({
         ...prev,
         [selectedUnit.id]: { ...prev[selectedUnit.id], ...updateField }
