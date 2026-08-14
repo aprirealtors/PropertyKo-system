@@ -170,6 +170,9 @@ export default function FinancialTab({ userData, units }: any) {
 
   const ownerTotalDue = ownerBase + ownerPenalty;
 
+  // ✨ NEW: Check if payment is already submitted but not yet verified
+  const isOwnerProcessing = !!existingSoa?.owner_payment_method && ownerStatus !== 'Paid';
+  
   // ✨ LEDGER SPECIFIC COMPUTATION
   // Retain penalty amounts and update total if a penalty was historically applied (soaConfig.owner.penalty is true)
   let ledgerOwnerPenalty = 0;
@@ -617,10 +620,20 @@ export default function FinancialTab({ userData, units }: any) {
                   <div className="w-full shrink-0">
                     <button 
                       onClick={() => setIsPaymentModalOpen(true)}
-                      disabled={!isAssigned || isPaid || ownerTotalDue === 0}
+                      disabled={!isAssigned || isPaid || ownerTotalDue === 0 || isLoading || isOwnerProcessing}
                       className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-400 disabled:shadow-none text-white px-4 py-4 rounded-xl sm:rounded-2xl text-[12px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                      {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</> : ownerTotalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>}
+                      {!isAssigned ? (
+                        'Pending Assignment'
+                      ) : isPaid ? (
+                        <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</>
+                      ) : isOwnerProcessing ? (
+                        <><Clock size={18} className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" /> Verifying Payment</>
+                      ) : ownerTotalDue === 0 ? (
+                        'No Payment Needed'
+                      ) : (
+                        <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>
+                      )}
                     </button>
                   </div>
 

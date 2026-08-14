@@ -17,8 +17,8 @@ export default function PayTab() {
     qrCodeUrl: '' 
   });
 
-  const [soaConfig, setSoaConfig] = useState({
-    dues: false, parking: false, water: true, electricity: true, penalty: true
+  const [soaConfig, setSoaConfig] = useState<any>({
+    dues: false, parking: false, water: true, electricity: true, penalty: true, tenant_payment_method: null
   });
   
   const [tenantStatus, setTenantStatus] = useState('Pending');
@@ -96,8 +96,9 @@ export default function PayTab() {
               parking: soaData.tenant_parking,
               water: soaData.tenant_water,
               electricity: soaData.tenant_electricity,
-              penalty: soaData.tenant_penalty
-            });
+              penalty: soaData.tenant_penalty,
+              tenant_payment_method: soaData.tenant_payment_method // ✨ Fetch to determine processing status
+            } as any);
             setTenantStatus(soaData.tenant_status || 'Pending');
             setIsAssigned(true);
           } else {
@@ -120,6 +121,36 @@ export default function PayTab() {
       setIsLoading(false);
     }
   };
+
+  // ✨ NEW: Realtime SOA Updates (Auto-updates the Hero Card / Total Due instantly for Tenant)
+  useEffect(() => {
+    if (!unit?.id) return; // Only subscribe if the tenant is assigned to a unit
+
+    // ✨ FIX: Gumamit ng unique channel name (dinikitan ng Date.now()) para maiwasan 
+    // ang Strict Mode cache collision error ng Supabase Realtime.
+    const channelName = `tenant-soa-updates-${unit.id}-${Date.now()}`;
+
+    const soaChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', // 🔥 Listen to ALL events (including when Tenant submits payment)
+          schema: 'public', 
+          table: 'soa',
+          filter: `unit_id=eq.${unit.id}` // ✨ Highly optimized: Listen only to this specific unit's SOA
+        },
+        () => {
+          console.log("SOA Updated! Recalculating Hero Card for Tenant...");
+          fetchBillingData(); // Re-fetch to instantly update UI and Button states
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(soaChannel);
+    };
+  }, [unit?.id]);
 
   const getUnitAreaValue = (areaStr: string) => {
     const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
@@ -152,6 +183,9 @@ export default function PayTab() {
   }
 
   const totalDue = baseTotal + lateFee;
+
+  // ✨ NEW: Check if payment is already submitted but not yet verified
+  const isTenantProcessing = !!soaConfig?.tenant_payment_method && tenantStatus !== 'Paid';
 
   // ✨ LEDGER SPECIFIC COMPUTATION
   // Retain penalty amounts and update total if a penalty was historically applied (soaConfig.penalty is true)
@@ -395,13 +429,24 @@ export default function PayTab() {
                   </div>
                 </div>
                 
+                {/* Action Button */}
                 <div className="w-full shrink-0">
                   <button 
                     onClick={() => setIsPaymentModalOpen(true)}
-                    disabled={!isAssigned || isPaid || totalDue === 0 || isLoading}
-                    className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2a7a37] hover:to-[#22632c] hover:shadow-[0_6px_20px_rgba(53,155,70,0.35)] disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none text-white px-4 sm:px-8 py-4 sm:py-4 rounded-xl sm:rounded-2xl text-[13px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(53,155,70,0.25)]"
+                    disabled={!isAssigned || isPaid || totalDue === 0 || isLoading || isTenantProcessing}
+                    className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2a7a37] hover:to-[#22632c] hover:shadow-[0_6px_20px_rgba(53,155,70,0.35)] disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-500 disabled:shadow-none text-white px-4 sm:px-8 py-4 sm:py-4 rounded-xl sm:rounded-2xl text-[13px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_4px_15px_rgba(53,155,70,0.25)]"
                   >
-                    {!isAssigned ? 'Pending Assignment' : isPaid ? <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</> : totalDue === 0 ? 'No Payment Needed' : <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>}
+                    {!isAssigned ? (
+                      'Pending Assignment'
+                    ) : isPaid ? (
+                      <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Payment Settled</>
+                    ) : isTenantProcessing ? (
+                      <><Clock size={18} className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" /> Verifying Payment</>
+                    ) : totalDue === 0 ? (
+                      'No Payment Needed'
+                    ) : (
+                      <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>
+                    )}
                   </button>
                   <p className="flex items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-400 mt-3 sm:mt-4 uppercase tracking-widest whitespace-normal break-words">
                     <ShieldCheck size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500/50" /> Secure Payment Processing

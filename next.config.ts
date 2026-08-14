@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ['192.168.1.54'],
+  allowedDevOrigins: ['192.168.100.46'],
   output: "export",
   trailingSlash: true, // <--- Fixes the 403 error on GoDaddy
   images: {

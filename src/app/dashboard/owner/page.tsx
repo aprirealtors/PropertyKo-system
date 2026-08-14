@@ -396,20 +396,56 @@ export default function OwnerDashboard() {
       ).subscribe();
 
     const tasksChannel = supabase
-      .channel('owner-live-tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${userData.admin_email}` },
+        .channel('owner-live-tasks')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${userData.admin_email}` },
+          (payload) => {
+            if (payload.eventType === 'INSERT') setLiveTasks((current) => [payload.new, ...current]);
+            else if (payload.eventType === 'UPDATE') setLiveTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+            else if (payload.eventType === 'DELETE') setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
+          }
+        ).subscribe();
+
+      return () => {
+        supabase.removeChannel(ticketsChannel);
+        supabase.removeChannel(tasksChannel);
+      };
+    }, [userData, userEmail]);
+
+  // ✨ NEW: Realtime SOA Updates (Auto-updates the Hero Card / Total Due instantly for Owner)
+  useEffect(() => {
+    if (myUnitsList.length === 0) return;
+
+    const unitIds = myUnitsList.map(u => u.id); // Get all unit IDs owned by this user
+
+    const soaChannel = supabase
+      .channel('owner-soa-live-updates')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'soa'
+        },
         (payload) => {
-          if (payload.eventType === 'INSERT') setLiveTasks((current) => [payload.new, ...current]);
-          else if (payload.eventType === 'UPDATE') setLiveTasks((current) => current.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
-          else if (payload.eventType === 'DELETE') setLiveTasks((current) => current.filter(t => t.id !== payload.old.id));
+          // ✨ FIX: Nilagyan ng 'as any' para mawala ang TypeScript strict object error
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+
+          // Check if the updated SOA belongs to any of the owner's units
+          const isMyUnit = unitIds.includes(newRecord?.unit_id) || unitIds.includes(oldRecord?.unit_id);
+          
+          if (isMyUnit) {
+            console.log("SOA Updated! Recalculating Hero Card for Owner...");
+            fetchOwnerData(); // Re-fetch to instantly update Total Due and Statements
+          }
         }
-      ).subscribe();
+      )
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(ticketsChannel);
-      supabase.removeChannel(tasksChannel);
+      supabase.removeChannel(soaChannel);
     };
-  }, [userData, userEmail]);
+  }, [myUnitsList]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

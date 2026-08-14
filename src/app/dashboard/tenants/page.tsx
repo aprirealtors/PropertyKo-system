@@ -315,6 +315,32 @@ export default function TenantDashboard() {
     };
   }, [userEmail]);
 
+  // ✨ NEW: Realtime SOA Updates (Auto-updates the Hero Card / Total Due instantly for Tenant)
+  useEffect(() => {
+    if (!unit?.id) return; // Only subscribe if the tenant is assigned to a unit
+
+    const soaChannel = supabase
+      .channel('tenant-soa-live-updates')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'soa',
+          filter: `unit_id=eq.${unit.id}` // ✨ Highly optimized: Listen only to this specific unit's SOA
+        },
+        (payload) => {
+          console.log("SOA Updated! Recalculating Hero Card for Tenant...");
+          fetchTenantData(); // Re-fetch to instantly update Total Due and Statements
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(soaChannel);
+    };
+  }, [unit?.id]);
+
   const handleConversationClick = () => {
     setActiveTab('conversation');
     setHighlightTicketId(null);
