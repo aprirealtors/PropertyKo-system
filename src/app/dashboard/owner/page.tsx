@@ -14,15 +14,15 @@ import FinancialTab from "./financial";
 import LeaseTab from "./lease";
 
 // ✨ Standardized EmptyState Component
-const EmptyState = ({ icon: Icon, title, message }: { icon: any, title: string, message: string }) => (
-  <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 h-full animate-in fade-in duration-300">
-    <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-400 border border-slate-100">
-      <Icon size={26} strokeWidth={1.5} />
-    </div>
-    <h4 className="font-extrabold text-slate-700 mb-1.5">{title}</h4>
-    <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
-  </div>
-);
+// const EmptyState = ({ icon: Icon, title, message }: { icon: any, title: string, message: string }) => (
+//   <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 h-full animate-in fade-in duration-300">
+//     <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-400 border border-slate-100">
+//       <Icon size={26} strokeWidth={1.5} />
+//     </div>
+//     <h4 className="font-extrabold text-slate-700 mb-1.5">{title}</h4>
+//     <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
+//   </div>
+// );
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -2503,6 +2503,21 @@ function KanbanSkeleton() {
           <div className="h-8 bg-slate-200 rounded-full w-28"></div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ STANDARDIZED EMPTY STATE (Matched to Owner Side)
+// -------------------------------------------------------------
+function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200 h-[340px] animate-in fade-in duration-300">
+      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm text-slate-400 border border-slate-100">
+        <Icon size={26} strokeWidth={1.5} />
+      </div>
+      <h4 className="font-extrabold text-slate-700 mb-1.5">{title}</h4>
+      <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
     </div>
   );
 }
