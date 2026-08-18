@@ -173,7 +173,7 @@ export default function LandingPage() {
 
       {/* 🌟 FOOTER */}
       <footer className="bg-[#0a1e3f] border-t border-white/10 text-slate-400 py-8 text-center text-xs sm:text-sm font-medium w-full shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-2">
           <p>
             © {new Date().getFullYear()} PropertyKo Inc. All rights reserved. Developed by{" "}
             <a 
@@ -185,6 +185,8 @@ export default function LandingPage() {
               Byteheads Corporation.
             </a>
           </p>
+          <p className="text-slate-500">Curated by APRI Management</p>
+          <p className="text-slate-500">Property Management Consulting by AURA International</p>
         </div>
       </footer>
     </div>
