@@ -1290,10 +1290,10 @@ export default function OwnerDashboard() {
                   
                   {/* Column 1: Open & In Progress */}
                   <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
-                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between tracking-wide">
                       <span className="flex items-center gap-2">
                         <div className="p-1.5 bg-blue-100 text-blue-600 rounded-lg"><Inbox size={16} strokeWidth={2.5} /></div>
-                        In Progress
+                        Open & In Progress
                       </span>
                       <span className="bg-white border border-slate-200 text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
                         {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
@@ -1381,7 +1381,7 @@ export default function OwnerDashboard() {
 
                   {/* Column 2: On Hold */}
                   <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
-                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between tracking-wide">
                       <span className="flex items-center gap-2">
                         <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg"><PauseCircle size={16} strokeWidth={2.5} /></div>
                         On Hold
@@ -1477,7 +1477,7 @@ export default function OwnerDashboard() {
 
                   {/* Column 3: Resolved */}
                   <div className="flex flex-col h-auto bg-slate-50/70 rounded-[28px] p-4 sm:p-5 border border-slate-200/50 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
-                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between uppercase tracking-wide">
+                    <h4 className="font-extrabold text-slate-800 text-sm mb-5 shrink-0 flex items-center justify-between tracking-wide">
                       <span className="flex items-center gap-2">
                         <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg"><CheckCircle2 size={16} strokeWidth={2.5} /></div>
                         Resolved
@@ -2075,7 +2075,7 @@ export default function OwnerDashboard() {
                   <input 
                     type="text" 
                     required 
-                    placeholder="e.g. Now, Tomorrow, Day, Weekend etc..." 
+                    placeholder="e.g. Today, Tomorrow, Weekend etc..." 
                     value={repairTime} 
                     onChange={(e) => setRepairTime(e.target.value)} 
                     className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm font-bold text-slate-800 placeholder:text-slate-400 hover:border-slate-300 transition-all shadow-sm" 
