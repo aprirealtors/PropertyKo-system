@@ -165,7 +165,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
       {/* ✨ KANBAN LAYOUT: Main Wrapper for Table */}
       <div className="flex-1 w-full max-w-6xl mx-auto min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-12">
-        <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-sm border border-slate-200/80 flex flex-col overflow-hidden relative">
+        <div className="flex-1 min-h-0 bg-white rounded-lg shadow-sm border border-slate-200/80 flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-50/50 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 

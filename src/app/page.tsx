@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -9,12 +10,67 @@ import {
   ShieldCheck, 
   LayoutDashboard, 
   Wrench,
-  Cloud, // Added for digital transition
-  MonitorSmartphone, // Added for digital transition
-  Zap // Added for digital transition
+  Cloud, 
+  MonitorSmartphone, 
+  Zap,
+  ArrowUp
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
+  // 1️⃣ LAHAT NG STATES SA PINAKATAAS
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // 2️⃣ LAHAT NG EFFECTS SA ILALIM NG STATES
+  // Loader Effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPageLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Scroll to Top Effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 3️⃣ CUSTOM FUNCTIONS
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  // 4️⃣ EARLY RETURNS (DAPAT NASA ILALIM NG LAHAT NG HOOKS)
+  if (isPageLoading) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
+        <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
+          <Image
+            src="/logo.jpeg"
+            fill
+            alt="PropertyKo Loading"
+            className="object-contain"
+            priority
+          />
+        </div>
+        <div className="w-10 h-10 border-4 border-[#359b46]/20 border-t-[#359b46] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] w-full bg-[#f8fafc] flex flex-col font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f] overflow-x-hidden relative">
       
@@ -38,22 +94,41 @@ export default function LandingPage() {
       </nav>
 
       {/* 🌟 HERO SECTION */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-32 flex flex-col items-center text-center w-full">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#359b46]/10 border border-[#359b46]/20 text-[10px] sm:text-xs font-black tracking-widest text-[#359b46] uppercase mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 shadow-sm">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-32 flex flex-col items-center text-center w-full overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#359b46]/10 border border-[#359b46]/20 text-[10px] sm:text-xs font-black tracking-widest text-[#359b46] uppercase mb-8 shadow-sm"
+        >
           <ShieldCheck size={14} strokeWidth={2.5} />
           Enterprise Property Management
-        </div>
+        </motion.div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight mb-6 text-[#0a1e3f] leading-[1.1] animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+          className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight mb-6 text-[#0a1e3f] leading-[1.1]"
+        >
           Manage your properties <br className="hidden md:block" />
           with <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#359b46] to-[#86c48f]">absolute confidence.</span>
-        </h1>
+        </motion.h1>
 
-        <p className="text-base sm:text-lg text-slate-500 font-medium max-w-2xl mb-10 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          className="text-base sm:text-lg text-slate-500 font-medium max-w-2xl mb-10 leading-relaxed"
+        >
           PropertyKo is the unified platform for seamless real estate operations. Intelligently adapting to your role-whether you are an admin, manager, owner, or tenant.
-        </p>
+        </motion.p>
 
-        <div className="animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        >
           <Link
             href="/login"
             className="bg-gradient-to-r from-[#359b46] to-[#277534] hover:from-[#2c813a] hover:to-[#1e5c28] text-white px-8 py-4 rounded-2xl font-black text-sm sm:text-base transition-all shadow-lg shadow-emerald-900/20 active:scale-95 flex items-center gap-2 group border border-[#359b46]"
@@ -61,11 +136,11 @@ export default function LandingPage() {
             Go to Workspace Login
             <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />
           </Link>
-        </div>
+        </motion.div>
       </main>
 
       {/* 🌟 PREMIUM FEATURES SECTION */}
-      <section className="bg-white py-20 border-t border-slate-200/60 flex-1 w-full">
+      <section className="bg-white py-20 border-t border-slate-200/60 flex-1 w-full overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0a1e3f] mb-4 tracking-tight">One platform. Six distinct experiences.</h2>
@@ -74,21 +149,25 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <FeatureCard 
+              delay={0}
               icon={<LayoutDashboard className="text-[#359b46]" size={28} strokeWidth={2} />}
               title="Admin & Managers"
               description="Centralize operations, track leases, and manage finances from a powerful command center."
             />
             <FeatureCard 
+              delay={0.1}
               icon={<Users className="text-[#359b46]" size={28} strokeWidth={2} />}
               title="Tenant Portal"
               description="Give residents an easy way to pay rent, submit requests, and communicate instantly."
             />
             <FeatureCard 
+              delay={0.2}
               icon={<Building2 className="text-[#359b46]" size={28} strokeWidth={2} />}
               title="Owner Dashboard"
               description="Provide property owners with transparent reporting and portfolio performance metrics."
             />
             <FeatureCard 
+              delay={0.3}
               icon={<Wrench className="text-[#359b46]" size={28} strokeWidth={2} />}
               title="Maintenance Staff"
               description="Streamline work orders and track repairs efficiently through dedicated staff tools."
@@ -98,12 +177,18 @@ export default function LandingPage() {
       </section>
 
       {/* 🌟 WHY CHOOSE US SECTION (Traditional to Digital Focus) */}
-      <section className="bg-[#f8fafc] py-20 border-t border-slate-200/60 w-full">
+      <section className="bg-[#f8fafc] py-20 border-t border-slate-200/60 w-full overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
             
             {/* Left Content */}
-            <div className="w-full lg:w-1/2">
+            <motion.div 
+              initial={{ opacity: 0, x: -40 }} 
+              whileInView={{ opacity: 1, x: 0 }} 
+              viewport={{ once: true, margin: "-100px" }} 
+              transition={{ duration: 0.7 }}
+              className="w-full lg:w-1/2"
+            >
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0a1e3f]/5 border border-[#0a1e3f]/10 text-[10px] sm:text-xs font-black tracking-widest text-[#0a1e3f] uppercase mb-6 shadow-sm">
                 Traditional to Digital
               </div>
@@ -143,10 +228,16 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Right Content - Visual Stats Card */}
-            <div className="w-full lg:w-1/2 relative">
+            <motion.div 
+              initial={{ opacity: 0, x: 40 }} 
+              whileInView={{ opacity: 1, x: 0 }} 
+              viewport={{ once: true, margin: "-100px" }} 
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="w-full lg:w-1/2 relative"
+            >
                <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200/60 p-8 sm:p-10 relative overflow-hidden group hover:shadow-[0_8px_30px_rgb(53,155,70,0.1)] transition-all duration-500">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#359b46]/10 to-transparent rounded-bl-full transition-transform duration-500 group-hover:scale-110" />
                   <div className="relative z-10">
@@ -165,7 +256,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                </div>
-            </div>
+            </motion.div>
 
           </div>
         </div>
@@ -175,7 +266,7 @@ export default function LandingPage() {
       <footer className="bg-[#0a1e3f] border-t border-white/10 text-slate-400 py-8 text-center text-xs sm:text-sm font-medium w-full shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-2">
           <p>
-            © {new Date().getFullYear()} PropertyKo Inc. All rights reserved. Developed by{" "}
+            © {new Date().getFullYear()} PropertyKo. All rights reserved. Developed by{" "}
             <a 
               href="https://byteheads.dev/" 
               target="_blank" 
@@ -189,14 +280,32 @@ export default function LandingPage() {
           <p className="text-slate-500">Property Management Consulting by AURA International</p>
         </div>
       </footer>
+
+      {/* ✨ SCROLL TO TOP BUTTON */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-[90] p-3 sm:p-4 rounded-full bg-[#359b46] hover:bg-[#2c813a] text-white shadow-[0_8px_30px_rgba(53,155,70,0.3)] transition-all duration-500 hover:-translate-y-2 active:scale-95 ${
+          showScrollTop ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"
+        }`}
+        aria-label="Scroll to top"
+      >
+        <ArrowUp size={24} strokeWidth={2.5} />
+      </button>
+
     </div>
   );
 }
 
 // 🌟 PREMIUM FEATURE CARD COMPONENT
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ icon, title, description, delay = 0 }: { icon: React.ReactNode, title: string, description: string, delay?: number }) {
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full relative overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, delay: delay }}
+      className="bg-white p-6 sm:p-8 rounded-[2rem] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full relative overflow-hidden"
+    >
       {/* Background Icon Watermark */}
       <div className="absolute -right-6 -bottom-6 text-slate-50 opacity-50 group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 pointer-events-none">
         <div className="w-40 h-40 flex items-center justify-center scale-[2]">
@@ -211,6 +320,6 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
         <h3 className="text-[17px] sm:text-lg font-black text-[#0a1e3f] mb-3 tracking-tight group-hover:text-[#359b46] transition-colors">{title}</h3>
         <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">{description}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }

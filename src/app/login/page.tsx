@@ -2,6 +2,7 @@
 
   import { useState } from "react";
   import Image from "next/image";
+  import Link from "next/link";
   import { useRouter } from "next/navigation";
   import { supabase } from "@/utils/supabase/client";
   import { useEffect } from "react";
@@ -14,7 +15,7 @@
     Lock,
     Building2,
     Users,
-    LayoutDashboard,
+    UserCheck,
   } from "lucide-react";
 
   export default function Home() {
@@ -161,8 +162,19 @@
           />
           <div className="absolute inset-0 z-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-900/30" />
 
+          {/* ✨ NEW: Desktop Back Button (Left Panel Top) */}
+          <div className="relative z-10">
+            <Link 
+              href="/"
+              title="Back to home"
+              className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-white transition-all group rounded-full hover:bg-white/10 backdrop-blur-sm border border-transparent hover:border-white/20 active:scale-95 shadow-sm"
+            >
+              <ArrowRight size={18} strokeWidth={2.5} className="rotate-180 transition-transform" />
+            </Link>
+          </div>
+
           {/* Center Value Proposition */}
-          <div className="relative z-10 max-w-lg py-8 mb-20">
+          <div className="relative z-10 max-w-lg py-8 mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold tracking-wide text-[#86c48f] uppercase mb-6 backdrop-blur-md">
               <ShieldCheck size={14} />
               Enterprise RBAC
@@ -206,7 +218,7 @@
 
           {/* Footer info */}
           <div className="relative z-10 flex items-center justify-between text-xs font-medium text-slate-500">
-            <p>© {new Date().getFullYear()} PropertyKo Inc.</p>
+            <p>© {new Date().getFullYear()} PropertyKo </p>
             <div className="flex gap-4">
               <a href="#" className="hover:text-white transition-colors">
                 Privacy Policy
@@ -222,9 +234,21 @@
             RIGHT PANEL - LOGIN FORM (Full width on Mobile)
             ========================================= */}
         <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-white relative overflow-hidden">
-          <div className="w-full max-w-[420px] mt-16 lg:mt-0">
+          
+          {/* ✨ Back Button (Pang Mobile na lang ito dahil meron na sa kaliwa para sa Desktop) */}
+          <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20 lg:hidden">
+            <Link 
+              href="/"
+              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white transition-all group rounded-full hover:bg-white/10 backdrop-blur-sm border border-transparent hover:border-white/20 active:scale-95 shadow-sm"
+            >
+              <ArrowRight size={16} strokeWidth={2.5} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
+              <span className="hidden sm:inline">Back to Home</span>
+            </Link>
+          </div>
+
+          <div className="w-full max-w-[420px] mt-12 lg:mt-0 relative z-10">
             {/* Header */}
-            <div className="mb-10 text-center lg:text-left">
+            <div className="mb-5 text-center lg:text-left">
               {/* Logo */}
               <div className="flex justify-center mb-6">
                 <div className="relative w-90 sm:w-94 h-36 sm:h-37">
@@ -238,12 +262,15 @@
                 </div>
               </div>
 
-              <div className="w-12 h-12 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center mb-6 mx-auto lg:mx-0 shadow-sm">
-                <LayoutDashboard className="text-[#359b46] w-6 h-6" />
+              {/* ✨ Icon & Title Inline Wrapper */}
+              <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm shrink-0">
+                  <UserCheck className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                  Welcome back
+                </h2>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-2">
-                Welcome back
-              </h2>
               <p className="text-slate-500 text-sm">
                 Enter your credentials to access your workspace.
               </p>
@@ -357,7 +384,7 @@
             </p>
 
             {/* Mobile Footer (Hidden on Desktop) */}
-            <div className="lg:hidden mt-12 pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
+            <div className="lg:hidden pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
               <div className="flex gap-4">
                 <a href="#" className="hover:text-slate-900 transition-colors">
                   Privacy Policy
@@ -366,7 +393,7 @@
                   Terms of Service
                 </a>
               </div>
-              <p>© {new Date().getFullYear()} PropertyKo Inc.</p>
+              <p>© {new Date().getFullYear()} PropertyKo </p>
             </div>
           </div>
         </div>

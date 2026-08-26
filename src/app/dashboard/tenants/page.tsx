@@ -351,7 +351,7 @@ export default function TenantDashboard() {
     try {
       await supabase.auth.signOut(); 
       setShowLogoutModal(false);
-      router.push("/"); 
+      router.push("/login"); 
     } catch (error) {
       console.error("Logout error", error);
     }

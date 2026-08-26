@@ -449,7 +449,7 @@ export default function OwnerDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/login");
   };
 
   const showToast = (message: string, type: "success" | "error") => {

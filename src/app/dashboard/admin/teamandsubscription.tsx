@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, CheckCircle } from "lucide-react";
+import { Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, CheckCircle, Receipt, AlertCircle } from "lucide-react";
 
 // Helper function to calculate the actual upcoming date based on the declared billing day
 const calculateNextBillingDate = (billingDay: number | undefined | null) => {
@@ -190,7 +190,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+    ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+    : "AD";
   
   // Seat & Billing metrics calculations
   const seatsUsed = team.length + 1; 
@@ -212,140 +215,207 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
+  // ✨ NEW: Search State & Filter Logic
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredTeam = team.filter((member) => {
+    if (!searchQuery) return true;
+    const lowerQ = searchQuery.toLowerCase();
+    return (
+      (member.name && member.name.toLowerCase().includes(lowerQ)) ||
+      (member.role && member.role.toLowerCase().includes(lowerQ)) ||
+      (member.access_level && member.access_level.toLowerCase().includes(lowerQ))
+    );
+  });
+
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <div>
-          <h2 className="text-2xl font-extrabold text-[#0a1e3f] tracking-tight">Team & subscription</h2>
-          <p className="text-slate-500 text-sm mt-1">Users, roles and billing</p>
-        </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input type="text" placeholder="Search team..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#359b46] bg-white shadow-sm" />
+    <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
+      
+      {/* 🌟 ULTRA-PREMIUM HEADER (Locked at Top) */}
+      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-[1600px] mx-auto w-full">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Team & subscription</h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">Manage workspace access and billing capacity</p>
           </div>
-          <div className="hidden sm:flex items-center gap-3">
-            <span className="text-sm font-semibold text-[#359b46]">Admin</span>
-            <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-sm border border-emerald-100">{initials}</div>
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
+            <div className="relative w-full sm:w-64 shrink-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search members..." 
+                className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" 
+              />
+            </div>
+            <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 shrink-0">
+              <span className="text-sm font-bold text-[#359b46]">Admin</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+                {initials}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Team Table */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-[#0a1e3f] text-lg">Team & roles</h3>
-              <button 
-                onClick={() => setIsInviteModalOpen(true)}
-                className="bg-[#359b46] hover:bg-[#2c813a] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
-              >
-                + Add user
-              </button>
-            </div>
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-slate-400 text-[11px] uppercase font-bold border-b border-slate-100 tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4 whitespace-nowrap">NAME</th>
-                    <th className="px-6 py-4 whitespace-nowrap">ROLE</th>
-                    <th className="px-6 py-4 whitespace-nowrap">ACCESS</th>
-                    <th className="px-6 py-4 text-right whitespace-nowrap">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  <tr className="bg-slate-50/50">
-                    <td className="px-6 py-4 font-bold text-[#0a1e3f] whitespace-nowrap">You (Admin)</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="bg-emerald-50 text-[#359b46] border border-emerald-100 font-bold text-xs px-2.5 py-1 rounded-full">Owner</span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">Full access</td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px] px-2.5 py-1 rounded-full">Active</span>
-                    </td>
-                  </tr>
-                  
-                  {isLoadingTeam ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Loading team...</td></tr>
-                  ) : (
-                    team.map(member => (
-                      <tr key={member.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">{member.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-full border border-slate-200">
-                            {member.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-500 whitespace-nowrap">{member.access_level}</td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-bold text-[11px] px-2.5 py-1 rounded-full">
-                            {member.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="m-6 mt-4 bg-emerald-50/50 p-4 rounded-xl text-[13px] text-slate-600 border border-emerald-100/50 font-medium leading-relaxed">
-              Each role sees only its permitted modules - enforced securely at the layer system level.
-            </div>
-          </div>
-        </div>
-
-        {/* Subscription Panel */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full flex flex-col relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-full -mr-10 -mt-10 opacity-50 pointer-events-none"></div>
-            <h3 className="font-bold text-[#0a1e3f] text-lg mb-6 relative z-10">Subscription</h3>
-            
-            <div className="mb-8 relative z-10">
-              <span className="text-slate-500 text-sm font-medium">Current plan</span>
-              <h4 className="text-3xl font-extrabold text-[#0a1e3f] mb-1">Per Asset</h4>
-              <p className="text-xs text-slate-400 font-medium">₱99 / unit / month · updates dynamically</p>
-            </div>
-            
-            <div className="space-y-5 mb-8 relative z-10">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600 font-medium">Team seats used</span>
-                  <span className="font-bold text-[#0a1e3f]">{seatsUsed} of {seatLimit}</span>
+      {/* 🌟 LOCKED SCROLL WORKSPACE */}
+      <div className="flex-1 overflow-hidden p-4 sm:p-6 md:p-8 flex flex-col">
+        <div className="max-w-[1600px] mx-auto w-full h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* TEAM TABLE (Left - 2 Columns wide) */}
+          <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
+            <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80 flex flex-col h-full relative overflow-hidden">
+              
+              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shadow-sm shrink-0">
+                    <Users size={16} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="font-extrabold text-[#0a1e3f] text-base sm:text-lg tracking-tight">Access Control</h3>
                 </div>
-                <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[#359b46]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-dashed border-slate-200">
-                <span className="text-sm text-slate-600 font-medium">Units capacity</span>
-                <span className="font-bold text-[#0a1e3f] bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                  {unitLimit} units
-                </span>
+                <button 
+                  onClick={() => setIsInviteModalOpen(true)}
+                  className="bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2a7a37] hover:to-[#22632c] text-white px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-[0_2px_10px_rgba(53,155,70,0.2)] active:scale-95 flex items-center gap-2"
+                >
+                  <UserPlus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline">Add User</span>
+                </button>
               </div>
               
-              {/* Actual Date Display */}
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-slate-600 font-medium">Next Invoice</span>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="font-bold text-[#0a1e3f] text-sm">{nextBillingDateFormatted}</span>
-                  <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${getStatusColor(billingStatus)}`}>
-                    {billingStatus}
-                  </span>
-                </div>
-              </div>
-            </div>
+              {/* Table Container - Scrollable individually with custom-scrollbar */}
+              <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar relative bg-white">
+                <table className="w-full text-left text-sm min-w-[600px] border-collapse">
+                  <thead className="bg-slate-50/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-slate-200/80 sticky top-0 z-10 backdrop-blur-md">
+                    <tr>
+                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
+                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
+                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
+                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr className="bg-emerald-50/20 hover:bg-emerald-50/50 transition-colors">
+                      <td className="px-5 sm:px-6 py-4 font-black text-[#0a1e3f] whitespace-nowrap flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#0a1e3f] text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                          {initials}
+                        </div>
+                        You
+                      </td>
+                      <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm">Admin</span>
+                      </td>
+                      <td className="px-5 sm:px-6 py-4 text-slate-500 font-semibold whitespace-nowrap">Full Platform Access</td>
+                      <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
+                        <span className="bg-slate-800 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-md uppercase tracking-widest shadow-sm">Active</span>
+                      </td>
+                    </tr>
+                    
+                    {isLoadingTeam ? (
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 animate-pulse">Loading workspace members...</td></tr>
+                    ) : team.length === 0 ? (
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">No additional team members added.</td></tr>
+                    ) : filteredTeam.length === 0 ? (
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">No members match your search.</td></tr>
+                    ) : (
+                      filteredTeam.map(member => {
+                        // ✨ Nickname logic for team members
+                        const memberInitials = member.name 
+                          ? member.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                          : "US";
 
-            <div className="mt-auto pt-4 relative z-10 space-y-3">
-              <button 
-                onClick={() => setIsBillingModalOpen(true)}
-                className="w-full bg-[#359b46] hover:bg-[#2c813a] text-white font-bold py-3 rounded-xl transition-colors shadow-sm"
-              >
-                View billing details
-              </button>
+                        return (
+                          <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
+                            <td className="px-5 sm:px-6 py-4 font-bold text-slate-800 whitespace-nowrap flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
+                                {memberInitials}
+                              </div>
+                              {member.name}
+                            </td>
+                            <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
+                              <span className="bg-slate-50 text-slate-600 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-lg border border-slate-200 uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm">
+                                {member.role}
+                              </span>
+                            </td>
+                            <td className="px-5 sm:px-6 py-4 text-slate-500 font-medium whitespace-nowrap">{member.access_level}</td>
+                            <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-md uppercase tracking-widest shadow-sm">
+                                {member.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="shrink-0 p-4 sm:p-5 bg-gradient-to-r from-blue-50/50 to-emerald-50/50 border-t border-slate-100 text-[11px] sm:text-xs text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
+                <Shield size={14} className="text-[#359b46] shrink-0" strokeWidth={2.5} />
+                Strict Role-Based Access Control (RBAC) enforced at the system layer.
+              </div>
+
             </div>
           </div>
+
+          {/* SUBSCRIPTION PANEL (Right - 1 Column wide) */}
+          <div className="lg:col-span-1 flex flex-col h-full overflow-hidden">
+            <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80 p-6 sm:p-8 flex flex-col h-full relative overflow-y-auto custom-scrollbar group">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-50 rounded-bl-full -mr-16 -mt-16 opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+              
+              <div className="flex items-center gap-3 mb-6 sm:mb-8 relative z-10 shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center border border-emerald-100 shadow-sm shrink-0">
+                  <CreditCard size={18} strokeWidth={2.5} />
+                </div>
+                <h3 className="font-extrabold text-[#0a1e3f] text-lg sm:text-xl tracking-tight">Subscription</h3>
+              </div>
+              
+              <div className="mb-8 sm:mb-10 relative z-10 bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner shrink-0">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-1">Current Plan</span>
+                <h4 className="text-3xl sm:text-4xl font-black text-[#0a1e3f] tracking-tight mb-1">Per Asset</h4>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-2">₱99 / unit / month · Updates dynamically</p>
+              </div>
+              
+              <div className="space-y-6 mb-8 relative z-10 flex-1">
+                <div>
+                  <div className="flex justify-between text-xs sm:text-sm mb-2.5 font-bold">
+                    <span className="text-slate-500">Team Seats Used</span>
+                    <span className="text-[#0a1e3f]">{seatsUsed} / {seatLimit}</span>
+                  </div>
+                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                    <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-gradient-to-r from-[#359b46] to-[#4caf50]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center py-4 border-b border-dashed border-slate-200">
+                  <span className="text-xs sm:text-sm text-slate-500 font-bold">Units Capacity</span>
+                  <span className="font-black text-[#1d82f5] bg-blue-50 px-3 py-1 rounded-lg border border-blue-100 shadow-sm text-xs sm:text-sm">
+                    {unitLimit} units
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-xs sm:text-sm text-slate-500 font-bold">Next Invoice</span>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className="font-black text-[#0a1e3f] text-sm sm:text-base">{nextBillingDateFormatted}</span>
+                    <span className={`px-2.5 py-0.5 rounded-md border text-[9px] font-black uppercase tracking-widest shadow-sm ${getStatusColor(billingStatus)}`}>
+                      {billingStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-auto pt-5 relative z-10 shrink-0">
+                <button 
+                  onClick={() => setIsBillingModalOpen(true)}
+                  className="w-full bg-gradient-to-b from-[#0a1e3f] to-[#122955] hover:from-[#122955] hover:to-[#1a3d6c] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(10,30,63,0.2)] active:scale-95 flex justify-center items-center gap-2"
+                >
+                  <Receipt size={16} strokeWidth={2.5} /> View Billing Details
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -484,7 +554,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* 🌟 DIGITAL WALLET PAYMENT MODAL */}
+      {/* DIGITAL WALLET PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>

@@ -785,15 +785,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     }
   
     return (
-      <div 
-        id={id}
-        onClick={onClick} 
-        // ✨ FIX: Sinet sa compact h-[150px] dahil 4 na data points na lang ang laman
-        className={`bg-white p-4 sm:p-5 rounded-3xl border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden ${
-          isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
-          : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-slate-100 border-r-slate-100 shadow-sm' : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 hover:shadow-[0_12px_30px_rgb(0,0,0,0.06)]'
-        } ${onClick ? 'cursor-pointer' : ''}`}
-      >
+    <div 
+      id={id}
+      onClick={onClick} 
+      // ✨ FIX: Tinanggal ang hover transform/shadow pag Resolved/Green ang ticket
+      className={`bg-white p-4 sm:p-5 rounded-3xl border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden ${
+        isHighlighted ? 'ring-4 ring-blue-500/50 bg-blue-50 border-blue-400 scale-[1.02] shadow-xl animate-pulse z-10' 
+        : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-slate-100 border-r-slate-100 shadow-sm' 
+        : statusColor === 'green' ? 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]' 
+        : 'border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:-translate-y-1.5 hover:shadow-[0_12px_30px_rgb(0,0,0,0.06)]'
+      } ${onClick ? 'cursor-pointer' : ''}`}
+    >
         {/* 1 & 2: TITLE & STATUS */}
         <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
           <div className="flex items-start gap-2 min-w-0">

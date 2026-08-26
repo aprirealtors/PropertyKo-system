@@ -229,7 +229,7 @@ export default function MaintenanceDashboard() {
 
   const confirmLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/');
+    router.push('/login');
   };
 
   // Handle Password Change

@@ -50,7 +50,7 @@ export default function SuperAdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/login");
   };
 
   // Derived Metrics for HomeView
