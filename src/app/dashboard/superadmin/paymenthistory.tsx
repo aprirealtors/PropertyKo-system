@@ -36,9 +36,44 @@ export default function PaymentHistory() {
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
 
+  // ✨ NEW: State to store live calculated MRR from the units table
+  const [liveStats, setLiveStats] = useState<Record<string, { totalMRR: number }>>({});
+
   useEffect(() => {
     fetchOrganizations();
   }, []);
+
+  // ✨ NEW: Fetch live units to calculate exact MRR based on tenant status
+  useEffect(() => {
+    const fetchLiveMRR = async () => {
+      const { data, error } = await supabase.from('units').select('admin_email, tenant_name, status');
+      
+      if (!error && data) {
+        const statsMap: Record<string, { totalMRR: number }> = {};
+        
+        data.forEach(unit => {
+          const email = unit.admin_email;
+          if (!statsMap[email]) {
+            statsMap[email] = { totalMRR: 0 };
+          }
+          
+          const hasTenant = unit.tenant_name && unit.tenant_name !== '—' && unit.tenant_name !== 'Vacant' && unit.status !== 'Vacant';
+          
+          if (hasTenant) {
+            statsMap[email].totalMRR += 198; // x2 for tenanted
+          } else {
+            statsMap[email].totalMRR += 99; // Base rate for owner-only
+          }
+        });
+        
+        setLiveStats(statsMap);
+      }
+    };
+
+    if (organizations.length > 0) {
+      fetchLiveMRR();
+    }
+  }, [organizations]);
 
   // UseEffect to fetch reference details dynamically when modal opens
   useEffect(() => {
@@ -107,9 +142,11 @@ export default function PaymentHistory() {
     const currentYear = new Date().getFullYear();
     const currentMonthIndex = new Date().getMonth(); 
     
-    const monthlyRate = org.plan?.toLowerCase().includes('enterprise') 
-      ? 'Custom' 
-      : (org.units_count || 1) * 99;
+    // ✨ Dynamically calculate monthly rate using live stats
+    const isEnterprise = org.plan?.toLowerCase().includes('enterprise');
+    const fallbackMRR = (org.units_count || 1) * 99; // Fallback while loading
+    const computedMRR = liveStats[org.admin_email]?.totalMRR ?? fallbackMRR;
+    const monthlyRate = isEnterprise ? 'Custom' : computedMRR;
 
     for (let i = 0; i < 12; i++) {
       const date = new Date(currentYear, i, 1);
@@ -221,9 +258,12 @@ export default function PaymentHistory() {
   };
 
   const ledgerData = generateLedgerMonths(selectedOrg);
-  const currentMonthlyAmount = selectedOrg?.plan?.toLowerCase().includes('enterprise') 
-    ? 'Enterprise' 
-    : `₱${((selectedOrg?.units_count || 1) * 99).toLocaleString()}`;
+  
+  // ✨ Compute current MRR dynamically for UI
+  const isEnterprise = selectedOrg?.plan?.toLowerCase().includes('enterprise');
+  const fallbackMRR = (selectedOrg?.units_count || 1) * 99;
+  const liveMRR = selectedOrg ? (liveStats[selectedOrg.admin_email]?.totalMRR ?? fallbackMRR) : fallbackMRR;
+  const currentMonthlyAmount = isEnterprise ? 'Enterprise' : `₱${liveMRR.toLocaleString()}`;
 
   return (
     <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-blue-500/10 animate-in fade-in duration-500">
@@ -319,7 +359,7 @@ export default function PaymentHistory() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-[#0a1e3f] p-5 rounded-2xl shadow-inner text-white gap-4 sm:gap-0 shrink-0">
                     <div className="flex flex-col">
                       <span className="font-black text-slate-300 text-[10px] sm:text-xs uppercase tracking-widest mb-1">Monthly Plan Breakdown</span>
-                      <span className="font-medium text-blue-200 text-sm">{selectedOrg.plan || 'Per Asset (₱99/unit)'}</span>
+                      <span className="font-medium text-blue-200 text-sm">{selectedOrg.plan || 'Dynamic (₱99-₱198/unit)'}</span>
                     </div>
                     
                     <div className="flex items-center gap-4 w-full sm:w-auto">

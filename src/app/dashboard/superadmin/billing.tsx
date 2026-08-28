@@ -58,6 +58,9 @@ export default function SuperAdminBilling({
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // ✨ NEW: State to store live calculated MRR from the units table
+  const [liveStats, setLiveStats] = useState<Record<string, { totalMRR: number, ownerOnly: number, tenanted: number, activeCount: number }>>({});
+
   // UI & Modal States
   const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
@@ -65,6 +68,41 @@ export default function SuperAdminBilling({
   useEffect(() => {
     fetchOrganizations();
   }, []);
+
+  // ✨ NEW: Fetch live units to calculate exact MRR based on tenant status
+  useEffect(() => {
+    const fetchLiveMRR = async () => {
+      const { data, error } = await supabase.from('units').select('admin_email, tenant_name, status');
+      
+      if (!error && data) {
+        const statsMap: Record<string, { totalMRR: number, ownerOnly: number, tenanted: number, activeCount: number }> = {};
+        
+        data.forEach(unit => {
+          const email = unit.admin_email;
+          if (!statsMap[email]) {
+            statsMap[email] = { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 };
+          }
+          
+          const hasTenant = unit.tenant_name && unit.tenant_name !== '—' && unit.tenant_name !== 'Vacant' && unit.status !== 'Vacant';
+          
+          if (hasTenant) {
+            statsMap[email].tenanted += 1;
+            statsMap[email].totalMRR += 198; // x2 for tenanted
+          } else {
+            statsMap[email].ownerOnly += 1;
+            statsMap[email].totalMRR += 99; // Base rate for owner-only
+          }
+          statsMap[email].activeCount += 1;
+        });
+        
+        setLiveStats(statsMap);
+      }
+    };
+
+    if (organizations.length > 0) {
+      fetchLiveMRR();
+    }
+  }, [organizations]);
 
   const fetchOrganizations = async () => {
     setIsLoading(true);
@@ -105,6 +143,8 @@ export default function SuperAdminBilling({
   // Derived Variables for Modal
   const billingStatus = selectedOrg?.billing_status || 'Pending';
   const nextBillingDateFormatted = calculateNextBillingDate(selectedOrg?.billing_day);
+  // ✨ Get live stats for the selected org in the modal
+  const orgStats = selectedOrg ? (liveStats[selectedOrg.admin_email] || { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 }) : null;
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
@@ -230,7 +270,7 @@ export default function SuperAdminBilling({
       )}
 
       {/* ORGANIZATION BILLING INFO MODAL */}
-      {isBillingModalOpen && selectedOrg && (
+      {isBillingModalOpen && selectedOrg && orgStats && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col">
             
@@ -273,12 +313,14 @@ export default function SuperAdminBilling({
               
               {/* Billing Metrics */}
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm">
+                <div className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm flex flex-col">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">
                     <Home size={14} className="text-[#1d82f5]" />
-                    Units
+                    Active Units
                   </div>
-                  <p className="text-2xl font-black text-[#0a1e3f]">{selectedOrg.units_count || 0}</p>
+                  <p className="text-2xl font-black text-[#0a1e3f]">
+                    {orgStats.activeCount} <span className="text-xs font-bold text-slate-400">/ {selectedOrg.units_count || 0}</span>
+                  </p>
                 </div>
                 <div className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-1 uppercase tracking-widest">
@@ -289,14 +331,14 @@ export default function SuperAdminBilling({
                 </div>
               </div>
 
-              {/* Total Monthly Bill Highlight */}
+              {/* ✨ Total Monthly Bill Highlight (Uses exact dynamic math) */}
               <div className="w-full px-5 py-5 rounded-2xl border border-emerald-200 bg-emerald-50 mb-8 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm gap-4">
                 <div>
-                  <p className="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-1">Monthly Billing</p>
-                  <p className="text-sm text-emerald-600 font-semibold mb-2">@ ₱99 per unit</p>
+                  <p className="text-[11px] font-black text-emerald-800 uppercase tracking-widest mb-1">Monthly Billing</p>
+                  <p className="text-[11px] text-emerald-600 font-bold mb-2">₱99 Owner | ₱198 Tenanted</p>
                   
                   {/* Applied Actual Billing Date in Modal */}
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/50 w-fit px-2.5 py-1 rounded-md">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/50 w-fit px-2.5 py-1 rounded-md mt-1">
                     <Calendar size={12} />
                     <span>Due on {nextBillingDateFormatted}</span>
                   </div>
@@ -307,7 +349,7 @@ export default function SuperAdminBilling({
                     {billingStatus}
                   </span>
                   <p className="text-3xl font-black text-[#0a1e3f]">
-                    ₱{((selectedOrg.units_count || 0) * 99).toLocaleString()}
+                    ₱{orgStats.totalMRR.toLocaleString()}
                   </p>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">Total Due (MRR)</p>
                 </div>

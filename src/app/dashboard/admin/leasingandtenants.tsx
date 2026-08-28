@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, Users, X, MapPin, CheckCircle, BellRing, Check, CalendarDays, AlertTriangle } from "lucide-react";
+import { 
+  Search, Users, X, MapPin, CheckCircle, BellRing, Check, 
+  CalendarDays, AlertTriangle, FolderOpen, Clock, FileText, 
+  Download 
+} from "lucide-react";
 
 export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -10,10 +14,14 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   const [leasesList, setLeasesList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal States
+  // Modal States (Approve)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Modal States (View Contract)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewLeaseData, setViewLeaseData] = useState<any>(null);
 
   // Form States
   const [selectedLeaseId, setSelectedLeaseId] = useState("");
@@ -21,7 +29,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // ADDED: Search State
+  // Search State
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -53,7 +61,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     setErrorMsg(null);
     const pendingLeases = leasesList.filter(l => l.status === 'Pending');
     
-    // If a specific lease was clicked from the table
+    // If a specific lease was clicked from the grid
     if (leaseId) {
       const lease = pendingLeases.find(l => l.id === leaseId);
       if (lease) {
@@ -63,7 +71,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
         setEndDate(lease.end_date || "");
       }
     } 
-    // Otherwise, just pick the first pending lease if clicking the top button
+    // Otherwise, pick the first pending lease
     else if (pendingLeases.length > 0) {
       setSelectedLeaseId(pendingLeases[0].id);
       setTenantName(pendingLeases[0].tenant_name);
@@ -141,15 +149,21 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     }
   };
 
+  // Open View Modal
+  const handleViewContract = (lease: any) => {
+    setViewLeaseData(lease);
+    setIsViewModalOpen(true);
+  };
+
   const formatDate = (dateStr: string) => {
     if (!dateStr) return <span className="text-slate-300 italic">—</span>;
-    return <span className="font-semibold text-slate-600">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>;
+    return <span className="font-bold text-slate-700">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>;
   };
 
   const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
   const pendingLeases = leasesList.filter(l => l.status === 'Pending');
 
-  // ADDED: Filter logic para sa search bar
+  // Filter logic for the search bar
   const filteredLeases = leasesList.filter(lease => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -161,10 +175,9 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   });
 
   return (
-    // ✨ LOCKED LAYOUT WINDOW SHELL: Sagad sa bottom, walang double scroll
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500 bg-[#f4f7f9]">
       
-      {/* 🌟 PREMIUM HEADER - Static Shrink Block (Fixed Header Zone) */}
+      {/* 🌟 PREMIUM HEADER - Static Shrink Block */}
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
           
@@ -177,7 +190,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               Leasing & Tenants
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Review assignments and active contracts
+              Manage and organize owner and tenant lease records
             </p>
           </div>
           
@@ -186,26 +199,23 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
             
             {/* Search Bar */}
             <div className="relative flex-1 sm:w-64 group">
-              
-              {/* ✨ FIX: Nagdagdag ng z-10 at pointer-events-none para pumabaw sa input field at hindi matakpan! */}
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#359b46] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
-              
               <input 
                 type="text"
-                placeholder="Search tenants, units..." 
+                placeholder="Search tenant, owner, unit..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[#359b46]/15 focus:border-[#359b46] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative"
               />
             </div>
 
-            {/* Premium Admin Profile Badge (Now visible on mobile, hides text only) */}
+            {/* Admin Profile Badge */}
             <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0">
               <div className="hidden sm:flex flex-col items-end">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
                 <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Admin</span>
               </div>
-              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
                 {initials}
               </div>
             </div>
@@ -222,146 +232,130 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               <BellRing size={22} strokeWidth={2.5} className="animate-[wiggle_1s_ease-in-out_infinite]" />
             </div>
             <div>
-              <h4 className="font-black text-amber-900 text-sm sm:text-base tracking-tight">New Tenant Assignment Awaiting Approval</h4>
-              <p className="text-xs sm:text-sm text-amber-700/80 font-semibold mt-0.5">Property Owners have submitted <strong className="text-amber-600 bg-amber-100/50 px-1.5 py-0.5 rounded">{pendingLeases.length}</strong> new tenant(s). Please review below.</p>
+              <h4 className="font-black text-amber-900 text-sm sm:text-base tracking-tight">New Lease Awaiting Approval</h4>
+              <p className="text-xs sm:text-sm text-amber-700/80 font-semibold mt-0.5">Owners have declared <strong className="text-amber-600 bg-amber-100/50 px-1.5 py-0.5 rounded">{pendingLeases.length}</strong> new tenant(s). Please review the pending folders below.</p>
             </div>
           </div>
+          <button 
+            onClick={() => handleOpenApproveModal()}
+            className="hidden sm:flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all shrink-0"
+          >
+            Review All
+          </button>
         </div>
       )}
 
-      {/* 🌟 ACTION CONTROLS ROW */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0 px-1 sm:px-0">
-        <div className="flex items-center gap-3">
-          <h3 className="font-black text-[#0a1e3f] text-base tracking-tight">Lease Contracts</h3>
-          {pendingLeases.length > 0 && (
-            <span className="bg-amber-100 text-amber-700 border border-amber-200/60 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg shadow-sm animate-pulse">
-              {pendingLeases.length} Pending
-            </span>
-          )}
-        </div>
-        <div className="flex w-full sm:w-auto mt-2 sm:mt-0">
-          <button 
-            onClick={() => handleOpenApproveModal()}
-            disabled={pendingLeases.length === 0}
-            className={`w-full sm:w-auto flex-1 sm:flex-none justify-center px-6 py-3.5 sm:py-2.5 rounded-xl text-xs uppercase tracking-widest font-black transition-all active:scale-95 flex items-center gap-2 ${
-              pendingLeases.length === 0 
-                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
-                : "bg-[#359b46] hover:bg-[#2c813a] text-white shadow-[0_4px_15px_rgba(53,155,70,0.25)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)]"
-            }`}
-          >
-            Review Pending Leases
-          </button>
-        </div>
-      </div>
-
-      {/* 🌟 PREMIUM TABLE WRAPPER (Scrollable Body Sagad Bottom) */}
-      <div className="flex-1 w-full min-h-0 bg-white rounded-t-[2rem] shadow-sm border border-slate-200/80 border-b-0 overflow-hidden flex flex-col mt-2">
-        <div className="flex-1 overflow-x-auto overflow-y-auto pb-24">
-          <table className="w-full text-left text-sm relative">
-            <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 text-[10px] uppercase font-black tracking-widest sticky top-0 z-20 shadow-sm border-b border-slate-200/80">
-              <tr>
-                <th className="px-6 py-4 whitespace-nowrap">Owner</th>
-                <th className="px-6 py-4 whitespace-nowrap">Tenant</th>
-                <th className="px-6 py-4 whitespace-nowrap">Unit</th>
-                <th className="px-6 py-4 whitespace-nowrap">Lease Start</th>
-                <th className="px-6 py-4 whitespace-nowrap">Lease Ends</th>
-                <th className="px-6 py-4 whitespace-nowrap">Status</th>
-                <th className="px-6 py-4 whitespace-nowrap text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100/80 text-slate-700">
+      {/* 🌟 FOLDER GRID SYSTEM */}
+      <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pb-24 px-1 sm:px-0">
+        
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex flex-col h-full animate-pulse mt-4">
+                <div className="w-1/2 h-8 bg-slate-200 rounded-t-xl z-10 translate-y-[1px]"></div>
+                <div className="flex-1 bg-slate-100 border border-slate-200 rounded-b-2xl rounded-tr-2xl p-5 h-56"></div>
+              </div>
+            ))}
+          </div>
+        ) : leasesList.length === 0 ? (
+          <div className="w-full flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-200/60 shadow-sm mt-4">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 mb-4">
+              <FolderOpen size={36} className="text-slate-300" strokeWidth={1.5} />
+            </div>
+            <p className="text-slate-700 font-black text-xl">No Lease Folders Found</p>
+            <p className="text-slate-400 text-sm mt-1 max-w-sm">When owners declare tenants, their lease folders will be generated here automatically.</p>
+          </div>
+        ) : filteredLeases.length === 0 ? (
+          <div className="w-full flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-slate-200/60 shadow-sm mt-4">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 mb-4">
+              <Search size={36} className="text-slate-300" strokeWidth={1.5} />
+            </div>
+            <p className="text-slate-700 font-black text-xl">No Matches Found</p>
+            <p className="text-slate-400 text-sm mt-1">Try adjusting your search query for "{searchQuery}".</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-5 gap-y-6 sm:gap-x-6 sm:gap-y-8 mt-2">
+            {filteredLeases.map((lease) => {
+              const isActive = lease.status === 'Active';
               
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-6 py-5"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
-                    <td className="px-6 py-5"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
-                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-20"></div></td>
-                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
-                    <td className="px-6 py-5"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
-                    <td className="px-6 py-5"><div className="h-5 bg-slate-200 rounded-lg w-16"></div></td>
-                    <td className="px-6 py-5"><div className="h-6 bg-slate-100 rounded-md w-16 ml-auto"></div></td>
-                  </tr>
-                ))
-              ) : leasesList.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-2">
-                        <Users size={32} className="text-slate-300" strokeWidth={1.5} />
-                      </div>
-                      <p className="text-slate-500 font-bold text-sm">No active or pending leases found</p>
-                      <p className="text-slate-400 text-xs">When owners assign tenants, they will appear here for approval.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredLeases.length === 0 ? (
-                // ✨ 4. ADDED: Bagong empty state kapag walang match sa search query
-                <tr>
-                  <td colSpan={7} className="px-6 py-24 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 mb-2">
-                        <Search size={32} className="text-slate-300" strokeWidth={1.5} />
-                      </div>
-                      <p className="text-slate-500 font-bold text-sm">No exact matches found</p>
-                      <p className="text-slate-400 text-xs">Try adjusting your search query: <span className="font-semibold text-slate-500">"{searchQuery}"</span></p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                // ✨ 5. UPDATED: leasesList.map pinalitan ng filteredLeases.map
-                filteredLeases.map((lease) => {
-                  const isActive = lease.status === 'Active';
+              return (
+                <div key={lease.id} className="flex flex-col h-full group hover:-translate-y-1 transition-transform duration-300">
                   
-                  return (
-                    <tr key={lease.id} className={`group transition-colors ${isActive ? 'hover:bg-slate-50/80' : 'bg-amber-50/40 hover:bg-amber-50/80'}`}>
-                      <td className="px-6 py-4 font-bold text-slate-500 whitespace-nowrap">
-                        {lease.units?.owner_name || <span className="text-slate-300 italic">—</span>}
-                      </td>
-                      <td className={`px-6 py-4 font-black whitespace-nowrap ${isActive ? 'text-[#0a1e3f]' : 'text-amber-900'}`}>
-                        {lease.tenant_name}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-700 whitespace-nowrap">
-                        {lease.units?.property_name} {lease.units?.unit_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {formatDate(lease.start_date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {formatDate(lease.end_date)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {isActive ? (
-                          <span className="bg-emerald-50 text-emerald-700 font-black px-2.5 py-1.5 rounded-lg text-[9px] uppercase tracking-wider border border-emerald-200/60 shadow-sm">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="bg-white text-amber-600 font-black px-2.5 py-1.5 rounded-lg text-[9px] uppercase tracking-wider border border-amber-200 shadow-sm">
-                            Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {!isActive ? (
-                          <button 
-                            onClick={() => handleOpenApproveModal(lease.id)}
-                            className="bg-[#1d82f5] hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
-                          >
-                            Approve
-                          </button>
-                        ) : (
-                          <span className="flex items-center justify-end gap-1.5 text-[#359b46] text-[10px] font-black uppercase tracking-widest bg-emerald-50/50 px-3 py-1.5 rounded-lg border border-transparent group-hover:border-emerald-100 inline-flex w-fit ml-auto">
-                            <CheckCircle size={14} strokeWidth={3} /> Approved
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  {/* ✨ The "Folder Tab" */}
+                  <div className="flex items-end">
+                    <div className={`px-4 py-2 rounded-t-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 z-10 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${
+                      isActive 
+                        ? 'bg-emerald-50 text-[#359b46] border-emerald-200/60' 
+                        : 'bg-amber-50 text-amber-600 border-amber-200/60'
+                    }`}>
+                      {isActive ? <CheckCircle size={14} /> : <Clock size={14} />}
+                      {lease.status}
+                    </div>
+                  </div>
+                  
+                  {/* ✨ The "Folder Body" */}
+                  <div className={`flex-1 bg-white border rounded-b-[1.5rem] rounded-tr-[1.5rem] p-5 sm:p-6 shadow-sm group-hover:shadow-[0_8px_25px_rgba(0,0,0,0.05)] transition-all flex flex-col relative overflow-hidden ${
+                      isActive ? 'border-emerald-200/60 border-t-emerald-200/60' : 'border-amber-200/60 border-t-amber-200/60'
+                  }`}>
+                    
+                    {/* Decorative Folder Icon Watermark */}
+                    <FolderOpen className="absolute -bottom-6 -right-6 text-slate-50 opacity-[0.4] w-32 h-32 rotate-[-10deg] pointer-events-none" />
+
+                    {/* Tenant & Unit Info */}
+                    <div className="mb-5 relative z-10">
+                      <h4 className="text-xl font-black text-[#0a1e3f] truncate tracking-tight">{lease.tenant_name}</h4>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <MapPin size={12} className="text-slate-400" />
+                        <p className="text-xs font-bold text-slate-500 truncate">{lease.units?.property_name} · Unit {lease.units?.unit_number}</p>
+                      </div>
+                    </div>
+
+                    {/* Lease Details Box */}
+                    <div className="space-y-4 mb-6 flex-1 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative z-10">
+                      
+                      <div className="flex flex-col gap-1 pb-3 border-b border-slate-200/60">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Users size={12}/> Property Owner</span>
+                        <span className="text-sm font-bold text-slate-700 truncate">{lease.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><CalendarDays size={12}/> Start Date</span>
+                          <span className="text-sm">{formatDate(lease.start_date)}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><CalendarDays size={12}/> End Date</span>
+                          <span className="text-sm">{formatDate(lease.end_date)}</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Action Area */}
+                    <div className="mt-auto relative z-10">
+                      {!isActive ? (
+                        <button 
+                          onClick={() => handleOpenApproveModal(lease.id)}
+                          className="w-full bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:from-[#1565c0] hover:to-[#0f4d92] text-white px-4 py-3.5 rounded-[12px] text-xs font-black uppercase tracking-widest transition-all shadow-[0_4px_10px_rgba(29,130,245,0.3)] active:scale-95 flex items-center justify-center gap-2 group/btn"
+                        >
+                          <AlertTriangle size={16} className="group-hover/btn:animate-pulse" /> Review & Approve
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleViewContract(lease)} 
+                          className="w-full bg-emerald-50 hover:bg-emerald-100 text-[#359b46] px-4 py-3.5 rounded-[12px] text-xs font-black uppercase tracking-widest border border-emerald-200/60 hover:border-emerald-300 transition-all flex items-center justify-center gap-2 shadow-inner active:scale-95 group/btn"
+                        >
+                          <CheckCircle size={18} strokeWidth={2.5} className="group-hover/btn:scale-110 transition-transform" /> View Contract
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 🌟 PREMIUM APPROVAL MODAL */}
@@ -381,27 +375,27 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
             <div className="p-6 sm:p-8 overflow-y-auto max-h-[75vh] custom-scrollbar bg-slate-50/50">
               <form onSubmit={handleApproveSubmit} className="space-y-6">
-                {errorMsg && <div className="mb-5 p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} /> {errorMsg}</div>}
+                {errorMsg && <div className="mb-5 p-4 bg-red-50 text-red-600 text-[13px] font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} className="shrink-0" /> {errorMsg}</div>}
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                    <MapPin size={14} className="text-[#359b46]" /> Pending Request Selection
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                    <FolderOpen size={14} className="text-[#359b46]" /> Pending Folder Selection
                   </label>
                   {pendingLeases.length === 0 ? (
                     <div className="p-4 text-sm font-bold text-amber-700 bg-amber-50 rounded-xl border border-amber-200/60">
-                      There are no pending lease requests to approve.
+                      There are no pending folders to approve.
                     </div>
                   ) : (
                     <select
                       required
                       value={selectedLeaseId}
                       onChange={(e) => handleLeaseSelectionChange(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all appearance-none cursor-pointer"
                       disabled={isSubmitting}
                     >
                       {pendingLeases.map((lease) => (
                         <option key={lease.id} value={lease.id}>
-                          {lease.units?.property_name} {lease.units?.unit_number} — Requested by {lease.units?.owner_name || 'Owner'}
+                          {lease.units?.property_name} {lease.units?.unit_number} - Requested by {lease.units?.owner_name || 'Owner'}
                         </option>
                       ))}
                     </select>
@@ -409,7 +403,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
-                  <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                     <Users size={14} className="text-[#359b46]" /> Tenant Name
                   </label>
                   <input
@@ -424,7 +418,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                       <CalendarDays size={14} className="text-[#359b46]" /> Start Date
                     </label>
                     <input 
@@ -435,7 +429,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                     />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
                       <CalendarDays size={14} className="text-[#359b46]" /> End Date
                     </label>
                     <input 
@@ -447,16 +441,132 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   </div>
                 </div>
 
-                {/* Modal Actions */}
-                <div className="mt-8 flex gap-3 sm:justify-end pt-5 border-t border-slate-200/80 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
+                <div className="mt-8 flex gap-3 pt-5 border-t border-slate-200/80 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
                   <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-4 sm:px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-xl transition-all active:scale-95">
                     Cancel
                   </button>
-                  <button type="submit" disabled={isSubmitting || pendingLeases.length === 0} className="flex-1 sm:flex-none bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 disabled:shadow-none text-white px-4 sm:px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center sm:min-w-[140px]">
-                    {isSubmitting ? <span className="animate-pulse">Processing...</span> : "Approve"}
+                  <button type="submit" disabled={isSubmitting || pendingLeases.length === 0} className="flex-1 bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] disabled:bg-slate-300 disabled:shadow-none text-white px-4 sm:px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center">
+                    {isSubmitting ? <span className="animate-pulse">Processing...</span> : "Approve & Activate"}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 VIEW CONTRACT MODAL */}
+      {isViewModalOpen && viewLeaseData && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-slate-200/80" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight relative z-10 flex items-center gap-2">
+                <FileText className="text-[#359b46]" size={24} strokeWidth={2.5} />
+                Contract Details
+              </h2>
+              <button onClick={() => setIsViewModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 sm:p-8 overflow-y-auto max-h-[75vh] custom-scrollbar bg-slate-50/50 space-y-5">
+              
+              {/* Tenant & Property Overview */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+                <div>
+                  <h4 className="text-xl font-black text-[#0a1e3f]">{viewLeaseData.tenant_name}</h4>
+                  <div className="flex flex-col gap-1 mt-1.5">
+                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-slate-400"/>
+                      {viewLeaseData.units?.property_name} · Unit {viewLeaseData.units?.unit_number}
+                    </p>
+                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
+                      <Users size={14} className="text-slate-400"/>
+                      Owner: <span className="text-slate-700">{viewLeaseData.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-200/60 text-[#359b46] rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                  <CheckCircle size={14} /> Active
+                </div>
+              </div>
+
+              {/* Two Column details: Dates & Rent */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                
+                {/* Dates */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 space-y-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                      <CalendarDays size={14} className="text-[#359b46]" /> Lease Start
+                    </label>
+                    <div className="text-sm font-bold text-slate-700">{formatDate(viewLeaseData.start_date)}</div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                      <CalendarDays size={14} className="text-[#359b46]" /> Lease End
+                    </label>
+                    <div className="text-sm font-bold text-slate-700">{formatDate(viewLeaseData.end_date)}</div>
+                  </div>
+                </div>
+
+                {/* Amount */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60 flex flex-col justify-center">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                    <span className="text-[#359b46] font-black text-xs leading-none">₱</span> Monthly Rent Amount
+                  </label>
+                  <div className="text-3xl font-black text-[#0a1e3f]">
+                    ₱{(viewLeaseData.units?.monthly_rent || viewLeaseData.monthly_rent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs font-bold text-slate-400 mt-2">Agreed upon monthly rate.</p>
+                </div>
+
+              </div>
+
+              {/* PDF Document Download Area */}
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
+                  <FileText size={14} className="text-[#359b46]" /> Contract Document
+                </label>
+                
+                {/* Check if a document exists. We assume `document_url` or `lease_document_url` might be present */}
+                {viewLeaseData.document_url || viewLeaseData.lease_document_url ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 shrink-0">
+                        <FileText size={18} className="text-[#359b46]" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[#0a1e3f]">Lease Agreement</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PDF Document</p>
+                      </div>
+                    </div>
+                    
+                    <a 
+                      href={viewLeaseData.document_url || viewLeaseData.lease_document_url} 
+                      download="Lease_Agreement.pdf"
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_4px_10px_rgba(53,155,70,0.2)] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] shrink-0"
+                    >
+                      <Download size={16} /> Download
+                    </a>
+                  </div>
+                ) : (
+                  <div className="py-10 text-center flex flex-col items-center justify-center bg-slate-50 rounded-xl border border-slate-200/60 border-dashed">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-3">
+                      <FileText size={20} className="text-slate-300" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-500">No PDF Contract Attached</p>
+                    <p className="text-xs text-slate-400 mt-1">A digital copy hasn't been uploaded for this folder yet.</p>
+                  </div>
+                )}
+              </div>
+              
             </div>
           </div>
         </div>

@@ -34,8 +34,11 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   const [team, setTeam] = useState<any[]>([]);
   const [isLoadingTeam, setIsLoadingTeam] = useState(true);
   
+  // ✨ NEW: State to store the live calculated MRR from the units table
+  const [liveMRR, setLiveMRR] = useState<number | null>(null);
+  
   // Per-Asset Billing States
-  const [currentPlan, setCurrentPlan] = useState(orgData?.plan || "Per Asset (₱99/unit)");
+  const [currentPlan, setCurrentPlan] = useState(orgData?.plan || "Dynamic Rate");
   const [seatLimit, setSeatLimit] = useState(orgData?.users_count || 1);
   const [unitLimit, setUnitLimit] = useState(orgData?.units_count || 0);
 
@@ -63,9 +66,32 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchTeam();
-      setCurrentPlan(orgData.plan || "Per Asset (₱99/unit)");
+      setCurrentPlan(orgData.plan || "Dynamic Rate");
       setSeatLimit(orgData.users_count || 1);
       setUnitLimit(orgData.units_count || 0);
+
+      // ✨ Fetch live units for this specific org to calculate exact MRR
+      const fetchLiveMRR = async () => {
+        const { data, error } = await supabase
+          .from('units')
+          .select('tenant_name, status')
+          .eq('admin_email', orgData.admin_email);
+          
+        if (!error && data) {
+          let calculatedMRR = 0;
+          data.forEach(unit => {
+            const hasTenant = unit.tenant_name && unit.tenant_name !== '—' && unit.tenant_name !== 'Vacant' && unit.status !== 'Vacant';
+            if (hasTenant) {
+              calculatedMRR += 198; // x2 for tenanted
+            } else {
+              calculatedMRR += 99; // Base rate for owner-only
+            }
+          });
+          setLiveMRR(calculatedMRR);
+        }
+      };
+      
+      fetchLiveMRR();
     }
   }, [orgData]);
 
@@ -199,8 +225,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   const seatsUsed = team.length + 1; 
   const seatPercentage = (seatsUsed / seatLimit) * 100;
   
-  // New billing model: strictly based on unit count
-  const monthlyCost = unitLimit * 99;
+  // ✨ New billing model: dynamically computed based on active occupancy
+  const monthlyCost = liveMRR !== null ? liveMRR : (unitLimit * 99);
 
   // Actual Next Billing Date Calculation
   const nextBillingDateFormatted = calculateNextBillingDate(orgData?.billing_day);
@@ -318,7 +344,6 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                       <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">No members match your search.</td></tr>
                     ) : (
                       filteredTeam.map(member => {
-                        // ✨ Nickname logic for team members
                         const memberInitials = member.name 
                           ? member.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
                           : "US";
@@ -372,8 +397,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               
               <div className="mb-8 sm:mb-10 relative z-10 bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner shrink-0">
                 <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-1">Current Plan</span>
-                <h4 className="text-3xl sm:text-4xl font-black text-[#0a1e3f] tracking-tight mb-1">Per Asset</h4>
-                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-2">₱99 / unit / month · Updates dynamically</p>
+                <h4 className="text-3xl sm:text-4xl font-black text-[#0a1e3f] tracking-tight mb-1">Dynamic Rate</h4>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-2">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
               </div>
               
               <div className="space-y-6 mb-8 relative z-10 flex-1">
@@ -489,7 +514,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="space-y-5">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-2 flex justify-between items-center">
                   <div>
-                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[#0a1e3f]">Per-Asset</span></p>
+                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[#0a1e3f]">Dynamic Rate</span></p>
                     <p className="text-xs text-slate-500">For limit increases, contact admin.</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-lg border text-xs font-bold uppercase tracking-wider ${getStatusColor(billingStatus)}`}>
@@ -524,7 +549,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                   <div className="w-full px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50/60 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Due on {nextBillingDateFormatted}</p>
-                      <p className="text-xs text-emerald-600 font-medium">₱99 per unit / month</p>
+                      <p className="text-xs text-emerald-600 font-medium">₱99 Owner | ₱198 Tenanted</p>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-extrabold text-[#0a1e3f]">

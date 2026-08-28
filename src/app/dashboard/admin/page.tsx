@@ -400,6 +400,7 @@ export default function AdminDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
   };
 
+  // ✨ REFACTORED: Notification Click Logic to route TICKET to Maintenance Tab
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -412,7 +413,7 @@ export default function AdminDashboard() {
     if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
       if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
-      handleTabChange("Tickets"); 
+      handleTabChange("Maintenance"); // ✨ FIX: Diretso na sa Maintenance Tab para bumukas ang Universal Modal
     } else handleTabChange("Dashboard");
   };
 
@@ -603,10 +604,10 @@ export default function AdminDashboard() {
             <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
             <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} />
-            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
+            {/* ✨ REFACTORED: Pinagsama natin ang logic ng pending inboxes at active working tickets sa iisang count para sa Master Maintenance Tab */}
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
             <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
-            <NavItem icon={<Ticket size={18} strokeWidth={2.5} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} badgeCount={activeTicketsCount} />
             <div className="pt-4 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>
@@ -640,7 +641,7 @@ export default function AdminDashboard() {
             {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
             {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
-            {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} onNavigate={handleTabChange} />}
+            {/* {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} onNavigate={handleTabChange} />} */}
             {activeTab === "Team" && <TeamTab orgData={orgData} isLoading={isLoading} />}
           </div>
         </main>

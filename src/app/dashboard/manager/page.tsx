@@ -459,22 +459,20 @@ export default function ManagerDashboard() {
     .eq('recipient', 'MANAGER');
   };
 
+  // ✨ REFACTORED: Notification Click Logic to route TICKET to Maintenance Tab
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
-      setNotifications(notifications.map(n => 
-        n.id === notif.id ? { ...n, is_read: true } : n
-      ));
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
       await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
     }
-
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
     if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
       if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
-      handleTabChange("Tickets"); 
+      handleTabChange("Maintenance"); // ✨ FIX: Diretso na sa Maintenance Tab para bumukas ang Universal Modal
     } else handleTabChange("Dashboard");
   };
 
@@ -673,11 +671,10 @@ export default function ManagerDashboard() {
               onClick={() => handleTabChange("Messages")} 
               badgeCount={unreadMessageCount} // ✨ Tiyaking nakapasa ito rito paps
             />
-            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance & repairs" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
+            {/* ✨ REFACTORED: Pinagsama natin ang logic ng pending inboxes at active working tickets sa iisang count para sa Master Maintenance Tab */}
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
             <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
-            <NavItem icon={<Ticket size={18} strokeWidth={2.5} />} label="View tickets" isActive={activeTab === "Tickets"} onClick={() => handleTabChange("Tickets")} badgeCount={activeTicketsCount}/>
-            
             <div className="pt-4 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>
@@ -712,7 +709,7 @@ export default function ManagerDashboard() {
             {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
             {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
-            {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} onNavigate={handleTabChange} />}
+            {/* {activeTab === "Tickets" && <ViewTicketTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} onNavigate={handleTabChange} />} */}
             {activeTab === "Users" && <UsersTab orgData={orgData} isLoading={isLoading} />}
           </div>
         </main>

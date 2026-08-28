@@ -35,6 +35,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   });
 
   // Modal States
+  const [isPaymentSelectionModalOpen, setIsPaymentSelectionModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false); 
   const [paymentModalParty, setPaymentModalParty] = useState<'owner' | 'tenant' | null>(null);
   const [isComputationModalOpen, setIsComputationModalOpen] = useState(false);
@@ -209,7 +210,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  // ✨ NEW: Filter units based on Search Query
   const filteredUnits = allUnits.filter(u => {
     if (!searchQuery) return true;
     const lowerQ = searchQuery.toLowerCase();
@@ -258,7 +258,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
-  // Auto-calculate penalty based on Overdue Status OR explicitly saved penalty history
   let ownerPenalty = 0;
   if ((ownerStatus === 'Overdue' || currentSoa?.owner_penalty) && !isOwnerVacant) {
     ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
@@ -372,7 +371,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     try {
       await saveSoaToDatabase('Pending');
 
-      // ✨ FIX: Gamitin ang "soaConfig" (modal check state) imbes na database state para sigurado
       const ownerHasBill = soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity || soaConfig.owner.penalty;
       const tenantHasBill = soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity || soaConfig.tenant.penalty;
 
@@ -380,14 +378,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       let ownerEmail = null;
       let tenantEmail = null;
 
-      // Fetch all team members under this admin for a safe case-insensitive match
       const { data: members } = await supabase
         .from('team_members')
         .select('name, email')
         .eq('admin_email', orgData.admin_email);
 
       if (members && members.length > 0) {
-        // Find owner email safely
         if (ownerHasBill && !isOwnerVacant) {
           const ownerMatch = members.find(m => 
             m.name?.trim().toLowerCase() === selectedUnit?.owner_name?.trim().toLowerCase()
@@ -395,7 +391,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           if (ownerMatch) ownerEmail = ownerMatch.email;
         }
         
-        // Find tenant email safely
         if (tenantHasBill && !isTenantVacant) {
           const tenantMatch = members.find(m => 
             m.name?.trim().toLowerCase() === selectedUnit?.tenant_name?.trim().toLowerCase()
@@ -404,11 +399,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         }
       }
 
-      // Recompute ang sakto at exact na Total Due base sa kung ano ang nai-check sa modal
       const finalOwnerTotal = (soaConfig.owner.dues ? rawDues : 0) + (soaConfig.owner.parking ? rawParking : 0) + (soaConfig.owner.water ? rawWater : 0) + (soaConfig.owner.electricity ? rawElectricity : 0) + (soaConfig.owner.penalty ? ownerPenalty : 0);
       const finalTenantTotal = (soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0);
 
-      // Prepare Notification for Owner
       if (ownerHasBill && ownerEmail) {
         notificationsToInsert.push({
           admin_email: orgData.admin_email,
@@ -421,7 +414,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         });
       }
 
-      // Prepare Notification for Tenant
       if (tenantHasBill && tenantEmail) {
         notificationsToInsert.push({
           admin_email: orgData.admin_email,
@@ -434,7 +426,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         });
       }
 
-      // Fire Notifications to Database
       if (notificationsToInsert.length > 0) {
         const { error: notifError } = await supabase.from('notifications').insert(notificationsToInsert);
         if (notifError) console.error("Error sending SOA notifications:", notifError);
@@ -664,8 +655,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         
       if (error) throw error;
 
-      // ✨ NEW: AUTO-NOTIFY OWNER OR TENANT UPON PAYMENT VERIFICATION
-      // 1. Fetch team members securely to match the target's email
       const { data: members } = await supabase
         .from('team_members')
         .select('name, email')
@@ -673,15 +662,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       let targetEmail = null;
       if (members && members.length > 0) {
-        // Alamin kung sino ang nagbayad (Owner or Tenant) at kunin ang pangalan
         const targetName = paymentModalParty === 'owner' ? selectedUnit.owner_name : selectedUnit.tenant_name;
         
-        // Match the name carefully to get their exact registered email
         const match = members.find(m => m.name?.trim().toLowerCase() === targetName?.trim().toLowerCase());
         if (match) targetEmail = match.email;
       }
 
-      // 2. Fire the notification into the database if we found their email
       if (targetEmail) {
         const { error: notifError } = await supabase.from('notifications').insert([{
           admin_email: orgData.admin_email,
@@ -695,7 +681,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         
         if (notifError) console.error("Error sending payment success notification:", notifError);
       }
-      // ✨ END OF NEW NOTIFICATION LOGIC
 
       setAllSoaConfigs(prev => ({
         ...prev,
@@ -729,7 +714,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-[1600px] mx-auto w-full">
           <div className="w-full sm:w-auto flex justify-between items-center">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Billing & payments</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Billing & Payments</h2>
               <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">SOA, collection and owner remittance</p>
             </div>
             <div className="sm:hidden w-9 h-9 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-xs border border-emerald-200 shadow-sm shrink-0">{initials}</div>
@@ -993,20 +978,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 
                 {/* Action Buttons Row */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 w-full mb-6">
-                  {isAssigned && ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant && (
+                  
+                  {isAssigned && ((ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant) || (tenantTotalDue > 0 && tenantStatus !== 'Paid' && !isTenantVacant)) && (
                     <button 
-                      onClick={() => { setPaymentModalParty('owner'); setIsPaymentModalOpen(true); }}
+                      onClick={() => setIsPaymentSelectionModalOpen(true)}
                       className="w-full justify-center sm:w-auto bg-gradient-to-b from-[#359b46] to-[#2a7a37] text-white px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-[0_4px_10px_rgba(53,155,70,0.2)] hover:shadow-[0_6px_15px_rgba(53,155,70,0.3)] transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
                     >
-                      <CreditCard className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Owner Pay</span>
-                    </button>
-                  )}
-                  {isAssigned && !isTenantVacant && tenantTotalDue > 0 && tenantStatus !== 'Paid' && (
-                    <button 
-                      onClick={() => { setPaymentModalParty('tenant'); setIsPaymentModalOpen(true); }}
-                      className="w-full justify-center sm:w-auto bg-gradient-to-b from-[#1d82f5] to-[#1565c0] text-white px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-[0_4px_10px_rgba(29,130,245,0.2)] hover:shadow-[0_6px_15px_rgba(29,130,245,0.3)] transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
-                    >
-                      <CreditCard className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Tenant Pay</span>
+                      <CreditCard className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Payment Verification</span>
                     </button>
                   )}
 
@@ -1247,7 +1225,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </div>
                 </div>
 
-                {/* ✨ NEW: QR Code Upload Section */}
+                {/* QR Code Upload Section */}
                 <div className="border border-green-100 bg-green-50/50 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                   <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1 sm:mb-1.5 tracking-tight truncate">Digital Wallet QR Code</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">
@@ -1545,12 +1523,66 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
+      {/* PAYMENT SELECTION MODAL */}
+      {isPaymentSelectionModalOpen && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight truncate pr-2">Payment Verification</h2>
+              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+                <X size={20} className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4">
+              <p className="text-[12px] sm:text-[13px] text-slate-500 mb-4 font-medium leading-relaxed">
+                Select which payment you want to verify:
+              </p>
+              
+              {isAssigned && ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant && (
+                <button 
+                  onClick={() => {
+                    setIsPaymentSelectionModalOpen(false);
+                    setPaymentModalParty('owner');
+                    setIsPaymentModalOpen(true);
+                  }}
+                  className="w-full bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700 p-4 rounded-xl transition-all shadow-sm flex justify-between items-center group active:scale-95"
+                >
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold text-[13px] sm:text-sm group-hover:text-emerald-700">Owner Payment</span>
+                    <span className="text-[11px] sm:text-xs text-slate-500">Amount Due: ₱{ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-emerald-500" size={20} />
+                </button>
+              )}
+
+              {isAssigned && !isTenantVacant && tenantTotalDue > 0 && tenantStatus !== 'Paid' && (
+                <button 
+                  onClick={() => {
+                    setIsPaymentSelectionModalOpen(false);
+                    setPaymentModalParty('tenant');
+                    setIsPaymentModalOpen(true);
+                  }}
+                  className="w-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 p-4 rounded-xl transition-all shadow-sm flex justify-between items-center group active:scale-95"
+                >
+                  <div className="flex flex-col text-left">
+                    <span className="font-bold text-[13px] sm:text-sm group-hover:text-blue-700">Tenant Payment</span>
+                    <span className="text-[11px] sm:text-xs text-slate-500">Amount Due: ₱{tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                  </div>
+                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-blue-500" size={20} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PAYMENT MODAL (Admin Verifying) */}
       {isPaymentModalOpen && paymentModalParty && (
         <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment Verif.</h2>
+              <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment Verification</h2>
               <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
@@ -1603,7 +1635,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 disabled={isSimulating || isFetchingPayment || !fetchedPayment}
                 className="w-full bg-gradient-to-b from-[#359b46] to-[#2a7a37] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-[#86c48f] disabled:to-[#86c48f] disabled:shadow-none text-white font-bold py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_2px_8px_rgba(53,155,70,0.2)] flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-sm"
               >
-                {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid in Database</>}
+                {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid</>}
               </button>
             </div>
           </div>

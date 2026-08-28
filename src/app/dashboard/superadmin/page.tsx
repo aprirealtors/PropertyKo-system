@@ -7,13 +7,14 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   X, CreditCard, CheckCircle, Home, AlertTriangle, 
   LogOut, LayoutDashboard, History, User, ChevronRight, Folder,
-  ChevronUp, ChevronDown, BarChart3, Users, Building2
+  ChevronUp, ChevronDown, BarChart3, Users, Building2, Activity // ✨ ADDED Activity icon
 } from "lucide-react";
 
 // Import your tab components
 import PaymentHistory from './paymenthistory';
 import SuperAdminBilling from './billing';
 import OrganizationDirectory from './organization';
+import HistoryLog from './historylog'; // ✨ ADDED HistoryLog import
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -24,6 +25,9 @@ export default function SuperAdminDashboard() {
   // Database Data State
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
+  
+  // ✨ NEW: State for Live Global MRR
+  const [liveGlobalMRR, setLiveGlobalMRR] = useState<number | null>(null);
 
   // Layout Modal States
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -31,6 +35,7 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     fetchOrganizations();
+    fetchLiveMRR(); // ✨ Fetch the dynamic MRR on load
   }, []);
 
   const fetchOrganizations = async () => {
@@ -48,6 +53,26 @@ export default function SuperAdminDashboard() {
     setIsLoadingOrgs(false);
   };
 
+  // ✨ NEW: Fetch all units globally to calculate the exact MRR
+  const fetchLiveMRR = async () => {
+    const { data, error } = await supabase.from('units').select('tenant_name, status');
+    
+    if (!error && data) {
+      let calculatedMRR = 0;
+      data.forEach(unit => {
+        const hasTenant = unit.tenant_name && unit.tenant_name !== '—' && unit.tenant_name !== 'Vacant' && unit.status !== 'Vacant';
+        if (hasTenant) {
+          calculatedMRR += 198; // x2 for tenanted
+        } else {
+          calculatedMRR += 99; // Base rate for owner-only
+        }
+      });
+      setLiveGlobalMRR(calculatedMRR);
+    } else {
+      setLiveGlobalMRR(0);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -55,7 +80,9 @@ export default function SuperAdminDashboard() {
 
   // Derived Metrics for HomeView
   const totalUnits = organizations.reduce((sum, org) => sum + (org.units_count || 0), 0);
-  const totalMRR = totalUnits * 99;
+  
+  // ✨ Use live MRR if fetched, otherwise fallback to limit-based math
+  const displayMRR = liveGlobalMRR !== null ? liveGlobalMRR : (totalUnits * 99);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[#f4f7fb] text-slate-800 font-sans overflow-hidden">
@@ -114,6 +141,14 @@ export default function SuperAdminDashboard() {
               icon={<Folder size={18} strokeWidth={activeTab === 'organizations' ? 2.5 : 2} />} 
               label="Organizations" 
             />
+
+            {/* ✨ ADDED: System Logs Button */}
+            <NavButton 
+              active={activeTab === 'systemlogs'} 
+              onClick={() => setActiveTab('systemlogs')} 
+              icon={<Activity size={18} strokeWidth={activeTab === 'systemlogs' ? 2.5 : 2} />} 
+              label="System Logs" 
+            />
             
             <div className="mt-8 mb-4 pt-4 border-t border-white/10">
               <h3 className="px-3 text-[10px] font-black text-blue-300/70 tracking-[0.25em] uppercase">Finance & Billing</h3>
@@ -160,7 +195,7 @@ export default function SuperAdminDashboard() {
                <HomeView 
                  organizations={organizations}
                  totalUnits={totalUnits}
-                 totalMRR={totalMRR}
+                 totalMRR={displayMRR} // Passed the live dynamic MRR
                />
              )}
              {activeTab === 'organizations' && (
@@ -169,6 +204,10 @@ export default function SuperAdminDashboard() {
                  isLoadingOrgs={isLoadingOrgs}
                  fetchOrganizations={fetchOrganizations}
                />
+             )}
+             {/* ✨ ADDED: History Log Component Render */}
+             {activeTab === 'systemlogs' && (
+               <HistoryLog />
              )}
              {/* UPDATED: Passing the callback to change tabs */}
              {activeTab === 'billing' && (
@@ -182,8 +221,8 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-200/50 pb-safe z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-        <div className="flex justify-around items-center px-1 py-2">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-200/50 pb-safe z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] overflow-x-auto custom-scrollbar">
+        <div className="flex justify-between items-center px-1 py-2 min-w-max w-full">
           <MobileNavItem 
             active={activeTab === 'home' && !isAccountModalOpen} 
             onClick={() => {setActiveTab('home'); setIsAccountModalOpen(false);}} 
@@ -195,6 +234,13 @@ export default function SuperAdminDashboard() {
             onClick={() => {setActiveTab('organizations'); setIsAccountModalOpen(false);}} 
             icon={<Folder size={22} />} 
             label="Orgs" 
+          />
+          {/* ✨ ADDED: Mobile button for logs */}
+          <MobileNavItem 
+            active={activeTab === 'systemlogs' && !isAccountModalOpen} 
+            onClick={() => {setActiveTab('systemlogs'); setIsAccountModalOpen(false);}} 
+            icon={<Activity size={22} />} 
+            label="Logs" 
           />
           <MobileNavItem 
             active={activeTab === 'billing' && !isAccountModalOpen} 
@@ -323,7 +369,8 @@ function HomeView({ organizations, totalUnits, totalMRR }: any) {
         <StatCard 
           title="PLATFORM MRR" 
           value={`₱${(totalMRR || 0).toLocaleString()}`} 
-          subtext={<span className="text-[#359b46] font-medium">@ ₱99 / unit</span>} 
+          // ✨ Updated Subtext to reflect dynamic calculation
+          subtext={<span className="text-[#359b46] font-medium">Dynamic Rate (₱99/₱198)</span>} 
           icon={BarChart3}
         />
         <StatCard 
@@ -418,7 +465,7 @@ function NavButton({ active, onClick, icon, label, badge }: any) {
 
 function MobileNavItem({ active, onClick, icon, label, badge }: any) {
   return (
-    <button onClick={onClick} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors">
+    <button onClick={onClick} className="relative flex flex-col items-center justify-center px-2 py-1 flex-1 h-14 transition-colors shrink-0">
       {active && <span className="absolute inset-1.5 bg-blue-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />}
       <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${active ? 'text-[#1e88e5] -translate-y-1 scale-[1.05]' : 'text-slate-400 hover:text-slate-600'}`}>
         <div className="relative">{icon}</div>
