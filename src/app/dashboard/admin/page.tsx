@@ -547,7 +547,7 @@ export default function AdminDashboard() {
             className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-xl"
           >
             <LogOut size={16} />
-            <span className="hidden sm:inline">Log out</span>
+            <span className="hidden sm:inline">Log Out</span>
           </button>
         </div>
       </header>
@@ -601,13 +601,13 @@ export default function AdminDashboard() {
           {/* Navigation Links - Scrollable Container (Invisible Scrollbar) */}
           <nav className="flex-1 overflow-y-auto py-2 space-y-1.5 custom-scrollbar">
             <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} />
-            <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
-            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
+            <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & Units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} />
+            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & Tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} />
             <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} />
             {/* ✨ REFACTORED: Pinagsama natin ang logic ng pending inboxes at active working tickets sa iisang count para sa Master Maintenance Tab */}
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} />
-            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
-            <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
+            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} />
+            <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI Reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} />
             <div className="pt-4 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>

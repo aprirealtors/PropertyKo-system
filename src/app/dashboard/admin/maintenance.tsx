@@ -298,7 +298,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     return s === 'completed' || s === 'resolved' || s === 'closed';
   }));
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
 
   const getAssigneeName = (email: string) => {
     if (!email || email === 'Unassigned') return "Unassigned";
@@ -401,7 +405,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-black text-[#0a1e3f] tracking-tight">Maintenance &amp; Repairs</h2>
-              <p className="text-slate-400 text-sm mt-0.5 font-medium">Tickets, vendors and SLA turnaround</p>
+              <p className="text-slate-400 text-sm mt-0.5 font-medium">Tickets, Vendors & SLA Turnaround</p>
             </div>
             <div className="flex items-center gap-4 w-full sm:w-auto shrink-0">
               <div className="relative w-full sm:w-64">
@@ -416,7 +420,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
               </div>
               <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
                 <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-xs border border-emerald-100/60">{initials}</div>
+                <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+                  {initials}
+                </div>
               </div>
             </div>
           </div>

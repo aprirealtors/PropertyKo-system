@@ -57,22 +57,26 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   const maintenanceCostPerUnit = totalUnits > 0 ? `₱${Math.round(totalTicketCost / totalUnits).toLocaleString()}/unit/yr` : "₱0/unit/yr";
 
   // Generate initials for the avatar
+  // const initials = orgData?.org_name 
+  //   ? orgData.org_name.substring(0, 2).toUpperCase() 
+  //   : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
-    ? orgData.org_name.substring(0, 2).toUpperCase() 
-    : "AD";
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
 
   // Consolidate KPI data to allow search filtering
   const allKPIs = [
-    { id: 1, label: "Vacancy rate", current: vacancyRate, use: "High", was: "Monthly" },
+    { id: 1, label: "Vacancy Rate", current: vacancyRate, use: "High", was: "Monthly" },
     { id: 2, label: "RevPAU", current: revpau, use: "High", was: "Monthly" },
-    { id: 3, label: "Maintenance cost / unit", current: maintenanceCostPerUnit, use: "High", was: "Monthly" },
-    { id: 4, label: "Tenant turnover", current: "0.00%", use: "High", was: "Monthly" },
-    { id: 5, label: "Lease renewal", current: "0.00%", use: "High", was: "Monthly" },
-    { id: 6, label: "Avg time to lease", current: "0 days", use: "High", was: "Monthly" },
-    { id: 7, label: "Lease conversion", current: "0.00%", use: "High", was: "Monthly" },
-    { id: 8, label: "Rent collection", current: "0.00%", use: "High", was: "Monthly" },
+    { id: 3, label: "Maintenance Cost / Unit", current: maintenanceCostPerUnit, use: "High", was: "Monthly" },
+    { id: 4, label: "Tenant Turnover", current: "0.00%", use: "High", was: "Monthly" },
+    { id: 5, label: "Lease Renewal", current: "0.00%", use: "High", was: "Monthly" },
+    { id: 6, label: "Avg Time To Lease", current: "0 Days", use: "High", was: "Monthly" },
+    { id: 7, label: "Lease Conversion", current: "0.00%", use: "High", was: "Monthly" },
+    { id: 8, label: "Rent Collection", current: "0.00%", use: "High", was: "Monthly" },
     { id: 9, label: "Days in A/R (DSO)", current: "0.0", use: "Med", was: "N/A" },
-    { id: 10, label: "Marketing cost / lease", current: "₱0/unit/yr", use: "High", was: "Monthly" }
+    { id: 10, label: "Marketing Cost / Lease", current: "₱0/unit/yr", use: "High", was: "Monthly" }
   ];
 
   const filteredKPIs = allKPIs.filter(kpi => 
@@ -131,7 +135,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
               KPI Reports
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Live operational scoreboard and automated metrics
+              Live Operational Scoreboard & Automated Metrics
             </p>
           </div>
           
@@ -150,12 +154,9 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
             </div>
 
             {/* Premium Admin Profile Badge */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0">
-              <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Admin</span>
-              </div>
-              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
                 {initials}
               </div>
             </div>

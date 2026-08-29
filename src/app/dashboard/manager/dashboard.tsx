@@ -75,9 +75,10 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
   const openTickets = tickets.filter(t => t.status === 'Open').length;
 
   // Generate initials for the avatar
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
-    ? orgData.org_name.substring(0, 2).toUpperCase() 
-    : "AD";
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
 
   // --- SVG PIE CHART MATH HELPERS ---
   const getLabelCoord = (startPct: number, slicePct: number) => {
@@ -107,9 +108,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               Dashboard
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Portfolio overview <span className="w-1 h-1 rounded-full bg-slate-300"></span> 
+              Portfolio Overview <span className="w-1 h-1 rounded-full bg-slate-300"></span> 
               <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-inner">
-                {isOrgLoading ? "..." : orgData?.units_count || 0} units limit
+                {isOrgLoading ? "..." : orgData?.units_count || 0} Units Limit
               </span>
             </p>
           </div>
@@ -127,12 +128,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
             </div>
 
             {/* Enhanced Admin Profile Badge */}
-            <div className="flex items-center gap-3 bg-white pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Manager</span>
-              </div>
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-[12px] sm:rounded-xl bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -156,25 +154,25 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               <StatCard 
                 title="VACANCY RATE" 
                 value={`${vacancyRate}%`} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Home size={12}/> {availableCount} vacant units</span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Home size={12}/> {availableCount} Vacant Units</span>} 
                 icon={Building}
               />
               <StatCard 
                 title="RENT COLLECTION" 
                 value="0.0%" 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Clock size={12}/> Awaiting billing data</span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Clock size={12}/> Awaiting Billing Data</span>} 
                 icon={CreditCard}
               />
               <StatCard 
                 title="REVPAU" 
                 value={`₱${revpau.toLocaleString()}`} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><BarChart3 size={12}/> per available unit</span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><BarChart3 size={12}/> Per Available Unit</span>} 
                 icon={BarChart3}
               />
               <StatCard 
                 title="LEASE RENEWAL" 
                 value="0.0%" 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><CheckCircle2 size={12}/> 0 / 0 renewed</span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><CheckCircle2 size={12}/> 0 / 0 Renewed</span>} 
                 icon={CheckCircle2}
               />
             </div>
@@ -185,7 +183,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               {/* GLOWING RENT COLLECTED BAR */}
               <div className="mb-12">
                 <div className="flex justify-between items-end mb-4">
-                  <h3 className="font-black text-[#0a1e3f] text-lg tracking-tight">Rent collected this month</h3>
+                  <h3 className="font-black text-[#0a1e3f] text-lg tracking-tight">Rent Collected This Month</h3>
                   <span className="bg-slate-50 text-slate-500 font-bold text-xs px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5">
                     <CreditCard size={14}/> ₱0 <span className="font-medium text-slate-400">of ₱{totalRentPotential.toLocaleString()}</span>
                   </span>
@@ -213,7 +211,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   </div>
                   <div>
                     <h2 className="text-lg font-black text-[#0a1e3f] uppercase tracking-tight">Unit Distribution Overview</h2>
-                    <p className="text-slate-400 text-xs font-medium mt-0.5">Current portfolio occupancy overview</p>
+                    <p className="text-slate-400 text-xs font-medium mt-0.5">Current Portfolio Occupancy Overview</p>
                   </div>
                 </div>
 
@@ -256,7 +254,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                         </div>
                         <div className="flex flex-col">
                           <div className="text-[11px] uppercase font-black text-slate-100 tracking-widest">Total Inventory</div>
-                          <div className="text-xs font-extrabold text-slate-100">{totalUnits} recorded units</div>
+                          <div className="text-xs font-extrabold text-slate-100">{totalUnits} Recorded Units</div>
                         </div>
                       </div>
                       <div className="text-2xl font-black text-slate-300">100%</div>
@@ -333,17 +331,17 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   <AlertTriangle size={20} className="text-amber-400" strokeWidth={2.5}/> Needs Action
                 </h3>
                 <p className="text-blue-200 text-xs font-medium leading-relaxed opacity-90">
-                  Auto-flagged from live operations—the workflow that used to take 7 days a month.
+                  Auto-flagged from live operations. The workflow that used to take 7 days a month.
                 </p>
               </div>
               
               <div className="p-6 sm:p-8 bg-white flex-1 flex flex-col">
                 <div className="space-y-3 mb-8">
-                  <AttentionItem label="SOAs to issue" value={soasToIssue.toString()} isUrgent={soasToIssue > 0} color="text-amber-500" />
-                  <AttentionItem label="Overdue accounts" value="0" isUrgent={false} />
-                  <AttentionItem label="Open repair tickets" value={openTickets.toString()} isUrgent={openTickets > 0} color="text-red-500" />
-                  <AttentionItem label="Leases expiring <30d" value="0" isUrgent={false} />
-                  <AttentionItem label="Avg repair turnaround" value="-- days" isUrgent={false} />
+                  <AttentionItem label="SOAs To Issue" value={soasToIssue.toString()} isUrgent={soasToIssue > 0} color="text-amber-500" />
+                  <AttentionItem label="Overdue Accounts" value="0" isUrgent={false} />
+                  <AttentionItem label="Open Repair Tickets" value={openTickets.toString()} isUrgent={openTickets > 0} color="text-red-500" />
+                  <AttentionItem label="Leases Expiring <30 Days" value="0" isUrgent={false} />
+                  <AttentionItem label="Avg Repair Turn Around" value="-- Days" isUrgent={false} />
                   <AttentionItem label="Days in A/R (DSO)" value="--" isUrgent={false} />
                 </div>
 

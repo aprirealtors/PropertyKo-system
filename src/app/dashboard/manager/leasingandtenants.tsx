@@ -160,7 +160,10 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     return <span className="font-bold text-slate-700">{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>;
   };
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
   const pendingLeases = leasesList.filter(l => l.status === 'Pending');
 
   // Filter logic for the search bar
@@ -190,7 +193,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               Leasing & Tenants
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Manage and organize owner and tenant lease records
+              Manage & Organize of Owner & Tenant Lease Records
             </p>
           </div>
           
@@ -210,12 +213,9 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
             </div>
 
             {/* Admin Profile Badge */}
-            <div className="flex items-center gap-2 sm:gap-3 bg-white pl-1.5 sm:pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-default group shrink-0">
-              <div className="hidden sm:flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Manager</span>
-              </div>
-              <div className="w-9 h-9 rounded-[12px] bg-[#359b46] text-white flex items-center justify-center font-black text-xs shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
                 {initials}
               </div>
             </div>

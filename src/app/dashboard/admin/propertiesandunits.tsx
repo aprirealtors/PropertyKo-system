@@ -400,7 +400,11 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     );
   });
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
   const maxUnits = Number(orgData?.units_count) || 0;
   const activeUnits = units.length;
   const remainingUnits = Math.max(0, maxUnits - activeUnits); 
@@ -421,9 +425,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               Properties & Units
             </h2>
             <p className="text-slate-500 text-sm mt-1.5 font-medium flex items-center gap-2">
-              Vacancy board and inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> 
+              Vacancy Board & Inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> 
               <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200 shadow-inner">
-                {isOrgLoading ? "..." : maxUnits} units limit
+                {isOrgLoading ? "..." : maxUnits} Units Limit
               </span>
             </p>
           </div>
@@ -431,22 +435,19 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           {/* Search & Actions */}
           <div className="flex flex-col sm:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
             <div className="relative w-full sm:w-72 group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1d82f5] transition-colors" size={16} strokeWidth={2.5} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#359b46] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
                 placeholder="Search unit, tenant, owner..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#1d82f5] bg-white backdrop-blur-sm shadow-sm transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-[#1d82f5] bg-white backdrop-blur-sm shadow-sm transition-all"
               />
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 bg-white pl-4 pr-1.5 py-1.5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all cursor-default group">
-              <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-                <span className="text-xs font-extrabold text-[#0a1e3f] leading-none">Admin</span>
-              </div>
-              <div className="w-9 h-9 rounded-xl bg-[#359b46] hover:bg-[#2c813a] text-white flex items-center justify-center font-black text-xs shadow-inner transition-transform duration-300">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -459,7 +460,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         <div className="flex items-center gap-3">
           <h3 className="font-black text-[#0a1e3f] text-base tracking-tight">Property Summary Board</h3>
           <span className="bg-blue-50 text-[#1d82f5] border border-blue-200/60 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
-            {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} remaining seats
+            {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} Remaining Seats
           </span>
         </div>
         <div className="flex flex-row gap-3 w-full sm:w-auto">

@@ -218,9 +218,9 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
   // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
-    ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
-    : "AD";
-  
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
+
   // Seat & Billing metrics calculations
   const seatsUsed = team.length + 1; 
   const seatPercentage = (seatsUsed / seatLimit) * 100;
@@ -275,9 +275,9 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" 
               />
             </div>
-            <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 shrink-0">
-              <span className="text-sm font-bold text-[#359b46]">Admin</span>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
                 {initials}
               </div>
             </div>

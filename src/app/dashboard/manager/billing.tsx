@@ -697,7 +697,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
 
   const renderStatusBadge = (status: string) => {
     if (status === 'Paid') return <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-[11px] border border-emerald-100 uppercase tracking-wide shadow-sm shrink-0">Paid</span>;
@@ -715,7 +718,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           <div className="w-full sm:w-auto flex justify-between items-center">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Billing & Payments</h2>
-              <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">SOA, collection and owner remittance</p>
+              <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">SOA, Collection & Owner Remittance</p>
             </div>
             <div className="sm:hidden w-9 h-9 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-xs border border-emerald-200 shadow-sm shrink-0">{initials}</div>
           </div>
@@ -730,9 +733,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" 
               />
             </div>
-            <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-slate-200 shrink-0">
-              <span className="text-sm font-bold text-[#359b46]">Manager</span>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">{initials}</div>
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+                {initials}
+              </div>
             </div>
           </div>
         </div>

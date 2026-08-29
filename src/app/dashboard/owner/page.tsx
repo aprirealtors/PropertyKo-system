@@ -906,7 +906,7 @@ export default function OwnerDashboard() {
             onClick={() => setIsLogoutModalOpen(true)}
             className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 py-1.5 border border-transparent hover:border-slate-600 rounded-full active:scale-95"
           >
-            <LogOut size={16} /> <span className="hidden sm:inline">Log out</span>
+            <LogOut size={16} /> <span className="hidden sm:inline">Log Out</span>
           </button>
         </div>
       </header>

@@ -514,32 +514,35 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 🌟 FOOTER */}
-      <footer className="bg-[#0a1e3f] border-t border-white/10 text-slate-400 py-8 text-center text-xs sm:text-sm font-medium w-full shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-2">
-          <p>
-            © {new Date().getFullYear()} PropertyKo. All rights reserved. Developed by{" "}
-            <a
-              href="https://byteheads.dev/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white hover:text-[#359b46] font-bold tracking-wide transition-colors"
-            >
-              Byteheads Corporation.
+      {/* 🌟 SIMPLE & CLEAN FOOTER */}
+      <footer className="bg-[#0a1e3f] py-8 sm:py-6 w-full shrink-0 border-t border-white/5 mt-auto z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-4 text-xs font-medium text-slate-400">
+          
+          {/* Left: Copyright */}
+          <div className="text-center lg:text-left order-2 lg:order-1 mt-2 lg:mt-0">
+            © {new Date().getFullYear()} <span className="font-bold text-slate-300">PropertyKo</span>. All rights reserved.
+          </div>
+
+          {/* Right: Credits */}
+          {/* ✨ FIX: Changed from flex-wrap to flex-col on mobile for a perfectly clean stack */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 order-1 lg:order-2">
+            <a href="https://byteheads.dev/" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
+              Developed by <span className="font-bold text-slate-300">Byteheads Corporation</span>
             </a>
-          </p>
-          <p className="text-slate-500">
-  Curated by{" "}
-  <a
-    href="https://aprigroup.ph/"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-white hover:text-[#359b46] font-bold tracking-wide transition-colors"
-  >
-    APRI Management
-  </a>
-</p>
-          <p className="text-slate-500">Property Management Consulting by AURA International</p>
+            
+            <span className="text-white/10 hidden sm:block">|</span>
+            
+            <a href="https://aprigroup.ph/" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
+              Operated by <span className="font-bold text-slate-300">APRI Management</span>
+            </a>
+            
+            <span className="text-white/10 hidden sm:block">|</span>
+            
+            <a href="https://aura-propertymanagement.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
+              Consulting by <span className="font-bold text-slate-300">AURA International</span>
+            </a>
+          </div>
+
         </div>
       </footer>
 

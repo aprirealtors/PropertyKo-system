@@ -298,7 +298,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     return s === 'completed' || s === 'resolved' || s === 'closed';
   }));
 
-  const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
+  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
 
   const getAssigneeName = (email: string) => {
     if (!email || email === 'Unassigned') return "Unassigned";
@@ -401,7 +404,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-black text-[#0a1e3f] tracking-tight">Maintenance &amp; Repairs</h2>
-              <p className="text-slate-400 text-sm mt-0.5 font-medium">Tickets, vendors and SLA turnaround</p>
+              <p className="text-slate-400 text-sm mt-0.5 font-medium">Tickets, Vendors & SLA Turnaround</p>
             </div>
             <div className="flex items-center gap-4 w-full sm:w-auto shrink-0">
               <div className="relative w-full sm:w-64">
@@ -415,9 +418,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 />
               </div>
               <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
-                <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#359b46] flex items-center justify-center font-bold text-xs border border-emerald-100/60">{initials}</div>
+              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+                {initials}
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -486,7 +491,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           /* =========================================
              VIEW 1: KANBAN BOARD
              ========================================= */
-          <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-3 custom-scrollbar animate-in fade-in duration-300">
+          <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-3 custom-scrollbar">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start w-full h-full min-h-[400px]">
               
               {/* COLUMN 1: OPEN */}
@@ -573,7 +578,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           /* =========================================
              VIEW 2: ENTERPRISE DATA TABLE
              ========================================= */
-          <div className="flex-1 w-full bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80 overflow-hidden flex flex-col h-full animate-in fade-in duration-300">
+          <div className="flex-1 w-full bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200/80 overflow-hidden flex flex-col h-full">
             <div className="flex-1 overflow-auto custom-scrollbar">
               <table className="w-full text-left text-sm min-w-[900px] border-collapse">
                 <thead className="bg-slate-50/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-slate-200/80 sticky top-0 z-10 backdrop-blur-md">
