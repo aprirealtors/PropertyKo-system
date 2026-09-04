@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Calendar, Edit2, 
-  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff
+  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe
 } from "lucide-react";
 
 export default function OrganizationDirectory({ organizations, isLoadingOrgs, fetchOrganizations }: any) {
@@ -13,16 +13,17 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successData, setSuccessData] = useState<{orgName: string, email: string} | null>(null);
+  const [successData, setSuccessData] = useState<{orgName: string, email: string, subdomain: string} | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   
-  // ✨ NEW: State to store live calculated MRR from the units table
+  // State to store live calculated MRR from the units table
   const [liveStats, setLiveStats] = useState<Record<string, { totalMRR: number, ownerOnly: number, tenanted: number, activeCount: number }>>({});
   
   // Form State
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState("");
+  const [subdomain, setSubdomain] = useState(""); // ✨ NEW: Subdomain state
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [plan, setPlan] = useState("Dynamic (₱99-₱198/unit)");
@@ -30,7 +31,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   const [unitsCount, setUnitsCount] = useState("0");
   const [billingDay, setBillingDay] = useState("1"); 
 
-  // ✨ NEW: Fetch live units to calculate exact MRR based on tenant status
+  // Fetch live units to calculate exact MRR based on tenant status
   useEffect(() => {
     const fetchLiveMRR = async () => {
       const { data, error } = await supabase.from('units').select('admin_email, tenant_name, status');
@@ -44,15 +45,14 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
             statsMap[email] = { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 };
           }
           
-          // Logic mirroring PropertiesAndUnitsTab:
           const hasTenant = unit.tenant_name && unit.tenant_name !== '—' && unit.tenant_name !== 'Vacant' && unit.status !== 'Vacant';
           
           if (hasTenant) {
             statsMap[email].tenanted += 1;
-            statsMap[email].totalMRR += 198; // x2 for tenanted
+            statsMap[email].totalMRR += 198; 
           } else {
             statsMap[email].ownerOnly += 1;
-            statsMap[email].totalMRR += 99; // Base rate for owner-only
+            statsMap[email].totalMRR += 99; 
           }
           statsMap[email].activeCount += 1;
         });
@@ -68,6 +68,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
 
   const resetForm = () => {
     setOrgName("");
+    setSubdomain(""); // ✨ NEW: Reset subdomain
     setAdminEmail("");
     setAdminPassword("");
     setPlan("Dynamic (₱99-₱198/unit)");
@@ -86,6 +87,15 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
 
     const requestedUnits = parseInt(unitsCount) || 0;
     const requestedDay = parseInt(billingDay) || 1;
+    
+    // ✨ NEW: Ensure subdomain is URL safe (lowercase, no spaces, no special characters except hyphens)
+    const cleanSubdomain = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+    if (!cleanSubdomain) {
+      setErrorMsg("Please provide a valid subdomain.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -103,17 +113,18 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
       const { error: dbError } = await supabase
         .from('organizations')
         .insert([{ 
-          org_name: orgName, 
+          org_name: orgName,
+          subdomain: cleanSubdomain, // ✨ NEW: Insert subdomain into database
           admin_email: adminEmail, 
           plan: plan,
           users_count: parseInt(usersCount) || 1,
-          units_count: requestedUnits, // This is the LIMIT, not active units
+          units_count: requestedUnits, 
           billing_day: requestedDay 
         }]);
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
-      setSuccessData({ orgName: orgName, email: adminEmail });
+      setSuccessData({ orgName: orgName, email: adminEmail, subdomain: cleanSubdomain });
       await fetchOrganizations(); 
       setIsSubmitting(false);
       setIsModalOpen(false); 
@@ -131,7 +142,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     setOrgName(org.org_name);
     setPlan(org.plan || "Dynamic (₱99-₱198/unit)");
     setUsersCount(org.users_count?.toString() || "1");
-    setUnitsCount(org.units_count?.toString() || "0"); // Limit allowed
+    setUnitsCount(org.units_count?.toString() || "0"); 
     setBillingDay(org.billing_day?.toString() || "1"); 
     setIsEditModalOpen(true);
     setErrorMsg(null);
@@ -175,7 +186,8 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
 
   const filteredOrgs = organizations?.filter((org: any) => 
     org.org_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    org.admin_email.toLowerCase().includes(searchTerm.toLowerCase())
+    org.admin_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (org.subdomain && org.subdomain.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
   return (
@@ -208,7 +220,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
-                placeholder="Search organizations..." 
+                placeholder="Search organizations or subdomains..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/50 focus:border-[#1d82f5] bg-white shadow-sm transition-all"
@@ -241,8 +253,6 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
               {filteredOrgs.map((org: any, index: number) => {
-                
-                // ✨ Use the live calculated stats for this specific organization
                 const orgStats = liveStats[org.admin_email] || { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 };
 
                 return (
@@ -271,6 +281,13 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                         <h3 className="font-extrabold text-[#0a1e3f] text-lg truncate mb-1" title={org.org_name}>
                           {org.org_name}
                         </h3>
+                        {/* ✨ NEW: Subdomain display */}
+                        {org.subdomain && (
+                          <div className="flex items-center justify-center gap-1.5 text-[#1d82f5] text-xs font-bold mb-1">
+                            <Globe size={12} />
+                            <span>{org.subdomain}.propertyko.com</span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-center gap-1.5 text-slate-500 text-xs font-medium mb-4">
                           <Mail size={12} />
                           <span className="truncate" title={org.admin_email}>{org.admin_email}</span>
@@ -288,12 +305,10 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                             <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                               <Home size={12} /> Units
                             </span>
-                            {/* Shows Live Active / Total Limit */}
                             <span className="text-sm font-extrabold text-slate-700">{orgStats.activeCount} / {org.units_count || 0}</span>
                           </div>
                         </div>
 
-                        {/* ✨ MRR Impact Detail Card (Using Live Computations) */}
                         <div className="w-full text-left px-4 py-3 rounded-xl border border-emerald-100 bg-emerald-50/50 flex flex-col mt-auto">
                           
                           <div className="flex justify-between items-center mb-2">
@@ -361,6 +376,29 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   </label>
                   <input type="text" required placeholder="e.g. Apex Realty Group" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
                 </div>
+                
+                {/* ✨ NEW: Subdomain Input */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
+                    <Globe size={16} className="text-[#359b46]" /> Subdomain URL
+                  </label>
+                  <div className="flex items-center">
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="futurepoint" 
+                      value={subdomain} 
+                      onChange={(e) => setSubdomain(e.target.value)} 
+                      className="w-full px-4 py-3 rounded-l-xl border border-r-0 border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" 
+                      disabled={isSubmitting} 
+                    />
+                    <span className="bg-slate-50 border border-slate-200 border-l-0 px-4 py-3 rounded-r-xl text-slate-500 text-sm font-medium shadow-sm">
+                      .propertyko.com
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Must be lowercase letters, numbers, or hyphens only.</p>
+                </div>
+
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
                     <Mail size={16} className="text-[#359b46]" /> Primary Admin Email
@@ -403,7 +441,6 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   </div>
                 </div>
                 
-                {/* ✨ Updated Billing Preview to show Potential Range instead of static math */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
                     <CreditCard size={16} className="text-[#359b46]" /> Potential MRR Preview
@@ -483,7 +520,6 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   </div>
                 </div>
                 
-                {/* ✨ Edit Modal: Shows potential MRR based on limit */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
                     <CreditCard size={16} className="text-[#1d82f5]" /> Max Potential MRR
@@ -520,10 +556,15 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               <CheckCircle size={48} strokeWidth={2.5} />
             </div>
             <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Organization Active!</h2>
-            <p className="text-slate-600 text-sm mb-8 leading-relaxed font-medium">
+            <p className="text-slate-600 text-sm mb-4 leading-relaxed font-medium">
               <span className="font-extrabold text-slate-900 block text-base mb-1">{successData.orgName}</span> 
               is securely onboarded. Workspace access granted via <span className="font-bold text-[#1d82f5]">{successData.email}</span>.
             </p>
+            {/* ✨ NEW: Success Subdomain Display */}
+            <div className="bg-slate-50 rounded-xl p-3 mb-8 border border-slate-200">
+              <p className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">Enterprise URL</p>
+              <p className="text-[#1d82f5] font-extrabold text-sm">{successData.subdomain}.propertyko.com</p>
+            </div>
             <button
               onClick={() => setSuccessData(null)}
               className="w-full bg-[#0a1e3f] hover:bg-[#15305c] text-white px-6 py-4 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98]"

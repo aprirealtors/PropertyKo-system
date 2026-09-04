@@ -2,10 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['192.168.100.46'],
-  output: "export",
-  trailingSlash: true, // <--- Fixes the 403 error on GoDaddy
+  // output: "export", <-- REMOVED: Middleware requires a Node.js server and cannot be used with static export
+  trailingSlash: true, 
   images: {
-    unoptimized: true, // <--- Required for static export
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: 'https',

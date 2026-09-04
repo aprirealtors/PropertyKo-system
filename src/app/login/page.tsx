@@ -1,169 +1,236 @@
 "use client";
 
-  import { useState } from "react";
-  import Image from "next/image";
-  import Link from "next/link";
-  import { useRouter } from "next/navigation";
-  import { supabase } from "@/utils/supabase/client";
-  import { useEffect } from "react";
-  import {
-    Eye,
-    EyeOff,
-    ShieldCheck,
-    ArrowRight,
-    Mail,
-    Lock,
-    Building2,
-    Users,
-    UserCheck,
-  } from "lucide-react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabase/client";
+import {
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  ArrowRight,
+  Mail,
+  Lock,
+  Building2,
+  Users,
+  UserCheck,
+} from "lucide-react";
 
-  export default function Home() {
-    const router = useRouter();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [isPageLoading, setIsPageLoading] = useState(true);
+export default function Home() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  
+  // State to track if user is on a subdomain
+  const [isSubdomain, setIsSubdomain] = useState(false);
 
-    // floating error toast
-    useEffect(() => {
-      if (errorMsg) {
-        const timer = setTimeout(() => {
-          setErrorMsg(null);
-        }, 5000);
-        
-        // Cleanup function para iwas memory leak kung sakaling mag-unmount or mag-click ulit agad
-        return () => clearTimeout(timer);
-      }
-    }, [errorMsg]);
-
-    // ✨ INITIAL SESSION CHECK & 8-SECOND DELAY LOGIC
-    useEffect(() => {
-      const checkSession = async () => {
-        // Kunin ang session sa background
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        // ✨ FIX: Hintayin ang eksaktong 8 seconds (8000ms) bago mag-action
-        setTimeout(() => {
-          if (session?.user) {
-            const userRole = session.user.user_metadata?.role;
-            const email = session.user.email;
-            
-            if (email === "superadmin@propertyko.com") {
-              router.push("/dashboard/superadmin");
-            } else if (userRole === "staff") {
-              router.push("/dashboard/maintenance");
-            } else if (userRole === "property_manager") {
-              router.push("/dashboard/manager");
-            } else if (userRole === "owner") {
-              router.push("/dashboard/owner");
-            } else if (userRole === "tenant") {
-              router.push("/dashboard/tenants");
-            } else {
-              router.push("/dashboard/admin");
-            }
-          } else {
-            // Walang active session, itago na ang Splash Screen para makita ang Login Form
-            setIsPageLoading(false);
-          }
-        }, 2000); // 2 seconds delay
-      };
-      
-      checkSession();
-    }, [router]);
-
-    const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
-      setErrorMsg(null);
-
-      try {
-        // 1. SIGN IN VIA SUPABASE AUTH
-        const { data: authData, error: authError } =
-          await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-        if (authError) {
-          setErrorMsg("Incorrect email or password. Please try again.");
-          setLoading(false);
-          return;
-        }
-
-        const userRole = authData.user?.user_metadata?.role;
-
-        // 2. FETCH MATCHING ORG DATA FROM DATABASE
-        const { data: orgData, error: dbError } = await supabase
-          .from("organizations")
-          .select("*")
-          .eq("admin_email", email)
-          .single();
-
-        if (dbError) {
-          console.log(
-            "Not a registered organization admin, checking alternate roles...",
-          );
-        }
-
-        // 3. DYNAMIC ROUTING BASED ON ROLE
-        if (email === "superadmin@propertyko.com") {
-          router.push("/dashboard/superadmin");
-        } else if (userRole === "staff") {
-          router.push("/dashboard/maintenance");
-        } else if (userRole === "property_manager") {
-          router.push("/dashboard/manager");
-        } else if (userRole === "owner") {
-          router.push("/dashboard/owner");
-        } else if (userRole === "tenant") {
-          router.push("/dashboard/tenants");
-        } else {
-          router.push("/dashboard/admin");
-        }
-      } catch (error: any) {
-        console.error(error);
-        setErrorMsg("An error occurred during login. Please try again.");
-        setLoading(false);
-      }
-    };
-
-    if (isPageLoading) {
-      return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
-          <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
-            <Image
-              src="/logo.jpeg"
-              fill
-              alt="PropertyKo Loading"
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div className="w-10 h-10 border-4 border-[#359b46]/20 border-t-[#359b46] rounded-full animate-spin"></div>
-        </div>
-      );
+  // Detect Subdomain on mount
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    const mainDomains = ["propertyko.com", "www.propertyko.com", "localhost"];
+    
+    if (!mainDomains.includes(hostname)) {
+      setIsSubdomain(true);
     }
+  }, []);
 
+  // floating error toast
+  useEffect(() => {
+    if (errorMsg) {
+      const timer = setTimeout(() => {
+        setErrorMsg(null);
+      }, 7000); // ✨ Increased to 7 seconds so they have time to read the longer message
+      
+      return () => clearTimeout(timer);
+    }
+  }, [errorMsg]);
+
+  // INITIAL SESSION CHECK
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      setTimeout(async () => {
+        if (session?.user) {
+          const userRole = session.user.user_metadata?.role;
+          const userEmail = session.user.email;
+          
+          const { data: orgData } = await supabase
+            .from("organizations")
+            .select("subdomain, org_name")
+            .eq("admin_email", userEmail)
+            .single();
+            
+          const hostname = window.location.hostname;
+          const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
+          const protocol = hostname === "localhost" ? "http://" : "https://";
+          const baseDomain = hostname === "localhost" ? "localhost:3000" : "propertyko.com";
+
+          // ✨ CROSS-TENANT SECURITY CHECK (Session Auto-Login)
+          let currentSubdomain = null;
+          if (!isMainDomain) {
+            currentSubdomain = hostname.split(`.${baseDomain.split(':')[0]}`)[0];
+          }
+
+          if (
+            currentSubdomain && 
+            orgData?.subdomain && 
+            currentSubdomain !== orgData.subdomain && 
+            userEmail !== "superadmin@propertyko.com"
+          ) {
+            // If they are logged in but visit the WRONG subdomain, boot them to their CORRECT subdomain
+            window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}/dashboard/admin`;
+            return;
+          }
+
+          if (userEmail === "superadmin@propertyko.com") {
+            router.push("/dashboard/superadmin");
+          } else {
+            let routePath = "/dashboard/admin";
+            if (userRole === "staff") routePath = "/dashboard/maintenance";
+            else if (userRole === "property_manager") routePath = "/dashboard/manager";
+            else if (userRole === "owner") routePath = "/dashboard/owner";
+            else if (userRole === "tenant") routePath = "/dashboard/tenants";
+
+            if (isMainDomain && orgData?.subdomain) {
+              window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}${routePath}`;
+            } else {
+              router.push(routePath);
+            }
+          }
+        } else {
+          setIsPageLoading(false);
+        }
+      }, 2000);
+    };
+    
+    checkSession();
+  }, [router]);
+
+  // HANDLE LOGIN
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      // 1. SIGN IN VIA SUPABASE AUTH
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+      if (authError) {
+        setErrorMsg("Incorrect email or password. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const userRole = authData.user?.user_metadata?.role;
+      const userEmail = authData.user?.email;
+
+      // 2. FETCH MATCHING ORG DATA FROM DATABASE
+      const { data: orgData, error: dbError } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("admin_email", userEmail)
+        .single();
+
+      if (dbError) {
+        console.log("Not a registered organization admin, checking alternate roles...");
+      }
+
+      // ✨ 3. CROSS-TENANT SECURITY CHECK (Manual Login)
+      const hostname = window.location.hostname;
+      const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
+      const protocol = hostname === "localhost" ? "http://" : "https://";
+      const baseDomain = hostname === "localhost" ? "localhost:3000" : "propertyko.com";
+
+      let currentSubdomain = null;
+      if (!isMainDomain) {
+        currentSubdomain = hostname.split(`.${baseDomain.split(':')[0]}`)[0];
+      }
+
+      // If they are on a subdomain that does NOT match their registered organization
+      if (
+        currentSubdomain && 
+        orgData?.subdomain && 
+        currentSubdomain !== orgData.subdomain && 
+        userEmail !== "superadmin@propertyko.com"
+      ) {
+        // Log them out immediately to prevent unauthorized session access
+        await supabase.auth.signOut();
+        
+        // Show professional error message
+        setErrorMsg(`Unauthorized access. This email is registered to the "${orgData.org_name}" workspace. Please visit ${orgData.subdomain}.propertyko.com to log in.`);
+        setLoading(false);
+        return;
+      }
+
+      // 4. DYNAMIC ROUTING BASED ON ROLE & DOMAIN
+      if (userEmail === "superadmin@propertyko.com") {
+        router.push("/dashboard/superadmin");
+      } else {
+        let routePath = "/dashboard/admin";
+        if (userRole === "staff") routePath = "/dashboard/maintenance";
+        else if (userRole === "property_manager") routePath = "/dashboard/manager";
+        else if (userRole === "owner") routePath = "/dashboard/owner";
+        else if (userRole === "tenant") routePath = "/dashboard/tenants";
+
+        if (isMainDomain && orgData?.subdomain) {
+          window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}${routePath}`;
+        } else {
+          router.push(routePath);
+        }
+      }
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg("An error occurred during login. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  if (isPageLoading) {
     return (
-      <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f]">
-        {/* =========================================
-            LEFT PANEL - BRANDING (Hidden on Mobile)
-            ========================================= */}
-        <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden bg-slate-900">
-          {/* High-end architectural background with overlay */}
-          <div
-            className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop')",
-            }}
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
+        <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
+          <Image
+            src="/logo.jpeg"
+            fill
+            alt="PropertyKo Loading"
+            className="object-contain"
+            priority
           />
-          <div className="absolute inset-0 z-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-900/30" />
+        </div>
+        <div className="w-10 h-10 border-4 border-[#359b46]/20 border-t-[#359b46] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
-          {/* ✨ NEW: Desktop Back Button (Left Panel Top) */}
-          <div className="relative z-10">
+  return (
+    <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f]">
+      {/* =========================================
+          LEFT PANEL - BRANDING (Hidden on Mobile)
+          ========================================= */}
+      <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 overflow-hidden bg-slate-900">
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop')",
+          }}
+        />
+        <div className="absolute inset-0 z-0 bg-gradient-to-t from-slate-950 via-slate-900/80 to-slate-900/30" />
+
+        {/* Hide Desktop Back Button if on Subdomain */}
+        <div className="relative z-10 h-10">
+          {!isSubdomain && (
             <Link 
               href="/"
               title="Back to home"
@@ -171,71 +238,70 @@
             >
               <ArrowRight size={18} strokeWidth={2.5} className="rotate-180 transition-transform" />
             </Link>
+          )}
+        </div>
+
+        <div className="relative z-10 max-w-lg py-8 mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold tracking-wide text-[#86c48f] uppercase mb-6 backdrop-blur-md">
+            <ShieldCheck size={14} />
+            Enterprise RBAC
           </div>
 
-          {/* Center Value Proposition */}
-          <div className="relative z-10 max-w-lg py-8 mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-semibold tracking-wide text-[#86c48f] uppercase mb-6 backdrop-blur-md">
-              <ShieldCheck size={14} />
-              Enterprise RBAC
+          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-[1.15] mb-6 tracking-tight">
+            One platform. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#359b46] to-[#86c48f]">
+              Six distinct experiences.
+            </span>
+          </h1>
+
+          <p className="text-slate-300 text-lg leading-relaxed mb-10">
+            Intelligently adapting to your workflow. Super Admins, Admins,
+            Managers, Maintenance, Owners, and Tenants see exactly what they
+            need securely and efficiently.
+          </p>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div className="flex flex-col gap-2">
+              <Building2 className="text-[#359b46] w-6 h-6" />
+              <h3 className="text-white font-semibold text-sm">
+                Unified Management
+              </h3>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                Centralize all your properties and operations in one workspace.
+              </p>
             </div>
-
-            <h1 className="text-4xl xl:text-5xl font-bold text-white leading-[1.15] mb-6 tracking-tight">
-              One platform. <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#359b46] to-[#86c48f]">
-                Six distinct experiences.
-              </span>
-            </h1>
-
-            <p className="text-slate-300 text-lg leading-relaxed mb-10">
-              Intelligently adapting to your workflow. Super Admins, Admins,
-              Managers, Maintenance, Owners, and Tenants see exactly what they
-              need securely and efficiently.
-            </p>
-
-            {/* Minimalist Feature Grid */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="flex flex-col gap-2">
-                <Building2 className="text-[#359b46] w-6 h-6" />
-                <h3 className="text-white font-semibold text-sm">
-                  Unified Management
-                </h3>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Centralize all your properties and operations in one workspace.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Users className="text-[#359b46] w-6 h-6" />
-                <h3 className="text-white font-semibold text-sm">
-                  Owner and Tenant Portals
-                </h3>
-                <p className="text-slate-400 text-xs leading-relaxed">
-                  Seamlessly connect with residents for payments and requests.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer info */}
-          <div className="relative z-10 flex items-center justify-between text-xs font-medium text-slate-500">
-            <p>© {new Date().getFullYear()} PropertyKo </p>
-            <div className="flex gap-4">
-              <a href="#" className="hover:text-white transition-colors">
-                Privacy Policy
-              </a>
-              <a href="#" className="hover:text-white transition-colors">
-                Terms of Service
-              </a>
+            <div className="flex flex-col gap-2">
+              <Users className="text-[#359b46] w-6 h-6" />
+              <h3 className="text-white font-semibold text-sm">
+                Owner and Tenant Portals
+              </h3>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                Seamlessly connect with residents for payments and requests.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* =========================================
-            RIGHT PANEL - LOGIN FORM (Full width on Mobile)
-            ========================================= */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-white relative overflow-hidden">
-          
-          {/* ✨ Back Button (Pang Mobile na lang ito dahil meron na sa kaliwa para sa Desktop) */}
+        <div className="relative z-10 flex items-center justify-between text-xs font-medium text-slate-500">
+          <p>© {new Date().getFullYear()} PropertyKo </p>
+          <div className="flex gap-4">
+            <a href="#" className="hover:text-white transition-colors">
+              Privacy Policy
+            </a>
+            <a href="#" className="hover:text-white transition-colors">
+              Terms of Service
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================
+          RIGHT PANEL - LOGIN FORM
+          ========================================= */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-white relative overflow-hidden">
+        
+        {/* Hide Mobile Back Button if on Subdomain */}
+        {!isSubdomain && (
           <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20 lg:hidden">
             <Link 
               href="/"
@@ -245,158 +311,149 @@
               <span className="hidden sm:inline">Back to Home</span>
             </Link>
           </div>
+        )}
 
-          <div className="w-full max-w-[420px] mt-12 lg:mt-0 relative z-10">
-            {/* Header */}
-            <div className="mb-5 text-center lg:text-left">
-              {/* Logo */}
-              <div className="flex justify-center mb-6">
-                <div className="relative w-90 sm:w-94 h-36 sm:h-37">
-                  <Image
-                    src="/logo.jpeg"
-                    fill
-                    alt="PropertyKo"
-                    className="object-contain"
-                    priority
-                  />
-                </div>
+        <div className="w-full max-w-[420px] mt-12 lg:mt-0 relative z-10">
+          <div className="mb-5 text-center lg:text-left">
+            <div className="flex justify-center mb-6">
+              <div className="relative w-90 sm:w-94 h-36 sm:h-37">
+                <Image
+                  src="/logo.jpeg"
+                  fill
+                  alt="PropertyKo"
+                  className="object-contain"
+                  priority
+                />
               </div>
-
-              {/* ✨ Icon & Title Inline Wrapper */}
-              <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm shrink-0">
-                  <UserCheck className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                  Welcome back
-                </h2>
-              </div>
-              <p className="text-slate-500 text-sm">
-                Enter your credentials to access your workspace.
-              </p>
             </div>
 
-            {/* Error Message */}
-            {errorMsg && (
-              <div className="absolute top-6 sm:top-10 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50 p-4 bg-red-50 text-red-700 text-sm font-bold rounded-2xl border border-red-200 shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
-                <ShieldCheck className="w-5 h-5 text-red-600 shrink-0" />
-                <span>{errorMsg}</span>
+            <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm shrink-0">
+                <UserCheck className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-5">
-              {/* Email Input */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700 block">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <Mail size={18} />
-                  </div>
-                  <input
-                    type="email"
-                    placeholder="Enter your registered email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Password Input */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-semibold text-slate-700 block">
-                    Password
-                  </label>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <Lock size={18} />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-12 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
-                  >
-                    {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-4 bg-[#0a1e3f] hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-3.5 rounded-xl transition-all text-sm shadow-md hover:shadow-lg flex justify-center items-center gap-2 group"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Authenticating...
-                  </span>
-                ) : (
-                  <>
-                    Sign In to Workspace
-                    <ArrowRight
-                      size={18}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Secure Note */}
-            <p className="mt-8 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
-              <ShieldCheck size={14} className="text-[#359b46]" />
-              Secure, role-based access control enabled.
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Welcome back
+              </h2>
+            </div>
+            <p className="text-slate-500 text-sm">
+              Enter your credentials to access your workspace.
             </p>
+          </div>
 
-            {/* Mobile Footer (Hidden on Desktop) */}
-            <div className="lg:hidden pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
-              <div className="flex gap-4">
-                <a href="#" className="hover:text-slate-900 transition-colors">
-                  Privacy Policy
-                </a>
-                <a href="#" className="hover:text-slate-900 transition-colors">
-                  Terms of Service
-                </a>
-              </div>
-              <p>© {new Date().getFullYear()} PropertyKo </p>
+          {errorMsg && (
+            <div className="absolute top-6 sm:top-10 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50 p-4 bg-red-50 text-red-700 text-sm font-bold rounded-2xl border border-red-200 shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
+              <ShieldCheck className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <span className="leading-tight">{errorMsg}</span>
             </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-slate-700 block">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Mail size={18} />
+                </div>
+                <input
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-semibold text-slate-700 block">
+                  Password
+                </label>
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Lock size={18} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-12 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full mt-4 bg-[#0a1e3f] hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-3.5 rounded-xl transition-all text-sm shadow-md hover:shadow-lg flex justify-center items-center gap-2 group"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Authenticating...
+                </span>
+              ) : (
+                <>
+                  Sign In to Workspace
+                  <ArrowRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </>
+              )}
+            </button>
+          </form>
+
+          <p className="mt-8 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
+            <ShieldCheck size={14} className="text-[#359b46]" />
+            Secure, role-based access control enabled.
+          </p>
+
+          <div className="lg:hidden pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
+            <div className="flex gap-4">
+              <a href="#" className="hover:text-slate-900 transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" className="hover:text-slate-900 transition-colors">
+                Terms of Service
+              </a>
+            </div>
+            <p>© {new Date().getFullYear()} PropertyKo </p>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
