@@ -4,8 +4,20 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Calendar, Edit2, 
-  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe
+  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe, Palette, Type, CheckCircle2, RotateCcw
 } from "lucide-react";
+
+// ✨ CONSTANT: Default PropertyKo Theme (Fallback/Reset)
+const defaultTheme = {
+  primaryColor: "#359b46",
+  secondaryColor: "#0a1e3f",
+  backgroundColor: "#f8fafc",
+  textColor: "#334155",
+  borderColor: "#e2e8f0",
+  borderRadius: "0.5rem",
+  fontFamily: "Inter",
+  enableShadows: true
+};
 
 export default function OrganizationDirectory({ organizations, isLoadingOrgs, fetchOrganizations }: any) {
   // Modal & UI States
@@ -20,10 +32,32 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   // State to store live calculated MRR from the units table
   const [liveStats, setLiveStats] = useState<Record<string, { totalMRR: number, ownerOnly: number, tenanted: number, activeCount: number }>>({});
   
+  // ✨ NEW: THEME BUILDER STATES
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [activeThemeOrg, setActiveThemeOrg] = useState<any>(null);
+  const [themeForm, setThemeForm] = useState(defaultTheme);
+
+  // ✨ NEW: THEME ACTION CONFIRMATION MODAL STATES
+  const [themeConfirmModal, setThemeConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'reset' | 'apply' | null;
+    title: string;
+    message: string;
+    confirmText: string;
+    confirmStyle: string;
+  }>({
+    isOpen: false,
+    type: null,
+    title: "",
+    message: "",
+    confirmText: "",
+    confirmStyle: ""
+  });
+
   // Form State
   const [editingOrgId, setEditingOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState("");
-  const [subdomain, setSubdomain] = useState(""); // ✨ NEW: Subdomain state
+  const [subdomain, setSubdomain] = useState(""); 
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [plan, setPlan] = useState("Dynamic (₱99-₱198/unit)");
@@ -68,7 +102,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
 
   const resetForm = () => {
     setOrgName("");
-    setSubdomain(""); // ✨ NEW: Reset subdomain
+    setSubdomain(""); 
     setAdminEmail("");
     setAdminPassword("");
     setPlan("Dynamic (₱99-₱198/unit)");
@@ -88,7 +122,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     const requestedUnits = parseInt(unitsCount) || 0;
     const requestedDay = parseInt(billingDay) || 1;
     
-    // ✨ NEW: Ensure subdomain is URL safe (lowercase, no spaces, no special characters except hyphens)
+    // Ensure subdomain is URL safe
     const cleanSubdomain = subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
     if (!cleanSubdomain) {
@@ -114,7 +148,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
         .from('organizations')
         .insert([{ 
           org_name: orgName,
-          subdomain: cleanSubdomain, // ✨ NEW: Insert subdomain into database
+          subdomain: cleanSubdomain, 
           admin_email: adminEmail, 
           plan: plan,
           users_count: parseInt(usersCount) || 1,
@@ -184,6 +218,88 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     }
   };
 
+  // ✨ THEME BUILDER HANDLERS
+  const openThemeModal = (org: any) => {
+    setActiveThemeOrg(org);
+    // Load existing master_theme if available, otherwise fallback
+    if (org.master_theme) {
+      setThemeForm(org.master_theme);
+    } else if (org.theme_config) {
+      setThemeForm({ ...defaultTheme, ...org.theme_config });
+    } else {
+      setThemeForm(defaultTheme);
+    }
+    setIsThemeModalOpen(true);
+    setErrorMsg(null);
+  };
+
+  const handleThemeSubmit = async () => {
+    if (!activeThemeOrg) return;
+
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      // Force enableShadows to true to protect structural layout
+      const payload = { ...themeForm, enableShadows: true }; 
+      
+      const { error: dbError } = await supabase
+        .from('organizations')
+        .update({ 
+          master_theme: payload,      // Save to Vault
+          theme_config: payload,      // Push to Display Window immediately
+          theme_preset: 'strict'      // Lock status
+        })
+        .eq('id', activeThemeOrg.id);
+
+      if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+
+      await fetchOrganizations(); 
+      setIsSubmitting(false);
+      setIsThemeModalOpen(false); 
+      setThemeConfirmModal(prev => ({ ...prev, isOpen: false }));
+
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg(error.message);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRestoreDefaultTheme = async () => {
+    if (!activeThemeOrg) return;
+    setIsSubmitting(true);
+    
+    try {
+      const { error: dbError } = await supabase
+        .from('organizations')
+        .update({ 
+          master_theme: null, // Clear the vault 
+          theme_config: defaultTheme, // Reset to PK Default
+          theme_preset: 'default' // Reset status
+        })
+        .eq('id', activeThemeOrg.id);
+
+      if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+
+      await fetchOrganizations(); 
+      setIsSubmitting(false);
+      setIsThemeModalOpen(false); 
+      setThemeConfirmModal(prev => ({ ...prev, isOpen: false }));
+
+    } catch (error: any) {
+      console.error(error);
+      setErrorMsg(error.message);
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✨ ACTION DISPATCHER FOR CONFIRMATION MODAL
+  const executeThemeAction = () => {
+    if (themeConfirmModal.type === 'reset') handleRestoreDefaultTheme();
+    if (themeConfirmModal.type === 'apply') handleThemeSubmit();
+  };
+
   const filteredOrgs = organizations?.filter((org: any) => 
     org.org_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     org.admin_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -202,7 +318,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
           </div>
           <button 
             onClick={() => { resetForm(); setIsModalOpen(true); }}
-            className="bg-gradient-to-r from-[#1d82f5] to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg w-full sm:w-auto text-center flex items-center justify-center gap-2 transform active:scale-95 shrink-0"
+            className="bg-gradient-to-r from-[#1d82f5] to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg w-full sm:w-auto text-center flex items-center justify-center gap-2 transform active:scale-95 shrink-0 outline-none focus:outline-none"
           >
             <Building2 size={16} /> Add New Organization
           </button>
@@ -259,7 +375,12 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   <div key={index} className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group overflow-hidden">
                     
                     <div className="h-24 bg-gradient-to-r from-blue-50 to-slate-100 w-full relative group-hover:from-blue-100 group-hover:to-blue-50 transition-colors">
-                      <div className="absolute top-4 right-4 z-10">
+                      <div className="absolute top-4 right-4 z-10 flex items-center">
+                        {/* ✨ NEW: Strict Theme Badge */}
+                        {org.theme_preset === 'strict' && (
+                          <StatusBadge text="Strict Spec" color="orange" />
+                        )}
+                        <span className="ml-2"></span>
                         <StatusBadge text="Active" color="green" />
                       </div>
                     </div>
@@ -281,7 +402,6 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                         <h3 className="font-extrabold text-[#0a1e3f] text-lg truncate mb-1" title={org.org_name}>
                           {org.org_name}
                         </h3>
-                        {/* ✨ NEW: Subdomain display */}
                         {org.subdomain && (
                           <div className="flex items-center justify-center gap-1.5 text-[#1d82f5] text-xs font-bold mb-1">
                             <Globe size={12} />
@@ -333,12 +453,19 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                         </div>
                       </div>
                       
-                      <div className="mt-auto pt-4 border-t border-slate-100">
+                      <div className="mt-auto pt-4 border-t border-slate-100 grid grid-cols-2 gap-2">
                         <button 
                           onClick={() => openEditModal(org)}
-                          className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1d82f5] text-slate-600 hover:text-white border border-slate-200 hover:border-[#1d82f5] px-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-sm"
+                          className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1d82f5] text-slate-600 hover:text-white border border-slate-200 hover:border-[#1d82f5] px-2 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm outline-none focus:outline-none"
                         >
-                          <Edit2 size={16} /> Manage Limits
+                          <Edit2 size={14} /> Limits
+                        </button>
+                        {/* ✨ NEW: Theme Builder Button */}
+                        <button 
+                          onClick={() => openThemeModal(org)}
+                          className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#0a1e3f] text-slate-600 hover:text-white border border-slate-200 hover:border-[#0a1e3f] px-2 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm outline-none focus:outline-none"
+                        >
+                          <Palette size={14} /> Branding
                         </button>
                       </div>
                     </div>
@@ -356,7 +483,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-xl font-extrabold text-[#0a1e3f]">Add New Organization</h2>
-              <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); resetForm(); } }} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors p-1.5 rounded-full" disabled={isSubmitting}>
+              <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); resetForm(); } }} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors p-1.5 rounded-full outline-none focus:outline-none" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
@@ -377,7 +504,6 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   <input type="text" required placeholder="e.g. Apex Realty Group" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
                 </div>
                 
-                {/* ✨ NEW: Subdomain Input */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
                     <Globe size={16} className="text-[#359b46]" /> Subdomain URL
@@ -411,7 +537,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   </label>
                   <div className="relative">
                     <input type={showPassword ? "text" : "password"} required placeholder="Create a strong password" minLength={6} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors" tabIndex={-1}>
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors outline-none" tabIndex={-1}>
                       {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                   </div>
@@ -461,8 +587,8 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               </div>
 
               <div className="mt-10 flex gap-3 justify-end">
-                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} disabled={isSubmitting} className="px-6 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#8bc994] text-white px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-500/20 min-w-[160px]">{isSubmitting ? "Creating..." : "Create Organization"}</button>
+                <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} disabled={isSubmitting} className="px-6 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors outline-none focus:outline-none">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="bg-[#359b46] hover:bg-[#2c813a] disabled:bg-[#8bc994] text-white px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-500/20 min-w-[160px] outline-none focus:outline-none">{isSubmitting ? "Creating..." : "Create Organization"}</button>
               </div>
             </form>
           </div>
@@ -475,7 +601,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
             <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h2 className="text-xl font-extrabold text-[#0a1e3f]">Manage Organization Profile</h2>
-              <button onClick={() => { if(!isSubmitting) { setIsEditModalOpen(false); resetForm(); } }} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors p-1.5 rounded-full" disabled={isSubmitting}>
+              <button onClick={() => { if(!isSubmitting) { setIsEditModalOpen(false); resetForm(); } }} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors p-1.5 rounded-full outline-none focus:outline-none" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
@@ -540,15 +666,239 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               </div>
 
               <div className="mt-10 flex gap-3 justify-end">
-                <button type="button" onClick={() => { setIsEditModalOpen(false); resetForm(); }} disabled={isSubmitting} className="px-6 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-[#1d82f5] to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 min-w-[160px]">{isSubmitting ? "Updating..." : "Save Limits"}</button>
+                <button type="button" onClick={() => { setIsEditModalOpen(false); resetForm(); }} disabled={isSubmitting} className="px-6 py-3 text-sm font-bold text-slate-600 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors outline-none focus:outline-none">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="bg-gradient-to-r from-[#1d82f5] to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-8 py-3 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 min-w-[160px] outline-none focus:outline-none">{isSubmitting ? "Updating..." : "Save Limits"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* 3. SUCCESS MODAL */}
+      {/* ✨ 3. SUPERADMIN MASTER THEME BUILDER MODAL */}
+      {isThemeModalOpen && activeThemeOrg && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-200/50 text-[#0a1e3f] flex items-center justify-center shrink-0">
+                  <Palette size={18} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-[#0a1e3f] tracking-tight">Theme Builder</h2>
+                  <p className="text-xs text-slate-500 font-medium">Corporate Spec: <strong className="text-[#0a1e3f]">{activeThemeOrg.org_name}</strong></p>
+                </div>
+              </div>
+              <button onClick={() => !isSubmitting && setIsThemeModalOpen(false)} className="text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors p-1.5 rounded-full outline-none focus:outline-none" disabled={isSubmitting}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 bg-white">
+              <form onSubmit={(e) => { e.preventDefault(); setThemeConfirmModal({
+                isOpen: true,
+                type: 'apply',
+                title: 'Apply Theme Spec',
+                message: 'This will lock the theme spec for the organization. Do you want to proceed?',
+                confirmText: 'Apply Spec',
+                confirmStyle: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
+              }); }} className="space-y-5">
+                {errorMsg && (
+                  <div className="p-4 bg-red-50 text-red-700 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-3 mb-2">
+                    <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+                    {errorMsg}
+                  </div>
+                )}
+
+                {/* Colors */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm focus-within:ring-2 focus-within:ring-[#1d82f5]">
+                      <input type="color" value={themeForm.primaryColor} onChange={(e) => setThemeForm({ ...themeForm, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Primary Color (Buttons & Active States)</label>
+                      <input type="text" value={themeForm.primaryColor.toUpperCase()} onChange={(e) => setThemeForm({ ...themeForm, primaryColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/30 uppercase transition-all" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm focus-within:ring-2 focus-within:ring-[#1d82f5]">
+                      <input type="color" value={themeForm.secondaryColor} onChange={(e) => setThemeForm({ ...themeForm, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Secondary Color (Sidebar & Headers)</label>
+                      <input type="text" value={themeForm.secondaryColor.toUpperCase()} onChange={(e) => setThemeForm({ ...themeForm, secondaryColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/30 uppercase transition-all" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-12 h-12 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-sm focus-within:ring-2 focus-within:ring-[#1d82f5]">
+                      <input type="color" value={themeForm.backgroundColor} onChange={(e) => setThemeForm({ ...themeForm, backgroundColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">App Canvas Color (Background)</label>
+                      <input type="text" value={themeForm.backgroundColor.toUpperCase()} onChange={(e) => setThemeForm({ ...themeForm, backgroundColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/30 uppercase transition-all" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-10 h-10 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm focus-within:ring-2 focus-within:ring-[#1d82f5]">
+                        <input type="color" value={themeForm.textColor} onChange={(e) => setThemeForm({ ...themeForm, textColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight">Text Color <br/><span className="font-medium opacity-70">(Main Typography)</span></label>
+                        <input type="text" value={themeForm.textColor.toUpperCase()} onChange={(e) => setThemeForm({ ...themeForm, textColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-10 h-10 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm focus-within:ring-2 focus-within:ring-[#1d82f5]">
+                        <input type="color" value={themeForm.borderColor} onChange={(e) => setThemeForm({ ...themeForm, borderColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight">Border Color <br/><span className="font-medium opacity-70">(Dividers)</span></label>
+                        <input type="text" value={themeForm.borderColor.toUpperCase()} onChange={(e) => setThemeForm({ ...themeForm, borderColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* UI Style / Radius */}
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#0a1e3f] mb-1.5">
+                    Interactive Corner Style
+                  </label>
+                  <p className="text-[10px] text-slate-400 font-medium mb-3">Applies only to buttons, inputs, and badges to preserve the system's structural layout.</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setThemeForm({ ...themeForm, borderRadius: "0px" })}
+                      className={`py-2.5 text-xs font-bold border outline-none focus:outline-none transition-all ${themeForm.borderRadius === "0px" ? "bg-[#1d82f5] text-white border-[#1d82f5] shadow-md" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                    >
+                      Sharp
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setThemeForm({ ...themeForm, borderRadius: "2px" })}
+                      className={`py-2.5 text-xs font-bold border outline-none focus:outline-none rounded-[2px] transition-all ${themeForm.borderRadius === "2px" ? "bg-[#1d82f5] text-white border-[#1d82f5] shadow-md" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                    >
+                      Strict
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setThemeForm({ ...themeForm, borderRadius: "0.5rem" })}
+                      className={`py-2.5 text-xs font-bold border outline-none focus:outline-none rounded-lg transition-all ${themeForm.borderRadius === "0.5rem" ? "bg-[#1d82f5] text-white border-[#1d82f5] shadow-md" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                    >
+                      Modern
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setThemeForm({ ...themeForm, borderRadius: "9999px" })}
+                      className={`py-2.5 text-xs font-bold border outline-none focus:outline-none rounded-full transition-all ${themeForm.borderRadius === "9999px" ? "bg-[#1d82f5] text-white border-[#1d82f5] shadow-md" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}
+                    >
+                      Pill
+                    </button>
+                  </div>
+                </div>
+
+                {/* ✨ UNLOCKED TYPOGRAPHY */}
+                <div className="pt-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[#0a1e3f] mb-2 flex items-center gap-1.5">
+                    <Type size={12} className="text-[#1d82f5]" /> Corporate Typography
+                  </label>
+                  <select 
+                    value={themeForm.fontFamily}
+                    onChange={(e) => setThemeForm({ ...themeForm, fontFamily: e.target.value })}
+                    className="w-full p-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/50 focus:border-[#1d82f5] bg-white text-sm font-bold text-slate-700 shadow-sm cursor-pointer transition-colors"
+                  >
+                    <option value="Inter">Inter (System Default)</option>
+                    <option value="Archivo">Archivo (Corporate Geometric)</option>
+                    <option value="Roboto">Roboto (Clean Sans)</option>
+                    <option value="Poppins">Poppins (Modern Round)</option>
+                  </select>
+                </div>
+                
+                {/* Hidden submit button to allow form submission via Enter key if needed */}
+                <button type="submit" className="hidden"></button>
+              </form>
+            </div>
+            
+            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-3 shrink-0">
+              <button 
+                type="button"
+                onClick={() => setThemeConfirmModal({
+                  isOpen: true,
+                  type: 'reset',
+                  title: 'Reset to Defaults',
+                  message: 'Are you sure you want to revert to the default PropertyKo theme? All customizations will be wiped out.',
+                  confirmText: 'Reset Theme',
+                  confirmStyle: 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
+                })}
+                disabled={isSubmitting}
+                className="w-1/3 bg-white hover:bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-xs py-3.5 rounded-xl transition-all shadow-sm active:scale-95 border border-slate-200 outline-none focus:outline-none"
+              >
+                Reset Default
+              </button>
+              <button 
+                type="button"
+                onClick={() => setThemeConfirmModal({
+                  isOpen: true,
+                  type: 'apply',
+                  title: 'Apply Theme Spec',
+                  message: 'This will lock the theme spec for the organization. Do you want to proceed?',
+                  confirmText: 'Apply Spec',
+                  confirmStyle: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25'
+                })}
+                disabled={isSubmitting}
+                className="w-2/3 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-xs py-3.5 rounded-xl transition-all shadow-md active:scale-95 border border-transparent outline-none focus:outline-none"
+              >
+                {isSubmitting ? "Saving..." : "Apply Theme Spec"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ THEME ACTION CONFIRMATION MODAL */}
+      {themeConfirmModal.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0a1e3f]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-slate-200">
+            
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
+              themeConfirmModal.type === 'reset' ? 'bg-red-50 text-red-500 border-red-100' :
+              'bg-emerald-50 text-emerald-500 border-emerald-100'
+            }`}>
+              {themeConfirmModal.type === 'reset' && <RotateCcw size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+              {themeConfirmModal.type === 'apply' && <CheckCircle2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 tracking-tight">
+              {themeConfirmModal.title}
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              {themeConfirmModal.message}
+            </p>
+            
+            <div className="flex gap-3 sm:gap-4">
+              <button 
+                onClick={() => setThemeConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                className="flex-1 py-3 sm:py-3.5 rounded-[0.5rem] font-black text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all active:scale-[0.96] text-xs sm:text-sm duration-200 outline-none focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeThemeAction} 
+                className={`flex-1 py-3 sm:py-3.5 rounded-[0.5rem] text-white font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent outline-none focus:outline-none ${themeConfirmModal.confirmStyle}`}
+              >
+                {themeConfirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. SUCCESS MODAL */}
       {successData && (
         <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-10 border border-emerald-100">
@@ -558,16 +908,15 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
             <h2 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Organization Active!</h2>
             <p className="text-slate-600 text-sm mb-4 leading-relaxed font-medium">
               <span className="font-extrabold text-slate-900 block text-base mb-1">{successData.orgName}</span> 
-              is securely onboarded. Workspace access granted via <span className="font-bold text-[#1d82f5]">{successData.email}</span>.
+              is securely onboarded. Workspace access granted via <span className="font-bold text-[#359b46]">{successData.email}</span>.
             </p>
-            {/* ✨ NEW: Success Subdomain Display */}
             <div className="bg-slate-50 rounded-xl p-3 mb-8 border border-slate-200">
               <p className="text-xs text-slate-500 font-bold mb-1 uppercase tracking-wider">Enterprise URL</p>
-              <p className="text-[#1d82f5] font-extrabold text-sm">{successData.subdomain}.propertyko.com</p>
+              <p className="text-[#359b46] font-extrabold text-sm">{successData.subdomain}.propertyko.com</p>
             </div>
             <button
               onClick={() => setSuccessData(null)}
-              className="w-full bg-[#0a1e3f] hover:bg-[#15305c] text-white px-6 py-4 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98]"
+              className="w-full bg-[#0a1e3f] hover:bg-[#15305c] text-white px-6 py-4 rounded-xl text-sm font-bold transition-all shadow-lg active:scale-[0.98] outline-none focus:outline-none"
             >
               Back to Directory
             </button>

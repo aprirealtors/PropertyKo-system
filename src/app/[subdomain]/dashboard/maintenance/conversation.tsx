@@ -18,17 +18,16 @@ export default function ConversationTab() {
 
   const [profileEmail, setProfileEmail] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
-  
+
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [contactSearch, setContactSearch] = useState(""); 
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false); 
-  
+
   const onlineUsers = usePresence();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  // const inputRef = useRef<HTMLInputElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -53,14 +52,7 @@ export default function ConversationTab() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
-  // // ✨ Auto-focus input pagkabukas ng chat o pagkasend ng message
-  // useEffect(() => {
-  //   if (activeChat && !isLoading && !isSearchActive && !isSending) {
-  //     setTimeout(() => {
-  //       inputRef.current?.focus();
-  //     }, 50);
-  //   }
-  // }, [activeChat, isLoading, isSearchActive, isSending]);
+
   useEffect(() => {
     setIsSearchActive(false);
     setChatSearchQuery("");
@@ -189,7 +181,7 @@ export default function ConversationTab() {
               type = 'maintenance';
               unitLabel = 'Repairs & Operations';
             }
-            
+
             contactsMap.set(user.email, { 
               id: user.email, 
               name: user.name || user.email, 
@@ -225,15 +217,16 @@ export default function ConversationTab() {
     setIsSending(true);
     setNewMessage(""); 
 
-    // ✨ FIX: Agad na ibalik ang focus sa text input pagkatapos linisin ang state
     setTimeout(() => {
       inputRef.current?.focus();
     }, 10);
 
+    const authEmail = profileEmail;
+
     const payload = {
       tenant_email: (activeContact.type === 'admin' || activeContact.type === 'manager') ? profileEmail : activeChat, 
       admin_email: adminEmail,
-      sender_email: profileEmail,
+      sender_email: authEmail, 
       content: textToSend,
       is_from_tenant: false, 
       recipient_role: activeContact.type, 
@@ -263,7 +256,6 @@ export default function ConversationTab() {
       setNewMessage(textToSend);
     } finally {
       setIsSending(false);
-      // ✨ FIX: Siguraduhing naka-focus pa rin pagkatapos mawala ang loading/disabled state ng element
       setTimeout(() => {
         inputRef.current?.focus();
       }, 10);
@@ -300,27 +292,27 @@ export default function ConversationTab() {
     ? roleMessages 
     : roleMessages.filter((msg: any) => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  // 🌟 Unified Role Badges
+  // 🌟 Unified Role Badges (Themified)
   const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Manager</span>;
-    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Maintenance</span>;
+    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-[var(--color-secondary)] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)]/20">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-slate-100 border border-slate-200">Admin</span>;
+    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-amber-50 border border-amber-200/50">Maintenance</span>;
     return null;
   };
 
   return (
-    <div className="absolute inset-0 flex bg-[#f8fafc] font-sans z-20 overflow-hidden pb-[80px] md:pb-0">
-      
+    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] z-20 overflow-hidden pb-[80px] md:pb-0">
+
       {/* SIDEBAR */}
-      <div className={`w-full md:w-[360px] flex flex-col border-r border-slate-200 bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
-        
+      <div className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
+
         {/* SIDEBAR HEADER */}
-        <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-slate-100 bg-white">
+        <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-[var(--color-border)] bg-white">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Chats</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Chats</h1>
             <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
-              className={`p-2 sm:p-2.5 rounded-xl transition-all border shadow-sm active:scale-95 duration-200 ${isEditingNames ? 'bg-emerald-50 border-emerald-200 text-[#359b46]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
+              className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]' : 'bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100'}`}
             >
               {isEditingNames ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /> : <Edit size={14} className="sm:w-4 sm:h-4" />}
             </button>
@@ -332,7 +324,7 @@ export default function ConversationTab() {
               value={contactSearch}
               onChange={(e) => setContactSearch(e.target.value)}
               placeholder="Search by name or role..." 
-              className="w-full bg-slate-50 border border-slate-200/80 text-[15px] md:text-sm rounded-xl sm:rounded-2xl pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              className="w-full bg-slate-50 border border-[var(--color-border)] text-[15px] md:text-sm rounded-[var(--radius-md)] pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] transition-all font-medium text-slate-700 placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -340,7 +332,7 @@ export default function ConversationTab() {
         {/* SIDEBAR LIST */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-white custom-scrollbar">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[#359b46]" size={18} /> Loading...</div>
+            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[var(--color-primary)]" size={18} /> Loading...</div>
           ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400 text-[10px] sm:text-xs font-semibold">
               No conversations found.
@@ -353,7 +345,7 @@ export default function ConversationTab() {
               const unreadCount = messages.filter((m: any) => !m.is_read && m.sender_email !== profileEmail && isMessageForContact(m, contact.id, contact.type)).length;
               const isOnline = onlineUsers.includes(contact.id);
               const ContactIcon = contact.icon;
-              
+
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
                 if (lastMsg.sender_email === profileEmail) return "You: ";
@@ -366,18 +358,18 @@ export default function ConversationTab() {
                 <div 
                   key={contact.id} 
                   onClick={() => { if (!isEditingNames) setActiveChat(contact.id); }} 
-                  className={`flex items-center gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl cursor-pointer transition-all duration-200 relative group ${
+                  className={`flex items-center gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 relative group ${
                     isActive && !isEditingNames 
-                      ? 'bg-emerald-50/70 border border-emerald-100/30 shadow-sm' 
+                      ? 'bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 shadow-sm' 
                       : 'border border-transparent hover:bg-slate-50'
                   }`}
                 >
                   {/* 1. AVATAR QUADRANT (Left) */}
                   <div className="relative shrink-0">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       isActive && !isEditingNames 
-                        ? 'bg-gradient-to-br from-[#359b46] to-[#277534] text-white border-transparent shadow-emerald-500/20 scale-105' 
-                        : 'bg-slate-50 text-slate-500 border-slate-200/60 group-hover:scale-105'
+                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent shadow-[var(--shadow-md)] scale-105' 
+                        : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105'
                     }`}>
                       <ContactIcon size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
                     </div>
@@ -386,23 +378,23 @@ export default function ConversationTab() {
 
                   {/* RIGHT SECTION: 2-Row Messenger Style */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    
+
                     {/* 2. TOP ROW (Name & Time) */}
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
-                      {/* Name - Naka flex-1 at min-w-0 para piliting mag-truncate kapag umabot sa dulo */}
+                      {/* Name */}
                       <div className="flex-1 min-w-0">
                         {isEditingNames ? (
                           <input 
                             type="text" 
                             value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
                             onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
-                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#359b46] border-b-2 border-[#359b46] bg-transparent outline-none w-full py-0.5" 
+                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-transparent outline-none w-full py-0.5" 
                             onClick={(e) => e.stopPropagation()} 
                           />
                         ) : (
                           <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? 'font-black text-[#0a1e3f]' : isActive ? 'font-bold text-[#0a1e3f]' : 'font-semibold text-slate-700'
+                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-[var(--color-text)]'
                             }`}
                             title={`${customNames[contact.id] || contact.name} - ${contact.type.charAt(0).toUpperCase() + contact.type.slice(1)}`}
                           >
@@ -413,19 +405,19 @@ export default function ConversationTab() {
                           </h3>
                         )}
                       </div>
-                      {/* Time - Naka shrink-0 para kahit gaano kahaba ang pangalan, hindi siya masisiksik o mawawala */}
-                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[#359b46]' : 'font-medium text-slate-400'}`}>
+                      {/* Time */}
+                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[var(--color-primary)]' : 'font-medium text-slate-400'}`}>
                         {displayTime}
                       </span>
                     </div>
 
                     {/* 3. BOTTOM ROW (Message & Badge) */}
                     <div className="flex justify-between items-center w-full gap-2">
-                      {/* Last Message - Naka truncate din */}
+                      {/* Last Message */}
                       <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-400'}`}>
                         {lastMsg ? (
                           <span>
-                            <span className={unreadCount > 0 ? "text-[#0a1e3f] mr-1" : "text-slate-500 mr-1"}>
+                            <span className={unreadCount > 0 ? "text-[var(--color-secondary)] mr-1" : "text-slate-500 mr-1"}>
                               {getSidebarMessagePrefix()}
                             </span>
                             {lastMsg.content}
@@ -433,7 +425,7 @@ export default function ConversationTab() {
                         ) : contact.unit}
                       </p>
                       
-                      {/* Unread Badge - Naka-lock din ang pwesto sa kanan */}
+                      {/* Unread Badge */}
                       <div className="shrink-0 flex items-center justify-end min-w-[16px]">
                         {unreadCount > 0 && !isEditingNames && (
                           <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-red-500/20 animate-in zoom-in-50">
@@ -454,26 +446,26 @@ export default function ConversationTab() {
       {/* MAIN CHAT AREA */}
       <div className={`flex-1 flex flex-col bg-slate-50 relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
         {!activeChat ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl sm:rounded-[2rem] flex items-center justify-center mb-3 sm:mb-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-100">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[var(--color-bg)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-[var(--radius-lg)] flex items-center justify-center mb-3 sm:mb-4 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
               <MessageSquare size={28} className="text-slate-300 sm:w-8 sm:h-8" />
             </div>
-            <h2 className="text-base sm:text-lg font-black text-slate-700 tracking-tight">No Conversation Selected</h2>
+            <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">No Conversation Selected</h2>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium max-w-[200px] sm:max-w-[220px] mx-auto mt-1 leading-relaxed">Choose a client, tenant, or admin manager from the list to view active operational logs.</p>
           </div>
         ) : (
           <>
             {/* CHAT HEADER */}
-            <div className="shrink-0 h-[60px] sm:h-[70px] md:h-[75px] bg-white/90 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-3 sm:px-4 md:px-6 z-10 shadow-sm shadow-slate-100/40">
+            <div className="shrink-0 h-[60px] sm:h-[70px] md:h-[75px] bg-[var(--color-bg)]/90 backdrop-blur-md border-b border-[var(--color-border)] flex items-center justify-between px-3 sm:px-4 md:px-6 z-10 shadow-[var(--shadow-sm)]">
               <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-                <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[#359b46] hover:bg-slate-50 rounded-xl transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
+                <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[var(--color-primary)] hover:bg-slate-50 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-500 shadow-inner"><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] bg-slate-50 border border-[var(--color-border)] flex items-center justify-center text-slate-500 shadow-inner"><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
                   {isActiveContactOnline && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h2 className="font-black text-[#0a1e3f] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
+                    <h2 className="font-black text-[var(--color-secondary)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
                     {renderRoleBadge(activeContactDetails?.type)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
@@ -483,31 +475,31 @@ export default function ConversationTab() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-xl transition-all active:scale-95 border ${isSearchActive ? 'bg-[#359b46] border-transparent text-white shadow-md shadow-emerald-500/10' : 'text-[#359b46] border-slate-100 hover:bg-emerald-50 bg-white shadow-sm'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
+              <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border ${isSearchActive ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-primary-text)] shadow-[var(--shadow-md)]' : 'text-[var(--color-primary)] border-[var(--color-border)] hover:bg-[var(--color-primary)]/5 bg-white shadow-[var(--shadow-sm)]'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
             </div>
 
             {isSearchActive && (
-              <div className="shrink-0 bg-white border-b border-slate-200/60 p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-sm animate-in slide-in-from-top duration-200">
+              <div className="shrink-0 bg-white border-b border-[var(--color-border)] p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-[var(--shadow-sm)] animate-in slide-in-from-top duration-200">
                 <div className="flex-1 relative">
                   <Search size={14} className="absolute left-3 sm:left-3.5 top-2.5 sm:top-3 text-slate-400 sm:w-4 sm:h-4" />
-                  <input type="text" value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} placeholder="Search chat..." className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-slate-500/5 transition-all text-slate-700 font-medium" autoFocus />
+                  <input type="text" value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} placeholder="Search chat..." className="w-full bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-md)] pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-slate-700 font-medium" autoFocus />
                 </div>
-                <button onClick={() => { setIsSearchActive(false); setChatSearchQuery(""); }} className="text-slate-400 hover:text-slate-600 text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors">Cancel</button>
+                <button onClick={() => { setIsSearchActive(false); setChatSearchQuery(""); }} className="text-slate-400 hover:text-[var(--color-text)] text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors">Cancel</button>
               </div>
             )}
 
             {/* MESSAGES SCROLL AREA */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50/50 space-y-3 sm:space-y-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar">
               {isLoading ? (
                 <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
-                  <Clock size={14} className="animate-spin text-[#359b46] sm:w-4 sm:h-4" /> Loading...
+                  <Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...
                 </div>
               ) : displayedMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-slate-200/60 rounded-xl sm:rounded-[1.5rem] flex items-center justify-center mb-2 sm:mb-3 shadow-sm text-slate-300">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300">
                     <ActiveIcon size={24} className="sm:w-7 sm:h-7" />
                   </div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-700 tracking-tight">
+                  <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">
                     {searchQuery ? "No messages found" : `Say hello to ${currentChatName}`}
                   </h3>
                   <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
@@ -519,18 +511,18 @@ export default function ConversationTab() {
                   const isMe = msg.sender_email === profileEmail;
                   const isPending = msg.id.toString().startsWith('temp_');
                   return (
-                    <div key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`} className="w-full flex flex-col animate-in fade-in duration-200" style={{ alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`} className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200`}>
                       <div 
                         className={`max-w-[85%] sm:max-w-[80%] md:max-w-[65%] px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-sm border ${
                           isMe 
-                            ? 'bg-[#359b46] text-white border-emerald-600/10 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                            : 'bg-white text-slate-800 border-slate-200/60 rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                            : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
                         } ${isPending ? 'opacity-60' : 'opacity-100'}`}
                         style={{ overflowWrap: 'anywhere' }}
                       >
                         {msg.content}
                       </div>
-                      
+
                       {/* Time Stamp & Status Updates */}
                       <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -551,32 +543,30 @@ export default function ConversationTab() {
               <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {/* ✨ UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-slate-200/80 z-10">
+            {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
+            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-[var(--color-border)] z-10">
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
-                <div className="flex-1 bg-slate-50 border border-slate-200/80 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#359b46]/5 focus-within:border-slate-300 transition-all shadow-inner">
+                <div className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
                     onChange={(e) => {
                       setNewMessage(e.target.value);
-                      // Auto-resize magic:
                       e.target.style.height = 'auto';
                       e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                     }}
                     onKeyDown={(e) => {
-                      // Allow send via 'Enter' key without holding Shift
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (newMessage.trim() && !isSending) {
                           handleSendMessage(e as any);
-                          e.currentTarget.style.height = 'auto'; // reset height after send
+                          e.currentTarget.style.height = 'auto';
                         }
                       }
                     }}
                     placeholder="Type a message..."
-                    className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-slate-800 font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
-                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} // Dynamic height limits
+                    className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-[var(--color-text)] font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
+                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
                     disabled={isSending || isLoading}
                     rows={1}
                   />
@@ -584,9 +574,9 @@ export default function ConversationTab() {
                 <button
                   type="submit"
                   disabled={!newMessage.trim() || isSending}
-                  className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-sm duration-200 mb-0.5 ${
+                  className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-[var(--shadow-sm)] duration-200 mb-0.5 ${
                     newMessage.trim() 
-                      ? 'bg-[#359b46] text-white border-transparent shadow-emerald-500/20 hover:bg-[#2e853c]' 
+                      ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90' 
                       : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
@@ -606,7 +596,7 @@ export default function ConversationTab() {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
         .pb-safe { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
       `}} />
     </div>

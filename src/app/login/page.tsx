@@ -32,9 +32,10 @@ export default function Home() {
   // Detect Subdomain on mount
   useEffect(() => {
     const hostname = window.location.hostname;
-    const mainDomains = ["propertyko.com", "www.propertyko.com", "localhost"];
+    // ✨ FIX: Simplified domain check
+    const isMain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
     
-    if (!mainDomains.includes(hostname)) {
+    if (!isMain) {
       setIsSubdomain(true);
     }
   }, []);
@@ -44,7 +45,7 @@ export default function Home() {
     if (errorMsg) {
       const timer = setTimeout(() => {
         setErrorMsg(null);
-      }, 7000); // ✨ Increased to 7 seconds so they have time to read the longer message
+      }, 7000); 
       
       return () => clearTimeout(timer);
     }
@@ -68,13 +69,15 @@ export default function Home() {
             
           const hostname = window.location.hostname;
           const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
-          const protocol = hostname === "localhost" ? "http://" : "https://";
-          const baseDomain = hostname === "localhost" ? "localhost:3000" : "propertyko.com";
+          const isLocal = hostname.includes("localhost");
+          const protocol = isLocal ? "http://" : "https://";
+          const baseDomain = isLocal ? "localhost:3000" : "propertyko.com";
 
           // ✨ CROSS-TENANT SECURITY CHECK (Session Auto-Login)
           let currentSubdomain = null;
           if (!isMainDomain) {
-            currentSubdomain = hostname.split(`.${baseDomain.split(':')[0]}`)[0];
+            // FIX: Robust subdomain extraction for both local and prod
+            currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
           }
 
           if (
@@ -83,7 +86,6 @@ export default function Home() {
             currentSubdomain !== orgData.subdomain && 
             userEmail !== "superadmin@propertyko.com"
           ) {
-            // If they are logged in but visit the WRONG subdomain, boot them to their CORRECT subdomain
             window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}/dashboard/admin`;
             return;
           }
@@ -149,12 +151,14 @@ export default function Home() {
       // ✨ 3. CROSS-TENANT SECURITY CHECK (Manual Login)
       const hostname = window.location.hostname;
       const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
-      const protocol = hostname === "localhost" ? "http://" : "https://";
-      const baseDomain = hostname === "localhost" ? "localhost:3000" : "propertyko.com";
+      const isLocal = hostname.includes("localhost");
+      const protocol = isLocal ? "http://" : "https://";
+      const baseDomain = isLocal ? "localhost:3000" : "propertyko.com";
 
       let currentSubdomain = null;
       if (!isMainDomain) {
-        currentSubdomain = hostname.split(`.${baseDomain.split(':')[0]}`)[0];
+        // FIX: Robust subdomain extraction that won't break on localhost
+        currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
       }
 
       // If they are on a subdomain that does NOT match their registered organization
@@ -164,11 +168,9 @@ export default function Home() {
         currentSubdomain !== orgData.subdomain && 
         userEmail !== "superadmin@propertyko.com"
       ) {
-        // Log them out immediately to prevent unauthorized session access
         await supabase.auth.signOut();
-        
-        // Show professional error message
-        setErrorMsg(`Unauthorized access. This email is registered to the "${orgData.org_name}" workspace. Please visit ${orgData.subdomain}.propertyko.com to log in.`);
+        // Dynamically show the correct local vs prod domain in the error message
+        setErrorMsg(`Unauthorized access. This email is registered to the "${orgData.org_name}" workspace. Please visit ${orgData.subdomain}.${baseDomain} to log in.`);
         setLoading(false);
         return;
       }
@@ -208,7 +210,7 @@ export default function Home() {
             priority
           />
         </div>
-        <div className="w-10 h-10 border-4 border-[#359b46]/20 border-t-[#359b46] rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -298,14 +300,14 @@ export default function Home() {
       {/* =========================================
           RIGHT PANEL - LOGIN FORM
           ========================================= */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-white relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 py-6 sm:px-12 sm:py-8 lg:px-24 lg:py-12 bg-[var(--color-bg,#ffffff)] relative overflow-hidden">
         
         {/* Hide Mobile Back Button if on Subdomain */}
         {!isSubdomain && (
           <div className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20 lg:hidden">
             <Link 
               href="/"
-              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-white transition-all group rounded-full hover:bg-white/10 backdrop-blur-sm border border-transparent hover:border-white/20 active:scale-95 shadow-sm"
+              className="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-all group rounded-full hover:bg-slate-100 backdrop-blur-sm border border-transparent hover:border-slate-200 active:scale-95 shadow-sm"
             >
               <ArrowRight size={16} strokeWidth={2.5} className="rotate-180 group-hover:-translate-x-1 transition-transform" />
               <span className="hidden sm:inline">Back to Home</span>
@@ -318,9 +320,9 @@ export default function Home() {
             <div className="flex justify-center mb-6">
               <div className="relative w-90 sm:w-94 h-36 sm:h-37">
                 <Image
-                  src="/logo.jpeg"
+                  src="/propertyko-logo.png"
                   fill
-                  alt="PropertyKo"
+                  alt="PropertyKo-logo"
                   className="object-contain"
                   priority
                 />
@@ -328,14 +330,14 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-100 flex items-center justify-center shadow-sm shrink-0">
-                <UserCheck className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--color-bg)] rounded-[var(--radius-lg)] border border-[var(--color-border)] flex items-center justify-center shadow-[var(--shadow-sm)] shrink-0">
+                <UserCheck className="text-[var(--color-primary)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--color-text)" }}>
                 Welcome back
               </h2>
             </div>
-            <p className="text-slate-500 text-sm">
+            <p className="text-sm opacity-70" style={{ color: "var(--color-text)" }}>
               Enter your credentials to access your workspace.
             </p>
           </div>
@@ -349,11 +351,11 @@ export default function Home() {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold text-slate-700 block">
-                Email Address
+              <label className="text-sm font-semibold opacity-90 block" style={{ color: "var(--color-text)" }}>
+                Email Address:
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none opacity-50" style={{ color: "var(--color-text)" }}>
                   <Mail size={18} />
                 </div>
                 <input
@@ -361,7 +363,7 @@ export default function Home() {
                   placeholder="Enter your registered email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  className="w-full pl-11 pr-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
               </div>
@@ -369,12 +371,12 @@ export default function Home() {
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-sm font-semibold text-slate-700 block">
-                  Password
+                <label className="text-sm font-semibold opacity-90 block" style={{ color: "var(--color-text)" }}>
+                  Password:
                 </label>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none opacity-50" style={{ color: "var(--color-text)" }}>
                   <Lock size={18} />
                 </div>
                 <input
@@ -382,13 +384,14 @@ export default function Home() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm focus:outline-none focus:border-[#359b46] focus:ring-1 focus:ring-[#359b46] transition-all placeholder:text-slate-400 shadow-sm"
+                  className="w-full pl-11 pr-12 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center opacity-50 hover:opacity-100 transition-opacity focus:outline-none"
+                  style={{ color: "var(--color-text)" }}
                 >
                   {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                 </button>
@@ -398,12 +401,12 @@ export default function Home() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-4 bg-[#0a1e3f] hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-3.5 rounded-xl transition-all text-sm shadow-md hover:shadow-lg flex justify-center items-center gap-2 group"
+              className="w-full mt-4 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] font-semibold py-3.5 rounded-[var(--radius-lg)] transition-all text-sm shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] flex justify-center items-center gap-2 group border border-transparent"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    className="animate-spin -ml-1 mr-2 h-4 w-4"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -436,17 +439,17 @@ export default function Home() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-xs text-slate-500 flex items-center justify-center gap-1.5">
-            <ShieldCheck size={14} className="text-[#359b46]" />
+          <p className="mt-8 text-center text-xs opacity-60 flex items-center justify-center gap-1.5" style={{ color: "var(--color-text)" }}>
+            <ShieldCheck size={14} style={{ color: "var(--color-primary)" }} />
             Secure, role-based access control enabled.
           </p>
 
-          <div className="lg:hidden pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-xs text-slate-500">
+          <div className="lg:hidden pt-8 border-t border-[var(--color-border)] flex flex-col items-center gap-4 text-xs opacity-60" style={{ color: "var(--color-text)" }}>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-slate-900 transition-colors">
+              <a href="#" className="hover:opacity-100 transition-opacity">
                 Privacy Policy
               </a>
-              <a href="#" className="hover:text-slate-900 transition-colors">
+              <a href="#" className="hover:opacity-100 transition-opacity">
                 Terms of Service
               </a>
             </div>

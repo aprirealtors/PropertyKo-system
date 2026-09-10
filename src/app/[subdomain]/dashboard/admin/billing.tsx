@@ -13,9 +13,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
-    // Search State
   const [searchQuery, setSearchQuery] = useState("");
-  // Mobile Master-Detail State
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
   
   // Global Computation Settings
@@ -697,8 +695,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // const initials = orgData?.org_name ? orgData.org_name.substring(0, 2).toUpperCase() : "AD";
-  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
   ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
   : "AD";
@@ -711,17 +707,17 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
       
       {/* TOP HEADER */}
-      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+      <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 max-w-[1600px] mx-auto w-full">
           <div className="w-full sm:w-auto flex justify-between items-center">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight">Billing & Payments</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Billing & Payments</h2>
               <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">SOA, Collection & Owner Remittance</p>
             </div>
-            <div className="sm:hidden w-9 h-9 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-xs border border-emerald-200 shadow-sm shrink-0">{initials}</div>
+            <div className="sm:hidden w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-xs border border-[var(--color-primary)]/20 shadow-sm shrink-0">{initials}</div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
             <div className="relative w-full sm:w-64 shrink-0">
@@ -731,12 +727,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search units, tenants, owners..." 
-                className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] bg-slate-50 transition-all shadow-inner" 
+                className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] bg-slate-50 transition-all shadow-inner text-[var(--color-text)]" 
               />
             </div>
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
-              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
             </div>
@@ -748,33 +744,33 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden max-w-[1600px] mx-auto w-full relative">
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider gap-3">
-            <Clock size={24} className="animate-spin text-[#359b46]" /> Loading billing data...
+            <Clock size={24} className="animate-spin text-[var(--color-primary)]" /> Loading billing data...
           </div>
         ) : allUnits.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-6">
-            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.04)] border border-slate-200/60 p-10 sm:p-12 text-center max-w-md w-full">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-slate-100 shadow-inner">
-                <CreditCard size={28} className="text-slate-300 sm:w-8 sm:h-8" />
+            <div className="bg-white rounded-[2rem] shadow-[var(--shadow-md)] border border-[var(--color-border)] p-10 sm:p-12 text-center max-w-md w-full">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-[var(--color-primary)]/10 shadow-inner">
+                <CreditCard size={28} className="text-[var(--color-primary)]/50 sm:w-8 sm:h-8" />
               </div>
-              <p className="text-slate-700 font-black text-lg sm:text-xl tracking-tight">No units found</p>
+              <p className="text-[var(--color-secondary)] font-black text-lg sm:text-xl tracking-tight">No units found</p>
               <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Add units to your property to manage billing.</p>
             </div>
           </div>
         ) : (
           <>
             {/* SIDEBAR */}
-            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
-              <div className="p-3 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center">
+            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex-col h-full z-10 shadow-sm ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
+              <div className="p-3 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
-                  <button onClick={openComputationModal} className="text-slate-400 hover:text-[#1d82f5] hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors active:scale-95 flex items-center gap-1.5 border border-transparent hover:border-blue-100" title="Billing Settings">
+                  <h3 className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
+                  <button onClick={openComputationModal} className="text-[var(--color-primary)] hover:opacity-80 bg-[var(--color-primary)]/10 px-2 py-1 rounded-[var(--radius-sm)] transition-colors active:scale-95 flex items-center gap-1.5 border border-[var(--color-primary)]/20" title="Billing Settings">
                     <Calculator size={13} strokeWidth={2.5} />
                     <span className="text-[10px] font-bold uppercase tracking-wider">Config</span>
                   </button>
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{filteredUnits.length} Total</span>
               </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-[var(--color-bg)]/30">
                 {filteredUnits.length === 0 ? (
                   <div className="text-center py-10 px-4">
                     <p className="text-xs font-bold text-slate-400">No units match your search.</p>
@@ -798,10 +794,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           setSelectedUnit(unit);
                           setIsMobileListVisible(false);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200 shadow-sm shadow-emerald-500/5' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)]'}`}
+                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]' : 'bg-white border-transparent hover:border-[var(--color-border)] hover:shadow-sm'}`}
                       >
                         <div className="flex-1 min-w-0">
-                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight ${isSelected ? 'font-black text-[#2a7a37]' : 'font-bold text-slate-700'}`}>
+                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight ${isSelected ? 'font-black text-[var(--color-primary)]' : 'font-bold text-[var(--color-text)]'}`}>
                             {unit.property_name} {unit.unit_number}
                           </h4>
                           <div className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate mt-1">
@@ -811,23 +807,23 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         </div>
                         <div className="flex flex-col items-end shrink-0 gap-1.5">
                           {isRowOwnerVacant && isRowTenantVacant ? (
-                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-[var(--radius-sm)] border border-slate-200">
                               VACANT
                             </span>
                           ) : (
                             <>
                               {!isRowOwnerVacant && hasRowOwnerAssign && (
-                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${rOwnerStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rOwnerStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                   O: {rOwnerStat}
                                 </span>
                               )}
                               {!isRowTenantVacant && hasRowTenantAssign && (
-                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${rTenantStat === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : rTenantStat === 'Overdue' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                                   T: {rTenantStat}
                                 </span>
                               )}
                               {(!isRowOwnerVacant || !isRowTenantVacant) && !hasRowOwnerAssign && !hasRowTenantAssign && (
-                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-100">
+                                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-[var(--radius-sm)] border border-slate-100">
                                   Unassigned
                                 </span>
                               )}
@@ -842,51 +838,51 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
             </div>
 
             {/* MAIN DETAILS */}
-           <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${!isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
+           <div className={`flex-1 flex-col overflow-hidden bg-[var(--color-bg)] relative ${!isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
                     <Search size={28} className="text-slate-300 sm:w-8 sm:h-8" />
                   </div>
-                  <p className="text-slate-700 font-black text-lg sm:text-xl tracking-tight">No unit selected</p>
+                  <p className="text-[var(--color-secondary)] font-black text-lg sm:text-xl tracking-tight">No unit selected</p>
                   <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Choose a unit from the sidebar to view billing details.</p>
                 </div>
               ) : (
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
                 
-                <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-800 overflow-hidden mb-4 sm:mb-6">
+                <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
                   
-                  <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-slate-800">
+                  <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/30">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <button 
                         onClick={() => setIsMobileListVisible(true)}
-                        className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors active:scale-95 shrink-0"
+                        className="md:hidden p-1.5 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"
                       >
                         <ChevronLeft size={22} strokeWidth={2.5} />
                       </button>
-                      <h3 className="font-extrabold text-[#0a1e3f] text-base sm:text-xl tracking-tight leading-tight whitespace-normal break-words">
+                      <h3 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-xl tracking-tight leading-tight whitespace-normal break-words">
                         {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                       </h3>
                     </div>
                     {isOwnerVacant && isTenantVacant && (
-                      <span className="text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-md sm:rounded-full text-[10px] sm:text-[11px] border border-slate-200 uppercase tracking-wide shadow-sm shrink-0">
+                      <span className="text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] border border-slate-200 uppercase tracking-wide shadow-sm shrink-0">
                         Vacant
                       </span>
                     )}
                   </div>
 
-                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'lg:grid-cols-2 lg:divide-x lg:divide-slate-800' : ''}`}>
+                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'lg:grid-cols-2 lg:divide-x lg:divide-[var(--color-border)]' : ''}`}>
                     
                     <div className="p-4 sm:p-6 md:p-8 relative flex flex-col">
-                       <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-400 flex justify-between items-start gap-3">
+                       <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)] flex justify-between items-start gap-3">
                            <div className="min-w-0">
                                <h4 className="font-black text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
-                               <p className="font-bold text-[#0a1e3f] text-[13px] sm:text-base truncate">{isOwnerVacant ? 'Vacant' : selectedUnit?.owner_name}</p>
+                               <p className="font-bold text-[var(--color-secondary)] text-[13px] sm:text-base truncate">{isOwnerVacant ? 'Vacant' : selectedUnit?.owner_name}</p>
                            </div>
                            {!isOwnerVacant && hasOwnerAssign && renderStatusBadge(ownerStatus)}
                        </div>
 
-                       <h5 className="font-black text-[#0a1e3f] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-50 truncate">
+                       <h5 className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-50 truncate">
                           {isOwnerVacant && isTenantVacant ? 'Base Unit Charges' : 'Assigned to Owner'}
                        </h5>
 
@@ -894,16 +890,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           {isAssigned && hasOwnerAssign ? (
                             <>
                               {activeConfig.owner.dues && (
-                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {activeConfig.owner.parking && (
-                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {activeConfig.owner.water && (
-                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {activeConfig.owner.electricity && (
-                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {ownerPenalty > 0 && !isOwnerVacant && (
                                 <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -915,25 +911,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           )}
                        </div>
                        
-                       <div className="mt-5 sm:mt-6 pt-4 border-t border-slate-200 flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 lg:rounded-bl-3xl">
+                       <div className="mt-5 sm:mt-6 pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 lg:rounded-bl-[2rem]">
                            <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Subtotal</span>
-                           <span className="font-black text-[#0a1e3f] text-sm sm:text-lg shrink-0">
+                           <span className="font-black text-[var(--color-secondary)] text-sm sm:text-lg shrink-0">
                              {isAssigned ? `₱${ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                            </span>
                        </div>
                     </div>
 
                     {!isTenantVacant && (
-                       <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col border-t lg:border-t-0 border-slate-800 lg:rounded-br-3xl">
-                           <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-400 flex justify-between items-start gap-3">
+                       <div className="p-4 sm:p-6 md:p-8 bg-[var(--color-primary)]/5 relative flex flex-col border-t lg:border-t-0 border-[var(--color-border)] lg:rounded-br-[2rem]">
+                           <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-primary)]/20 flex justify-between items-start gap-3">
                                <div className="min-w-0">
-                                   <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
-                                   <p className="font-bold text-slate-800 text-[13px] sm:text-base truncate">{selectedUnit?.tenant_name}</p>
+                                   <h4 className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
+                                   <p className="font-bold text-[var(--color-text)] text-[13px] sm:text-base truncate">{selectedUnit?.tenant_name}</p>
                                </div>
                                {hasTenantAssign && renderStatusBadge(tenantStatus)}
                            </div>
 
-                           <h5 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-60 truncate">
+                           <h5 className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-3 sm:mb-4 opacity-60 truncate">
                               Assigned to Tenant
                            </h5>
 
@@ -941,16 +937,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               {isAssigned && hasTenantAssign ? (
                                 <>
                                   {activeConfig.tenant.dues && (
-                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-slate-800 shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {activeConfig.tenant.parking && (
-                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-slate-800 shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {activeConfig.tenant.water && !isTenantVacant && (
-                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-slate-800 shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {activeConfig.tenant.electricity && !isTenantVacant && (
-                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-800 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                    <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {tenantPenalty > 0 && (
                                     <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-400 font-bold truncate">Late Penalty</span><span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -962,9 +958,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               )}
                            </div>
 
-                           <div className="mt-5 sm:mt-6 pt-4 border-t border-blue-200 flex justify-between items-center bg-blue-50/40 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 lg:rounded-br-3xl">
-                               <span className="text-[10px] sm:text-[11px] font-black text-[#1d82f5]/70 uppercase tracking-widest shrink-0">Subtotal</span>
-                               <span className="font-black text-[#1d82f5] text-sm sm:text-lg shrink-0">
+                           <div className="mt-5 sm:mt-6 pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/10 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3.5 sm:py-4 lg:rounded-br-[2rem]">
+                               <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] opacity-80 uppercase tracking-widest shrink-0">Tenant Total</span>
+                               <span className="font-black text-[var(--color-primary)] text-sm sm:text-lg shrink-0">
                                  {isAssigned ? `₱${tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                                </span>
                            </div>
@@ -974,10 +970,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
 
                 {/* Total Hero Card */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-8 bg-gradient-to-r from-[#0a1e3f] to-[#163666] p-4 sm:p-6 rounded-[1.25rem] sm:rounded-3xl shadow-lg shadow-blue-900/10 w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-8 bg-[var(--color-secondary)] p-4 sm:p-6 rounded-[1.25rem] sm:rounded-3xl shadow-[var(--shadow-md)] w-full overflow-hidden">
                   <div className="min-w-0">
-                    <span className="font-bold text-blue-200 text-[11px] sm:text-xs uppercase tracking-widest truncate block">Total Amount Due</span>
-                    {!isTenantVacant && <div className="text-[9px] sm:text-[10px] font-medium text-blue-300 mt-1 opacity-80 truncate block">Combined Property Balance</div>}
+                    <span className="font-bold text-white/70 text-[11px] sm:text-xs uppercase tracking-widest truncate block">Total Amount Due</span>
+                    {!isTenantVacant && <div className="text-[9px] sm:text-[10px] font-medium text-white/50 mt-1 truncate block">Combined Property Balance</div>}
                   </div>
                   <span className="font-black text-white text-2xl sm:text-3xl md:text-4xl tracking-tight break-all sm:break-normal shrink-0">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>
@@ -988,7 +984,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   {isAssigned && ((ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant) || (tenantTotalDue > 0 && tenantStatus !== 'Paid' && !isTenantVacant)) && (
                     <button 
                       onClick={() => setIsPaymentSelectionModalOpen(true)}
-                      className="w-full justify-center sm:w-auto bg-gradient-to-b from-[#359b46] to-[#2a7a37] text-white px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-[0_4px_10px_rgba(53,155,70,0.2)] hover:shadow-[0_6px_15px_rgba(53,155,70,0.3)] transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
+                      className="w-full justify-center sm:w-auto bg-[var(--color-primary)] text-[var(--color-primary-text)] px-2 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-[11px] sm:text-sm font-bold shadow-[var(--shadow-md)] hover:opacity-90 transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2 border border-transparent"
                     >
                       <CreditCard className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Payment Verification</span>
                     </button>
@@ -997,7 +993,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   {(ownerPenalty > 0 || tenantPenalty > 0) && (
                     <button 
                       onClick={() => setIsPenaltyModalOpen(true)}
-                      className="w-full justify-center sm:w-auto bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
+                      className="w-full justify-center sm:w-auto bg-white border border-red-200 hover:border-red-300 hover:bg-red-50 text-red-600 px-2 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
                     >
                       <AlertCircle className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Penalties</span>
                     </button>
@@ -1005,21 +1001,21 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   
                   <button 
                     onClick={openSOAModal}
-                    className="w-full justify-center sm:w-auto bg-white border border-slate-200 hover:border-slate-300 text-slate-700 px-2 sm:px-5 py-2.5 sm:py-3 rounded-xl text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
+                    className="w-full justify-center sm:w-auto bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 text-[var(--color-text)] px-2 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
                   >
-                    <Send className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Assign SOA</span>
+                    <Send className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--color-primary)]" /> <span className="truncate">Assign SOA</span>
                   </button>
                 </div>
 
                 {/* COMBINED LEDGER TABLE */}
-                <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-5 md:p-8 overflow-hidden mb-6">
+                <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-4 sm:p-5 md:p-8 overflow-hidden mb-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center border border-emerald-100 shadow-sm shrink-0">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
                         <CalendarClock size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-extrabold text-[#0a1e3f] text-base sm:text-lg tracking-tight truncate">Ledger & Projections</h4>
+                        <h4 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-lg tracking-tight truncate">Ledger & Projections</h4>
                         <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
                           Due: Day {globalComp.collectionDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
                         </div>
@@ -1027,15 +1023,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     </div>
                     <button 
                       onClick={handleExportCSV}
-                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 sm:px-5 py-2.5 rounded-xl transition-all active:scale-95 border border-blue-100 shadow-sm shrink-0"
+                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 px-4 sm:px-5 py-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border border-[var(--color-primary)]/20 shadow-sm shrink-0"
                     >
                       <Download size={16} className="w-4 h-4" /> Export CSV
                     </button>
                   </div>
                   
-                  <div className="overflow-x-auto border border-slate-200/80 rounded-2xl relative shadow-inner">
+                  <div className="overflow-x-auto border border-[var(--color-border)] rounded-2xl relative shadow-inner">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-200/80 sticky top-0 z-10 backdrop-blur-md">
+                      <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-bold border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-md">
                         <tr>
                           <th className="px-4 sm:px-5 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] sm:text-[11px] uppercase tracking-wider">PERIOD</th>
                           <th className="px-4 sm:px-5 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] sm:text-[11px] uppercase tracking-wider">DUE DATE</th>
@@ -1046,25 +1042,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                             PENALTY
                           </th>
                           <th className="px-4 sm:px-5 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] sm:text-[11px] uppercase tracking-wider">STATUS {isTenantVacant ? '' : '(O/T)'}</th>
-                          <th className="px-4 sm:px-5 py-3 sm:py-3.5 text-right whitespace-nowrap font-black text-[#0a1e3f] text-[10px] sm:text-[11px] uppercase tracking-wider">TOTAL</th>
+                          <th className="px-4 sm:px-5 py-3 sm:py-3.5 text-right whitespace-nowrap font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-wider">TOTAL</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 text-slate-700 bg-white">
+                      <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white">
                         {ledgerData.map((row, idx) => {
                           const activeRow = row.isCurrentMonth;
                           const hasPenalty = row.isCurrentMonth && (ownerPenalty > 0 || tenantPenalty > 0);
                           
                           return (
-                            <tr key={idx} className={`transition-colors ${activeRow ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold uppercase text-[10px] sm:text-[11px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-slate-700'}`}>
+                            <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10" : "hover:bg-slate-50"}`}>
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-bold uppercase text-[10px] sm:text-[11px] tracking-wide ${activeRow ? 'text-[var(--color-primary)]' : 'text-slate-700'}`}>
                                 {row.monthName} {row.year} {activeRow && <span className="ml-1 text-lg leading-none align-middle">•</span>}
                               </td>
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 text-slate-500 font-medium text-xs sm:text-sm">{row.dueDate}</td>
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{rawDues > 0 ? `₱${rawDues.toLocaleString()}` : "—"}</td>
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-xs sm:text-sm">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 text-slate-500 font-medium text-xs sm:text-sm">{row.dueDate}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-medium text-xs sm:text-sm">{rawDues > 0 ? `₱${rawDues.toLocaleString()}` : "—"}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-medium text-xs sm:text-sm">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-medium text-xs sm:text-sm">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
                               
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-xs sm:text-sm ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-bold text-xs sm:text-sm ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
                                 {hasPenalty ? (
                                   <div className="flex flex-col gap-0.5 text-[10px] sm:text-[11px]">
                                     {ownerPenalty > 0 && <span>O: ₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
@@ -1073,7 +1069,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                 ) : "—"}
                               </td>
                               
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)]/50 font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
                                 {row.isCurrentMonth ? (
                                   isOwnerVacant && isTenantVacant ? (
                                       <span className="text-slate-400">VACANT</span>
@@ -1089,7 +1085,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                                 )}
                               </td>
 
-                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[#0a1e3f] text-[13px] sm:text-sm">
+                              <td className="px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[var(--color-secondary)] text-[13px] sm:text-sm">
                                 ₱{(row.isCurrentMonth ? totalDue : (ownerBase + tenantBase)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
@@ -1109,36 +1105,34 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* 🌟 PREMIUM COMPUTATION MODAL */}
       {isComputationModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
-            {/* Header - Fixed */}
-            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-slate-100">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
                   <Calculator size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight truncate">Billing Configuration</h2>
+                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Billing Configuration</h2>
               </div>
-              <button onClick={() => setIsComputationModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsComputationModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors active:scale-95 shrink-0">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
-            {/* Scrollable Form Body */}
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
               <form onSubmit={handleSaveComputation} className="space-y-4 sm:space-y-5">
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pb-5 border-b border-slate-100/80">
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Collection Start Day</label>
-                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={compCollectionDay} onChange={(e) => setCompCollectionDay(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={compCollectionDay} onChange={(e) => setCompCollectionDay(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Day of the month (1-31)</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Grace Period (Days)</label>
-                    <input type="number" min="0" placeholder="e.g. 15" value={compGracePeriod} onChange={(e) => setCompGracePeriod(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <input type="number" min="0" placeholder="e.g. 15" value={compGracePeriod} onChange={(e) => setCompGracePeriod(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Days before penalty hits</p>
                   </div>
                 </div>
@@ -1148,14 +1142,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Assoc. Dues (sqm)</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking Baseline</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                 </div>
@@ -1165,32 +1159,32 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water Baseline</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compWater} onChange={(e) => setCompWater(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compWater} onChange={(e) => setCompWater(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Elec. Baseline</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compElec} onChange={(e) => setCompElec(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compElec} onChange={(e) => setCompElec(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100/80 pt-5">
+                <div className="border-t border-[var(--color-border)] pt-5">
                   <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 ml-1 truncate">Late Penalty Deduction</label>
                   <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                    <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-sm bg-white">
+                    <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)] bg-white">
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={compPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={compPenaltyValue} onChange={(e) => setCompPenaltyValue(e.target.value)} className="w-full flex-1 px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <input type="number" step="0.01" min="0" placeholder={compPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={compPenaltyValue} onChange={(e) => setCompPenaltyValue(e.target.value)} className="w-full flex-1 px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)]" />
                   </div>
                 </div>
 
                 {/* Bank Transfer Details Section */}
-                <div className="border border-blue-100 bg-blue-50/50 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-                  <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1 sm:mb-1.5 tracking-tight truncate">Bank Transfer Details</label>
+                <div className="border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-sm">
+                  <label className="block text-[13px] sm:text-sm font-black text-[var(--color-secondary)] mb-1 sm:mb-1.5 tracking-tight truncate">Bank Transfer Details</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 sm:mb-5 font-medium leading-relaxed">
                     Set up your organization's bank details here. These will be securely displayed to owners and tenants when they select "Bank Transfer" during payment.
                   </p>
@@ -1203,7 +1197,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         placeholder="e.g. BDO Unibank" 
                         value={compBankName} 
                         onChange={(e) => setCompBankName(e.target.value)} 
-                        className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                        className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1214,7 +1208,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           placeholder="e.g. HOA Admin" 
                           value={compBankAccountName} 
                           onChange={(e) => setCompBankAccountName(e.target.value)} 
-                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                         />
                       </div>
                       <div>
@@ -1224,7 +1218,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           placeholder="e.g. 0012-3456" 
                           value={compBankAccountNumber} 
                           onChange={(e) => setCompBankAccountNumber(e.target.value)} 
-                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] text-[12px] sm:text-sm font-bold text-slate-700 transition-all shadow-sm bg-white" 
+                          className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                         />
                       </div>
                     </div>
@@ -1232,14 +1226,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
 
                 {/* QR Code Upload Section */}
-                <div className="border border-green-100 bg-green-50/50 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-                  <label className="block text-[13px] sm:text-sm font-black text-[#0a1e3f] mb-1 sm:mb-1.5 tracking-tight truncate">Digital Wallet QR Code</label>
+                <div className="border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-sm">
+                  <label className="block text-[13px] sm:text-sm font-black text-[var(--color-secondary)] mb-1 sm:mb-1.5 tracking-tight truncate">Digital Wallet QR Code</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">
                     Upload your GCash, Maya, or QR Ph barcode. This will be displayed to tenants when they select "Digital Wallet" during payment.
                   </p>
                   
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-2 shadow-inner">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-[var(--color-border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-2 shadow-inner">
                       {compQrUrl ? (
                         <img src={compQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
                       ) : (
@@ -1258,29 +1252,29 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         type="button" 
                         onClick={() => qrInputRef.current?.click()} 
                         disabled={isUploadingQr} 
-                        className="w-full bg-white border border-green-200 hover:border-green-300 text-green-700 font-bold text-[11px] sm:text-xs py-2.5 sm:py-3 rounded-xl transition-all shadow-sm flex justify-center items-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                        className="w-full bg-white border border-[var(--color-primary)]/40 hover:border-[var(--color-primary)] text-[var(--color-primary)] font-bold text-[11px] sm:text-xs py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all shadow-sm flex justify-center items-center gap-2 active:scale-[0.98] disabled:opacity-50"
                       >
                         {isUploadingQr ? (
-                          <><Loader2 size={16} className="animate-spin text-green-400" /> Uploading...</>
+                          <><Loader2 size={16} className="animate-spin text-[var(--color-primary)]" /> Uploading...</>
                         ) : (
-                          <><Upload size={16} className="text-green-500" /> {compQrUrl ? 'Replace QR Image' : 'Upload QR Image'}</>
+                          <><Upload size={16} className="text-[var(--color-primary)]" /> {compQrUrl ? 'Replace QR Image' : 'Upload QR Image'}</>
                         )}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 sm:pt-5 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
+                <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 sm:pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
                   <button 
                     type="button" 
                     onClick={() => setIsComputationModalOpen(false)} 
-                    className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl transition-all active:scale-95 shadow-sm"
+                    className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
-                    className="w-full flex-1 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:from-[#1565c0] hover:to-[#0f4d92] text-white py-3.5 sm:py-4 rounded-xl text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] hover:shadow-[0_6px_20px_rgba(29,130,245,0.4)] active:scale-95 flex items-center justify-center truncate px-2"
+                    className="w-full flex-1 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center truncate px-2"
                   >
                     Save Global Settings
                   </button>
@@ -1293,14 +1287,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PENALTY MODAL (Manage Penalties) */}
       {isPenaltyModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center border border-red-100 shrink-0">
                   <AlertCircle size={16} />
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight">Manage Penalties</h2>
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight">Manage Penalties</h2>
               </div>
               <button onClick={() => setIsPenaltyModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isWaiving}>
                 <X size={20} className="w-5 h-5" />
@@ -1345,7 +1339,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               )}
 
               {!(ownerPenalty > 0) && !(tenantPenalty > 0) && (
-                <div className="text-center py-6 text-[13px] sm:text-sm font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="text-center py-6 text-[13px] sm:text-sm font-bold text-slate-400 bg-slate-50 rounded-[var(--radius-md)] border border-slate-100">
                   No active penalties to waive.
                 </div>
               )}
@@ -1356,31 +1350,31 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* SOA MODAL */}
       {isSOAModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-white/90 backdrop-blur-md">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/90 backdrop-blur-md">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0">
                   <Send size={16} className="translate-x-[-1px] translate-y-[1px] sm:w-[18px] sm:h-[18px]" />
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight truncate">Assign Balances <span className="text-slate-400 font-medium ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate">Assign Balances <span className="text-slate-400 font-medium ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
               </div>
-              <button onClick={() => setIsSOAModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSendingSOA || isSavingDefault}>
+              <button onClick={() => setIsSOAModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSendingSOA || isSavingDefault}>
                 <X size={20} className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-5 sm:p-8">
-              <p className="text-[11px] sm:text-[13px] text-slate-500 mb-5 sm:mb-6 font-medium leading-relaxed bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-100">
+              <p className="text-[11px] sm:text-[13px] text-slate-500 mb-5 sm:mb-6 font-medium leading-relaxed bg-[var(--color-primary)]/5 p-3 sm:p-4 rounded-xl border border-[var(--color-primary)]/10">
                 {isTenantVacant ? "Assign balances to the owner for this unit. Settings will be saved automatically when setting defaults." : "Checking a box for one party will automatically lock it out for the other party. To swap assignments, uncheck the item first."}
               </p>
               
-              <div className={`grid grid-cols-1 ${!isTenantVacant ? 'sm:grid-cols-2 sm:divide-x sm:divide-slate-200' : ''} border border-slate-200 rounded-[1.25rem] sm:rounded-2xl overflow-hidden mb-6 sm:mb-8 shadow-sm`}>
+              <div className={`grid grid-cols-1 ${!isTenantVacant ? 'sm:grid-cols-2 sm:divide-x sm:divide-[var(--color-border)]' : ''} border border-[var(--color-border)] rounded-[1.25rem] sm:rounded-2xl overflow-hidden mb-6 sm:mb-8 shadow-[var(--shadow-sm)]`}>
                 
                 {/* OWNER COLUMN */}
                 <div className="p-4 sm:p-5 bg-white relative flex flex-col">
                   <div className="mb-4 sm:mb-5 pb-3 border-b border-slate-100">
-                    <h3 className="font-black text-[#0a1e3f] text-[11px] sm:text-xs uppercase tracking-widest truncate">Owner</h3>
+                    <h3 className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs uppercase tracking-widest truncate">Owner</h3>
                     <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-1 font-medium">{isOwnerVacant ? 'Vacant' : selectedUnit?.owner_name}</p>
                   </div>
                   
@@ -1388,43 +1382,43 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     {rawDues > 0 && (
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.dues && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.dues && !isTenantVacant} checked={soaConfig.owner.dues} onChange={(e) => handleToggleSoa('owner', 'dues', e.target.checked)} className="rounded text-[#359b46] focus:ring-[#359b46] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Assoc. Dues</span>
+                          <input type="checkbox" disabled={soaConfig.tenant.dues && !isTenantVacant} checked={soaConfig.owner.dues} onChange={(e) => handleToggleSoa('owner', 'dues', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Assoc. Dues</span>
                         </div>
-                        <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
                     {rawParking > 0 && (
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.parking && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.parking && !isTenantVacant} checked={soaConfig.owner.parking} onChange={(e) => handleToggleSoa('owner', 'parking', e.target.checked)} className="rounded text-[#359b46] focus:ring-[#359b46] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Parking</span>
+                          <input type="checkbox" disabled={soaConfig.tenant.parking && !isTenantVacant} checked={soaConfig.owner.parking} onChange={(e) => handleToggleSoa('owner', 'parking', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Parking</span>
                         </div>
-                        <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
                     {!isTenantVacant && rawWater > 0 && (
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.water ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.water} checked={soaConfig.owner.water} onChange={(e) => handleToggleSoa('owner', 'water', e.target.checked)} className="rounded text-[#359b46] focus:ring-[#359b46] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Water</span>
+                          <input type="checkbox" disabled={soaConfig.tenant.water} checked={soaConfig.owner.water} onChange={(e) => handleToggleSoa('owner', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Water</span>
                         </div>
-                        <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
                     {!isTenantVacant && rawElectricity > 0 && (
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.electricity ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.electricity} checked={soaConfig.owner.electricity} onChange={(e) => handleToggleSoa('owner', 'electricity', e.target.checked)} className="rounded text-[#359b46] focus:ring-[#359b46] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Electricity</span>
+                          <input type="checkbox" disabled={soaConfig.tenant.electricity} checked={soaConfig.owner.electricity} onChange={(e) => handleToggleSoa('owner', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                          <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Electricity</span>
                         </div>
-                        <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
                     {ownerPenalty > 0 && (
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.penalty && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.penalty && !isTenantVacant} checked={soaConfig.owner.penalty} onChange={(e) => handleToggleSoa('owner', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
+                          <input type="checkbox" disabled={soaConfig.tenant.penalty && !isTenantVacant} checked={soaConfig.owner.penalty} onChange={(e) => handleToggleSoa('owner', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
                           <span className="text-[12px] sm:text-[13px] font-bold text-red-600 transition-colors truncate">Late Penalty</span>
                         </div>
                         <span className="font-black text-red-600 text-[12px] sm:text-[13px] shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
@@ -1432,9 +1426,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     )}
                   </div>
                   
-                  <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-bl-2xl">
+                  <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/80 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-bl-2xl">
                     <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Owner Total</span>
-                    <span className="font-black text-[#0a1e3f] text-sm sm:text-base shrink-0">
+                    <span className="font-black text-[var(--color-secondary)] text-sm sm:text-base shrink-0">
                       ₱{((soaConfig.owner.dues ? rawDues : 0) + (soaConfig.owner.parking ? rawParking : 0) + (soaConfig.owner.water ? rawWater : 0) + (soaConfig.owner.electricity ? rawElectricity : 0) + (soaConfig.owner.penalty ? ownerPenalty : 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                     </span>
                   </div>
@@ -1442,53 +1436,53 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
                 {/* TENANT COLUMN (Hidden if Vacant) */}
                 {!isTenantVacant && (
-                  <div className="p-4 sm:p-5 relative bg-slate-50/30 flex flex-col border-t sm:border-t-0 border-slate-200">
-                    <div className="mb-4 sm:mb-5 pb-3 border-b border-slate-200/60">
-                      <h3 className="font-black text-[#1d82f5] text-[11px] sm:text-xs uppercase tracking-widest truncate">Tenant</h3>
-                      <p className="text-[11px] sm:text-xs text-slate-500 truncate mt-1 font-medium">{selectedUnit?.tenant_name}</p>
+                  <div className="p-4 sm:p-5 relative bg-[var(--color-primary)]/5 flex flex-col border-t sm:border-t-0 border-[var(--color-border)]">
+                    <div className="mb-4 sm:mb-5 pb-3 border-b border-[var(--color-primary)]/20">
+                      <h3 className="font-black text-[var(--color-primary)] text-[11px] sm:text-xs uppercase tracking-widest truncate">Tenant</h3>
+                      <p className="text-[11px] sm:text-xs text-[var(--color-text)] truncate mt-1 font-medium">{selectedUnit?.tenant_name}</p>
                     </div>
                     
                     <div className="space-y-3 sm:space-y-4 flex-1">
                       {rawDues > 0 && (
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.dues ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.dues} checked={soaConfig.tenant.dues} onChange={(e) => handleToggleSoa('tenant', 'dues', e.target.checked)} className="rounded text-[#1d82f5] focus:ring-[#1d82f5] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Assoc. Dues</span>
+                            <input type="checkbox" disabled={soaConfig.owner.dues} checked={soaConfig.tenant.dues} onChange={(e) => handleToggleSoa('tenant', 'dues', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Assoc. Dues</span>
                           </div>
-                          <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                          <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
                       {rawParking > 0 && (
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.parking ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.parking} checked={soaConfig.tenant.parking} onChange={(e) => handleToggleSoa('tenant', 'parking', e.target.checked)} className="rounded text-[#1d82f5] focus:ring-[#1d82f5] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Parking</span>
+                            <input type="checkbox" disabled={soaConfig.owner.parking} checked={soaConfig.tenant.parking} onChange={(e) => handleToggleSoa('tenant', 'parking', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Parking</span>
                           </div>
-                          <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                          <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
                       {!isTenantVacant && rawWater > 0 && (
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.water ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.water} checked={soaConfig.tenant.water} onChange={(e) => handleToggleSoa('tenant', 'water', e.target.checked)} className="rounded text-[#1d82f5] focus:ring-[#1d82f5] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Water</span>
+                            <input type="checkbox" disabled={soaConfig.owner.water} checked={soaConfig.tenant.water} onChange={(e) => handleToggleSoa('tenant', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Water</span>
                           </div>
-                          <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                          <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
                       {!isTenantVacant && rawElectricity > 0 && (
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.electricity ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.electricity} checked={soaConfig.tenant.electricity} onChange={(e) => handleToggleSoa('tenant', 'electricity', e.target.checked)} className="rounded text-[#1d82f5] focus:ring-[#1d82f5] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors truncate">Electricity</span>
+                            <input type="checkbox" disabled={soaConfig.owner.electricity} checked={soaConfig.tenant.electricity} onChange={(e) => handleToggleSoa('tenant', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
+                            <span className="text-[12px] sm:text-[13px] font-bold text-slate-700 group-hover:text-[var(--color-secondary)] transition-colors truncate">Electricity</span>
                           </div>
-                          <span className="font-black text-slate-600 text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                          <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
                       {tenantPenalty > 0 && (
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.penalty ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.penalty} checked={soaConfig.tenant.penalty} onChange={(e) => handleToggleSoa('tenant', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
+                            <input type="checkbox" disabled={soaConfig.owner.penalty} checked={soaConfig.tenant.penalty} onChange={(e) => handleToggleSoa('tenant', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
                             <span className="text-[12px] sm:text-[13px] font-bold text-red-600 transition-colors truncate">Late Penalty</span>
                           </div>
                           <span className="font-black text-red-600 text-[12px] sm:text-[13px] shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
@@ -1496,9 +1490,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       )}
                     </div>
 
-                    <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-blue-100/50 flex justify-between items-center bg-blue-50/40 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-br-2xl">
-                      <span className="text-[9px] sm:text-[10px] font-bold text-[#1d82f5] uppercase tracking-widest shrink-0">Tenant Total</span>
-                      <span className="font-black text-[#1d82f5] text-sm sm:text-base shrink-0">
+                    <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/10 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-br-2xl">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-widest shrink-0">Tenant Total</span>
+                      <span className="font-black text-[var(--color-primary)] text-sm sm:text-base shrink-0">
                         ₱{((soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </span>
                     </div>
@@ -1506,11 +1500,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3 sm:pt-4 border-t border-[var(--color-border)]">
                 <button 
                   onClick={() => setIsSOAModalOpen(false)} 
                   disabled={isSendingSOA || isSavingDefault}
-                  className="w-full sm:w-[120px] shrink-0 py-3 sm:py-3.5 text-[12px] sm:text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors active:scale-95"
+                  className="w-full sm:w-[120px] shrink-0 py-3 sm:py-3.5 text-[12px] sm:text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-colors active:scale-95"
                 >
                   Cancel
                 </button>
@@ -1518,7 +1512,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <button 
                     onClick={handleSendSOA}
                     disabled={isSendingSOA || isSavingDefault}
-                    className="flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:shadow-[0_4px_15px_rgba(29,130,245,0.3)] disabled:from-blue-300 disabled:to-blue-300 disabled:shadow-none text-white py-3 sm:py-3.5 rounded-xl text-[11px] sm:text-[13px] font-bold shadow-[0_2px_8px_rgba(29,130,245,0.2)] transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
+                    className="flex-1 min-w-0 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[11px] sm:text-[13px] font-bold shadow-[var(--shadow-md)] border border-transparent transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
                   >
                     {isSendingSOA ? "Saving & Sending..." : "Save and Send"}
                   </button>
@@ -1531,11 +1525,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PAYMENT SELECTION MODAL */}
       {isPaymentSelectionModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] tracking-tight truncate pr-2">Payment Verification</h2>
-              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate pr-2">Payment Verification</h2>
+              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
                 <X size={20} className="w-5 h-5" />
               </button>
             </div>
@@ -1552,7 +1546,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     setPaymentModalParty('owner');
                     setIsPaymentModalOpen(true);
                   }}
-                  className="w-full bg-white border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700 p-4 rounded-xl transition-all shadow-sm flex justify-between items-center group active:scale-95"
+                  className="w-full bg-white border border-[var(--color-border)] hover:border-emerald-300 hover:bg-emerald-50 text-[var(--color-text)] p-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex justify-between items-center group active:scale-95"
                 >
                   <div className="flex flex-col text-left">
                     <span className="font-bold text-[13px] sm:text-sm group-hover:text-emerald-700">Owner Payment</span>
@@ -1569,13 +1563,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     setPaymentModalParty('tenant');
                     setIsPaymentModalOpen(true);
                   }}
-                  className="w-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 text-slate-700 p-4 rounded-xl transition-all shadow-sm flex justify-between items-center group active:scale-95"
+                  className="w-full bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-primary)]/5 text-[var(--color-text)] p-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex justify-between items-center group active:scale-95"
                 >
                   <div className="flex flex-col text-left">
-                    <span className="font-bold text-[13px] sm:text-sm group-hover:text-blue-700">Tenant Payment</span>
+                    <span className="font-bold text-[13px] sm:text-sm group-hover:text-[var(--color-primary)]">Tenant Payment</span>
                     <span className="text-[11px] sm:text-xs text-slate-500">Amount Due: ₱{tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
-                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-blue-500" size={20} />
+                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-[var(--color-primary)]" size={20} />
                 </button>
               )}
             </div>
@@ -1585,24 +1579,24 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PAYMENT MODAL (Admin Verifying) */}
       {isPaymentModalOpen && paymentModalParty && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-base sm:text-lg font-black text-[#0a1e3f] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment Verification</h2>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment Verification</h2>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
             </div>
             
             <div className="px-5 sm:px-6 py-6 sm:py-8">
               <p className="text-[12px] sm:text-[13px] text-slate-500 mb-5 sm:mb-6 font-medium leading-relaxed">
-                Please verify the payment details submitted by the <span className="font-black text-[#1d82f5] uppercase tracking-wide">{paymentModalParty}</span> for {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}.
+                Please verify the payment details submitted by the <span className="font-black text-[var(--color-primary)] uppercase tracking-wide">{paymentModalParty}</span> for {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}.
               </p>
 
-              <div className="bg-slate-50 rounded-[1.25rem] sm:rounded-2xl p-4 sm:p-5 border border-slate-200/60 mb-6 sm:mb-8 shadow-inner">
-                <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-slate-200/80 gap-3">
+              <div className="bg-white rounded-[1.25rem] sm:rounded-2xl p-4 sm:p-5 border border-[var(--color-border)] mb-6 sm:mb-8 shadow-[var(--shadow-sm)]">
+                <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-[var(--color-border)] gap-3">
                   <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Amount Due</span>
-                  <span className="font-black text-[#0a1e3f] text-lg sm:text-xl tracking-tight shrink-0">
+                  <span className="font-black text-[var(--color-secondary)] text-lg sm:text-xl tracking-tight shrink-0">
                     ₱{(paymentModalParty === 'owner' ? ownerTotalDue : tenantTotalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </span>
                 </div>
@@ -1615,7 +1609,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <div className="space-y-3 sm:space-y-4">
                     <div className="flex justify-between items-center gap-3">
                       <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Method Used</span>
-                      <span className="text-[10px] sm:text-[11px] font-black text-[#1d82f5] bg-blue-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-blue-100 shadow-sm shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                         {fetchedPayment?.payment_method || 'Unknown'}
                       </span>
                     </div>
@@ -1623,7 +1617,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     {fetchedPayment?.payment_method !== 'Cash' && (
                       <div className="flex justify-between items-center gap-3">
                         <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Reference No.</span>
-                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 font-mono bg-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-slate-200 shadow-sm shrink-0 truncate max-w-[150px] sm:max-w-[200px]">
+                        <span className="text-[10px] sm:text-[11px] font-black text-slate-700 font-mono bg-slate-50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-slate-200 shadow-[var(--shadow-sm)] shrink-0 truncate max-w-[150px] sm:max-w-[200px]">
                           {fetchedPayment?.reference_number || 'N/A'}
                         </span>
                       </div>
@@ -1639,7 +1633,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               <button 
                 onClick={handleConfirmPayment}
                 disabled={isSimulating || isFetchingPayment || !fetchedPayment}
-                className="w-full bg-gradient-to-b from-[#359b46] to-[#2a7a37] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-[#86c48f] disabled:to-[#86c48f] disabled:shadow-none text-white font-bold py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_2px_8px_rgba(53,155,70,0.2)] flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-sm"
+                className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent font-bold py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-95 text-[13px] sm:text-sm"
               >
                 {isSimulating ? "Processing..." : <><CheckCircle size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Mark as Paid</>}
               </button>
@@ -1650,14 +1644,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* 🌟 PREMIUM SUCCESS MODAL FOR WAIVING PENALTY */}
       {waiveSuccess && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Penalty Waived</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">Penalty Waived</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
-              The late penalty for the <strong className="text-slate-700 capitalize">{waiveSuccess.party}</strong> has been successfully removed. You may now proceed to verify the base payment.
+              The late penalty for the <strong className="text-[var(--color-text)] capitalize">{waiveSuccess.party}</strong> has been successfully removed. You may now proceed to verify the base payment.
             </p>
             <button 
               onClick={() => {
@@ -1666,7 +1660,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 setPaymentModalParty(party);
                 setIsPaymentModalOpen(true);
               }}
-              className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95"
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95"
             >
               Continue to Payment
             </button>

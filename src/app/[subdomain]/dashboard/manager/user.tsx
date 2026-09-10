@@ -42,8 +42,7 @@ export default function UsersTab({ orgData }: any) {
     }
   }, [orgData]);
 
-  // ✨ FIX: Refetch units when the role tab switches or usersList changes.
-  // It will now fetch units from the DB even if the usersList is empty.
+  // Refetch units when the role tab switches or usersList changes.
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchUnits(usersList || [], role);
@@ -72,13 +71,11 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const fetchUnits = async (currentUsers: any[], targetRole: string) => {
-    // 1. Fetch units (where owners are stored)
     const { data: unitsData } = await supabase
       .from('units')
       .select('*')
       .eq('admin_email', orgData.admin_email); 
 
-    // 2. Fetch active leases (for tenants)
     const { data: activeLeases } = await supabase
       .from('leases')
       .select('unit_id')
@@ -95,7 +92,6 @@ export default function UsersTab({ orgData }: any) {
         }
       });
 
-      // Quick lookup for active leases
       const activeLeasedUnitIds = new Set((activeLeases || []).map(l => l.unit_id));
 
       const filteredUnits = unitsData.filter(unit => {
@@ -111,10 +107,8 @@ export default function UsersTab({ orgData }: any) {
         let isValidOccupant = false;
         
         if (targetRole === 'Tenant') {
-          // A tenant can only be invited if they have a valid name AND an active lease exists
           isValidOccupant = hasValidName(unit.tenant_name) && activeLeasedUnitIds.has(unit.id);
         } else {
-          // Check the owner_name directly from the units table
           isValidOccupant = hasValidName(unit.owner_name);
         }
 
@@ -149,13 +143,11 @@ export default function UsersTab({ orgData }: any) {
       const isCurrentlySelected = prev.includes(unitString);
       
       if (!isCurrentlySelected) {
-        // ✨ Auto-fill the Name and Email fields cleanly
         let occupantName = "";
         
         if (role === "Tenant") {
           occupantName = unitData.tenant_name || "";
         } else {
-          // If there are multiple owners, split by comma and just take the primary (first) one
           if (unitData.owner_name) {
             occupantName = unitData.owner_name.split(',')[0].trim();
           }
@@ -185,7 +177,6 @@ export default function UsersTab({ orgData }: any) {
     }
 
     try {
-      // Create user auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -204,7 +195,6 @@ export default function UsersTab({ orgData }: any) {
 
       const finalAccessLevel = selectedUnits.join(", ");
 
-      // Insert into team_members table
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -220,7 +210,6 @@ export default function UsersTab({ orgData }: any) {
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
-      // If Tenant, link their newly created email back to the leases table
       if (role === 'Tenant') {
         const { data: tenantLeases } = await supabase
           .from('leases')
@@ -256,7 +245,6 @@ export default function UsersTab({ orgData }: any) {
     }
   };
 
-  // ✨ UPDATED: Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
   ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
   : "AD";
@@ -268,15 +256,15 @@ export default function UsersTab({ orgData }: any) {
 
   return (
     // ✨ LOCKED LAYOUT WINDOW SHELL
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-sans selection:bg-[#359b46]/10 animate-in fade-in duration-500">
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
       
       {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[#0a1e3f] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm">
-                <UserCheck className="text-[#359b46]" size={24} strokeWidth={2.5} />
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+                <UserCheck className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
               </div>
               Client Accounts
             </h2>
@@ -285,23 +273,23 @@ export default function UsersTab({ orgData }: any) {
             </p>
           </div>
           
-          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-2 sm:mt-0">
+          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-[var(--color-border)] pt-4 sm:pt-0 mt-2 sm:mt-0">
             {/* Search Bar */}
             <div className="relative flex-1 sm:w-64 group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#359b46] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
                 placeholder="Search accounts..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200/80 text-sm font-bold text-slate-700 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[#359b46]/15 focus:border-[#359b46] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative" 
+                className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-bold text-[var(--color-text)] placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative" 
               />
             </div>
 
             {/* Premium Admin Profile Badge */}
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200/60 shadow-sm">
-              <span className="text-xs font-black text-[#359b46] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-gradient-to-br from-emerald-50 to-emerald-100 text-[#359b46] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -311,19 +299,19 @@ export default function UsersTab({ orgData }: any) {
 
       {/* ✨ FULL WIDTH KANBAN DATA TABLE CONTAINER */}
       <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
-        <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-sm border border-slate-200/80 flex flex-col overflow-hidden relative">
+        <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/50 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 
           {/* Table Header Section */}
-          <div className="px-6 sm:px-8 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
-            <h3 className="font-black text-lg text-[#0a1e3f] tracking-tight">Active Accounts</h3>
+          <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
+            <h3 className="font-black text-lg text-[var(--color-secondary)] tracking-tight">Active Accounts</h3>
             <button 
               onClick={() => {
                 setErrorMsg(null);
                 setIsModalOpen(true);
               }}
-              className="bg-[#359b46] hover:bg-[#2c813a] text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.25)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
+              className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-5 py-2.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <UserPlus size={16} strokeWidth={2.5} /> Add Account
             </button>
@@ -332,16 +320,16 @@ export default function UsersTab({ orgData }: any) {
           {/* Scrollable Table Area */}
           <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative z-10 w-full">
             <table className="w-full text-left text-sm relative min-w-[600px]">
-              <thead className="text-emerald-50 bg-[#359b46] font-extrabold uppercase tracking-widest border-b border-[#2c813a] sticky top-0 z-20 text-[10px] shadow-md">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Name / Email</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Role</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-[#43af55]">Unit(s) Assigned</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Name / Email</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Role</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Unit(s) Assigned</th>
                   <th className="px-6 py-4 text-right whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               
-              <tbody className="divide-y divide-slate-100 text-slate-600 bg-white">
+              <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white">
                 {isLoading ? (
                   /* ✨ SKELETON LOADING ROWS */
                   Array.from({ length: 5 }).map((_, idx) => (
@@ -379,13 +367,13 @@ export default function UsersTab({ orgData }: any) {
                 ) : (
                   /* ACTUAL DATA ROWS */
                   filteredUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-6 py-4 border-r border-slate-50">
-                        <div className="font-black text-[#0a1e3f] tracking-tight">{user.name}</div>
+                    <tr key={user.id} className="hover:bg-[var(--color-primary)]/5 transition-colors group">
+                      <td className="px-6 py-4 border-r border-[var(--color-border)]/50">
+                        <div className="font-black text-[var(--color-secondary)] tracking-tight">{user.name}</div>
                         <div className="text-slate-500 font-semibold text-xs mt-0.5">{user.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap border-r border-slate-50">
-                        <span className={`font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md border shadow-sm ${
+                      <td className="px-6 py-4 whitespace-nowrap border-r border-[var(--color-border)]/50">
+                        <span className={`font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-sm)] border shadow-[var(--shadow-sm)] ${
                           user.role === 'Owner' 
                             ? 'bg-purple-50 text-purple-700 border-purple-200/60' 
                             : 'bg-blue-50 text-blue-700 border-blue-200/60'
@@ -393,11 +381,11 @@ export default function UsersTab({ orgData }: any) {
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-500 font-bold text-xs max-w-[250px] truncate border-r border-slate-50" title={user.access_level}>
+                      <td className="px-6 py-4 text-slate-500 font-semibold text-xs max-w-[250px] truncate border-r border-[var(--color-border)]/50" title={user.access_level}>
                         {formatUnitsForTable(user.access_level)}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 group-hover:bg-[#359b46] group-hover:text-white transition-colors">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 group-hover:bg-[#359b46] group-hover:text-white transition-colors">
                           <UserCheck size={14} strokeWidth={2.5} /> {user.status}
                         </span>
                       </td>
@@ -412,26 +400,26 @@ export default function UsersTab({ orgData }: any) {
 
       {/* 🌟 PREMIUM CREATE USER MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-slate-200/80 animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white shrink-0 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              <h2 className="text-xl font-black text-[#0a1e3f] tracking-tight relative z-10 flex items-center gap-2">
-                <UserPlus className="text-[#359b46]" size={22} strokeWidth={2.5} />
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <h2 className="text-xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
+                <UserPlus className="text-[var(--color-primary)]" size={22} strokeWidth={2.5} />
                 Create Account
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40">
               {/* TABS FOR OWNER / TENANT */}
-              <div className="flex p-1.5 bg-white border border-slate-200 rounded-xl mb-6 shadow-sm">
+              <div className="flex p-1.5 bg-white border border-[var(--color-border)] rounded-[var(--radius-lg)] mb-6 shadow-sm">
                 <button
                   type="button"
                   onClick={() => { setRole("Tenant"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${role === "Tenant" ? "bg-blue-50 text-blue-600 border border-blue-200/60 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Tenant" ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
                   disabled={isSubmitting}
                 >
                   Tenant Account
@@ -439,7 +427,7 @@ export default function UsersTab({ orgData }: any) {
                 <button
                   type="button"
                   onClick={() => { setRole("Owner"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${role === "Owner" ? "bg-purple-50 text-purple-600 border border-purple-200/60 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Owner" ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
                   disabled={isSubmitting}
                 >
                   Owner Account
@@ -452,10 +440,10 @@ export default function UsersTab({ orgData }: any) {
                 {/* DYNAMIC UNIT SELECTION */}
                 <div>
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    <Home size={14} className={role === 'Owner' ? 'text-purple-500' : 'text-blue-500'} /> Select Unit Allocation
+                    <Home size={14} className="text-[var(--color-primary)]" /> Select Unit Allocation
                   </label>
                   
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar border border-slate-200/80 rounded-xl p-2 space-y-1 bg-white shadow-inner">
+                  <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
                     {availableUnits.length === 0 ? (
                       <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
                         {role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners."}
@@ -470,17 +458,17 @@ export default function UsersTab({ orgData }: any) {
                           <div 
                             key={unit.id} 
                             onClick={() => !isSubmitting && handleUnitToggle(unitString, unit)}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${isSelected ? (role === 'Owner' ? 'bg-purple-50 border-purple-200 shadow-sm' : 'bg-blue-50 border-blue-200 shadow-sm') : 'hover:bg-slate-50 border-transparent'}`}
+                            className={`flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all border ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 shadow-sm' : 'hover:bg-slate-50 border-transparent'}`}
                           >
                             <input 
                               type="checkbox" 
                               checked={isSelected}
                               readOnly
-                              className={`w-4 h-4 rounded border-slate-300 ${role === 'Owner' ? 'text-purple-600 focus:ring-purple-600' : 'text-blue-600 focus:ring-blue-600'}`}
+                              className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
                               disabled={isSubmitting}
                             />
                             <div className="flex flex-col">
-                              <span className={`text-sm font-black tracking-tight ${isSelected ? 'text-[#0a1e3f]' : 'text-slate-700'}`}>
+                              <span className={`text-sm font-black tracking-tight ${isSelected ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text)]'}`}>
                                 {unit.property_name} <span className="font-bold text-slate-400 ml-1">/ {unit.unit_number}</span>
                               </span>
                               {occupantName && (
@@ -502,7 +490,7 @@ export default function UsersTab({ orgData }: any) {
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
                     <div className="relative">
                       <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" disabled={isSubmitting} />
+                      <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                     </div>
                   </div>
 
@@ -510,7 +498,7 @@ export default function UsersTab({ orgData }: any) {
                     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
                     <div className="relative">
                       <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" disabled={isSubmitting} />
+                      <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                     </div>
                   </div>
 
@@ -525,13 +513,13 @@ export default function UsersTab({ orgData }: any) {
                         placeholder="Minimum 6 characters" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        className="w-full pl-10 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[#359b46]/10 focus:border-[#359b46] text-sm font-bold text-slate-700 bg-white transition-all" 
+                        className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
                         disabled={isSubmitting} 
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] focus:outline-none transition-colors"
                         disabled={isSubmitting}
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -540,9 +528,9 @@ export default function UsersTab({ orgData }: any) {
                   </div>
                 </div>
 
-                <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-xl transition-all active:scale-95">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[#359b46] hover:bg-[#2c813a] disabled:bg-slate-300 text-white px-8 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
+                <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
                     {isSubmitting ? "Creating..." : "Create Account"}
                   </button>
                 </div>

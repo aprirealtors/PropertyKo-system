@@ -174,7 +174,6 @@ export default function FinancialTab({ userData, units }: any) {
   const isOwnerProcessing = !!existingSoa?.owner_payment_method && ownerStatus !== 'Paid';
   
   // ✨ LEDGER SPECIFIC COMPUTATION
-  // Retain penalty amounts and update total if a penalty was historically applied (soaConfig.owner.penalty is true)
   let ledgerOwnerPenalty = 0;
   if ((ownerStatus === 'Overdue' || soaConfig.owner.penalty) && !isVacant) {
     ledgerOwnerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
@@ -206,7 +205,6 @@ export default function FinancialTab({ userData, units }: any) {
     
     const rows = ledgerData.map(row => {
       const activeRow = row.isCurrentMonth;
-      // Use the ledger-specific computation
       const rowPenalty = activeRow ? ledgerOwnerPenalty : 0;
       const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
       const utilsTotal = ownerWater + ownerElectricity;
@@ -259,7 +257,6 @@ export default function FinancialTab({ userData, units }: any) {
 
       if (soaError) throw soaError;
 
-      // Update local configuration without assuming it's instantly paid
       setAllSoaConfigs(prev => ({
         ...prev,
         [selectedUnit.id]: {
@@ -270,10 +267,9 @@ export default function FinancialTab({ userData, units }: any) {
         }
       }));
 
-      // ✨ NEW: Notify Admin / Manager about the submitted payment
       await supabase.from('notifications').insert([{
         admin_email: userData.admin_email,
-        recipient: 'MANAGER', // Or 'ADMIN' depending on your routing catch
+        recipient: 'MANAGER', 
         type: 'BILLING',
         title: 'Payment Verification Required',
         message: `${userData.name || 'An Owner'} submitted a ${paymentMethod} payment of ₱${ownerTotalDue.toLocaleString()} for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number}.`,
@@ -281,7 +277,6 @@ export default function FinancialTab({ userData, units }: any) {
         is_read: false
       }]);
 
-      // Show success modal uniformly for all submission types
       setShowSuccessModal(true);
 
     } catch (error) {
@@ -296,12 +291,12 @@ export default function FinancialTab({ userData, units }: any) {
 
   if (!sortedUnits || sortedUnits.length === 0) {
     return (
-      <div className="w-full max-w-2xl mx-auto mt-6 sm:mt-10 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] border border-slate-200/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-8 sm:p-12 md:p-20 text-center flex flex-col items-center">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-slate-100">
+      <div className="w-full max-w-2xl mx-auto mt-6 sm:mt-10 px-4 animate-in fade-in slide-in-from-bottom-4 duration-500 font-[family-name:var(--font-corporate)]">
+        <div className="bg-white rounded-[2rem] sm:rounded-[3rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-8 sm:p-12 md:p-20 text-center flex flex-col items-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-[var(--color-primary)]/20">
             <Receipt size={32} className="sm:w-9 sm:h-9" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">No Units Assigned</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">No Units Assigned</h2>
           <p className="text-slate-500 text-[13px] sm:text-sm max-w-md mx-auto leading-relaxed mb-6 sm:mb-8">
             You currently don't have any active units billed under your name.
           </p>
@@ -311,19 +306,19 @@ export default function FinancialTab({ userData, units }: any) {
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[#f4f7f9] font-sans z-20 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] z-20 overflow-hidden">
       
       {/* 🌟 PREMIUM HEADER */}
-      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+      <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[var(--shadow-sm)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
           <div className="flex justify-between items-center w-full md:w-auto">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl border border-emerald-200/50 shadow-sm shrink-0">
-                <Receipt className="text-[#359b46] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+              <div className="p-2.5 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                <Receipt className="text-[var(--color-primary)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] tracking-tight truncate">
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight truncate">
                   Financial Statements
                 </h2>
                 <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium truncate">
@@ -332,23 +327,20 @@ export default function FinancialTab({ userData, units }: any) {
               </div>
             </div>
             {/* Mobile Profile Icon */}
-            <div className="md:hidden w-9 h-9 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs shadow-inner border border-purple-100 shrink-0">
+            <div className="md:hidden w-9 h-9 rounded-full bg-[var(--color-primary)]/20 text-[var(--color-primary)] flex items-center justify-center font-black text-xs shadow-inner border border-[var(--color-primary)]/30 shrink-0">
               {userData?.name 
                   ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
                   : "OW"}
             </div>
           </div>
           
-          <div className="hidden md:flex items-center gap-3 border-l border-slate-200 pl-4">
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Workspace</span>
-              <span className="text-[11px] font-extrabold text-[#0a1e3f] leading-none">Owner</span>
+          <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+            <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Owner</span>
+            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              {userData?.name 
+                ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                : "OW"}
             </div>
-            <div className="w-9 h-9 rounded-[12px] bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs shadow-inner border border-purple-100 group-hover:scale-105 transition-transform duration-300">
-                {userData?.name 
-                  ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
-                  : "OW"}
-              </div>
           </div>
 
         </div>
@@ -360,55 +352,55 @@ export default function FinancialTab({ userData, units }: any) {
         {isLoading ? (
           <>
             {/* SKELETON SIDEBAR */}
-            <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-slate-200/80 p-5">
+            <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col h-full z-10 shadow-[var(--shadow-sm)]">
+              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-[var(--color-border)] p-5">
                 <div className="flex justify-between items-center mb-4">
                   <div className="h-4 w-32 bg-slate-200 rounded-md animate-pulse"></div>
                   <div className="h-4 w-12 bg-slate-100 rounded-md animate-pulse"></div>
                 </div>
                 <div className="space-y-3 flex-1 overflow-hidden">
                   {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-[72px] w-full bg-slate-50 rounded-2xl animate-pulse border border-slate-100"></div>
+                    <div key={i} className="h-[72px] w-full bg-slate-50 rounded-[var(--radius-md)] animate-pulse border border-[var(--color-border)]"></div>
                   ))}
                 </div>
               </div>
-              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-slate-50/30 p-5">
+              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-[var(--color-bg)]/30 p-5">
                 <div className="flex justify-between items-center mb-4">
                   <div className="h-4 w-36 bg-slate-200 rounded-md animate-pulse"></div>
                   <div className="h-4 w-12 bg-slate-200 rounded-md animate-pulse"></div>
                 </div>
                 <div className="space-y-3 flex-1 overflow-hidden">
                   {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-[72px] w-full bg-white rounded-2xl animate-pulse border border-slate-100 shadow-sm"></div>
+                    <div key={i} className="h-[72px] w-full bg-white rounded-[var(--radius-md)] animate-pulse border border-[var(--color-border)] shadow-sm"></div>
                   ))}
                 </div>
               </div>
             </div>
             
             {/* SKELETON MAIN DETAILS */}
-            <div className="hidden md:flex flex-1 flex-col overflow-y-auto bg-[#f4f7f9] p-6 lg:p-8 space-y-6">
-              <div className="h-[300px] w-full bg-white rounded-3xl border border-slate-200 animate-pulse shadow-sm"></div>
-              <div className="h-[100px] w-full bg-slate-300/40 rounded-3xl animate-pulse"></div>
-              <div className="h-[56px] w-full bg-slate-200 rounded-2xl animate-pulse"></div>
-              <div className="h-[400px] w-full bg-white rounded-3xl border border-slate-100 animate-pulse shadow-sm flex-1"></div>
+            <div className="hidden md:flex flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] p-6 lg:p-8 space-y-6">
+              <div className="h-[300px] w-full bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] animate-pulse shadow-[var(--shadow-sm)]"></div>
+              <div className="h-[100px] w-full bg-[var(--color-primary)]/10 rounded-[var(--radius-lg)] animate-pulse"></div>
+              <div className="h-[56px] w-full bg-slate-200 rounded-[var(--radius-md)] animate-pulse"></div>
+              <div className="h-[400px] w-full bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] animate-pulse shadow-[var(--shadow-sm)] flex-1"></div>
             </div>
           </>
         ) : (
           <>
             {/* 1. SIDEBAR (Split: Top = Properties, Bottom = Desktop History) */}
-            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-slate-200/60 flex-col h-full z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
+            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex-col h-full z-10 shadow-[var(--shadow-sm)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               
               {/* TOP HALF: PROPERTIES */}
-              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-slate-200/80">
-                <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center z-10 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
-                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
-                    <Home size={14} className="text-[#359b46]"/> Select Your Properties
+              <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-[var(--color-border)]">
+                <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center z-10 shadow-[var(--shadow-sm)]">
+                  <h3 className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
+                    <Home size={14} className="text-[var(--color-primary)]"/> Select Your Properties
                   </h3>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2 sm:px-2.5 py-1 rounded-[var(--radius-sm)] shadow-sm">
                     {sortedUnits.length} Total
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-slate-50/30">
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-[var(--color-bg)]/30">
                   {sortedUnits.map((unit: any) => {
                     const status = localStatuses[unit.id];
                     const isSelected = selectedUnit?.id === unit.id;
@@ -422,22 +414,22 @@ export default function FinancialTab({ userData, units }: any) {
                           setIsMobileListVisible(false);
                           setIsMobileHistoryVisible(false);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-gradient-to-br from-[#359b46] to-[#2c813a] border-transparent shadow-md text-white' : 'bg-white border-transparent hover:border-slate-200/60 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] text-slate-700'}`}
+                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-[var(--color-primary)] border-transparent shadow-[var(--shadow-sm)] text-[var(--color-primary-text)]' : 'bg-white border-transparent hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-sm)] text-[var(--color-text)]'}`}
                       >
                         <div className="flex-1 min-w-0">
-                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight font-black ${isSelected ? 'text-white' : 'text-[#0a1e3f]'}`}>
+                          <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight font-black ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-secondary)]'}`}>
                             {unit.property_name} {unit.unit_number}
                           </h4>
-                          <div className={`text-[10px] sm:text-[11px] font-medium truncate mt-1 ${isSelected ? 'text-green-100' : 'text-slate-500'}`}>
+                          <div className={`text-[10px] sm:text-[11px] font-medium truncate mt-1 ${isSelected ? 'text-[var(--color-primary-text)] opacity-80' : 'text-slate-500'}`}>
                             <span className="font-bold opacity-70">T:</span> {isRowTenantVacant ? 'Vacant' : unit.tenant_name}
                           </div>
                         </div>
                         <div className="flex flex-col items-end shrink-0 gap-1.5">
-                          {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
-                          {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
-                          {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
-                          {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
-                          {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
+                          {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
+                          {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
+                          {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
+                          {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
+                          {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
                         </div>
                       </div>
                     )
@@ -446,19 +438,19 @@ export default function FinancialTab({ userData, units }: any) {
               </div>
 
               {/* BOTTOM HALF: HISTORY (DESKTOP ONLY) */}
-              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-slate-50/30">
-                <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center z-10 shadow-[0_4px_15px_rgba(0,0,0,0.02)]">
-                  <h3 className="font-black text-[#0a1e3f] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
-                    <History size={14} className="text-[#359b46]"/> Transaction History
+              <div className="hidden md:flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] bg-[var(--color-bg)]/30">
+                <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center z-10 shadow-[var(--shadow-sm)]">
+                  <h3 className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2">
+                    <History size={14} className="text-[var(--color-primary)]"/> Transaction History
                   </h3>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2 sm:px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                     {paidHistory.length} Total
                   </span>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
                   {paidHistory.length === 0 ? (
                     <div className="text-center py-8">
-                      <AlertCircle className="text-slate-300 mx-auto mb-2" size={24} />
+                      <AlertCircle className="text-[var(--color-primary)]/30 mx-auto mb-2" size={24} />
                       <p className="text-[11px] font-bold text-slate-400">No verified payments yet.</p>
                     </div>
                   ) : (
@@ -478,13 +470,13 @@ export default function FinancialTab({ userData, units }: any) {
             </div>
 
             {/* 2. MAIN DETAILS (SOA & Ledger) */}
-            <div className={`flex-1 flex-col overflow-hidden bg-[#f4f7f9] relative ${(!isMobileListVisible && !isMobileHistoryVisible) ? 'flex' : 'hidden md:flex'}`}>
+            <div className={`flex-1 flex-col overflow-hidden bg-[var(--color-bg)] relative ${(!isMobileListVisible && !isMobileHistoryVisible) ? 'flex' : 'hidden md:flex'}`}>
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full animate-in fade-in duration-300">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-                    <Receipt size={28} className="text-slate-300 sm:w-8 sm:h-8" />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-5 border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                    <Receipt size={28} className="text-[var(--color-primary)]/40 sm:w-8 sm:h-8" />
                   </div>
-                  <p className="text-slate-700 font-black text-lg sm:text-xl tracking-tight">No unit selected</p>
+                  <p className="text-[var(--color-secondary)] font-black text-lg sm:text-xl tracking-tight">No unit selected</p>
                   <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Choose a unit from the sidebar to view billing details.</p>
                 </div>
               ) : (
@@ -494,49 +486,49 @@ export default function FinancialTab({ userData, units }: any) {
                   <div className="md:hidden flex justify-end">
                     <button 
                       onClick={() => setIsMobileHistoryVisible(true)}
-                      className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm px-4 py-2.5 rounded-xl text-[11px] font-black text-[#0a1e3f] uppercase tracking-wider active:scale-95 transition-transform"
+                      className="flex items-center gap-2 bg-white border border-[var(--color-border)] shadow-[var(--shadow-sm)] px-4 py-2.5 rounded-[var(--radius-md)] text-[11px] font-black text-[var(--color-secondary)] uppercase tracking-wider active:scale-95 transition-transform"
                     >
-                      <History size={14} className="text-[#359b46]" /> View History
+                      <History size={14} className="text-[var(--color-primary)]" /> View History
                     </button>
                   </div>
 
                   {/* SOA DETAILS CARD */}
-                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-200 overflow-hidden">
+                  <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
                     
                     {/* Header with Mobile Back Button */}
-                    <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-slate-200">
+                    <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-[var(--color-border)]">
                       <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                         <button 
                           onClick={() => setIsMobileListVisible(true)}
-                          className="md:hidden mt-0.5 -ml-1.5 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors active:scale-95 shrink-0"
+                          className="md:hidden mt-0.5 -ml-1.5 p-1.5 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"
                         >
                           <ChevronLeft size={22} strokeWidth={2.5} />
                         </button>
                         <div className="min-w-0">
-                          <h3 className="font-extrabold text-[#0a1e3f] text-base sm:text-xl tracking-tight leading-tight whitespace-normal break-words">
+                          <h3 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-xl tracking-tight leading-tight whitespace-normal break-words">
                             {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                           </h3>
                           <p className="text-slate-500 text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium truncate">
-                            Tenant: <span className={`font-bold ${isVacant ? 'text-slate-400' : 'text-[#1d82f5]'}`}>{isVacant ? 'Vacant' : selectedUnit?.tenant_name || '—'}</span>
+                            Tenant: <span className={`font-bold ${isVacant ? 'text-slate-400' : 'text-[var(--color-primary)]'}`}>{isVacant ? 'Vacant' : selectedUnit?.tenant_name || '—'}</span>
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
-                        {!isAssigned && <span className="bg-slate-50 text-slate-500 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest border border-slate-200 shadow-sm shrink-0">Unassigned</span>}
-                        {isAssigned && ownerStatus === 'Overdue' && <span className="bg-red-50 text-red-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest border border-red-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><AlertCircle size={12} className="sm:w-[14px] sm:h-[14px]" /> Overdue</span>}
-                        {isAssigned && ownerStatus === 'Pending' && <span className="bg-amber-50 text-amber-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest border border-amber-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><CalendarClock size={12} className="sm:w-[14px] sm:h-[14px]" /> Pending</span>}
-                        {isAssigned && ownerStatus === 'Sent' && <span className="bg-blue-50 text-blue-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest border border-blue-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><Receipt size={12} className="sm:w-[14px] sm:h-[14px]" /> Sent</span>}
-                        {isAssigned && ownerStatus === 'Paid' && <span className="bg-emerald-50 text-emerald-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest border border-emerald-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><CheckCircle size={12} className="sm:w-[14px] sm:h-[14px]" /> Settled</span>}
+                        {!isAssigned && <span className="bg-slate-50 text-slate-500 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] uppercase tracking-widest border border-slate-200 shadow-sm shrink-0">Unassigned</span>}
+                        {isAssigned && ownerStatus === 'Overdue' && <span className="bg-red-50 text-red-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] uppercase tracking-widest border border-red-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><AlertCircle size={12} className="sm:w-[14px] sm:h-[14px]" /> Overdue</span>}
+                        {isAssigned && ownerStatus === 'Pending' && <span className="bg-amber-50 text-amber-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] uppercase tracking-widest border border-amber-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><CalendarClock size={12} className="sm:w-[14px] sm:h-[14px]" /> Pending</span>}
+                        {isAssigned && ownerStatus === 'Sent' && <span className="bg-blue-50 text-blue-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] uppercase tracking-widest border border-blue-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><Receipt size={12} className="sm:w-[14px] sm:h-[14px]" /> Sent</span>}
+                        {isAssigned && ownerStatus === 'Paid' && <span className="bg-emerald-50 text-emerald-700 font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] uppercase tracking-widest border border-emerald-200 shadow-sm flex items-center gap-1 sm:gap-1.5 shrink-0"><CheckCircle size={12} className="sm:w-[14px] sm:h-[14px]" /> Settled</span>}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-slate-200/80">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x lg:divide-[var(--color-border)]">
                       
                       {/* OWNER COLUMN */}
                       <div className="p-4 sm:p-6 md:p-8 relative flex flex-col">
-                         <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-100">
+                         <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)]">
                              <h4 className="font-black text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
-                             <p className="font-black text-[#0a1e3f] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to You</p>
+                             <p className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to You</p>
                          </div>
 
                          <div className="space-y-3 sm:space-y-3.5 flex-1">
@@ -545,17 +537,17 @@ export default function FinancialTab({ userData, units }: any) {
                                 {soaConfig.owner.dues && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
                                     <span className="text-slate-500 font-medium truncate">Assoc. dues <span className="text-[10px] text-slate-400 ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
-                                    <span className="font-bold text-[#0a1e3f] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                   </div>
                                 )}
                                 {soaConfig.owner.parking && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.owner.water && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.owner.electricity && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[#0a1e3f] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isVacant && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -569,10 +561,10 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
 
                       {/* TENANT COLUMN */}
-                      <div className="p-4 sm:p-6 md:p-8 bg-slate-50/30 relative flex flex-col border-t lg:border-t-0 border-slate-200">
-                         <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-200/60">
-                             <h4 className="font-black text-[#1d82f5] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
-                             <p className="font-black text-[#1d82f5] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to Tenant</p>
+                      <div className="p-4 sm:p-6 md:p-8 bg-[var(--color-bg)]/50 relative flex flex-col border-t lg:border-t-0 border-[var(--color-border)]">
+                         <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)]">
+                             <h4 className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
+                             <p className="font-black text-[var(--color-primary)] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to Tenant</p>
                          </div>
 
                          <div className="space-y-3 sm:space-y-3.5 flex-1 opacity-80 hover:opacity-100 transition-opacity">
@@ -606,11 +598,11 @@ export default function FinancialTab({ userData, units }: any) {
                     </div>
 
                     {/* Total Hero Banner inside the card */}
-                    <div className="bg-gradient-to-r from-[#0a1e3f] to-[#163666] p-4 sm:p-6 md:p-8 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                    <div className="bg-[var(--color-primary)]/10 border-t border-[var(--color-primary)]/20 p-4 sm:p-6 md:p-8 text-[var(--color-primary-text)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                       <div className="min-w-0">
-                        <span className="font-black text-blue-200 text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 truncate block">Total Due <span className="font-medium text-slate-400 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
+                        <span className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 truncate block">Total Due <span className="font-medium text-[var(--color-primary)]/70 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
                       </div>
-                      <span className="font-black text-white text-3xl sm:text-4xl tracking-tight drop-shadow-md shrink-0">
+                      <span className="font-black text-[var(--color-primary)] text-3xl sm:text-4xl tracking-tight drop-shadow-sm shrink-0">
                         {isAssigned ? `₱${ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                       </span>
                     </div>
@@ -621,7 +613,7 @@ export default function FinancialTab({ userData, units }: any) {
                     <button 
                       onClick={() => setIsPaymentModalOpen(true)}
                       disabled={!isAssigned || isPaid || ownerTotalDue === 0 || isLoading || isOwnerProcessing}
-                      className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:shadow-[0_4px_15px_rgba(53,155,70,0.3)] disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-400 disabled:shadow-none text-white px-4 py-4 rounded-xl sm:rounded-2xl text-[12px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                      className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent px-4 py-4 rounded-[var(--radius-md)] text-[12px] sm:text-sm font-black uppercase tracking-wider transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-[var(--shadow-md)]"
                     >
                       {!isAssigned ? (
                         'Pending Assignment'
@@ -638,14 +630,14 @@ export default function FinancialTab({ userData, units }: any) {
                   </div>
 
                   {/* COMBINED LEDGER TABLE */}
-                  <div className="bg-white rounded-[1.5rem] sm:rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 p-4 sm:p-6 md:p-8 overflow-hidden">
+                  <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-4 sm:p-6 md:p-8 overflow-hidden">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-50 text-[#359b46] flex items-center justify-center border border-emerald-100 shadow-sm shrink-0">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                           <CalendarClock size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-extrabold text-[#0a1e3f] text-base sm:text-lg tracking-tight truncate">Ledger & Projection</h4>
+                          <h4 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-lg tracking-tight truncate">Ledger & Projection</h4>
                           <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
                             Due: Day {globalComp.collectionDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
                           </div>
@@ -653,60 +645,59 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
                       <button 
                         onClick={handleExportCSV}
-                        className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[#1d82f5] bg-blue-50 hover:bg-blue-100 px-4 sm:px-5 py-2.5 rounded-xl transition-all active:scale-95 border border-blue-100 shadow-sm shrink-0"
+                        className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 px-4 sm:px-5 py-2.5 rounded-[var(--radius-sm)] transition-all active:scale-95 border border-transparent shadow-[var(--shadow-sm)] shrink-0"
                       >
                         <Download size={16} className="w-4 h-4" /> Export CSV
                       </button>
                     </div>
                     
-                    <div className="hidden md:block overflow-x-auto border border-slate-200/80 rounded-2xl custom-scrollbar relative shadow-inner">
+                    <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] custom-scrollbar relative shadow-[var(--shadow-inner)]">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-[#359b46] text-white font-extrabold border-b border-[#2c813a] sticky top-0 z-10 shadow-md">
+                        <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold border-b border-transparent sticky top-0 z-10 shadow-md">
                           <tr>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">PERIOD</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">DUE DATE</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">DUES</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">PARKING</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">UTILS</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">PERIOD</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">DUE DATE</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">DUES</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">PARKING</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">UTILS</th>
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white border-r border-red-700 text-[9px] sm:text-[10px] uppercase tracking-widest">
                               PENALTY
                             </th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-[#43af55] text-[9px] sm:text-[10px] uppercase tracking-widest">STATUS</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">STATUS</th>
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-white text-[9px] sm:text-[10px] uppercase tracking-widest">TOTAL</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700 bg-white font-medium">
+                        <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white font-medium">
                           {ledgerData.map((row, idx) => {
                             const isRowPaid = row.status === 'Paid';
                             const activeRow = row.isCurrentMonth;
-                            // Use ledger specific computation for history retention
                             const rowPenalty = activeRow ? ledgerOwnerPenalty : 0;
                             const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
                             
                             return (
-                              <tr key={idx} className={`transition-colors ${activeRow ? "bg-blue-50/40 hover:bg-blue-50/60" : "hover:bg-slate-50"}`}>
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-black uppercase text-[10px] sm:text-[11px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
-                                  {row.monthName} {row.year} {activeRow && <span className="ml-1 text-lg leading-none align-middle text-[#359b46]">•</span>}
+                              <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20" : "hover:bg-slate-50"}`}>
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-black uppercase text-[10px] sm:text-[11px] tracking-wide ${activeRow ? 'text-[var(--color-primary)]' : 'text-[var(--color-secondary)]'}`}>
+                                  {row.monthName} {row.year} {activeRow && <span className="ml-1 text-lg leading-none align-middle text-[var(--color-primary)]">•</span>}
                                 </td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 text-slate-500 font-medium text-[11px] sm:text-xs">{row.dueDate}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-medium text-[11px] sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-500 font-medium text-[11px] sm:text-xs">{row.dueDate}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
                                 
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[11px] sm:text-xs ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-bold text-[11px] sm:text-xs ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                                   {rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}
                                 </td>
                                 
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-slate-100 font-bold text-[9px] sm:text-[10px] tracking-wider uppercase">
-                                  {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-emerald-100 shadow-sm">Paid</span>}
-                                  {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-red-100 shadow-sm">Overdue</span>}
-                                  {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-amber-100 shadow-sm">Pending</span>}
-                                  {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-blue-100 shadow-sm">Sent</span>}
-                                  {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md shadow-sm">Unassigned</span>}
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase">
+                                  {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-emerald-100 shadow-[var(--shadow-sm)]">Paid</span>}
+                                  {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-red-100 shadow-[var(--shadow-sm)]">Overdue</span>}
+                                  {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-amber-100 shadow-[var(--shadow-sm)]">Pending</span>}
+                                  {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-blue-100 shadow-[var(--shadow-sm)]">Sent</span>}
+                                  {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-[var(--color-border)] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">Unassigned</span>}
                                   {row.status === 'Upcoming' && <span className="text-slate-400">Upcoming</span>}
                                 </td>
 
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
                                   ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                                 </td>
                               </tr>
@@ -724,23 +715,23 @@ export default function FinancialTab({ userData, units }: any) {
                         const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
                         
                         return (
-                          <div key={idx} className={`relative p-4 sm:p-5 rounded-[0.5rem] border ${activeRow ? "bg-[#f0f9f2] border-[#359b46] shadow-md" : "bg-white border-slate-200/80 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"}`}>
-                            {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[#359b46] rounded-l-[1.25rem]"></div>}
+                          <div key={idx} className={`relative p-4 sm:p-5 rounded-[var(--radius-lg)] border ${activeRow ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)] shadow-[var(--shadow-md)]" : "bg-white border-[var(--color-border)] shadow-[var(--shadow-sm)]"}`}>
+                            {activeRow && <div className="absolute inset-y-0 left-0 w-1.5 bg-[var(--color-primary)] rounded-l-[var(--radius-lg)]"></div>}
                             
-                            <div className="flex justify-between items-start mb-3 border-b border-slate-100 pb-3">
+                            <div className="flex justify-between items-start mb-3 border-b border-[var(--color-border)] pb-3">
                               <div>
-                                <span className={`font-black uppercase text-[13px] tracking-wide ${activeRow ? 'text-[#359b46]' : 'text-[#0a1e3f]'}`}>
+                                <span className={`font-black uppercase text-[13px] tracking-wide ${activeRow ? 'text-[var(--color-primary)]' : 'text-[var(--color-secondary)]'}`}>
                                   {row.monthName} {row.year}
                                 </span>
-                                {activeRow && <span className="ml-1.5 text-[9px] font-bold text-[#359b46] tracking-widest opacity-80">(NOW)</span>}
+                                {activeRow && <span className="ml-1.5 text-[9px] font-bold text-[var(--color-primary)] tracking-widest opacity-80">(NOW)</span>}
                                 <div className="text-[11px] text-slate-500 font-medium mt-0.5">Due: {row.dueDate}</div>
                               </div>
                               <div>
-                                {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">Paid</span>}
-                                {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-md border border-red-100 font-bold text-[9px] uppercase tracking-wider">Overdue</span>}
-                                {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-100 font-bold text-[9px] uppercase tracking-wider">Pending</span>}
-                                {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100 font-bold text-[9px] uppercase tracking-wider">Sent</span>}
-                                {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-md font-bold text-[9px] uppercase tracking-wider">Unassigned</span>}
+                                {row.status === 'Paid' && <span className="text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-[var(--radius-sm)] border border-emerald-100 font-bold text-[9px] uppercase tracking-wider">Paid</span>}
+                                {row.status === 'Overdue' && <span className="text-red-600 bg-red-50 px-2.5 py-1 rounded-[var(--radius-sm)] border border-red-100 font-bold text-[9px] uppercase tracking-wider">Overdue</span>}
+                                {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-[var(--radius-sm)] border border-amber-100 font-bold text-[9px] uppercase tracking-wider">Pending</span>}
+                                {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-[var(--radius-sm)] border border-blue-100 font-bold text-[9px] uppercase tracking-wider">Sent</span>}
+                                {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-[var(--color-border)] px-2.5 py-1 rounded-[var(--radius-sm)] font-bold text-[9px] uppercase tracking-wider">Unassigned</span>}
                                 {row.status === 'Upcoming' && <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Upcoming</span>}
                               </div>
                             </div>
@@ -748,25 +739,25 @@ export default function FinancialTab({ userData, units }: any) {
                             <div className="grid grid-cols-2 gap-y-2.5 gap-x-4 mb-4">
                               <div className="flex justify-between items-center">
                                 <span className="text-[11px] text-slate-500 font-medium">Dues:</span>
-                                <span className="text-[12px] font-bold text-slate-700">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</span>
+                                <span className="text-[12px] font-bold text-[var(--color-text)]">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[11px] text-slate-500 font-medium">Parking:</span>
-                                <span className="text-[12px] font-bold text-slate-700">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</span>
+                                <span className="text-[12px] font-bold text-[var(--color-text)]">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[11px] text-slate-500 font-medium">Utils:</span>
-                                <span className="text-[12px] font-bold text-slate-700">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</span>
+                                <span className="text-[12px] font-bold text-[var(--color-text)]">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
-                                <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-700'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
+                                <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-[var(--color-text)]'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
                               </div>
                             </div>
 
-                            <div className="flex justify-between items-center bg-gradient-to-r from-[#0a1e3f] via-[#122955] to-[#0a1e3f] p-3.5 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="flex justify-between items-center bg-[var(--color-secondary)] p-3.5 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)]">
                               <span className="text-[11px] font-black uppercase tracking-widest text-slate-100">Total:</span>
-                              <span className={`font-black text-[16px] tracking-tight ${isRowPaid ? 'text-[#FFFFFF]' : 'text-[#FFFFFF]'}`}>
+                              <span className={`font-black text-[16px] tracking-tight text-white`}>
                                 ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </span>
                             </div>
@@ -781,27 +772,27 @@ export default function FinancialTab({ userData, units }: any) {
             </div>
 
             {/* ✨ 3. MOBILE HISTORY PANE (Slide In for Mobile) */}
-            <div className={`w-full shrink-0 bg-white flex-col h-full z-10 animate-in fade-in slide-in-from-right-4 duration-300 ${isMobileHistoryVisible ? 'flex md:hidden' : 'hidden'}`}>
-              <div className="p-4 sm:p-5 border-b border-slate-100 shrink-0 bg-white flex justify-between items-center shadow-[0_4px_15px_rgba(0,0,0,0.02)] z-10">
+            <div className={`w-full shrink-0 bg-[var(--color-bg)] flex-col h-full z-10 animate-in fade-in slide-in-from-right-4 duration-300 ${isMobileHistoryVisible ? 'flex md:hidden' : 'hidden'}`}>
+              <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center shadow-[var(--shadow-sm)] z-10">
                  <div className="flex items-center gap-2">
-                   <button onClick={() => setIsMobileHistoryVisible(false)} className="mr-1 text-slate-400 hover:bg-slate-100 p-1.5 rounded-xl transition-colors active:scale-95">
+                   <button onClick={() => setIsMobileHistoryVisible(false)} className="mr-1 text-slate-400 hover:bg-slate-100 p-1.5 rounded-[var(--radius-sm)] transition-colors active:scale-95">
                      <ChevronLeft size={22} strokeWidth={2.5} />
                    </button>
-                   <h3 className="font-black text-[#0a1e3f] text-[13px] uppercase tracking-wider flex items-center gap-2">
-                     <History size={16} className="text-[#359b46]"/> Transaction History
+                   <h3 className="font-black text-[var(--color-secondary)] text-[13px] uppercase tracking-wider flex items-center gap-2">
+                     <History size={16} className="text-[var(--color-primary)]"/> Transaction History
                    </h3>
                  </div>
-                 <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-lg shadow-sm">
+                 <span className="text-[10px] font-bold text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                    {isLoading ? '...' : paidHistory.length} Total
                  </span>
               </div>
               
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3 bg-slate-50/30 mb-16">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3 bg-[var(--color-bg)]/30 mb-16">
                  {isLoading ? (
                    [1, 2, 3, 4, 5].map((i) => (
-                     <div key={i} className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-white border-slate-100 shadow-sm animate-pulse">
+                     <div key={i} className="flex items-center justify-between p-3.5 sm:p-4 rounded-[var(--radius-md)] border bg-white border-[var(--color-border)] shadow-[var(--shadow-sm)] animate-pulse">
                        <div className="flex items-center gap-3">
-                         <div className="w-8 h-8 rounded-lg bg-slate-200 shrink-0"></div>
+                         <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-slate-200 shrink-0"></div>
                          <div className="space-y-2">
                            <div className="h-3 bg-slate-200 rounded w-24"></div>
                            <div className="h-2 bg-slate-100 rounded w-16"></div>
@@ -811,11 +802,11 @@ export default function FinancialTab({ userData, units }: any) {
                      </div>
                    ))
                  ) : paidHistory.length === 0 ? (
-                    <div className="text-center py-10 px-5 border border-dashed border-slate-200 rounded-2xl w-full bg-white shadow-sm">
-                       <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                    <div className="text-center py-10 px-5 border border-dashed border-[var(--color-border)] rounded-[var(--radius-lg)] w-full bg-white shadow-sm">
+                       <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-[var(--color-border)]">
                           <AlertCircle className="text-slate-300" size={24} />
                        </div>
-                       <p className="text-slate-600 font-black text-[13px] tracking-tight mb-1">No history found</p>
+                       <p className="text-[var(--color-secondary)] font-black text-[13px] tracking-tight mb-1">No history found</p>
                        <p className="text-slate-400 text-[11px] font-medium leading-relaxed">Approved payments will appear here.</p>
                     </div>
                  ) : (
@@ -839,35 +830,35 @@ export default function FinancialTab({ userData, units }: any) {
 
       {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-slate-200/80 animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
             {/* Header - Fixed */}
-            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-slate-100">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 text-[#1d82f5] flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
                   <CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight truncate">Submit Payment</h2>
+                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Submit Payment</h2>
               </div>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] hover:bg-slate-100 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
             {/* Scrollable Form Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1 flex flex-col">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 flex-1 flex flex-col">
               
               {/* Premium Amount Due Card */}
-              <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgba(0,0,0,0.02)] mb-5 sm:mb-6 gap-3 shrink-0">
+              <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-5 sm:mb-6 gap-3 shrink-0">
                 <div className="min-w-0 flex-1">
                   <span className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Amount Due</span>
-                  <span className="truncate block text-[12px] sm:text-[14px] font-bold text-[#0a1e3f]">
+                  <span className="truncate block text-[12px] sm:text-[14px] font-bold text-[var(--color-secondary)]">
                     {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                   </span>
                 </div>
-                <span className="font-black text-[#1d82f5] text-2xl sm:text-3xl tracking-tight shrink-0">
+                <span className="font-black text-[var(--color-primary)] text-2xl sm:text-3xl tracking-tight shrink-0">
                   ₱{ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </span>
               </div>
@@ -880,7 +871,7 @@ export default function FinancialTab({ userData, units }: any) {
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
-                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-sm truncate ${paymentMethod === method ? 'bg-blue-50 text-[#1d82f5] border-2 border-blue-200 shadow-[0_2px_8px_rgba(29,130,245,0.15)]' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}
+                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-[var(--shadow-sm)] truncate ${paymentMethod === method ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-2 border-[var(--color-primary)]/40 shadow-[0_2px_8px_rgba(0,0,0,0.1)]' : 'bg-white text-slate-500 border border-[var(--color-border)] hover:bg-slate-50 hover:border-[var(--color-primary)]/30'}`}
                     >
                       {method}
                     </button>
@@ -889,12 +880,12 @@ export default function FinancialTab({ userData, units }: any) {
               </div>
 
               {/* Conditional Instructions Based on Payment Method */}
-              <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl border border-slate-200/80 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-[13px] sm:text-sm text-slate-600 transition-all shrink-0">
+              <div className="mb-5 sm:mb-6 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)] text-[13px] sm:text-sm text-[var(--color-text)] transition-all shrink-0">
                 
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
-                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[#0a1e3f] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
-                    <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-slate-200 shadow-inner p-3">
+                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[var(--color-secondary)] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-inner p-3">
                       {globalComp.qrCodeUrl ? (
                         <img src={globalComp.qrCodeUrl} alt="Scan to pay" className="w-full h-full object-contain p-1" />
                       ) : (
@@ -908,28 +899,28 @@ export default function FinancialTab({ userData, units }: any) {
                 
                 {paymentMethod === 'Bank Transfer' && (
                   <div className="space-y-3">
-                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 pb-2">Admin Bank Details</p>
+                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-[var(--color-border)] pb-2">Admin Bank Details</p>
                     {globalComp.bankName || globalComp.bankAccountNumber ? (
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank</span> <span className="font-black text-[#0a1e3f] text-[11px] sm:text-xs truncate text-right">{globalComp.bankName}</span></p>
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name</span> <span className="font-black text-[#0a1e3f] text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountName}</span></p>
-                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[#1d82f5] bg-blue-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-md border border-blue-100 text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountNumber}</span></div>
+                      <div className="bg-slate-50 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] space-y-3">
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{globalComp.bankName}</span></p>
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountName}</span></p>
+                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountNumber}</span></div>
                       </div>
                     ) : (
-                      <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-slate-50 rounded-xl border border-dashed border-slate-200">Bank details will be displayed here once configured by the administration.</p>
+                      <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)]">Bank details will be displayed here once configured by the administration.</p>
                     )}
                   </div>
                 )}
                 {paymentMethod === 'Check' && (
                   <div className="space-y-2 text-center py-3 sm:py-4">
                     <p className="text-[11px] sm:text-xs font-bold text-slate-500">Make checks payable to:</p>
-                    <p className="font-black text-base sm:text-lg text-[#0a1e3f] break-words px-2 leading-tight">{globalComp.bankAccountName || 'HOA Administration'}</p>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-lg mt-4 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
+                    <p className="font-black text-base sm:text-lg text-[var(--color-secondary)] break-words px-2 leading-tight">{globalComp.bankAccountName || 'HOA Administration'}</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-sm)] mt-4 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}
                 {paymentMethod === 'Cash' && (
                   <div className="text-center py-4 sm:py-5">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-100"><ShieldCheck size={24} className="w-5 h-5 sm:w-7 sm:h-7" /></div>
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20"><ShieldCheck size={24} className="w-5 h-5 sm:w-7 sm:h-7" /></div>
                     <p className="text-[11px] sm:text-xs font-bold text-slate-600 leading-relaxed px-4">Please pay in exact amounts at the Administration Office. Retain your physical receipt.</p>
                   </div>
                 )}
@@ -944,25 +935,25 @@ export default function FinancialTab({ userData, units }: any) {
                     value={referenceNumber}
                     onChange={(e) => setReferenceNumber(e.target.value)}
                     placeholder="e.g. 1002934823"
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 sm:py-4 text-[13px] sm:text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-[#1d82f5]/15 focus:border-[#1d82f5] transition-all shadow-sm"
+                    className="w-full bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-4 py-3 sm:py-4 text-[13px] sm:text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] transition-all shadow-[var(--shadow-sm)]"
                   />
                 </div>
               )}
 
               {/* Stacked Mobile Buttons, Perfectly Balanced Desktop Buttons */}
-              <div className="mt-auto flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-slate-200/60 sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-1 sm:pb-2 z-20">
+              <div className="mt-auto flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-1 sm:pb-2 z-20">
                 <button 
                   type="button" 
                   onClick={() => setIsPaymentModalOpen(false)} 
                   disabled={isSimulating} 
-                  className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[#0a1e3f] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-xl transition-all active:scale-95 shadow-sm"
+                  className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-[var(--color-border)] hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleSimulatePayment} 
                   disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
-                  className="w-full flex-1 min-w-0 bg-gradient-to-b from-[#1d82f5] to-[#1565c0] hover:from-[#1565c0] hover:to-[#0f4d92] disabled:from-slate-300 disabled:to-slate-300 disabled:text-white/70 disabled:shadow-none text-white py-3.5 sm:py-4 rounded-xl text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[0_4px_15px_rgba(29,130,245,0.3)] hover:shadow-[0_6px_20px_rgba(29,130,245,0.4)] active:scale-95 flex justify-center items-center gap-2"
+                  className="w-full flex-1 min-w-0 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2"
                 >
                   {isSimulating ? <span className="animate-pulse">Processing...</span> : "Submit Payment"} <ArrowRight size={16} strokeWidth={2.5} className={`w-4 h-4 sm:w-4 sm:h-4 ${isSimulating ? "hidden" : "block"}`} />
                 </button>
@@ -975,21 +966,21 @@ export default function FinancialTab({ userData, units }: any) {
 
       {/* 🌟 UNIFIED SUCCESS MODAL */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-slate-200/80 animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-50 text-[#359b46] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border border-emerald-100">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 sm:mb-3 tracking-tight">Request Submitted</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">Request Submitted</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
-              Payment details for <strong className="text-slate-700">{paymentMethod}</strong> submitted successfully. 
+              Payment details for <strong className="text-[var(--color-text)]">{paymentMethod}</strong> submitted successfully. 
               {paymentMethod === 'Cash' || paymentMethod === 'Check'
                 ? " Please proceed to the Administration Office to complete your payment." 
                 : " Please wait for the Administration to verify and confirm your transaction."}
             </p>
             <button 
               onClick={() => setShowSuccessModal(false)}
-              className="w-full bg-gradient-to-b from-[#359b46] to-[#2c813a] hover:from-[#2c813a] hover:to-[#236b2f] text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(53,155,70,0.3)] hover:shadow-[0_6px_20px_rgba(53,155,70,0.4)] active:scale-95"
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95"
             >
               Got it, thanks!
             </button>
@@ -1005,19 +996,19 @@ export default function FinancialTab({ userData, units }: any) {
 // -------------------------------------------------------------------------------------------------
 function HistoryItem({ title, method, date, amount, status }: any) {
   return (
-    <div className="w-full cursor-default p-3.5 sm:p-4 rounded-xl sm:rounded-2xl transition-all border bg-white border-slate-100 hover:border-slate-200 hover:shadow-[0_2px_10px_rgba(0,0,0,0.02)] shadow-sm flex items-start sm:items-center justify-between gap-3 group">
+    <div className="w-full cursor-default p-3.5 sm:p-4 rounded-[var(--radius-md)] transition-all border bg-white border-[var(--color-border)] hover:border-[var(--color-primary)]/40 hover:shadow-[var(--shadow-sm)] flex items-start sm:items-center justify-between gap-3 group">
       <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 overflow-hidden min-w-0 pr-2">
-        <div className="p-2 sm:p-2.5 bg-blue-50 text-[#359b46] rounded-lg sm:rounded-xl shrink-0 border border-blue-100 group-hover:scale-105 transition-transform mt-0.5 sm:mt-0">
+        <div className="p-2 sm:p-2.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-sm)] shrink-0 border border-[var(--color-primary)]/20 group-hover:scale-105 transition-transform mt-0.5 sm:mt-0">
           <Receipt size={16} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="font-bold text-[#0a1e3f] text-[12px] sm:text-[13px] tracking-tight whitespace-normal break-words leading-tight">{title}</span>
+          <span className="font-bold text-[var(--color-secondary)] text-[12px] sm:text-[13px] tracking-tight whitespace-normal break-words leading-tight">{title}</span>
           <span className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 sm:mt-0.5 whitespace-normal break-words">{method} • {date}</span>
         </div>
       </div>
       <div className="shrink-0 flex flex-col items-end pl-2">
-        <span className="font-black text-[#359b46] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
-        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-md mt-1 border shadow-sm whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+        <span className="font-black text-[var(--color-primary)] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
+        <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] mt-1 border shadow-[var(--shadow-sm)] whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
           {status}
         </span>
       </div>

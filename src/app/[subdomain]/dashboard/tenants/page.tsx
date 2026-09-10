@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
-  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -55,7 +55,13 @@ export default function TenantDashboard() {
   // --- NEW: Global Toast State ---
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // --- NEW: Change Password States ---
+  // --- Edit Name States ---
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [isConfirmNameModalOpen, setIsConfirmNameModalOpen] = useState(false);
+
+  // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -63,7 +69,7 @@ export default function TenantDashboard() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
-  // --- NEW: Eye Toggle States ---
+  // --- Eye Toggle States ---
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -226,7 +232,7 @@ export default function TenantDashboard() {
 
   // Realtime SOA Updates (Detects Admin changes instantly)
   useEffect(() => {
-    if (!unit?.id) return;
+    if (!unit?.id) return; 
 
     const soaChannel = supabase
       .channel('tenant-soa-updates')
@@ -317,7 +323,7 @@ export default function TenantDashboard() {
 
   // ✨ NEW: Realtime SOA Updates (Auto-updates the Hero Card / Total Due instantly for Tenant)
   useEffect(() => {
-    if (!unit?.id) return; // Only subscribe if the tenant is assigned to a unit
+    if (!unit?.id) return; 
 
     const soaChannel = supabase
       .channel('tenant-soa-live-updates')
@@ -327,11 +333,11 @@ export default function TenantDashboard() {
           event: '*', 
           schema: 'public', 
           table: 'soa',
-          filter: `unit_id=eq.${unit.id}` // ✨ Highly optimized: Listen only to this specific unit's SOA
+          filter: `unit_id=eq.${unit.id}` 
         },
         (payload) => {
           console.log("SOA Updated! Recalculating Hero Card for Tenant...");
-          fetchTenantData(); // Re-fetch to instantly update Total Due and Statements
+          fetchTenantData(); 
         }
       )
       .subscribe();
@@ -416,13 +422,66 @@ export default function TenantDashboard() {
   
   const initials = getInitials(tenantName);
 
-  // --- NEW: Show Toast Function ---
+  // --- Show Toast Function ---
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- NEW: Handle Password Change ---
+  // --- Handle Name Update Function (using Auth user_metadata) ---
+  const handleInitiateNameSave = () => {
+    if (!editedName.trim()) {
+      showToast("Name cannot be empty", "error");
+      return;
+    }
+    
+    // Only open the modal if the name actually changed
+    if (editedName.trim() === tenantName) {
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsConfirmNameModalOpen(true);
+  };
+
+  const confirmNameSave = async () => {
+    setIsConfirmNameModalOpen(false);
+    setIsSavingName(true);
+    
+    try {
+      // 1. Update name directly in Supabase Auth user metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { name: editedName.trim() }
+      });
+      if (authError) throw authError;
+        
+      // 2. Update name in the team_members table
+      const { data, error: dbError } = await supabase
+        .from('team_members')
+        .update({ name: editedName.trim() })
+        .eq('email', userEmail)
+        .select();
+        
+      if (dbError) throw dbError;
+
+      // 3. Catch Silent RLS Failures
+      if (!data || data.length === 0) {
+        throw new Error("Update blocked by database permissions (RLS) or email not found.");
+      }
+      
+      setTenantName(editedName.trim());
+      setUserData((prev: any) => ({ ...prev, name: editedName.trim() }));
+      showToast("Profile name updated successfully!", "success");
+      setIsEditingName(false);
+    } catch (err: any) {
+      console.error("Error updating profile name:", err);
+      showToast(err.message || "Failed to update profile name.", "error");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  // --- Handle Password Change ---
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -478,14 +537,14 @@ export default function TenantDashboard() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
       
       {/* HEADER */}
-      <header className="h-16 bg-[#0b1727] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative border-b border-white/5 shadow-sm">
+      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3">
-          <div className="inline-block bg-white p-1.5 rounded-lg shadow-sm">
+          <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
             <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              <Image src={orgLogo || "/fpps-logo.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
+              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
             </div>
           </div>
         </div>
@@ -493,11 +552,11 @@ export default function TenantDashboard() {
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
           <div
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
-            className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors"
+            className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors active:scale-95"
           >
             <Bell className="w-5 h-5 text-slate-300 hover:text-white transition-colors" />
             {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 flex h-4 w-4 p-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[#0b1727] animate-pulse">
+              <span className="absolute top-0 right-0 flex h-4 w-4 p-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[var(--color-secondary)] animate-pulse">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -507,17 +566,17 @@ export default function TenantDashboard() {
           {isNotifOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
-              <div className="absolute top-14 right-0 w-[340px] sm:w-[380px] bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-slate-100 z-50 overflow-hidden flex flex-col text-slate-800 animate-in fade-in zoom-in-95 duration-200">
-                <div className="px-5 py-4 flex justify-between items-center bg-white border-b border-slate-100">
-                  <h3 className="font-extrabold text-[#0a1e3f] text-base flex items-center gap-2">
+              <div className="absolute top-14 right-0 w-[340px] sm:w-[380px] bg-white rounded-[var(--radius-lg)] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-[var(--color-border)] z-50 overflow-hidden flex flex-col text-[var(--color-text)] animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-5 py-4 flex justify-between items-center bg-[var(--color-bg)] border-b border-[var(--color-border)]">
+                  <h3 className="font-extrabold text-[var(--color-secondary)] text-base flex items-center gap-2">
                     Notifications
                     {unreadCount > 0 && (
-                      <span className="bg-[#1e88e5] text-white text-[10px] px-2 py-0.5 rounded-full">{unreadCount} new</span>
+                      <span className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-[10px] px-2 py-0.5 rounded-full">{unreadCount} new</span>
                     )}
                   </h3>
                   <div className="flex gap-3 relative z-10">
                     {unreadCount > 0 && (
-                      <button onClick={markAllAsRead} className="text-[11px] font-bold text-[#1e88e5] hover:text-blue-700 transition-colors" title="Mark all as read">
+                      <button onClick={markAllAsRead} className="text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 transition-colors" title="Mark all as read">
                         Read All
                       </button>
                     )}
@@ -535,41 +594,41 @@ export default function TenantDashboard() {
                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300">
                         <Bell size={28} />
                       </div>
-                      <h4 className="font-bold text-slate-700 mb-1">All caught up!</h4>
+                      <h4 className="font-bold text-[var(--color-secondary)] mb-1">All caught up!</h4>
                       <p className="text-xs text-slate-500">You have no new notifications right now.</p>
                     </div>
                   ) : (
                     notifications.map((notif) => {
                       const type = notif.type?.toUpperCase() || '';
                       let Icon = Bell;
-                      let iconColor = "text-blue-500";
-                      let iconBg = "bg-blue-100";
+                      let iconColor = "text-[var(--color-primary)]";
+                      let iconBg = "bg-[var(--color-primary)]/10";
 
                       if (type === 'BILLING' || type === 'SOA') {
                         Icon = Receipt; iconColor = "text-emerald-500"; iconBg = "bg-emerald-100";
                       } else if (type === 'MAINTENANCE' || type === 'TICKET') {
                         Icon = Wrench; iconColor = "text-orange-500"; iconBg = "bg-orange-100";
                       } else if (type === 'MESSAGE' || type === 'CHAT') {
-                        Icon = MessageSquare; iconColor = "text-[#1e88e5]"; iconBg = "bg-blue-100";
+                        Icon = MessageSquare; iconColor = "text-[var(--color-primary)]"; iconBg = "bg-[var(--color-primary)]/10";
                       }
 
                       return (
                         <div 
                           key={notif.id} 
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-all flex gap-3 ${!notif.is_read ? 'bg-blue-50/40' : 'opacity-80'}`}
+                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} border border-white shadow-sm`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} border border-white shadow-[var(--shadow-sm)]`}>
                             <Icon size={18} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start mb-0.5 gap-2">
-                              <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[#0a1e3f]' : 'font-semibold text-slate-700'}`}>
+                              <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-slate-700'}`}>
                                 {notif.title}
                               </span>
-                              {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[#1e88e5] shrink-0 mt-1.5 shadow-[0_0_8px_rgba(30,136,229,0.5)]"></span>}
+                              {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shrink-0 mt-1.5 shadow-[var(--shadow-sm)]"></span>}
                             </div>
-                            <p className={`text-xs line-clamp-2 mb-1.5 ${!notif.is_read ? 'text-slate-600' : 'text-slate-500'}`}>{notif.message}</p>
+                            <p className={`text-xs line-clamp-2 mb-1.5 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-500'}`}>{notif.message}</p>
                             <span className="text-[10px] text-slate-400 font-medium">
                               {new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                             </span>
@@ -580,7 +639,7 @@ export default function TenantDashboard() {
                   )}
                 </div>
                 {notifications.length > 0 && (
-                  <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
+                  <div className="p-2 bg-[var(--color-bg)] border-t border-[var(--color-border)] text-center">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">End of notifications</span>
                   </div>
                 )}
@@ -588,13 +647,14 @@ export default function TenantDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border border-blue-500/30 bg-gradient-to-br from-[#1a3d6c] via-[#1565c0] to-[#0d47a1]">
+          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-semibold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary)]/80">
             {userRole === 'owner' ? 'Owner Portal' : 'Tenant Portal'}
           </span>
           
+          {/* Logout Icon Button */}
           <button 
             onClick={() => setShowLogoutModal(true)} 
-            className="flex items-center gap-1.5 sm:gap-2 text-slate-300 hover:text-white font-medium transition-colors text-xs px-2 sm:px-3 py-1.5 border border-transparent hover:border-slate-600 rounded-full"
+            className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-[var(--radius-sm)]"
           >
             <LogOut size={16} /> <span className="hidden sm:inline">Log Out</span>
           </button>
@@ -604,32 +664,31 @@ export default function TenantDashboard() {
       {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
         
-        {/* PREMIUM DESKTOP SIDEBAR */}
-        <aside className="w-64 bg-[#0b1727] px-4 py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.15)]">
+        {/* DESKTOP SIDEBAR */}
+        <aside className="w-[260px] bg-[var(--color-secondary)] py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.15)]">
           <div className="mb-4">
-            <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Overview</h3>
+            <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Overview</h3>
           </div>
           
           <nav className="space-y-1.5 flex-1">
             <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
+            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />} label="Repairs" />
             <NavButton 
               active={activeTab === 'conversation'} 
               onClick={handleConversationClick} 
               icon={<MessageSquare size={18} strokeWidth={activeTab === 'conversation' ? 2.5 : 2} />} 
               label="Messages" 
-              badge={unreadMessages}
+              badge={unreadMessages} 
             />
-            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />} label="Repairs" />
-
             <div className="mt-8 mb-4 pt-4 border-t border-white/5">
-              <h3 className="px-3 text-[10px] font-black text-slate-400 tracking-[0.25em] uppercase">Finance & Lease</h3>
+              <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Finance & Lease</h3>
             </div>
             <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Financials" />
             <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
           </nav>
 
           {/* Premium Bottom User Tag */}
-          <div className="mt-auto pt-4 border-t border-white/5">
+          <div className="mt-auto pt-4 border-t border-white/5 px-6">
              <div 
                onClick={() => {
                  setIsWorkspaceModalOpen(true);
@@ -638,11 +697,12 @@ export default function TenantDashboard() {
                  setShowCurrentPassword(false);
                  setShowNewPassword(false);
                  setShowConfirmPassword(false);
+                 setIsEditingName(false);
                }}
-               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
+               className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
                title="View Profile Details"
              >
-                <div className="w-9 h-9 rounded-full bg-blue-500/20 text-[#1e88e5] flex items-center justify-center font-bold text-xs border border-blue-500/30 shrink-0">
+                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5" style={{backgroundColor: "var(--color-primary)"}}>
                   {isLoading ? '...' : initials}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -651,17 +711,16 @@ export default function TenantDashboard() {
                   ) : (
                     <>
                       <p className="text-sm font-bold text-slate-200 truncate">{tenantName || 'Resident'}</p>
-                      <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Account' : 'Tenant Account'}</p>
+                      <p className="text-[10px] text-white/50 truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</p>
                     </>
                   )}
                 </div>
-                <ChevronRight size={16} className="text-slate-500 shrink-0" />
              </div>
           </div>
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-[100px] md:pb-8'}`}>
+        <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
            <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' ? 'max-w-[1400px] h-full flex flex-col' : 'max-w-5xl'}`}>
              {activeTab === 'home' && (
                <HomeView 
@@ -676,6 +735,7 @@ export default function TenantDashboard() {
                    setShowCurrentPassword(false);
                    setShowNewPassword(false);
                    setShowConfirmPassword(false);
+                   setIsEditingName(false);
                  }}
                  unit={unit} 
                  transactions={transactions}
@@ -693,7 +753,7 @@ export default function TenantDashboard() {
       </div>
 
       {/* UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-slate-200/50 pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/95 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)]">
         <div className="flex justify-around items-center px-1 py-2">
           <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
           <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={22} />} label="Repairs" />
@@ -715,6 +775,7 @@ export default function TenantDashboard() {
               setShowCurrentPassword(false);
               setShowNewPassword(false);
               setShowConfirmPassword(false);
+              setIsEditingName(false);
             }} 
             icon={<User size={22} />} 
             label="Profile" 
@@ -724,32 +785,30 @@ export default function TenantDashboard() {
 
       {/* WORKSPACE PROFILE MODAL (WITH CHANGE PASSWORD) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[#0a1e3f]/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
-            {/* Header */}
-            <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-[#0a1e3f] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
+            <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
+              <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-slate-100 rounded-[var(--radius-xl)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
               >
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
             
             {/* Content Area with custom-scrollbar */}
-            <div className="overflow-y-auto bg-slate-50/50 p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
+            <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
               
-              {/* Profile Banner */}
-              <div className="bg-gradient-to-r from-[#0b1727] to-[#1e293b] rounded-[1.5rem] sm:rounded-2xl p-5 sm:p-6 text-white flex flex-row items-center gap-4 sm:gap-5 shadow-lg relative overflow-hidden shrink-0">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl"></div>
+              <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
                 
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-full bg-white/10 flex items-center justify-center font-black text-xl sm:text-2xl border border-white/20 shadow-inner shrink-0 z-10">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
                   {isLoading ? '...' : initials}
                 </div>
                 
-                <div className="flex-1 min-w-0 z-10">
+                <div className="z-10 min-w-0 flex-1 text-white">
                   {isLoading ? (
                     <div className="space-y-2.5">
                        <div className="h-4 sm:h-5 bg-white/10 rounded-md w-2/3 animate-pulse"></div>
@@ -757,30 +816,85 @@ export default function TenantDashboard() {
                     </div>
                   ) : (
                     <>
-                      <h3 className="font-extrabold text-base sm:text-lg tracking-tight break-words leading-tight">{tenantName}</h3>
-                      <p className="text-[10px] sm:text-xs font-bold text-blue-200 mt-0.5 sm:mt-1 tracking-widest uppercase">Active Resident</p>
+                      <h3 className="font-black text-lg sm:text-2xl tracking-tight break-words leading-tight">{tenantName}</h3>
+                      <p className="text-[10px] sm:text-xs font-bold text-white/70 mt-1 tracking-widest uppercase">Active Resident</p>
                     </>
                   )}
                 </div>
               </div>
 
               {/* Account Details Box */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-sm border border-slate-100 p-5 space-y-4 sm:space-y-5">
-                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 sm:pb-2 border-b border-slate-50">
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 space-y-4 sm:space-y-5">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 border-b border-slate-100">
                   Account Details
                 </h4>
                 
-                <div className="space-y-4 sm:space-y-3">
+                <div className="space-y-4 sm:space-y-5">
+                  {/* --- MODIFIED FULL NAME SECTION --- */}
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 sm:mb-1">Full Name</label>
-                    {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-1/2 animate-pulse mt-1"></div> : <p className="text-sm font-extrabold text-slate-800 tracking-tight break-words">{tenantName}</p>}
+                    <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block">Full Name</label>
+                      {!isEditingName ? (
+                        <button 
+                          onClick={() => {
+                            setEditedName(tenantName);
+                            setIsEditingName(true);
+                          }}
+                          className="text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                        >
+                          <Edit2 size={12} strokeWidth={2.5} /> Edit
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 items-center">
+                          <button 
+                            onClick={() => setIsEditingName(false)}
+                            className="text-slate-500 bg-slate-50 border border-[var(--color-border)] hover:bg-slate-100 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm"
+                            disabled={isSavingName}
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={handleInitiateNameSave}
+                            className="text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 border border-transparent px-3 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all shadow-[var(--shadow-sm)] active:scale-95"
+                            disabled={isSavingName}
+                          >
+                            {isSavingName ? (
+                              <span className="animate-pulse">Saving...</span>
+                            ) : (
+                              'Save'
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {!isEditingName ? (
+                      <p className="text-sm sm:text-[15px] font-extrabold text-[var(--color-text)] tracking-tight break-words px-3 py-2.5 bg-slate-50 rounded-[var(--radius-md)] border border-[var(--color-border)] transition-all">
+                        {tenantName}
+                      </p>
+                    ) : (
+                      <div className="relative animate-in fade-in duration-200">
+                        <input
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          className="w-full px-3 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 text-sm sm:text-[15px] font-extrabold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]"
+                          disabled={isSavingName}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleInitiateNameSave();
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
+                  {/* --- END MODIFIED FULL NAME SECTION --- */}
                   
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1">Email Address</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
                     {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-2/3 animate-pulse mt-1"></div> : (
                       <div className="w-full">
-                        <p className="text-xs sm:text-sm font-semibold text-slate-600 break-all bg-slate-50 py-2 rounded-xl inline-block border border-slate-100 leading-normal">
+                        <p className="text-xs sm:text-sm font-bold text-[var(--color-text)]/80 break-all bg-slate-50 py-2 px-3 rounded-[var(--radius-md)] inline-block border border-[var(--color-border)] leading-normal">
                           {userEmail || "Not available"}
                         </p>
                       </div>
@@ -788,17 +902,17 @@ export default function TenantDashboard() {
                   </div>
                   
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Assigned Property</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Assigned Property</label>
                     {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-3/4 animate-pulse mt-1"></div> : (
-                      <div className="text-xs sm:text-sm font-bold text-slate-700 break-words leading-relaxed bg-blue-50/50 py-2 rounded-xl border border-blue-100/50">
+                      <div className="text-xs sm:text-sm font-bold text-[var(--color-primary)] break-words leading-relaxed bg-[var(--color-primary)]/10 py-2 px-3 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
                         {unit?.property_name ? `${unit.property_name} - Unit ${unit.unit_number}` : "Not Assigned"}
                       </div>
                     )}
                   </div>
                   
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Access Role</label>
-                    <span className="inline-flex text-[9px] sm:text-[10px] font-black text-[#1e88e5] bg-blue-50 border border-blue-100 px-2.5 sm:px-2 py-1 sm:py-0.5 rounded-lg sm:rounded tracking-widest uppercase shadow-sm sm:mt-1">
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Access Role</label>
+                    <span className="inline-flex text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] tracking-widest uppercase shadow-sm">
                       {userRole === 'owner' ? 'Owner' : 'Tenant'}
                     </span>
                   </div>
@@ -806,15 +920,15 @@ export default function TenantDashboard() {
               </div>
 
               {/* --- Change Password Box --- */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-sm border border-slate-100 p-5">
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[#1e88e5] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-primary)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
                     >
                       <Key size={14} /> Change Password
                     </button>
@@ -824,27 +938,27 @@ export default function TenantDashboard() {
                 {isChangingPassword && (
                   <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     {passwordError && (
-                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100 flex items-center gap-2">
                         <AlertTriangle size={14} className="shrink-0" />
                         {passwordError}
                       </div>
                     )}
                     
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Current Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
                           required 
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
                         >
                           {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
@@ -852,7 +966,7 @@ export default function TenantDashboard() {
                     </div>
                     
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative">
                         <input 
                           type={showNewPassword ? "text" : "password"}
@@ -860,13 +974,13 @@ export default function TenantDashboard() {
                           minLength={6}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
                         >
                           {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
@@ -874,7 +988,7 @@ export default function TenantDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Confirm New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
                       <div className="relative">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
@@ -882,20 +996,20 @@ export default function TenantDashboard() {
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1e88e5]/50 focus:border-[#1e88e5] text-sm bg-slate-50 focus:bg-white transition-all" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
                         >
                           {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-3">
                       <button 
                         type="button" 
                         onClick={() => {
@@ -909,14 +1023,14 @@ export default function TenantDashboard() {
                           setShowConfirmPassword(false);
                         }}
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs"
+                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95 border border-transparent"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-2.5 rounded-xl font-bold text-white bg-[#1e88e5] hover:bg-blue-600 transition-colors shadow-sm text-xs flex items-center justify-center gap-2"
+                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95 border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>
@@ -934,32 +1048,61 @@ export default function TenantDashboard() {
         </div>
       )}
 
-      {/* SIGN OUT CONFIRMATION MODAL */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1727]/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-300 border border-white/20">
+      {/* 🌟 PREMIUM CONFIRM NAME CHANGE MODAL */}
+      {isConfirmNameModalOpen && (
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[2rem] bg-red-50 flex items-center justify-center mx-auto mb-5 sm:mb-6 border border-red-100/60 shadow-inner">
-              <LogOut size={28} className="text-red-500 sm:w-9 sm:h-9" strokeWidth={2.5} />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
+              <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
             
-            <h3 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-1.5 sm:mb-2 tracking-tight">Sign Out</h3>
-            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
-              Are you sure you want to log out of your account?
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
             
-            <div className="flex gap-3 sm:gap-4">
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsConfirmNameModalOpen(false)} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
+                disabled={isSavingName}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmNameSave} 
+                className="flex-1 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.96] flex justify-center items-center border border-transparent"
+                disabled={isSavingName}
+              >
+                {isSavingName ? <span className="animate-pulse">Updating...</span> : "Yes, Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGOUT MODAL */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Logout</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">Are you sure you want to log out of your tenant workspace?</p>
+            <div className="flex gap-3">
               <button 
                 onClick={() => setShowLogoutModal(false)} 
-                className="flex-1 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all active:scale-95 text-xs sm:text-sm duration-200"
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
               >
                 Cancel
               </button>
               <button 
                 onClick={confirmLogout} 
-                className="flex-1 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-white bg-red-500 hover:bg-red-600 transition-all shadow-md shadow-red-500/20 active:scale-95 text-xs sm:text-sm duration-200"
+                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
               >
-                Log out
+                Log Out
               </button>
             </div>
           </div>
@@ -968,13 +1111,13 @@ export default function TenantDashboard() {
 
       {/* ✨ REJECTED TICKET MODAL (Triggered by Notification) */}
       {rejectedTicketModalData && (
-        <div className="fixed inset-0 bg-[#081832]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-white/20 animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
             
             {/* Red Header */}
             <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center border-2 border-white shadow-[var(--shadow-sm)]">
                   <AlertTriangle size={20} strokeWidth={2.5} />
                 </div>
                 <div>
@@ -987,10 +1130,10 @@ export default function TenantDashboard() {
               </button>
             </div>
             
-            <div className="p-6 sm:p-8 overflow-y-auto bg-slate-50/50 custom-scrollbar pb-10 sm:pb-8">
+            <div className="p-6 sm:p-8 overflow-y-auto bg-[var(--color-bg)]/50 custom-scrollbar pb-10 sm:pb-8">
               
               {/* Reason Box */}
-              <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-md shadow-red-500/20">
+              <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-[var(--shadow-md)] shadow-red-500/20">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
                 <p className="text-sm font-semibold leading-relaxed">
                   {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
@@ -999,33 +1142,33 @@ export default function TenantDashboard() {
 
               {/* Original Report Details */}
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
-              <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm space-y-4">
+              <div className="bg-white rounded-[1.5rem] p-5 border border-[var(--color-border)] shadow-[var(--shadow-sm)] space-y-4">
                 
                 {rejectedTicketModalData.photo_url && (
-                  <div className="w-full h-40 bg-slate-100 rounded-xl overflow-hidden mb-4 border border-slate-200">
+                  <div className="w-full h-40 bg-[var(--color-bg)] rounded-[var(--radius-md)] overflow-hidden mb-4 border border-[var(--color-border)]">
                     <img src={rejectedTicketModalData.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
                   </div>
                 )}
 
                 <div>
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Issue Title</span>
-                  <p className="font-extrabold text-slate-800">{rejectedTicketModalData.title}</p>
+                  <p className="font-extrabold text-[var(--color-text)]">{rejectedTicketModalData.title}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Location</span>
-                    <p className="font-bold text-slate-600 text-xs">{rejectedTicketModalData.location}</p>
+                    <p className="font-bold text-[var(--color-text)]/80 text-xs">{rejectedTicketModalData.location}</p>
                   </div>
                   <div>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Reported On</span>
-                    <p className="font-bold text-slate-600 text-xs">{new Date(rejectedTicketModalData.created_at).toLocaleDateString()}</p>
+                    <p className="font-bold text-[var(--color-text)]/80 text-xs">{new Date(rejectedTicketModalData.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
 
                 <div>
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Description</span>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-[var(--color-bg)] p-3 rounded-[var(--radius-sm)] border border-[var(--color-border)]">
                     {rejectedTicketModalData.description}
                   </p>
                 </div>
@@ -1038,8 +1181,8 @@ export default function TenantDashboard() {
       
       {/* TOAST UI */}
       {toast && (
-        <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-white ${toast.type === "success" ? "border-l-4 border-l-[#1e88e5] text-slate-800" : "border-l-4 border-l-red-500 text-slate-800"}`}>
-          {toast.type === "success" ? <CheckCircle2 className="text-[#1e88e5]" size={22} /> : <AlertTriangle className="text-red-500" size={22} />}
+        <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-[var(--radius-xl)] shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-[var(--color-bg)] ${toast.type === "success" ? "border-l-4 border-l-[var(--color-primary)] text-[var(--color-text)]" : "border-l-4 border-l-red-500 text-[var(--color-text)]"}`}>
+          {toast.type === "success" ? <CheckCircle2 className="text-[var(--color-primary)]" size={22} /> : <AlertTriangle className="text-red-500" size={22} />}
           {toast.message}
         </div>
       )}
@@ -1077,7 +1220,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
   const getStatusColor = (status: string) => {
     if (status === 'Paid') return 'text-emerald-400';
     if (status === 'Overdue') return 'text-red-400';
-    if (status === 'Sent') return 'text-blue-400';
+    if (status === 'Sent') return 'text-[var(--color-primary)]';
     return 'text-amber-400';
   };
 
@@ -1137,41 +1280,41 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       {/* Header Section */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end pb-1 gap-2">
         <div className="w-full min-w-0">
-          <p className="text-slate-400 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest">Dashboard Overview</p>
+          <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-widest">Dashboard Overview</p>
           {isLoading ? (
-            <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-xl sm:rounded-2xl animate-pulse mt-1"></div>
+            <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-1"></div>
           ) : (
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[#0a1e3f] mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
-              Welcome back, <span className="text-slate-900 break-words">{tenantName}</span>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--color-secondary)] mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+              Welcome back, <span className="text-[var(--color-text)] break-words">{tenantName}</span>
             </h1>
           )}
         </div>
       </header>
       
-      {/* Hero Card: Amount Due Selector Display (Premium Indigo/Blue Tech Theme) */}
-      <section className="bg-gradient-to-br from-[#0a1e3f] via-[#112d56] to-[#1a3d6c] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl shadow-slate-900/10 relative overflow-hidden group border border-white/5">
-        <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-emerald-500/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-emerald-500/15 transition-colors duration-500"></div>
-        <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-blue-500/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
+      {/* Hero Card: Amount Due Selector Display (Premium Tech Theme) */}
+      <section className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
+        <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
+        <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-[var(--color-primary)]/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
           <div>
             <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full w-fit backdrop-blur-sm">
               <div className={`w-1.5 h-1.5 sm:w-2 h-2 rounded-full shrink-0 ${getIndicatorColor(soaStatus)}`}></div>
-              <p className="text-slate-200 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
+              <p className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
             </div>
             
             {isLoading ? (
               <div className="space-y-3 mt-3 sm:mt-4">
-                 <div className="h-8 sm:h-10 md:h-12 bg-white/10 rounded-xl sm:rounded-2xl w-32 sm:w-40 animate-pulse"></div>
+                 <div className="h-8 sm:h-10 md:h-12 bg-white/10 rounded-[var(--radius-md)] w-32 sm:w-40 animate-pulse"></div>
                  <div className="h-3 sm:h-4 bg-white/5 rounded w-48 sm:w-64 animate-pulse mt-2"></div>
               </div>
             ) : (
               <>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight bg-gradient-to-r from-white via-white to-slate-200 bg-clip-text text-transparent break-all sm:break-normal">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight text-white break-all sm:break-normal">
                   ₱{rentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </h2>
-                <div className="text-[11px] sm:text-xs md:text-sm text-slate-200 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl backdrop-blur-sm w-fit max-w-full">
-                  <Home size={14} className="text-blue-300 shrink-0" />
+                <div className="text-[11px] sm:text-xs md:text-sm text-white/80 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
+                  <Home size={14} className="text-[var(--color-primary)] shrink-0" />
                   <div className="truncate min-w-0">
                     <p className="font-semibold truncate">
                       {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 ${getStatusColor(soaStatus)}`}>· Status: {soaStatus}</span>}
@@ -1185,7 +1328,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           <button 
             onClick={() => setActiveTab('pay')} 
             disabled={isLoading || soaStatus === 'Unassigned'}
-            className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-800 disabled:text-slate-500 disabled:border-transparent text-[#1565c0] transition-all rounded-xl sm:rounded-2xl py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-slate-100 shadow-md hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
+            className="w-full bg-[var(--color-bg)] hover:bg-[var(--color-bg)]/80 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
           >
             {isLoading ? "Checking balance..." : (soaStatus === 'Paid' || soaStatus === 'Unassigned' || rentAmount === 0) ? "All caught up" : "See Statements"} 
             {!isLoading && rentAmount > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
@@ -1193,23 +1336,72 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </div>
       </section>
 
+      {/* Metric Grid: 4 Interactive Columns */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-         <ActionCard onClick={() => setActiveTab('repair')} icon={<PenTool size={20} className="w-4 h-4 sm:w-5 sm:h-5" />} title="Report Issue" subtitle="Snap a photo request" variant="amber" />
-         <ActionCard onClick={() => setActiveTab('lease')} icon={<FileText size={20} className="w-4 h-4 sm:w-5 sm:h-5" />} title="My Lease" subtitle="View active contracts" variant="blue" />
-         <ActionCard onClick={() => setActiveTab('pay')} icon={<Receipt size={20} className="w-4 h-4 sm:w-5 sm:h-5" />} title="Financials" subtitle="Track your billings" variant="emerald" />
-         <ActionCard onClick={handleConversationClick} icon={<Mail size={20} className="w-4 h-4 sm:w-5 sm:h-5" />} title="Support" subtitle="Message manager" variant="purple" />
+        
+        {/* Card 1: Report Issue */}
+        <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+            <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+          </div>
+          <div className="relative z-10 flex flex-col flex-1">
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Maintenance</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Report Issue</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Snap a photo request</p>
+          </div>
+        </button>
+        
+        {/* Card 2: My Lease */}
+        <button onClick={() => setActiveTab('lease')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+            <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+          </div>
+          <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contract</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">My Lease</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active contracts</p>
+          </div>
+        </button>
+        
+        {/* Card 3: Financials */}
+        <button onClick={() => setActiveTab('pay')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+            <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+          </div>
+          <div className="relative z-10 flex flex-col flex-1 min-w-0">
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Financials</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your billings</p>
+          </div>
+        </button>
+        
+        {/* Card 4: Support */}
+        <button onClick={handleConversationClick} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+            <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+          </div>
+          <div className="relative z-10 flex flex-col flex-1">
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Messages</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Support</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message manager</p>
+          </div>
+        </button>
       </div>
 
       {/* ✨ UPDATED: Recent Statements Section */}
-      <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-200/60 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-        <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-slate-100 pb-3 sm:pb-4 gap-2">
+      <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
+        <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
           <div className="min-w-0">
-            <h3 className="font-black text-base sm:text-lg text-[#0a1e3f] tracking-tight truncate">Recent Statements</h3>
+            <h3 className="font-black text-base sm:text-lg text-[var(--color-secondary)] tracking-tight truncate">Recent Statements</h3>
             <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium hidden sm:block truncate">Overview of recent monthly financial statements</p>
           </div>
           <button 
             onClick={() => setActiveTab('pay')} 
-            className="text-[10px] sm:text-xs font-black text-[#1e88e5] hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl transition-all active:scale-95 shadow-sm shrink-0 whitespace-nowrap"
+            className="text-[10px] sm:text-xs font-black text-[var(--color-primary)] hover:opacity-80 bg-[var(--color-primary)]/10 px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] shrink-0 whitespace-nowrap border border-[var(--color-primary)]/20"
           >
             View All
           </button>
@@ -1219,7 +1411,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((skeleton) => (
-                <div key={skeleton} className="flex items-center justify-between p-3 sm:p-4 bg-slate-50/50 rounded-xl sm:rounded-2xl border border-slate-100 animate-pulse">
+                <div key={skeleton} className="flex items-center justify-between p-3 sm:p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-md)] border border-[var(--color-border)] animate-pulse">
                   <div className="space-y-2">
                     <div className="h-3 sm:h-4 w-20 sm:w-28 bg-slate-200 rounded"></div>
                     <div className="h-2.5 sm:h-3 w-12 sm:w-16 bg-slate-100 rounded"></div>
@@ -1229,11 +1421,11 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
               ))}
             </div>
           ) : recentStatementsArray.length === 0 ? (
-            <div className="py-8 sm:py-10 text-center border-2 border-dashed border-slate-100 rounded-xl sm:rounded-2xl bg-slate-50/50 flex flex-col items-center justify-center p-4 sm:p-6">
-              <div className="p-3 bg-white border border-slate-100 rounded-2xl text-slate-300 mb-2 sm:mb-3 shadow-sm">
+            <div className="py-8 sm:py-10 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center p-4 sm:p-6">
+              <div className="p-3 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] text-slate-300 mb-2 sm:mb-3 shadow-[var(--shadow-sm)]">
                 <FileText size={20} className="sm:w-6 sm:h-6" />
               </div>
-              <p className="text-xs sm:text-sm text-slate-700 font-extrabold">No recent statements</p>
+              <p className="text-xs sm:text-sm text-[var(--color-text)] font-extrabold">No recent statements</p>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-1 max-w-[200px] sm:max-w-[240px]">Monthly generated financial statements will appear here.</p>
             </div>
           ) : (
@@ -1243,15 +1435,15 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                 <div 
                   key={idx} 
                   onClick={() => setActiveTab('pay')}
-                  className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl sm:rounded-2xl transition-all duration-200 cursor-pointer shadow-sm group gap-2"
+                  className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:border-blue-200 transition-colors shadow-inner shrink-0">
-                      <FileText size={16} className="sm:w-[18px] sm:h-[18px] group-hover:text-[#1e88e5] transition-colors" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
+                      <FileText size={16} className="sm:w-[18px] sm:h-[18px] transition-colors" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-extrabold text-slate-800 text-xs sm:text-sm group-hover:text-[#0a1e3f] transition-colors truncate">Statement {stmt.period}</p>
-                      <span className={`inline-flex items-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded border ${
+                      <p className="font-extrabold text-[var(--color-text)] text-xs sm:text-sm group-hover:text-[var(--color-primary)] transition-colors truncate">Statement {stmt.period}</p>
+                      <span className={`inline-flex items-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] border ${
                         isSuccess 
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
                           : stmt.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'
@@ -1261,8 +1453,8 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                     </div>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-                    <span className="font-black text-slate-900 text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
-                    <ChevronRight size={14} className="sm:w-4 sm:h-4 text-slate-300 group-hover:text-slate-500 transition-transform group-hover:translate-x-0.5 hidden sm:block" />
+                    <span className="font-black text-[var(--color-secondary)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
+                    <ChevronRight size={14} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
                   </div>
                 </div>
               );
@@ -1276,9 +1468,9 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
 
 function TransactionSkeleton() {
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100 animate-pulse">
+    <div className="flex items-center justify-between p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-lg)] border border-[var(--color-border)] animate-pulse">
       <div className="flex items-center gap-4 w-full">
-        <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0"></div>
+        <div className="w-10 h-10 rounded-[var(--radius-md)] bg-slate-200 shrink-0"></div>
         <div className="space-y-2 w-1/2">
           <div className="h-4 bg-slate-200 rounded w-3/4"></div>
           <div className="h-3 bg-slate-100 rounded w-1/2"></div>
@@ -1289,30 +1481,32 @@ function TransactionSkeleton() {
   );
 }
 
-function NavButton({ active, onClick, icon, label, badge }: any) {
+function NavButton({ active, onClick, icon, label, badgeCount }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
+      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[var(--radius-md)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
         active 
-          ? 'bg-white/10 text-white shadow-sm border border-white/5' 
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+          ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
+          : "text-white/50 hover:bg-white/5 hover:text-white"
       }`}
+      style={{
+        backgroundColor: active ? 'var(--nav-active-bg)' : 'transparent',
+      }}
     >
-      <div className="flex items-center gap-3">
-        <div className={`transition-transform duration-300 ${active ? 'text-[#1e88e5] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
-          {icon}
-        </div>
-        <span className="tracking-wide">{label}</span>
+      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
+           style={{ color: active ? 'var(--nav-active-text)' : 'inherit' }}>
+        {icon}
       </div>
+      <span className="tracking-wide flex-1 text-left">{label}</span>
       
-      {badge > 0 && (
-        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-in zoom-in">
-          {badge > 99 ? '99+' : badge}
+      {badgeCount > 0 && (
+        <span className="bg-red-500 text-white text-[10px] font-black h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shadow-md animate-pulse">
+          {badgeCount > 99 ? '99+' : badgeCount}
         </span>
       )}
-
-      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#1e88e5] rounded-r-full shadow-[0_0_10px_#1e88e5]" />}
+      
+      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 rounded-r-full shadow-sm" style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 10px var(--color-primary)' }} />}
     </button>
   );
 }
@@ -1321,27 +1515,27 @@ function NavButton({ active, onClick, icon, label, badge }: any) {
 // UPGRADED ACTION CARD COMPONENT WITH DYNAMIC VARIANT THEMES
 // -------------------------------------------------------------------------------------------------
 function ActionCard({ onClick, icon, title, subtitle, variant }: { onClick: () => void, icon: React.ReactNode, title: string, subtitle: string, variant: 'amber' | 'blue' | 'emerald' | 'purple' }) {
-  // Dynamic color mapping matching premium layout aesthetics
+  // Dynamically uses primary colors if desired, but we kept semantic colors per the original logic for variety.
   const themes = {
     amber: {
-      bg: 'bg-amber-50 group-hover:bg-amber-100/80 text-amber-600 border-amber-100/50 shadow-amber-500/5',
-      glow: 'group-hover:shadow-amber-500/10',
-      text: 'group-hover:text-amber-700'
+      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
+      glow: 'group-hover:shadow-[var(--shadow-md)]',
+      text: 'group-hover:text-[var(--color-primary)]'
     },
     blue: {
-      bg: 'bg-blue-50 group-hover:bg-blue-100/80 text-blue-600 border-blue-100/50 shadow-blue-500/5',
-      glow: 'group-hover:shadow-blue-500/10',
-      text: 'group-hover:text-blue-700'
+      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
+      glow: 'group-hover:shadow-[var(--shadow-md)]',
+      text: 'group-hover:text-[var(--color-primary)]'
     },
     emerald: {
-      bg: 'bg-emerald-50 group-hover:bg-emerald-100/80 text-emerald-600 border-emerald-100/50 shadow-emerald-500/5',
-      glow: 'group-hover:shadow-emerald-500/10',
-      text: 'group-hover:text-emerald-700'
+      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
+      glow: 'group-hover:shadow-[var(--shadow-md)]',
+      text: 'group-hover:text-[var(--color-primary)]'
     },
     purple: {
-      bg: 'bg-purple-50 group-hover:bg-purple-100/80 text-purple-600 border-purple-100/50 shadow-purple-500/5',
-      glow: 'group-hover:shadow-purple-500/10',
-      text: 'group-hover:text-purple-700'
+      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
+      glow: 'group-hover:shadow-[var(--shadow-md)]',
+      text: 'group-hover:text-[var(--color-primary)]'
     }
   };
 
@@ -1350,19 +1544,19 @@ function ActionCard({ onClick, icon, title, subtitle, variant }: { onClick: () =
   return (
     <button 
       onClick={onClick} 
-      className={`group bg-white flex flex-col p-5 rounded-[2rem] border border-slate-200/60 shadow-[0_4px_25px_rgba(0,0,0,0.015)] hover:shadow-[0_16px_35px_rgba(0,0,0,0.06)] hover:-translate-y-1.5 transition-all duration-300 ease-out active:scale-[0.96] text-left relative overflow-hidden h-full ${currentTheme.glow}`}
+      className={`group bg-white flex flex-col p-5 rounded-[1.5rem] sm:rounded-[2rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300 ease-out active:scale-[0.96] text-left relative overflow-hidden h-full ${currentTheme.glow}`}
     >
       {/* Background Gradient Hover Light Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-slate-50/20 to-slate-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[var(--color-primary)]/5 to-[var(--color-primary)]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
       {/* Modern Boxy Rounded Icon with Inner Shadows */}
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 border transition-all duration-300 relative z-10 shrink-0 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] ${currentTheme.bg}`}>
+      <div className={`w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center mb-5 border transition-all duration-300 relative z-10 shrink-0 shadow-inner ${currentTheme.bg}`}>
         {icon}
       </div>
       
       {/* Text Context Stack */}
       <div className="relative z-10 flex flex-col flex-1">
-        <h3 className={`font-black text-base text-slate-800 tracking-tight transition-colors duration-200 ${currentTheme.text}`}>
+        <h3 className={`font-black text-base text-[var(--color-text)] tracking-tight transition-colors duration-200 ${currentTheme.text}`}>
           {title}
         </h3>
         <p className="text-xs text-slate-400 mt-1 font-medium leading-normal">
@@ -1371,7 +1565,7 @@ function ActionCard({ onClick, icon, title, subtitle, variant }: { onClick: () =
       </div>
 
       {/* Slick Arrow Floating Accent Indicator */}
-      <div className="absolute bottom-4 right-5 text-slate-300 group-hover:text-slate-500 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+      <div className="absolute bottom-4 right-5 text-slate-300 group-hover:text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
         <ChevronRight size={14} strokeWidth={3} />
       </div>
     </button>
@@ -1380,51 +1574,53 @@ function ActionCard({ onClick, icon, title, subtitle, variant }: { onClick: () =
 
 function TransactionItem({ title, date, amount }: any) {
   return (
-    <div className="flex items-center justify-between p-4 bg-white hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-2xl transition-all duration-200 group">
+    <div className="flex items-center justify-between p-4 bg-white hover:bg-[var(--color-bg)]/50 border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 rounded-[var(--radius-lg)] transition-all duration-200 group shadow-[var(--shadow-sm)]">
       <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:border-blue-200 transition-colors shadow-inner">
-          <Receipt size={18} className="group-hover:text-blue-500 transition-colors" />
+        <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:border-[var(--color-primary)]/30 transition-colors shadow-inner">
+          <Receipt size={18} className="group-hover:text-[var(--color-primary)] transition-colors" />
         </div>
         <div>
-          <p className="font-extrabold text-slate-800 text-sm group-hover:text-[#0a1e3f] transition-colors">{title}</p>
+          <p className="font-extrabold text-[var(--color-text)] text-sm group-hover:text-[var(--color-secondary)] transition-colors">{title}</p>
           <p className="text-[11px] md:text-xs text-slate-400 font-semibold mt-0.5">{date}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="font-black text-slate-900 md:text-lg">{amount}</span>
-        <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-500 transition-transform group-hover:translate-x-0.5" />
+        <span className="font-black text-[var(--color-text)] md:text-lg">{amount}</span>
+        <ChevronRight size={16} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5" />
       </div>
     </div>
   );
 }
 
-function MobileNavItem({ active, onClick, icon, label, badge }: any) {
+function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
   return (
     <button 
       onClick={onClick} 
-      className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors"
+      className={`relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group ${active ? '' : 'text-slate-500 hover:text-[var(--color-primary)]'}`}
+      style={{ color: active ? 'var(--color-primary)' : '' }}
     >
+      {/* Active Background Highlight */}
       {active && (
-        <span className="absolute inset-1.5 bg-blue-500/10 rounded-xl animate-in zoom-in duration-200 shadow-sm" />
+        <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />
       )}
       
-      <div 
-        className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${
-          active 
-            ? 'text-[#1e88e5] -translate-y-1 scale-[1.05]' 
-            : 'text-slate-400 hover:text-slate-600'
-        }`}
-      >
-        <span className="relative leading-none flex items-center justify-center w-5 h-5 shrink-0 block">
+      {/* Icon & Label Wrapper with Floating Animation */}
+      <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${active ? '-translate-y-1 scale-[1.05]' : ''}`}>
+        
+        {/* Icon & Badge */}
+        <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
           {icon}
-          {badge > 0 && (
-            <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-white animate-pulse shadow-sm z-20">
-              {badge > 99 ? '99+' : badge}
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] animate-pulse z-20">
+              {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
+        </div>
+
+        {/* Text Label */}
+        <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">
+          {label}
         </span>
-        
-        <span className="text-[9px] font-black mt-1 uppercase tracking-tight">{label}</span>
       </div>
     </button>
   );
