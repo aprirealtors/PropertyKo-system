@@ -49,6 +49,7 @@ export default function MaintenanceDashboard() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // --- Edit Name States ---
@@ -383,11 +384,22 @@ export default function MaintenanceDashboard() {
       {/* HEADER */}
       <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm">
-            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority />
+          {orgLogo ? (
+            <div 
+              onClick={() => setIsLogoModalOpen(true)}
+              className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+            >
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src={orgLogo} alt="Organization Logo" fill className="object-contain object-center" priority />
+              </div>
             </div>
-          </div>
+          ) : (
+             <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm">
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src="/logos.png" alt="Organization Logo" fill className="object-contain object-center" priority />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
@@ -782,6 +794,33 @@ export default function MaintenanceDashboard() {
               >
                 Log Out
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGO LIGHTBOX MODAL */}
+      {isLogoModalOpen && orgLogo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300" onClick={() => setIsLogoModalOpen(false)}>
+          <div
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[50vh] sm:h-[70vh] flex items-center justify-center p-8 sm:p-12 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsLogoModalOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="relative w-full h-full">
+              <Image
+                src={orgLogo}
+                alt="Organization Logo Expanded"
+                fill
+                className="object-contain drop-shadow-lg"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
+              />
             </div>
           </div>
         </div>

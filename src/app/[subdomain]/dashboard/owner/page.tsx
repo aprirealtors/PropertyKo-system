@@ -7,7 +7,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, PauseCircle, MessageSquare, FileCheck, AlertCircle,
-  Clock, Check, Lock, Key, Eye, EyeOff, Droplets, Zap, Wind, Sparkles, Edit2
+  Clock, Check, Lock, Key, Eye, EyeOff, Droplets, Zap, Wind, Sparkles, Edit2, PanelLeft
 } from "lucide-react";
 import ConversationTab from "./conversation"; 
 import FinancialTab from "./financial"; 
@@ -24,27 +24,28 @@ const CATEGORIES = [
 
 export default function OwnerDashboard() {
   const router = useRouter();
-  
+
   // TABS STATE
   const [activeTab, setActiveTab] = useState('home');
-
+  // ✨ NEW: Collapsible Sidebar State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [liveTasks, setLiveTasks] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]); 
-  
+
   // BILLING & FINANCIAL STATES
   const [totalDue, setTotalDue] = useState(0);
   const [collectedGross, setCollectedGross] = useState(0);
   const [hasOverdue, setHasOverdue] = useState(false); 
-  
+
   const [myUnitsList, setMyUnitsList] = useState<any[]>([]); 
   const [unitsCount, setUnitsCount] = useState(0);
   const [occupiedCount, setOccupiedCount] = useState(0);
   const [myTickets, setMyTickets] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
-  
+
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairIssue, setRepairIssue] = useState("");
@@ -80,6 +81,7 @@ export default function OwnerDashboard() {
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [reviewOnHoldTicket, setReviewOnHoldTicket] = useState<any>(null);
 
@@ -103,7 +105,7 @@ export default function OwnerDashboard() {
   const fetchOwnerData = async () => {
     setIsLoading(true);
     const { data: authData } = await supabase.auth.getUser();
-    
+
     if (authData?.user) {
       setUserEmail(authData.user.email || "");
 
@@ -112,10 +114,10 @@ export default function OwnerDashboard() {
         .select('*')
         .eq('email', authData.user.email)
         .single();
-        
+
       if (data) {
         setUserData(data);
-        
+
         if (data.admin_email) {
           const { data: orgData } = await supabase
             .from('organizations')
@@ -132,7 +134,7 @@ export default function OwnerDashboard() {
             .select('name, email')
             .eq('admin_email', data.admin_email);
           if (membersData) setTeamMembers(membersData);
-          
+
           const { data: unitsData } = await supabase
             .from('units')
             .select('*')
@@ -148,7 +150,7 @@ export default function OwnerDashboard() {
 
             setMyUnitsList(myUnits); 
             setUnitsCount(myUnits.length);
-            
+
             let totalOwnerBill = 0;
             let totalGross = 0;
             let anyOverdue = false; 
@@ -156,7 +158,7 @@ export default function OwnerDashboard() {
 
             if (myUnits.length > 0) {
               const unitIds = myUnits.map((u: any) => u.id);
-              
+
               const { data: activeLeases } = await supabase
                 .from('leases')
                 .select('unit_id')
@@ -180,7 +182,7 @@ export default function OwnerDashboard() {
                     const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
                     return isNaN(parsed) ? 0 : parsed;
                   };
-                  
+
                   const unitArea = getUnitAreaValue(unit.unit_area);
 
                   const rawDues = (orgData?.dues_rate || 0) * unitArea;
@@ -230,7 +232,7 @@ export default function OwnerDashboard() {
 
               let curStatus = 'Paid';
               if (totalOwnerBill > 0) curStatus = anyOverdue ? 'Overdue' : 'Pending';
-              
+
               recentStatementsArray.push({
                 period: `${monthNames[curMonth]} ${curYear}`,
                 status: curStatus,
@@ -261,7 +263,7 @@ export default function OwnerDashboard() {
             .eq('is_read', false)
             .neq('sender_email', authData.user.email)
             .or(`recipient_role.eq.owner,tenant_email.eq.${authData.user.email}`);
-            
+
           if (msgCount !== null) {
             setUnreadMessages(msgCount);
           }
@@ -294,7 +296,7 @@ export default function OwnerDashboard() {
           .eq('is_hidden', false)
           .order('created_at', { ascending: false })
           .limit(10);
-          
+
         if (notifData) {
           setNotifications(notifData);
           setUnreadCount(notifData.filter(n => !n.is_read).length);
@@ -425,7 +427,7 @@ export default function OwnerDashboard() {
           const oldRecord = payload.old as any;
 
           const isMyUnit = unitIds.includes(newRecord?.unit_id) || unitIds.includes(oldRecord?.unit_id);
-          
+
           if (isMyUnit) {
             fetchOwnerData(); 
           }
@@ -454,7 +456,7 @@ export default function OwnerDashboard() {
       showToast("Name cannot be empty", "error");
       return;
     }
-    
+
     // Only open the modal if the name actually changed
     const currentFullName = userData?.name || "Owner";
     if (editedName.trim() === currentFullName) {
@@ -468,29 +470,49 @@ export default function OwnerDashboard() {
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
-    
     try {
+      const newName = editedName.trim();
+      const oldName = userData?.name; // Original name mapped directly from DB
+
       // 1. Update name directly in Supabase Auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
-        data: { name: editedName.trim() }
+        data: { name: newName }
       });
       if (authError) throw authError;
-        
+
       // 2. Update name in the team_members table
       const { data, error: dbError } = await supabase
         .from('team_members')
-        .update({ name: editedName.trim() })
+        .update({ name: newName })
         .eq('email', userEmail)
         .select();
-        
       if (dbError) throw dbError;
 
       // 3. Catch Silent RLS Failures
       if (!data || data.length === 0) {
         throw new Error("Update blocked by database permissions (RLS) or email not found.");
       }
-      
-      setUserData((prev: any) => ({ ...prev, name: editedName.trim() }));
+
+      // 4. ✨ NEW: Update the owner_name in the units table to maintain the link
+      if (oldName) {
+        const { error: unitError } = await supabase
+          .from('units')
+          .update({ owner_name: newName })
+          .eq('owner_name', oldName);
+
+        if (unitError) console.error("Failed to update owner name in units", unitError);
+      }
+
+      setUserData((prev: any) => ({ ...prev, name: newName }));
+
+      // ✨ NEW: Update local units list so the UI reflects correctly
+      setMyUnitsList((prev: any[]) => 
+        prev.map(unit => ({
+            ...unit,
+            owner_name: unit.owner_name === oldName ? newName : unit.owner_name
+        }))
+      );
+
       showToast("Owner name updated successfully!", "success");
       setIsEditingName(false);
     } catch (err: any) {
@@ -499,7 +521,7 @@ export default function OwnerDashboard() {
     } finally {
       setIsSavingName(false);
     }
-  };
+  }; 
 
   // --- Handle Password Change ---
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -541,7 +563,7 @@ export default function OwnerDashboard() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      
+
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmPassword(false);
@@ -595,9 +617,9 @@ export default function OwnerDashboard() {
         const { data: imgData, error: uploadError } = await supabase.storage
           .from('tickets')
           .upload(`owner-uploads/${fileName}`, selectedImage);
-          
+
         if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
-          
+
         if (imgData) {
           const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
           photoUrl = publicUrlData.publicUrl;
@@ -605,7 +627,7 @@ export default function OwnerDashboard() {
       }
 
       const capitalizedTime = capitalizeWords(repairTime);
-      
+
       const { data: currentAuth } = await supabase.auth.getUser();
       const finalEmail = currentAuth.user?.email || userEmail;
 
@@ -649,7 +671,7 @@ export default function OwnerDashboard() {
       setRepairPriority("Normal");
       setSelectedImage(null);
       setSelectedUnitForRepair("");
-      
+
       setIsSuccessModalOpen(true);
 
     } catch (err: any) {
@@ -684,7 +706,7 @@ export default function OwnerDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    
+
     if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
       if (notif.reference_id) {
         const { data: ticketData } = await supabase.from('tickets').select('*').eq('id', notif.reference_id).single();
@@ -753,10 +775,10 @@ export default function OwnerDashboard() {
           String(t.id) === actualId || 
           (t.liveMatch && String(t.liveMatch.id) === actualId)
         );
-        
+
         if (matchingTicket) {
           const status = String(matchingTicket.currentLiveStatus).toLowerCase();
-          
+
           if (status === 'on_hold' || status === 'on hold') {
             setActiveView('on_hold');
             setReviewOnHoldTicket(matchingTicket);
@@ -770,7 +792,7 @@ export default function OwnerDashboard() {
 
           const targetId = String(matchingTicket.id);
           const targetElement = document.getElementById(`ticket-${targetId}`);
-          
+
           if (targetElement) {
             targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
             setActiveHighlightId(targetId);
@@ -799,23 +821,27 @@ export default function OwnerDashboard() {
   });
 
   const fullName = userData?.name || "Owner";
+
   const getInitials = (name: string) => {
-    if (!name || name === "Owner") return "OW";
-    const parts = name.trim().split(' ');
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    // Return "O" for Owner or missing names
+    if (!name || name === "Owner") return "O"; 
+
+    // Get the first character, remove leading spaces, and capitalize it
+    return name.trim().charAt(0).toUpperCase();
   };
-  const initials = getInitials(userData?.name);
-  
+
+  // Pass fullName instead of userData?.name to utilize your fallback
+  const initials = getInitials(fullName);
+
   const fullUnitsDisplay = useMemo(() => {
     if (myUnitsList.length === 0) return "No assigned units";
-    
+
     const grouped = myUnitsList.reduce((acc: Record<string, string[]>, unit: any) => {
       const propName = unit.property_name || "Unknown Property";
-      
+
       if (!acc[propName]) acc[propName] = [];
       acc[propName].push(unit.unit_number);
-      
+
       return acc;
     }, {});
 
@@ -832,19 +858,30 @@ export default function OwnerDashboard() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
-      
+
       {/* UNIFIED TOP NAVIGATION */}
-      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-sm)]">
+      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-md)]">
         <div className="flex items-center gap-3">
-          <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
-            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+          {orgLogo ? (
+            <div 
+              onClick={() => setIsLogoModalOpen(true)}
+              className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+            >
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src={orgLogo} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src="/logos.png" alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
-          
+
           <div 
             onClick={() => setIsNotifOpen(!isNotifOpen)} 
             className="relative flex items-center justify-center cursor-pointer p-1.5 hover:bg-white/10 rounded-full transition-colors active:scale-95"
@@ -862,7 +899,7 @@ export default function OwnerDashboard() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
               <div className="absolute top-14 right-0 w-[340px] sm:w-[380px] bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-[var(--color-border)] z-50 overflow-hidden flex flex-col text-[var(--color-text)] animate-in fade-in zoom-in-95 duration-200">
-                
+
                 <div className="px-5 py-4 flex justify-between items-center bg-[var(--color-bg)] border-b border-[var(--color-border)]">
                   <h3 className="font-extrabold text-[var(--color-secondary)] text-base flex items-center gap-2">
                     Notifications
@@ -943,8 +980,8 @@ export default function OwnerDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-semibold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary)]/80">Owner Portal</span>
-          
+          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[12px] sm:text-xs font-extrabold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-[var(--color-primary)]">Owner Portal</span>
+
           {/* Logout Icon Button */}
           <button 
             onClick={() => setIsLogoutModalOpen(true)} 
@@ -958,67 +995,77 @@ export default function OwnerDashboard() {
 
       {/* LAYOUT WRAPPER: Sidebar & Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        
-        {/* DESKTOP SIDEBAR */}
-        <aside className="w-[260px] bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-20 transition-all">
-          <div className="mb-4">
-            <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Overview</h3>
-          </div>
-          
-          <nav className="space-y-1.5 flex-1">
-            <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
-            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />} label="Repairs" />
-            <NavButton 
-              active={activeTab === 'messages'} 
-              onClick={handleConversationClick} 
-              icon={<MessageSquare size={18} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />} 
-              label="Messages" 
-              badgeCount={unreadMessages} 
-            />
-            <div className="mt-8 mb-4 pt-4 border-t border-white/5">
-              <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Finance & Documents</h3>
+
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Manager Style) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px] px-2' : 'md:w-[260px] px-4'} bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-40 transition-all duration-300 relative shrink-0`}>
+
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden md:flex absolute top-[72px] -right-3 w-6 h-6 rounded-full bg-white border border-[var(--color-border)] shadow-md items-center justify-center z-20 text-slate-500 hover:text-[var(--color-primary)] hover:scale-110 hover:shadow-lg transition-all duration-200 group"
+          >
+            <PanelLeft size={13} strokeWidth={2.5} className={`transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180" : ""}`} />
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+              {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            </span>
+          </button>
+
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
+            <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
+            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Repairs" isActive={activeTab === "repair"} onClick={() => setActiveTab('repair')} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "messages"} onClick={handleConversationClick} badgeCount={unreadMessages} collapsed={isSidebarCollapsed} />
+
+            <div className="pt-4">
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Finance & Docs</NavSectionLabel>
             </div>
-            <NavButton active={activeTab === 'financials'} onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'financials' ? 2.5 : 2} />} label="Financials" />
-            <NavButton active={activeTab === 'leases'} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'leases' ? 2.5 : 2} />} label="My Lease" />
+            <NavItem icon={<Receipt size={18} strokeWidth={2.5} />} label="Financials" isActive={activeTab === "financials"} onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "leases"} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
-          <div className="mt-auto pt-4 border-t border-white/5 px-6">
-             <div 
-               onClick={() => {
-                 setIsWorkspaceModalOpen(true);
-                 setIsChangingPassword(false);
-                 setPasswordError(null);
-                 setShowCurrentPassword(false);
-                 setShowNewPassword(false);
-                 setShowConfirmPassword(false);
-                 setIsEditingName(false);
-               }}
-               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
-               title="View Profile Details"
-             >
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5" style={{backgroundColor: "var(--color-primary)"}}>
-                  {initials}
-                </div>
+          <div className="shrink-0 pt-4 mt-auto border-t border-white/5">
+            <button 
+              onClick={() => {
+                setIsWorkspaceModalOpen(true);
+                setIsChangingPassword(false);
+                setPasswordError(null);
+                setShowCurrentPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPassword(false);
+                setIsEditingName(false);
+              }}
+              className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}
+            >
+              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5 shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
+                {initials}
+              </div>
+              {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{isLoading ? "..." : fullName}</p>
-                  <p className="text-[10px] text-white/50 truncate uppercase tracking-widest mt-0.5">Owner Profile</p>
+                  <p className="text-sm font-extrabold text-white truncate">{isLoading ? "..." : fullName}</p>
+                  <p className="text-[10px] text-slate-400 truncate font-extrabold">OWNER PROFILE</p>
                 </div>
-             </div>
+              )}
+              {isSidebarCollapsed && (
+                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+                  {fullName}
+                </div>
+              )}
+            </button>
           </div>
         </aside>
 
         {/* MAIN CONTENT AREA */}
         <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'messages' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
-          
+
           {/* TAB 1: HOME (OVERVIEW) */}
           {activeTab === 'home' && (
             <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              
+
               {/* Header Section */}
               <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end pb-2 gap-3 sm:gap-0">
                 <div className="w-full">
                   <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-widest">Dashboard Overview</p>
-                    
+
                     {isLoading ? (
                       <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse inline-block mt-1"></div>
                     ) : (
@@ -1027,7 +1074,7 @@ export default function OwnerDashboard() {
                         <span className="text-[var(--color-secondary)] break-words">{fullName}</span>
                       </h1>
                     )}
-                  
+
                   {businessNameDisplay && (
                     <div className="flex items-center gap-2 mt-2.5 sm:mt-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-3 py-1.5 rounded-[var(--radius-sm)] w-fit shadow-[var(--shadow-sm)]">
                       <Briefcase size={14} className="text-[var(--color-primary)] shrink-0" />
@@ -1045,14 +1092,14 @@ export default function OwnerDashboard() {
                 {/* Decorative background shapes */}
                 <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
                 <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-blue-500/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
-                
+
                 <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
                   <div>
                     <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit backdrop-blur-sm">
                       <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? (hasOverdue ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-pulse') : 'bg-[var(--color-primary)]'}`}></div>
                       <p className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
                     </div>
-                    
+
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight flex items-center min-h-[36px] sm:min-h-[40px] md:min-h-[48px] text-white break-all sm:break-normal">
                       {isLoading ? (
                         <div className="h-8 sm:h-10 md:h-12 w-40 sm:w-48 bg-white/10 rounded-[var(--radius-md)] animate-pulse"></div>
@@ -1060,17 +1107,17 @@ export default function OwnerDashboard() {
                         `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
                       )}
                     </h2>
-                    
+
                     <div className="text-[11px] sm:text-xs md:text-sm text-white/70 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
                       <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
                       <div className="truncate min-w-0">
                         {isLoading ? (
                           <div className="h-3 sm:h-4 bg-white/10 rounded-[var(--radius-sm)] animate-pulse w-32 sm:w-48"></div>
                         ) : (
-                          <p className="font-semibold truncate">
+                          <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
                             {fullUnitsDisplay} 
                             {totalDue > 0 && (
-                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-red-400' : 'text-amber-400'}`}>
+                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-[var(--color-primary)]' : 'text[var(--color-primary-text)]'}`}>
                                 · {hasOverdue ? 'Overdue Payment' : 'Pending Payment'}
                               </span>
                             )}
@@ -1093,7 +1140,7 @@ export default function OwnerDashboard() {
 
               {/* Metric Grid: 4 Interactive Columns */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-                
+
                 {/* Card 1: Report Issue */}
                 <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1106,7 +1153,7 @@ export default function OwnerDashboard() {
                     <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Create repair request</p>
                   </div>
                 </button>
-                
+
                 {/* Card 2: Owned Properties */}
                 <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1123,7 +1170,7 @@ export default function OwnerDashboard() {
                     </div>
                   </div>
                 </button>
-                
+
                 {/* Card 3: Collected Gross */}
                 <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1138,7 +1185,7 @@ export default function OwnerDashboard() {
                     <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Total revenue collected</p>
                   </div>
                 </button>
-                
+
                 {/* Card 4: Occupied Units */}
                 <button className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1169,7 +1216,7 @@ export default function OwnerDashboard() {
                     View All
                   </button>
                 </div>
-                
+
                 <div className="space-y-3">
                   {isLoading ? (
                     <div className="space-y-3">
@@ -1239,7 +1286,7 @@ export default function OwnerDashboard() {
           {/* ✨ TAB 3: REPAIRS KANBAN */}
           {activeTab === 'repair' && (
             <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8 md:pb-10">
-              
+
               {/* Kanban Header */}
               <div className="flex-none shrink-0 mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:px-8 sm:py-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
@@ -1280,7 +1327,7 @@ export default function OwnerDashboard() {
 
               {/* Grid Kanban (Hybrid UI) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full overflow-y-auto custom-scrollbar">
-                  
+
                 {/* ================= Column 1: Active Tickets ================= */}
                 <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
                   <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
@@ -1292,7 +1339,7 @@ export default function OwnerDashboard() {
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
                     </span>
                   </h4>
-                  
+
                   <div className="flex flex-col space-y-4">
                     {isLoading ? (
                       <><KanbanSkeleton /><KanbanSkeleton /></>
@@ -1328,7 +1375,7 @@ export default function OwnerDashboard() {
 
                             <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-transparent">
+                                <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-transparent">
                                   {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                                 </div>
                                 <div className="flex flex-col">
@@ -1356,7 +1403,7 @@ export default function OwnerDashboard() {
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : onHoldTasks.length}
                     </span>
                   </h4>
-                  
+
                   <div className="flex flex-col space-y-4">
                     {isLoading ? (
                       <KanbanSkeleton />
@@ -1390,7 +1437,7 @@ export default function OwnerDashboard() {
 
                             <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-amber-200">
+                                <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-amber-200">
                                   {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                                 </div>
                                 <div className="flex flex-col">
@@ -1418,7 +1465,7 @@ export default function OwnerDashboard() {
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : resolvedTasks.length}
                     </span>
                   </h4>
-                  
+
                   <div className="flex flex-col space-y-4">
                     {isLoading ? (
                       <><KanbanSkeleton /><KanbanSkeleton /></>
@@ -1437,7 +1484,7 @@ export default function OwnerDashboard() {
                               <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
                               <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
                             </div>
-                            
+
                             <p className="text-slate-500 font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                               <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                             </p>
@@ -1490,7 +1537,7 @@ export default function OwnerDashboard() {
       {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/90 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)]">
         <div className="flex justify-around items-center px-1 py-1.5 max-w-md mx-auto">
-          
+
           <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
             {activeTab === 'home' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'home' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'home' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
@@ -1498,7 +1545,7 @@ export default function OwnerDashboard() {
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Home</span>
             </div>
           </button>
-          
+
           <button onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
             {activeTab === 'repair' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'repair' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'repair' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
@@ -1510,7 +1557,7 @@ export default function OwnerDashboard() {
           <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
             {activeTab === 'messages' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'messages' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
-              
+
               <div className="relative w-5 h-5 block shrink-0">
                 <MessageSquare size={20} className="absolute inset-0" />
                 {unreadMessages > 0 && (
@@ -1523,7 +1570,7 @@ export default function OwnerDashboard() {
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Chat</span>
             </div>
           </button>
-          
+
           {/* FINANCE */}
           <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
             {activeTab === 'financials' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
@@ -1568,10 +1615,10 @@ export default function OwnerDashboard() {
       {/* MODALS */}
       {/* 1. REPORT REPAIR MODAL (Symptom-Based) */}
       {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
-            
-            <div className="px-5 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
+
+            <div className="px-5 py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight">Report an Issue</h2>
                 <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
@@ -1583,7 +1630,7 @@ export default function OwnerDashboard() {
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 pb-safe">
               <form onSubmit={handleReportRepair} className="space-y-6">
-                
+
                 {myUnitsList.length > 1 && (
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Property Unit</label>
@@ -1645,10 +1692,10 @@ export default function OwnerDashboard() {
                 {/* Animated reveal for the rest of the form */}  
                 {issueCategory && (
                   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    
+
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Step 2: Upload Photo (Required)</label>
-                      
+
                       {selectedImage ? (
                         <div className="flex flex-col w-full p-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-[var(--shadow-sm)]">
                           <div className="relative w-full h-32 rounded-[var(--radius-md)] overflow-hidden bg-slate-900 mb-2">
@@ -1722,9 +1769,9 @@ export default function OwnerDashboard() {
 
       {/* ✨ 2. ACTIVE REQUEST DETAILS MODAL */}
       {reviewActiveTicket && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-            
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
@@ -1741,7 +1788,7 @@ export default function OwnerDashboard() {
 
             <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                
+
                 {/* SUBMITTED DETAILS */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex items-center gap-3">
@@ -1794,7 +1841,7 @@ export default function OwnerDashboard() {
                           {new Date(reviewActiveTicket.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                      
+
                       {/* ASSIGNED TO */}
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] font-black text-[var(--color-primary)]/80 uppercase tracking-widest flex items-center gap-2">
@@ -1822,9 +1869,9 @@ export default function OwnerDashboard() {
 
       {/* ✨ 3. REVIEW ON HOLD MODAL (Before & After) */}
       {reviewOnHoldTicket && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-            
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
@@ -1841,7 +1888,7 @@ export default function OwnerDashboard() {
 
             <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                
+
                 {/* BEFORE COLUMN */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3">
@@ -1905,7 +1952,7 @@ export default function OwnerDashboard() {
                         {reviewOnHoldTicket.liveMatch?.on_hold_reason || reviewOnHoldTicket.liveMatch?.remarks || "Task is currently on hold. We will update you soon as possible."}
                       </p>
                     </div>
-                    
+
                     <div className="flex justify-between items-center text-xs sm:text-sm border-t border-amber-200/60 pt-4 mt-2">
                       <span className="text-[10px] sm:text-xs font-black text-amber-600 uppercase tracking-wider flex items-center gap-1.5"><User size={12} /> Staff</span>
                       <span className="font-bold text-amber-900 bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-amber-100 shadow-[var(--shadow-sm)]">
@@ -1927,9 +1974,9 @@ export default function OwnerDashboard() {
 
       {/* ✨ 4. REVIEW RESOLUTION MODAL (Before & After) */}
       {reviewTicket && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-            
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
@@ -1946,7 +1993,7 @@ export default function OwnerDashboard() {
 
             <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                
+
                 {/* BEFORE */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex items-center gap-3">
@@ -1974,7 +2021,7 @@ export default function OwnerDashboard() {
                 {/* AFTER */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-bl-full blur-2xl pointer-events-none"></div>
-                  
+
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
                       <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">After</span>
@@ -2022,9 +2069,9 @@ export default function OwnerDashboard() {
 
       {/* REJECTED TICKET MODAL */}
       {rejectedTicketModalData && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
-            
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
+
             {/* Red Header */}
             <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
@@ -2040,9 +2087,9 @@ export default function OwnerDashboard() {
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
-            
+
             <div className="p-6 sm:p-8 overflow-y-auto bg-[var(--color-bg)]/50 custom-scrollbar pb-10 sm:pb-8">
-              
+
               {/* Reason Box */}
               <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-md shadow-red-500/20">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
@@ -2054,7 +2101,7 @@ export default function OwnerDashboard() {
               {/* Original Report Details */}
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
               <div className="bg-white rounded-2xl p-5 border border-[var(--color-border)] shadow-[var(--shadow-sm)] space-y-4">
-                
+
                 {rejectedTicketModalData.photo_url && (
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[var(--radius-md)] overflow-hidden mb-4 border border-[var(--color-border)] p-1">
                     <img src={rejectedTicketModalData.photo_url} alt="Reported issue" className="w-full h-full object-contain" />
@@ -2092,9 +2139,9 @@ export default function OwnerDashboard() {
 
       {/* WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
-            
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Owner Profile</h2>
               <button 
@@ -2104,12 +2151,12 @@ export default function OwnerDashboard() {
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
-            
+
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
-              
+
               <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
-                
+
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
                   {initials}
                 </div>
@@ -2128,7 +2175,7 @@ export default function OwnerDashboard() {
                   <div>
                     <div className="flex justify-between items-center mb-1.5 sm:mb-2">
                       <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block">Full Name</label>
-                      
+
                       {!isEditingName ? (
                         <button 
                           onClick={() => {
@@ -2184,14 +2231,14 @@ export default function OwnerDashboard() {
                     )}
                   </div>
                   {/* --- END MODIFIED FULL NAME SECTION --- */}
-                  
+
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
                     <div className="w-full">
                       <p className="text-xs sm:text-sm font-bold text-[var(--color-text)]/80 break-all bg-slate-50 py-2 px-3 rounded-[var(--radius-md)] inline-block border border-[var(--color-border)] leading-normal">{userEmail || "Not available"}</p>
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Owned Properties</label>
                     <div className="text-xs sm:text-sm font-bold text-[var(--color-primary)] break-words leading-relaxed bg-[var(--color-primary)]/10 py-2 px-3 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
@@ -2247,7 +2294,7 @@ export default function OwnerDashboard() {
                         {passwordError}
                       </div>
                     )}
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative">
@@ -2268,7 +2315,7 @@ export default function OwnerDashboard() {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative">
@@ -2346,7 +2393,7 @@ export default function OwnerDashboard() {
                   </form>
                 )}
               </div>
-              
+
             </div>
           </div>
         </div>
@@ -2354,18 +2401,18 @@ export default function OwnerDashboard() {
 
       {/* 🌟 PREMIUM CONFIRM NAME CHANGE MODAL */}
       {isConfirmNameModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
-            
+
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
-            
+
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
@@ -2388,9 +2435,9 @@ export default function OwnerDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Logout</h2>
@@ -2404,10 +2451,37 @@ export default function OwnerDashboard() {
               </button>
               <button 
                 onClick={handleLogout} 
-                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGO LIGHTBOX MODAL */}
+      {isLogoModalOpen && orgLogo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300" onClick={() => setIsLogoModalOpen(false)}>
+          <div
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[50vh] sm:h-[70vh] flex items-center justify-center p-8 sm:p-12 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsLogoModalOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="relative w-full h-full">
+              <Image
+                src={orgLogo}
+                alt="Organization Logo Expanded"
+                fill
+                className="object-contain drop-shadow-lg"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
+              />
             </div>
           </div>
         </div>
@@ -2420,7 +2494,7 @@ export default function OwnerDashboard() {
           {toast.message}
         </div>
       )}
-      
+
       {/* ✨ GLOBAL CSS: INVISIBLE SCROLLBARS */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar {
@@ -2430,7 +2504,7 @@ export default function OwnerDashboard() {
         .custom-scrollbar::-webkit-scrollbar { 
           display: none; /* Chrome, Safari, Opera */
         }
-        
+
         .animate-bounce-slow {
           animation: bounce 3s infinite;
         }
@@ -2475,33 +2549,75 @@ function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, 
   );
 }
 
-// Premium Desktop Nav Button Component w/ Badge (Themified)
-function NavButton({ active, onClick, icon, label, badgeCount }: any) {
+// ✨ NAV SECTION LABEL: Typography with trailing divider
+function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="h-px bg-white/10 mx-4 my-3 first:mt-1" />;
+  }
   return (
-    <button 
-      onClick={onClick} 
-      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[var(--radius-md)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
-        active 
-          ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
-          : "text-white/50 hover:bg-white/5 hover:text-white"
-      }`}
-      style={{
-        backgroundColor: active ? 'var(--nav-active-bg)' : 'transparent',
-      }}
-    >
-      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
-           style={{ color: active ? 'var(--nav-active-text)' : 'inherit' }}>
-        {icon}
-      </div>
-      <span className="tracking-wide flex-1 text-left">{label}</span>
-      
-      {badgeCount > 0 && (
-        <span className="bg-red-500 text-white text-[10px] font-black h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shadow-md animate-pulse">
-          {badgeCount > 99 ? '99+' : badgeCount}
+    <div className="flex items-center gap-3 px-4 pt-5 pb-2 first:pt-2 select-none">
+      <span className="text-[11px] font-semibold text-slate-400/80 uppercase tracking-widest whitespace-nowrap">
+        {children}
+      </span>
+      <div className="h-px bg-white/5 flex-1 mt-0.5"></div>
+    </div>
+  );
+}
+
+// ✨ REFACTORED NAV ITEM: Uses CSS Variables for dynamic active states; supports collapsed tooltip mode
+function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number, collapsed?: boolean }) {
+  return (
+    <div className="relative group/navitem">
+      <button 
+        onClick={onClick} 
+        className={`w-full flex items-center gap-3 rounded-[var(--radius-xl)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
+          collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5"
+        } ${
+          isActive 
+            ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
+            : "text-slate-300 hover:bg-white/5 hover:text-white"
+        }`}
+        style={{
+          backgroundColor: isActive ? 'var(--nav-active-bg)' : 'transparent',
+          borderLeftWidth: isActive && !collapsed ? 'var(--nav-border-left-width, 0px)' : '0px',
+          borderLeftColor: isActive ? 'var(--color-primary)' : 'transparent',
+        }}
+      >
+        <span className={`shrink-0 relative transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`}
+              style={{ color: isActive ? 'var(--nav-active-text)' : 'inherit' }}>
+          {icon}
+          {collapsed && badgeCount !== undefined && badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[var(--color-secondary)]"></span>
+          )}
         </span>
+
+        {!collapsed && (
+          <>
+            <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
+            {badgeCount !== undefined && badgeCount > 0 && (
+              <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
+                isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'
+              }`}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
+          </>
+        )}
+
+        {!collapsed && !isActive && (!badgeCount || badgeCount <= 0) && (
+          <ChevronRight size={16} className="shrink-0 absolute right-3 opacity-0 group-hover:opacity-100 transition-all text-slate-500" />
+        )}
+      </button>
+
+      {/* Tooltip shown only in collapsed (icon-only) mode */}
+      {collapsed && (
+        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover/navitem:opacity-100 group-hover/navitem:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+          {label}
+          {badgeCount !== undefined && badgeCount > 0 && (
+            <span className="ml-1.5 text-red-400">({badgeCount > 99 ? '99+' : badgeCount})</span>
+          )}
+        </div>
       )}
-      
-      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 rounded-r-full shadow-sm" style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 10px var(--color-primary)' }} />}
-    </button>
+    </div>
   );
 }

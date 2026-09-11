@@ -18,6 +18,8 @@ import {
   Layers,
   Menu,
   X,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,7 +28,7 @@ export default function LandingPage() {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [frontMockup, setFrontMockup] = useState<"desktop" | "phone">("phone");
+  const [frontMockup, setFrontMockup] = useState<"desktop" | "phone">("desktop");
   const [activeSection, setActiveSection] = useState<string>("");
 
   // 2️⃣ EFFECTS
@@ -87,11 +89,8 @@ export default function LandingPage() {
     setActiveSection(id);
     setIsMenuOpen(false);
 
-    // Reflect the section in the URL without triggering a native jump
     window.history.pushState(null, "", `#${id}`);
 
-    // Give the mobile dropdown a beat to start closing so its layout change
-    // doesn't cancel the smooth-scroll animation before it starts
     window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
@@ -190,7 +189,7 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        {/* Mobile Dropdown Menu — only rendered while open, so it never reserves layout space when closed */}
+        {/* Mobile Dropdown Menu */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
@@ -282,60 +281,97 @@ export default function LandingPage() {
             </motion.div>
           </div>
 
-          {/* Hero Mockups Container (Desktop & Mobile combo) */}
+          {/* Hero 3D Globe Style Switch Container */}
           <motion.div
             initial={{ opacity: 0, x: 40, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="w-full lg:w-1/2 relative mt-12 lg:mt-0 min-h-[400px] sm:min-h-[500px]"
+            className="w-full lg:w-1/2 relative mt-12 lg:mt-0 flex flex-col items-center"
           >
-            {/* Background Blob for aesthetics */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-[#359b46]/5 to-[#0a1e3f]/5 rounded-full blur-3xl -z-10"></div>
+            {/* Background Blob */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-[#359b46]/5 to-[#0a1e3f]/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
 
-            {/* Desktop Mockup */}
-            <button
-              type="button"
-              onClick={() => setFrontMockup("desktop")}
-              aria-label="Bring desktop preview to front"
-              className={`absolute right-0 top-0 w-[92%] md:w-[88%] bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border overflow-hidden text-left cursor-pointer transition-all duration-300 ${
-                frontMockup === "desktop"
-                  ? "z-30 border-[#359b46]/40 scale-[1.02]"
-                  : "z-10 border-slate-200 opacity-90 hover:opacity-100"
-              }`}
-            >
-              {/* Browser chrome */}
-              <div className="flex items-center gap-1.5 px-4 py-3 bg-slate-50 border-b border-slate-200">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                <span className="w-2.5 h-2.5 rounded-full bg-[#359b46]"></span>
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/desktop.png"
-                alt="PropertyKo Desktop Workspace"
-                className="w-full h-auto block"
+            {/* Platform Toggle Switch */}
+            <div className="relative mb-10 bg-white p-1.5 rounded-full border border-slate-200 shadow-sm flex items-center w-max mx-auto z-20">
+              <motion.div
+                className="absolute top-1.5 bottom-1.5 bg-[#359b46] rounded-full shadow-md z-0"
+                initial={false}
+                animate={{
+                  left: frontMockup === "desktop" ? "6px" : "50%",
+                  width: "calc(50% - 6px)",
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
               />
-            </button>
+              <button
+                onClick={() => setFrontMockup("desktop")}
+                className={`relative z-10 flex items-center gap-2 px-6 py-2 text-sm font-bold rounded-full transition-colors duration-300 ${
+                  frontMockup === "desktop" ? "text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Monitor size={16} /> Desktop
+              </button>
+              <button
+                onClick={() => setFrontMockup("phone")}
+                className={`relative z-10 flex items-center gap-2 px-6 py-2 text-sm font-bold rounded-full transition-colors duration-300 ${
+                  frontMockup === "phone" ? "text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Smartphone size={16} /> Mobile
+              </button>
+            </div>
 
-            {/* Phone Mockup */}
-            <button
-              type="button"
-              onClick={() => setFrontMockup("phone")}
-              aria-label="Bring phone preview to front"
-              className={`absolute left-0 bottom-[-20px] sm:bottom-10 w-[45%] max-w-[220px] aspect-[9/19] bg-white rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-[6px] overflow-hidden cursor-pointer transition-all duration-300 ${
-                frontMockup === "phone"
-                  ? "z-30 border-[#359b46]/40 ring-1 ring-[#359b46]/30 scale-[1.03]"
-                  : "z-20 border-white ring-1 ring-slate-200 opacity-90 hover:opacity-100"
-              }`}
+            {/* 3D Rolling Globe Container */}
+            <div 
+              className="relative w-full h-[320px] sm:h-[450px] perspective-[1200px]" 
+              style={{ perspective: "1200px" }}
             >
-              <Image
-                src="/phone.png"
-                alt="PropertyKo Mobile App"
-                fill
-                className="object-cover"
-                priority
-              />
-            </button>
+              <motion.div
+                className="w-full h-full absolute inset-0 flex items-center justify-center cursor-pointer"
+                animate={{ rotateY: frontMockup === "desktop" ? 0 : -180 }}
+                transition={{ type: "spring", stiffness: 60, damping: 15 }}
+                style={{ transformStyle: "preserve-3d" }}
+                onClick={() => setFrontMockup(prev => prev === "desktop" ? "phone" : "desktop")}
+              >
+                {/* Desktop Preview (Front Face) */}
+                <div
+                  className="absolute w-[95%] sm:w-[90%] max-w-[600px] bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-200 overflow-hidden"
+                  style={{ 
+                    backfaceVisibility: "hidden", 
+                    transform: "translateZ(40px)" // Pushed forward slightly to create thickness
+                  }}
+                >
+                  <div className="flex items-center gap-1.5 px-4 py-3 bg-slate-50 border-b border-slate-200">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#359b46]"></span>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/desktop.png"
+                    alt="PropertyKo Desktop Workspace"
+                    className="w-full h-auto block"
+                  />
+                </div>
+
+                {/* Phone Preview (Back Face) */}
+                {/* CHANGED: Adjusted w-[50%] -> w-[45%] and max-w-[240px] -> max-w-[200px] to make the phone smaller and not clip buttons */}
+                <div
+                  className="absolute w-[45%] max-w-[200px] aspect-[9/19] bg-white rounded-[2rem] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-[5px] sm:border-[6px] border-white ring-1 ring-slate-200 overflow-hidden"
+                  style={{ 
+                    backfaceVisibility: "hidden", 
+                    transform: "rotateY(180deg) translateZ(40px)" // Flipped backwards and pushed out
+                  }}
+                >
+                  <Image
+                    src="/phone.png"
+                    alt="PropertyKo Mobile App"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
       </main>
@@ -517,27 +553,26 @@ export default function LandingPage() {
       {/* 🌟 SIMPLE & CLEAN FOOTER */}
       <footer className="bg-[#0a1e3f] py-8 sm:py-6 w-full shrink-0 border-t border-white/5 mt-auto z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-4 text-xs font-medium text-slate-400">
-          
+
           {/* Left: Copyright */}
           <div className="text-center lg:text-left order-2 lg:order-1 mt-2 lg:mt-0">
             © {new Date().getFullYear()} <span className="font-bold text-slate-300">PropertyKo</span>. All rights reserved.
           </div>
 
           {/* Right: Credits */}
-          {/* ✨ FIX: Changed from flex-wrap to flex-col on mobile for a perfectly clean stack */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 order-1 lg:order-2">
             <a href="https://byteheads.dev/" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
               Developed by <span className="font-bold text-slate-300">Byteheads Corporation</span>
             </a>
-            
+
             <span className="text-white/10 hidden sm:block">|</span>
-            
+
             <a href="https://aprigroup.ph/" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
               Operated by <span className="font-bold text-slate-300">APRI Management</span>
             </a>
-            
+
             <span className="text-white/10 hidden sm:block">|</span>
-            
+
             <a href="https://aura-propertymanagement.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#359b46] transition-colors text-center">
               Consulting by <span className="font-bold text-slate-300">AURA International</span>
             </a>

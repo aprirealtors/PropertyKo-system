@@ -44,6 +44,8 @@ export default function AdminDashboard() {
   // Workspace Info Modal & White Label States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  // NEW: Logo Lightbox Modal State
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -490,7 +492,10 @@ export default function AdminDashboard() {
           </button>
 
           {orgData?.logo_url ? (
-            <div className="hidden sm:inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm pointer-events-none">
+            <div 
+              onClick={() => setIsLogoModalOpen(true)}
+              className="hidden sm:inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+            >
               <div className="relative w-28 h-8 flex items-center justify-center">
                 <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
               </div>
@@ -599,7 +604,10 @@ export default function AdminDashboard() {
 
           <div className="sm:hidden flex items-center justify-between p-4 border-b border-white/10 shrink-0 min-h-[64px]">
             {orgData?.logo_url ? (
-              <div className="relative w-28 h-8 flex items-center bg-white p-1 rounded-lg">
+              <div 
+                onClick={() => setIsLogoModalOpen(true)}
+                className="relative w-28 h-8 flex items-center bg-white p-1 rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+              >
                 <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
               </div>
             ) : (
@@ -1129,6 +1137,33 @@ export default function AdminDashboard() {
               >
                 Log Out
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGO LIGHTBOX MODAL */}
+      {isLogoModalOpen && orgData?.logo_url && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300" onClick={() => setIsLogoModalOpen(false)}>
+          <div
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[50vh] sm:h-[70vh] flex items-center justify-center p-8 sm:p-12 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsLogoModalOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="relative w-full h-full">
+              <Image
+                src={orgData.logo_url}
+                alt="Organization Logo Expanded"
+                fill
+                className="object-contain drop-shadow-lg"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
+              />
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
-  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -20,7 +20,10 @@ export default function TenantDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('home');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
+
+  // ✨ NEW: Collapsible Sidebar State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Database States
   const [userData, setUserData] = useState<any>(null); 
   const [userEmail, setUserEmail] = useState<string>(""); 
@@ -51,6 +54,8 @@ export default function TenantDashboard() {
   // White Label & User Modal States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
+  // NEW: Logo Lightbox Modal State
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
 
   // --- NEW: Global Toast State ---
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -414,10 +419,11 @@ export default function TenantDashboard() {
   };
 
   const getInitials = (name: string) => {
-    if (!name) return "TE";
-    const parts = name.trim().split(' ');
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    // Return "T" for missing tenant names to keep it a single letter
+    if (!name) return "T"; 
+    
+    // Get the first character, remove leading spaces, and capitalize it
+    return name.trim().charAt(0).toUpperCase();
   };
   
   const initials = getInitials(tenantName);
@@ -449,16 +455,18 @@ export default function TenantDashboard() {
     setIsSavingName(true);
     
     try {
+      const newName = editedName.trim();
+
       // 1. Update name directly in Supabase Auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
-        data: { name: editedName.trim() }
+        data: { name: newName }
       });
       if (authError) throw authError;
         
       // 2. Update name in the team_members table
       const { data, error: dbError } = await supabase
         .from('team_members')
-        .update({ name: editedName.trim() })
+        .update({ name: newName })
         .eq('email', userEmail)
         .select();
         
@@ -468,9 +476,35 @@ export default function TenantDashboard() {
       if (!data || data.length === 0) {
         throw new Error("Update blocked by database permissions (RLS) or email not found.");
       }
+
+      // 4. ✨ NEW: Update the name in the units table to maintain the link
+      if (userRole === 'owner') {
+        const { error: unitError } = await supabase
+          .from('units')
+          .update({ owner_name: newName })
+          .eq('owner_name', tenantName); // Update where it matches the old name
+          
+        if (unitError) console.error("Failed to update owner name in units", unitError);
+      } else {
+        const { error: unitError } = await supabase
+          .from('units')
+          .update({ tenant_name: newName })
+          .eq('tenant_name', tenantName); // Update where it matches the old name
+          
+        if (unitError) console.error("Failed to update tenant name in units", unitError);
+      }
+
+      setTenantName(newName);
+      setUserData((prev: any) => ({ ...prev, name: newName }));
       
-      setTenantName(editedName.trim());
-      setUserData((prev: any) => ({ ...prev, name: editedName.trim() }));
+      // ✨ NEW: Update the local unit state so the UI reflects the new name immediately
+      if (unit) {
+         setUnit((prev: any) => ({
+             ...prev,
+             [userRole === 'owner' ? 'owner_name' : 'tenant_name']: newName
+         }));
+      }
+      
       showToast("Profile name updated successfully!", "success");
       setIsEditingName(false);
     } catch (err: any) {
@@ -542,11 +576,22 @@ export default function TenantDashboard() {
       {/* HEADER */}
       <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-sm)]">
         <div className="flex items-center gap-3">
-          <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
-            <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
-              <Image src={orgLogo || "/logos.png"} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+          {orgLogo ? (
+            <div 
+              onClick={() => setIsLogoModalOpen(true)}
+              className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+            >
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src={orgLogo} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+              <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
+                <Image src="/logos.png" alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 text-white relative">
@@ -647,7 +692,7 @@ export default function TenantDashboard() {
             </>
           )}
 
-          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-semibold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary)]/80">
+          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[12px] sm:text-xs font-extrabold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-[var(--color-primary)]">
             {userRole === 'owner' ? 'Owner Portal' : 'Tenant Portal'}
           </span>
           
@@ -664,58 +709,70 @@ export default function TenantDashboard() {
       {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
         
-        {/* DESKTOP SIDEBAR */}
-        <aside className="w-[260px] bg-[var(--color-secondary)] py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.15)]">
-          <div className="mb-4">
-            <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Overview</h3>
-          </div>
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Manager Style) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px] px-2' : 'md:w-[260px] px-4'} bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-40 transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
           
-          <nav className="space-y-1.5 flex-1">
-            <NavButton active={activeTab === 'home'} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
-            <NavButton active={activeTab === 'repair'} onClick={() => setActiveTab('repair')} icon={<Wrench size={18} strokeWidth={activeTab === 'repair' ? 2.5 : 2} />} label="Repairs" />
-            <NavButton 
-              active={activeTab === 'conversation'} 
-              onClick={handleConversationClick} 
-              icon={<MessageSquare size={18} strokeWidth={activeTab === 'conversation' ? 2.5 : 2} />} 
-              label="Messages" 
-              badge={unreadMessages} 
-            />
-            <div className="mt-8 mb-4 pt-4 border-t border-white/5">
-              <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Finance & Lease</h3>
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden md:flex absolute top-[72px] -right-3 w-6 h-6 rounded-full bg-white border border-[var(--color-border)] shadow-md items-center justify-center z-20 text-slate-500 hover:text-[var(--color-primary)] hover:scale-110 hover:shadow-lg transition-all duration-200 group"
+          >
+            <PanelLeft size={13} strokeWidth={2.5} className={`transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180" : ""}`} />
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+              {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            </span>
+          </button>
+          
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
+            <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
+            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Repairs" isActive={activeTab === "repair"} onClick={() => setActiveTab('repair')} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "conversation"} onClick={handleConversationClick} badgeCount={unreadMessages} collapsed={isSidebarCollapsed} />
+
+            <div className="pt-4">
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Finance & Lease</NavSectionLabel>
             </div>
-            <NavButton active={activeTab === 'pay'} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} icon={<Receipt size={18} strokeWidth={activeTab === 'pay' ? 2.5 : 2} />} label="Financials" />
-            <NavButton active={activeTab === 'lease'} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} icon={<FileText size={18} strokeWidth={activeTab === 'lease' ? 2.5 : 2} />} label="My Lease" />
+            <NavItem icon={<Receipt size={18} strokeWidth={2.5} />} label="Financials" isActive={activeTab === "pay"} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "lease"} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
-          {/* Premium Bottom User Tag */}
-          <div className="mt-auto pt-4 border-t border-white/5 px-6">
-             <div 
-               onClick={() => {
-                 setIsWorkspaceModalOpen(true);
-                 setIsChangingPassword(false);
-                 setPasswordError(null);
-                 setShowCurrentPassword(false);
-                 setShowNewPassword(false);
-                 setShowConfirmPassword(false);
-                 setIsEditingName(false);
-               }}
-               className="flex items-center gap-3 px-3 py-3 rounded-[var(--radius-md)] hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
-               title="View Profile Details"
-             >
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5" style={{backgroundColor: "var(--color-primary)"}}>
-                  {isLoading ? '...' : initials}
-                </div>
+          <div className="shrink-0 pt-4 mt-auto border-t border-white/5">
+            <button 
+              onClick={() => {
+                setIsWorkspaceModalOpen(true);
+                setIsChangingPassword(false);
+                setPasswordError(null);
+                setShowCurrentPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPassword(false);
+                setIsEditingName(false);
+              }}
+              className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}
+            >
+              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5 shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
+                {isLoading ? '...' : initials}
+              </div>
+              
+              {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0">
                   {isLoading ? (
                     <div className="h-4 w-20 bg-white/10 rounded animate-pulse"></div>
                   ) : (
                     <>
-                      <p className="text-sm font-bold text-slate-200 truncate">{tenantName || 'Resident'}</p>
-                      <p className="text-[10px] text-white/50 truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</p>
+                      <p className="text-sm font-extrabold text-white truncate">{tenantName || 'Resident'}</p>
+                      <p className="text-[10px] text-white/50 font-extrabold truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</p>
                     </>
                   )}
                 </div>
-             </div>
+              )}
+
+              {/* Collapsed Tooltip for Profile */}
+              {isSidebarCollapsed && !isLoading && (
+                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+                  {tenantName || 'Resident'}
+                </div>
+              )}
+            </button>
           </div>
         </aside>
 
@@ -785,8 +842,8 @@ export default function TenantDashboard() {
 
       {/* WORKSPACE PROFILE MODAL (WITH CHANGE PASSWORD) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
@@ -996,7 +1053,7 @@ export default function TenantDashboard() {
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
@@ -1035,7 +1092,7 @@ export default function TenantDashboard() {
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>
                         ) : (
-                          <><Lock size={14} /> Update Password</>
+                          <><Lock size={14} strokeWidth={2.5} /> Update Password</>
                         )}
                       </button>
                     </div>
@@ -1050,7 +1107,7 @@ export default function TenantDashboard() {
 
       {/* 🌟 PREMIUM CONFIRM NAME CHANGE MODAL */}
       {isConfirmNameModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
@@ -1084,7 +1141,7 @@ export default function TenantDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
@@ -1100,7 +1157,7 @@ export default function TenantDashboard() {
               </button>
               <button 
                 onClick={confirmLogout} 
-                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
               </button>
@@ -1111,7 +1168,7 @@ export default function TenantDashboard() {
 
       {/* ✨ REJECTED TICKET MODAL (Triggered by Notification) */}
       {rejectedTicketModalData && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
             
             {/* Red Header */}
@@ -1174,6 +1231,33 @@ export default function TenantDashboard() {
                 </div>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGO LIGHTBOX MODAL */}
+      {isLogoModalOpen && orgLogo && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300" onClick={() => setIsLogoModalOpen(false)}>
+          <div
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[50vh] sm:h-[70vh] flex items-center justify-center p-8 sm:p-12 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsLogoModalOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="relative w-full h-full">
+              <Image
+                src={orgLogo}
+                alt="Organization Logo Expanded"
+                fill
+                className="object-contain drop-shadow-lg"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
+              />
             </div>
           </div>
         </div>
@@ -1284,8 +1368,8 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           {isLoading ? (
             <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-1"></div>
           ) : (
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--color-secondary)] mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
-              Welcome back, <span className="text-[var(--color-text)] break-words">{tenantName}</span>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+              Welcome back, <span className="text-[var(--color-secondary)] break-words">{tenantName}</span>
             </h1>
           )}
         </div>
@@ -1313,11 +1397,11 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight text-white break-all sm:break-normal">
                   ₱{rentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </h2>
-                <div className="text-[11px] sm:text-xs md:text-sm text-white/80 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
+                <div className="text-[11px] sm:text-xs md:text-sm text-[white/80] font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
                   <Home size={14} className="text-[var(--color-primary)] shrink-0" />
                   <div className="truncate min-w-0">
-                    <p className="font-semibold truncate">
-                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 ${getStatusColor(soaStatus)}`}>· Status: {soaStatus}</span>}
+                    <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
+                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[var(--color-primary)]`}>· Status: {soaStatus}</span>}
                     </p>
                   </div>
                 </div>
@@ -1481,33 +1565,76 @@ function TransactionSkeleton() {
   );
 }
 
-function NavButton({ active, onClick, icon, label, badgeCount }: any) {
+// ✨ NAV SECTION LABEL: Typography with trailing divider
+function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="h-px bg-white/10 mx-4 my-3 first:mt-1" />;
+  }
   return (
-    <button 
-      onClick={onClick} 
-      className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[var(--radius-md)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
-        active 
-          ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
-          : "text-white/50 hover:bg-white/5 hover:text-white"
-      }`}
-      style={{
-        backgroundColor: active ? 'var(--nav-active-bg)' : 'transparent',
-      }}
-    >
-      <div className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}
-           style={{ color: active ? 'var(--nav-active-text)' : 'inherit' }}>
-        {icon}
-      </div>
-      <span className="tracking-wide flex-1 text-left">{label}</span>
-      
-      {badgeCount > 0 && (
-        <span className="bg-red-500 text-white text-[10px] font-black h-5 min-w-[20px] px-1.5 rounded-full flex items-center justify-center shadow-md animate-pulse">
-          {badgeCount > 99 ? '99+' : badgeCount}
+    <div className="flex items-center gap-3 px-4 pt-5 pb-2 first:pt-2 select-none">
+      <span className="text-[11px] font-semibold text-slate-400/80 uppercase tracking-widest whitespace-nowrap">
+        {children}
+      </span>
+      <div className="h-px bg-white/5 flex-1 mt-0.5"></div>
+    </div>
+  );
+}
+
+// ✨ REFACTORED NAV ITEM: Uses CSS Variables for dynamic active states; supports collapsed tooltip mode
+function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number, collapsed?: boolean }) {
+  return (
+    <div className="relative group/navitem">
+      <button 
+        onClick={onClick} 
+        className={`w-full flex items-center gap-3 rounded-[var(--radius-xl)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
+          collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5"
+        } ${
+          isActive 
+            ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
+            : "text-slate-300 hover:bg-white/5 hover:text-white"
+        }`}
+        style={{
+          backgroundColor: isActive ? 'var(--nav-active-bg)' : 'transparent',
+          borderLeftWidth: isActive && !collapsed ? 'var(--nav-border-left-width, 0px)' : '0px',
+          borderLeftColor: isActive ? 'var(--color-primary)' : 'transparent',
+        }}
+      >
+        <span className={`shrink-0 relative transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`}
+              style={{ color: isActive ? 'var(--nav-active-text)' : 'inherit' }}>
+          {icon}
+          {collapsed && badgeCount !== undefined && badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[var(--color-secondary)]"></span>
+          )}
         </span>
+
+        {!collapsed && (
+          <>
+            <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
+            {badgeCount !== undefined && badgeCount > 0 && (
+              <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
+                isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'
+              }`}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
+          </>
+        )}
+
+        {!collapsed && !isActive && (!badgeCount || badgeCount <= 0) && (
+          <ChevronRight size={16} className="shrink-0 absolute right-3 opacity-0 group-hover:opacity-100 transition-all text-slate-500" />
+        )}
+      </button>
+
+      {/* Tooltip shown only in collapsed (icon-only) mode */}
+      {collapsed && (
+        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover/navitem:opacity-100 group-hover/navitem:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+          {label}
+          {badgeCount !== undefined && badgeCount > 0 && (
+            <span className="ml-1.5 text-red-400">({badgeCount > 99 ? '99+' : badgeCount})</span>
+          )}
+        </div>
       )}
-      
-      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 rounded-r-full shadow-sm" style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 10px var(--color-primary)' }} />}
-    </button>
+    </div>
   );
 }
 

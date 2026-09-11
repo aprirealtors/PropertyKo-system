@@ -282,7 +282,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
 
   return (
     // ✨ FIX: Changed font-sans to corporate variable binding
-    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] z-20 overflow-hidden pb-[70px] md:pb-0">
+    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[70px] md:pb-0">
       
       {/* SIDEBAR */}
       <div className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
