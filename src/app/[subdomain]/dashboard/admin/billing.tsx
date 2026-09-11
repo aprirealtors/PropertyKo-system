@@ -1105,7 +1105,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* 🌟 PREMIUM COMPUTATION MODAL */}
       {isComputationModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
@@ -1287,7 +1287,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PENALTY MODAL (Manage Penalties) */}
       {isPenaltyModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <div className="flex items-center gap-3">
@@ -1350,14 +1350,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* SOA MODAL */}
       {isSOAModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/90 backdrop-blur-md">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0">
                   <Send size={16} className="translate-x-[-1px] translate-y-[1px] sm:w-[18px] sm:h-[18px]" />
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate">Assign Balances <span className="text-slate-400 font-medium ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate">Assign Balances <span className="text-slate-400 font-black ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
               </div>
               <button onClick={() => setIsSOAModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSendingSOA || isSavingDefault}>
                 <X size={20} className="w-5 h-5" />
@@ -1525,7 +1525,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PAYMENT SELECTION MODAL */}
       {isPaymentSelectionModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate pr-2">Payment Verification</h2>
@@ -1579,7 +1579,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* PAYMENT MODAL (Admin Verifying) */}
       {isPaymentModalOpen && paymentModalParty && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment Verification</h2>

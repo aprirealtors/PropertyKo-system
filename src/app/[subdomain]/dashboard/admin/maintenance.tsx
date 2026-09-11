@@ -478,7 +478,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
             <button 
               onClick={() => { setIsModalOpen(true); setTicketImage(null); }}
-              className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 duration-150 shrink-0 border border-transparent"
+              className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs font-extrabold transition-all shadow-[var(--shadow-sm)] active:scale-95 duration-150 shrink-0 border border-transparent"
             >
               + New ticket
             </button>
@@ -646,7 +646,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   
         {/* ✨ UNIVERSAL TICKET DETAILS MODAL */}
         {selectedTicketForModal && (
-          <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] max-h-[95vh] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               
               <div className={`px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center shrink-0 ${getUniversalStatusUI(selectedTicketForModal.status).bg}`}>
@@ -785,7 +785,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   
         {/* NEW TICKET MODAL */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-[var(--color-secondary)]/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
             <div className="bg-[var(--color-bg)] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
                 <h2 className="text-lg font-black text-[var(--color-secondary)] tracking-tight">Create New Ticket</h2>

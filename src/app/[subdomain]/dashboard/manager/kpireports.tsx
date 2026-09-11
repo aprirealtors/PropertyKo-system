@@ -8,7 +8,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   
   // Database States
   const [units, setUnits] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]); // ✨ Changed from tickets to tasks
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [leases, setLeases] = useState<any[]>([]); // ✨ Added state for leases
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Search State
@@ -30,14 +31,21 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       .select('*')
       .eq('admin_email', orgData.admin_email);
       
-    // ✨ Fetch Maintenance Tasks (Where actual costs and resolved statuses live)
+    // Fetch Maintenance Tasks 
     const { data: tasksData } = await supabase
       .from('maintenance_tasks')
       .select('*')
       .eq('admin_email', orgData.admin_email);
 
+    // ✨ Fetch Leases (For accurate Renewal Rate tracking)
+    const { data: leasesData } = await supabase
+      .from('leases')
+      .select('*')
+      .eq('admin_email', orgData.admin_email);
+
     setUnits(unitsData || []);
     setTasks(tasksData || []);
+    setLeases(leasesData || []);
     setIsLoadingData(false);
   };
 
@@ -52,15 +60,23 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   const totalRentPotential = units.reduce((acc, curr) => acc + (curr.monthly_rent || 0), 0);
   const revpau = totalUnits > 0 ? `₱${(totalRentPotential / totalUnits).toLocaleString(undefined, {minimumFractionDigits: 2})}` : "₱0.00";
 
-  // 3. ✨ ACCURATE: Maintenance Cost per Unit (Summing costs from maintenance_tasks)
+  // 3. Maintenance Cost per Unit (Summing costs from maintenance_tasks)
   const totalTaskCost = tasks.reduce((acc, curr) => acc + Number(curr.cost || 0), 0);
   const maintenanceCostPerUnit = totalUnits > 0 ? `₱${Math.round(totalTaskCost / totalUnits).toLocaleString()}/unit/yr` : "₱0/unit/yr";
 
-  // 4. ✨ ACCURATE: Closed Tickets (Matches the filter logic in maintenance.tsx)
+  // 4. Closed Tickets
   const closedTicketsCount = tasks.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed';
   }).length;
+
+  // 5. ✨ ACCURATE: Lease Renewal Rate
+  // Formula: (Renewed Leases) / (Total Ended Leases [Renewed + Expired + Terminated])
+  const endedLeases = leases.filter(l => ['Renewed', 'Expired', 'Terminated'].includes(l.status));
+  const renewedCount = endedLeases.filter(l => l.status === 'Renewed').length;
+  const leaseRenewalRate = endedLeases.length > 0 
+    ? ((renewedCount / endedLeases.length) * 100).toFixed(2) + '%' 
+    : "0.00%";
 
   // Nickname-style initials (e.g. "John Doe" -> "JD")
   const initials = orgData?.org_name 
@@ -74,7 +90,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
     { id: 3, label: "Maintenance Cost / Unit", current: maintenanceCostPerUnit, use: "High", was: "Monthly" },
     { id: 4, label: "Closed Tickets", current: closedTicketsCount.toString(), use: "High", was: "Monthly" },
     { id: 5, label: "Tenant Turnover", current: "0.00%", use: "High", was: "Monthly" },
-    { id: 6, label: "Lease Renewal", current: "0.00%", use: "High", was: "Monthly" },
+    { id: 6, label: "Lease Renewal Rate", current: leaseRenewalRate, use: "High", was: "Monthly" },
     { id: 7, label: "Avg Time To Lease", current: "0 Days", use: "High", was: "Monthly" },
     { id: 8, label: "Lease Conversion", current: "0.00%", use: "High", was: "Monthly" },
     { id: 9, label: "Marketing Cost / Lease", current: "₱0/unit/yr", use: "High", was: "Monthly" }

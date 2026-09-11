@@ -147,7 +147,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2 bg-[var(--color-primary)]/5 px-3.5 py-2 rounded-2xl border border-[var(--color-primary)]/10 shadow-inner">
               <Activity size={15} className="text-[var(--color-primary)] animate-pulse" strokeWidth={2.5} />
-              <span className="text-xs font-bold text-[var(--color-text)] tracking-tight">{isLoading ? "-" : openTasks.length} Active Tasks</span>
+              <span className="text-sm font-extrabold text-[var(--color-text)] tracking-tight">{isLoading ? "-" : openTasks.length} Active Tasks</span>
             </div>
           </div>
         </div>
@@ -327,7 +327,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* ✨ 1. UPDATE / COMPLETE REPORT MODAL (Matching Tenant Photo Upload Layout) */}
       {completeModalTask && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[var(--color-secondary)]/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
             <div className="px-5 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg font-black text-[var(--color-secondary)] tracking-tight">Update Task</h2>
@@ -465,7 +465,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* ✨ 2. ACTIVE TASK REVIEW MODAL (NEW: Before starting work) */}
       {reviewActiveTask && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-sm">
@@ -549,7 +549,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* ✨ 3. REVIEW ON HOLD MODAL (Before & After) */}
       {reviewOnHoldTask && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
@@ -644,7 +644,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* ✨ 4. REVIEW RESOLUTION MODAL (Before & After) */}
       {reviewResolvedTask && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">

@@ -635,12 +635,12 @@ export default function ManagerDashboard() {
               </>
             )}
           </div>
-          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-semibold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-primary)]/80">Manager Portal</span>
+          <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[12px] sm:text-xs font-extrabold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-[var(--color-primary)]">Manager Portal</span>
 
           {/* Logout Icon Button */}
           <button 
             onClick={() => setIsLogoutModalOpen(true)} 
-            className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-[var(--radius-sm)]"
+            className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10 font-extrabold transition-all text-xs px-3 py-2 sm:px-4 rounded-[var(--radius-sm)]"
           >
             <LogOut size={16} />
             <span className="hidden sm:inline">Log Out</span>
@@ -749,13 +749,13 @@ export default function ManagerDashboard() {
                 .split(' ')
                 .map((word: string) => word.charAt(0))
                 .join('')
-                .substring(0, 2)
+                .substring(0, 1)
                 .toUpperCase()}
               </div>
               {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white truncate">{managerProfile.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate font-semibold">Manager profile</p>
+                  <p className="text-sm font-extrabold text-white truncate">{managerProfile.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate font-extrabold">MANAGER PROFILE</p>
                 </div>
               )}
               {isSidebarCollapsed && (
@@ -784,7 +784,7 @@ export default function ManagerDashboard() {
 
       {/* 🌟 PREMIUM USER PROFILE MODAL */}
       {isUserProfileModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
@@ -806,7 +806,7 @@ export default function ManagerDashboard() {
                     .split(' ')
                     .map((word: string) => word.charAt(0))
                     .join('')
-                    .substring(0, 2)
+                    .substring(0, 1)
                     .toUpperCase()}
                 </div>
                 <div className="z-10 mt-1 min-w-0 w-full px-2">
@@ -1025,7 +1025,7 @@ export default function ManagerDashboard() {
 
       {/* 🌟 PREMIUM WORKSPACE MODAL (ORGANIZATION PROFILE) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
@@ -1146,7 +1146,7 @@ export default function ManagerDashboard() {
 
       {/* 🌟 PREMIUM CONFIRM NAME CHANGE MODAL */}
       {isConfirmNameModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
@@ -1161,7 +1161,7 @@ export default function ManagerDashboard() {
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
-                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-[var(--color-primary-text)] bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
                 disabled={isSavingName}
               >
                 Cancel
@@ -1180,7 +1180,7 @@ export default function ManagerDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80  backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
@@ -1196,7 +1196,7 @@ export default function ManagerDashboard() {
               </button>
               <button 
                 onClick={handleLogout} 
-                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
               </button>
@@ -1243,14 +1243,18 @@ export default function ManagerDashboard() {
   );
 }
 
-// ✨ NAV SECTION LABEL: A quiet grouping label above each nav cluster; collapses to a hairline divider
+// ✨ NAV SECTION LABEL: Typography with trailing divider
 function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {
   if (collapsed) {
-    return <div className="h-px bg-white/10 mx-3 my-2.5 first:mt-0" />;
+    return <div className="h-px bg-white/10 mx-4 my-3 first:mt-1" />;
   }
   return (
-    <div className="px-4 pt-4 pb-1.5 text-[10px] font-bold text-slate-500 tracking-wide first:pt-1">
-      {children}
+    <div className="flex items-center gap-3 px-4 pt-5 pb-2 first:pt-2 select-none">
+      <span className="text-[11px] font-semibold text-slate-400/80 uppercase tracking-widest whitespace-nowrap">
+        {children}
+      </span>
+      {/* Trailing faint line */}
+      <div className="h-px bg-white/5 flex-1 mt-0.5"></div>
     </div>
   );
 }
@@ -1261,12 +1265,12 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
     <div className="relative group/navitem">
       <button 
         onClick={onClick} 
-        className={`w-full flex items-center gap-3 rounded-[var(--radius-md)] text-[13.5px] font-extrabold transition-all duration-300 group overflow-hidden ${
+        className={`w-full flex items-center gap-3 rounded-[var(--radius-xl)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
           collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5"
         } ${
           isActive 
             ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
-            : "text-slate-400 hover:bg-white/5 hover:text-white"
+            : "text-slate-300 hover:bg-white/5 hover:text-white"
         }`}
         style={{
           backgroundColor: isActive ? 'var(--nav-active-bg)' : 'transparent',

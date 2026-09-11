@@ -603,10 +603,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                         title: 'Load Corporate Spec',
                         message: 'This will replace your current unsaved colors with the official corporate theme. Do you want to proceed?',
                         confirmText: 'Load Spec',
-                        confirmStyle: 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/25'
+                        confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
                       })}
                       disabled={isSavingTheme}
-                      className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-black uppercase tracking-widest text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-orange-200 flex justify-center items-center gap-2"
+                      className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-orange-200 flex justify-center items-center gap-2"
                     >
                       <DownloadCloud size={14} strokeWidth={2.5}/> Load Corporate Spec
                     </button>
@@ -619,10 +619,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                         title: 'Reset to Defaults',
                         message: 'Are you sure you want to revert to the default system theme? All unsaved customizations will be lost.',
                         confirmText: 'Reset Theme',
-                        confirmStyle: 'bg-red-500 hover:bg-red-600 shadow-red-500/25'
+                        confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
                       })}
                       disabled={isSavingTheme}
-                      className="w-1/3 bg-white hover:bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-slate-200 flex justify-center items-center gap-1.5"
+                      className="w-1/3 bg-white hover:bg-slate-100 font-extrabold uppercase tracking-wider text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-red-500 text-red-600 flex justify-center items-center gap-1.5"
                     >
                       <RotateCcw size={12} strokeWidth={2.5}/> Reset
                     </button>
@@ -882,11 +882,11 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* ✨ THEME ACTION CONFIRMATION MODAL */}
       {themeConfirmModal.isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--color-secondary)]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
             <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
-              themeConfirmModal.type === 'load' ? 'bg-orange-50 text-orange-500 border-orange-100' :
+              themeConfirmModal.type === 'load' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' :
               themeConfirmModal.type === 'reset' ? 'bg-red-50 text-red-500 border-red-100' :
               'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'
             }`}>
@@ -905,13 +905,13 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
             <div className="flex gap-3 sm:gap-4">
               <button 
                 onClick={() => setThemeConfirmModal(prev => ({ ...prev, isOpen: false }))} 
-                className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-slate-600 bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-xs sm:text-sm duration-200"
+                className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-xs sm:text-sm duration-200"
               >
                 Cancel
               </button>
               <button 
                 onClick={executeThemeAction} 
-                className={`flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-white font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent ${themeConfirmModal.confirmStyle}`}
+                className={`flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[var(--color-primary-text)] font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent ${themeConfirmModal.confirmStyle}`}
               >
                 {themeConfirmModal.confirmText}
               </button>
