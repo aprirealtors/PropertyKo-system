@@ -101,7 +101,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
             <span>{currentDate}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-[2.5rem] font-black tracking-tight leading-tight truncate text-[var(--color-secondary)] pb-1">
-            {greeting}, {profile.name?.split(' ')[0]} 👋
+            <span className="text-slate-700">{greeting}</span>, {profile.name?.split(' ')[0]} 👋
           </h2>
           <p className="text-slate-500 mt-0.5 md:mt-1 text-xs sm:text-sm font-medium truncate leading-relaxed max-w-lg">
             Here's your maintenance overview for today.

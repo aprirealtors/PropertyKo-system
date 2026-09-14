@@ -480,7 +480,7 @@ export default function AdminDashboard() {
     <div className="h-[100dvh] w-full bg-[var(--color-bg)] flex flex-col font-[family-name:var(--font-corporate)] overflow-hidden relative">
       
       {/* 🌟 PREMIUM HEADER (Themified) */}
-      <header className="w-full bg-[var(--color-secondary)] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative shadow-md">
+      <header className="w-full bg-[var(--color-secondary)] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative shadow-md z-20">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
         
         <div className="flex items-center gap-3">
@@ -675,7 +675,7 @@ export default function AdminDashboard() {
             <NavItem icon={<Settings size={18} strokeWidth={2.5} />} label="Team & Settings" isActive={activeTab === "Team"} onClick={() => handleTabChange("Team")} collapsed={isSidebarCollapsed} />
           </nav>
 
-          <div className="shrink-0 p-3 border-t border-white/5 bg-[var(--color-secondary)]">
+          <div className="shrink-0 p-3 border-t border-white/5 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
             <button 
               onClick={openUserProfileFromSidebar}
               className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}

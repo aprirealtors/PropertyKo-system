@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
-  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft,
+  Droplets, Wind, Sparkles // <-- Added missing icon imports
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,15 @@ import PayTab from './pay';
 import RepairTab from './repair';
 import LeaseTab from './lease';
 import ConversationTab from './conversation'; 
+
+// ✨ ENTERPRISE: Symptom-Based Categories
+const CATEGORIES = [
+  { id: "Plumbing", label: "Plumbing / Water", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200" },
+  { id: "Electrical", label: "Electrical / Light", icon: Zap, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200" },
+  { id: "Aircon", label: "Aircon / HVAC", icon: Wind, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-200" },
+  { id: "Housekeeping", label: "Cleaning / Pest", icon: Sparkles, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200" },
+  { id: "General", label: "General Repair", icon: Wrench, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200" },
+];
 
 export default function TenantDashboard() {
   const router = useRouter();
@@ -157,10 +167,21 @@ export default function TenantDashboard() {
               
               const unitArea = getUnitAreaValue(unitData.unit_area);
 
-              const rawDues = (orgData.dues_rate || 0) * unitArea;
-              const rawParking = (orgData.default_parking || 0);
-              const rawWater = (orgData.default_water || 0);
-              const rawElectricity = (orgData.default_electricity || 0);
+              // ==========================================
+              // UNIT-SPECIFIC BILLING CALCULATION FALLBACK
+              // ==========================================
+              const activeDuesRate = unitData.dues_rate ?? orgData.dues_rate ?? 0;
+              const activeParking = unitData.parking ?? orgData.default_parking ?? 0;
+              const activeWater = unitData.water ?? orgData.default_water ?? 0;
+              const activeElectricity = unitData.electricity ?? orgData.default_electricity ?? 0;
+
+              const pType = unitData.penalty_type ?? orgData.penalty_type ?? 'percent';
+              const pVal = unitData.penalty_value ?? orgData.penalty_value ?? 0;
+
+              const rawDues = activeDuesRate * unitArea;
+              const rawParking = activeParking;
+              const rawWater = activeWater;
+              const rawElectricity = activeElectricity;
 
               // Map assignments based on dynamic role
               const dues = soaData[`${role}_dues`] ? rawDues : 0;
@@ -176,10 +197,10 @@ export default function TenantDashboard() {
 
               let lateFee = 0;
               if (currentStatus === 'Overdue' && !isRoleVacant) {
-                if (orgData.penalty_type === 'percent') {
-                  lateFee = baseTotal * ((orgData.penalty_value || 0) / 100);
+                if (pType === 'percent') {
+                  lateFee = baseTotal * (pVal / 100);
                 } else {
-                  lateFee = orgData.penalty_value || 0;
+                  lateFee = pVal;
                 }
               }
 
@@ -574,19 +595,19 @@ export default function TenantDashboard() {
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
       
       {/* HEADER */}
-      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-sm)]">
+      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-md">
         <div className="flex items-center gap-3">
           {orgLogo ? (
             <div 
               onClick={() => setIsLogoModalOpen(true)}
-              className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+              className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
             >
               <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
                 <Image src={orgLogo} alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
               </div>
             </div>
           ) : (
-            <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+            <div className="inline-block bg-white p-1.5 rounded-[var(--radius-sm)] shadow-sm">
               <div className="relative w-24 sm:w-28 h-6 sm:h-7 flex items-center justify-center">
                 <Image src="/logos.png" alt="Organization Logo" fill className="object-contain object-center" priority sizes="112px" />
               </div>
@@ -709,8 +730,8 @@ export default function TenantDashboard() {
       {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
         
-        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Manager Style) */}
-        <aside className={`${isSidebarCollapsed ? 'md:w-[84px] px-2' : 'md:w-[260px] px-4'} bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-40 transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Edge-to-Edge Profile) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px]' : 'md:w-[260px]'} bg-[var(--color-secondary)] pt-6 hidden md:flex flex-col transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
           
           {/* Collapse Toggle Button */}
           <button
@@ -723,7 +744,8 @@ export default function TenantDashboard() {
             </span>
           </button>
           
-          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
+          {/* Navigation Links - Padding moved here */}
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto custom-scrollbar"}`}>
             <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Repairs" isActive={activeTab === "repair"} onClick={() => setActiveTab('repair')} collapsed={isSidebarCollapsed} />
@@ -736,7 +758,8 @@ export default function TenantDashboard() {
             <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "lease"} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
-          <div className="shrink-0 pt-4 mt-auto border-t border-white/5">
+          {/* ✨ MATCHED UI: Premium Bottom User Tag (Edge-to-Edge Layout) */}
+          <div className="shrink-0 mt-auto border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
             <button 
               onClick={() => {
                 setIsWorkspaceModalOpen(true);
@@ -747,20 +770,24 @@ export default function TenantDashboard() {
                 setShowConfirmPassword(false);
                 setIsEditingName(false);
               }}
-              className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}
+              className={`w-full flex items-center gap-3.5 py-4 transition-colors hover:bg-white/5 text-left group relative focus:outline-none ${isSidebarCollapsed ? "justify-center px-0" : "px-5"}`}
+              title={isSidebarCollapsed ? "View Profile Details" : undefined}
             >
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5 shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-slate-900 shadow-sm group-hover:scale-105 transition-transform shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
                 {isLoading ? '...' : initials}
               </div>
               
               {!isSidebarCollapsed && (
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
                   {isLoading ? (
-                    <div className="h-4 w-20 bg-white/10 rounded animate-pulse"></div>
+                    <div className="space-y-1.5">
+                      <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse"></div>
+                      <div className="h-2 w-16 bg-white/5 rounded animate-pulse"></div>
+                    </div>
                   ) : (
                     <>
-                      <p className="text-sm font-extrabold text-white truncate">{tenantName || 'Resident'}</p>
-                      <p className="text-[10px] text-white/50 font-extrabold truncate uppercase tracking-widest mt-0.5">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</p>
+                      <p className="text-[15px] font-extrabold text-white truncate leading-none mb-1.5">{tenantName || 'Resident'}</p>
+                      <p className="text-[10px] font-extrabold text-white/50 truncate uppercase tracking-widest leading-none">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</p>
                     </>
                   )}
                 </div>
@@ -1368,7 +1395,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           {isLoading ? (
             <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-1"></div>
           ) : (
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-700 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
               Welcome back, <span className="text-[var(--color-secondary)] break-words">{tenantName}</span>
             </h1>
           )}
@@ -1634,87 +1661,6 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// -------------------------------------------------------------------------------------------------
-// UPGRADED ACTION CARD COMPONENT WITH DYNAMIC VARIANT THEMES
-// -------------------------------------------------------------------------------------------------
-function ActionCard({ onClick, icon, title, subtitle, variant }: { onClick: () => void, icon: React.ReactNode, title: string, subtitle: string, variant: 'amber' | 'blue' | 'emerald' | 'purple' }) {
-  // Dynamically uses primary colors if desired, but we kept semantic colors per the original logic for variety.
-  const themes = {
-    amber: {
-      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
-      glow: 'group-hover:shadow-[var(--shadow-md)]',
-      text: 'group-hover:text-[var(--color-primary)]'
-    },
-    blue: {
-      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
-      glow: 'group-hover:shadow-[var(--shadow-md)]',
-      text: 'group-hover:text-[var(--color-primary)]'
-    },
-    emerald: {
-      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
-      glow: 'group-hover:shadow-[var(--shadow-md)]',
-      text: 'group-hover:text-[var(--color-primary)]'
-    },
-    purple: {
-      bg: 'bg-[var(--color-primary)]/5 group-hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]',
-      glow: 'group-hover:shadow-[var(--shadow-md)]',
-      text: 'group-hover:text-[var(--color-primary)]'
-    }
-  };
-
-  const currentTheme = themes[variant] || themes.blue;
-
-  return (
-    <button 
-      onClick={onClick} 
-      className={`group bg-white flex flex-col p-5 rounded-[1.5rem] sm:rounded-[2rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1.5 transition-all duration-300 ease-out active:scale-[0.96] text-left relative overflow-hidden h-full ${currentTheme.glow}`}
-    >
-      {/* Background Gradient Hover Light Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[var(--color-primary)]/5 to-[var(--color-primary)]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      {/* Modern Boxy Rounded Icon with Inner Shadows */}
-      <div className={`w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center mb-5 border transition-all duration-300 relative z-10 shrink-0 shadow-inner ${currentTheme.bg}`}>
-        {icon}
-      </div>
-      
-      {/* Text Context Stack */}
-      <div className="relative z-10 flex flex-col flex-1">
-        <h3 className={`font-black text-base text-[var(--color-text)] tracking-tight transition-colors duration-200 ${currentTheme.text}`}>
-          {title}
-        </h3>
-        <p className="text-xs text-slate-400 mt-1 font-medium leading-normal">
-          {subtitle}
-        </p>
-      </div>
-
-      {/* Slick Arrow Floating Accent Indicator */}
-      <div className="absolute bottom-4 right-5 text-slate-300 group-hover:text-[var(--color-primary)] opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-        <ChevronRight size={14} strokeWidth={3} />
-      </div>
-    </button>
-  );
-}
-
-function TransactionItem({ title, date, amount }: any) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-white hover:bg-[var(--color-bg)]/50 border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 rounded-[var(--radius-lg)] transition-all duration-200 group shadow-[var(--shadow-sm)]">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-center text-slate-400 group-hover:bg-white group-hover:border-[var(--color-primary)]/30 transition-colors shadow-inner">
-          <Receipt size={18} className="group-hover:text-[var(--color-primary)] transition-colors" />
-        </div>
-        <div>
-          <p className="font-extrabold text-[var(--color-text)] text-sm group-hover:text-[var(--color-secondary)] transition-colors">{title}</p>
-          <p className="text-[11px] md:text-xs text-slate-400 font-semibold mt-0.5">{date}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="font-black text-[var(--color-text)] md:text-lg">{amount}</span>
-        <ChevronRight size={16} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5" />
-      </div>
     </div>
   );
 }

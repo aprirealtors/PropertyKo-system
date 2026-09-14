@@ -119,11 +119,29 @@ export default function FinancialTab({ userData, units }: any) {
   const isPaid = ownerStatus === 'Paid';
   const isVacant = selectedUnit?.status === 'Vacant';
   const unitArea = getUnitAreaValue(selectedUnit?.unit_area);
+
+  // ==========================================
+  // UNIT-SPECIFIC BILLING CALCULATION
+  // ==========================================
+  const activeDuesRate = selectedUnit?.dues_rate ?? globalComp.duesRate;
+  const activeWater = selectedUnit?.water ?? globalComp.water;
+  const activeElectricity = selectedUnit?.electricity ?? globalComp.electricity;
+  const activeParking = selectedUnit?.parking ?? globalComp.parking;
   
-  const rawDues = globalComp.duesRate * unitArea;
-  const rawParking = globalComp.parking;
-  const rawWater = globalComp.water;
-  const rawElectricity = globalComp.electricity;
+  const colDay = selectedUnit?.collection_day ?? globalComp.collectionDay;
+  const grace = selectedUnit?.grace_period_days ?? globalComp.gracePeriod;
+  const pType = selectedUnit?.penalty_type ?? globalComp.penaltyType;
+  const pVal = selectedUnit?.penalty_value ?? globalComp.penaltyValue;
+
+  const activeBankName = selectedUnit?.bank_name || globalComp.bankName;
+  const activeBankAccountName = selectedUnit?.bank_account_name || globalComp.bankAccountName;
+  const activeBankAccountNumber = selectedUnit?.bank_account_number || globalComp.bankAccountNumber;
+  const activeQrCodeUrl = selectedUnit?.qr_code_url || globalComp.qrCodeUrl;
+  
+  const rawDues = activeDuesRate * unitArea;
+  const rawParking = activeParking;
+  const rawWater = activeWater;
+  const rawElectricity = activeElectricity;
 
   const existingSoa = selectedUnit ? allSoaConfigs[selectedUnit.id] : null;
   const isAssigned = !!existingSoa;
@@ -159,13 +177,13 @@ export default function FinancialTab({ userData, units }: any) {
 
   let ownerPenalty = 0;
   if (ownerStatus === 'Overdue' && !isVacant) {
-    ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+    ownerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
   }
 
   const tenantStatus = existingSoa?.tenant_status || 'Pending';
   let tenantPenalty = 0;
   if (tenantStatus === 'Overdue' && !isVacant) {
-    tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+    tenantPenalty = pType === 'percent' ? tenantBase * (pVal / 100) : pVal;
   }
 
   const ownerTotalDue = ownerBase + ownerPenalty;
@@ -176,7 +194,7 @@ export default function FinancialTab({ userData, units }: any) {
   // ✨ LEDGER SPECIFIC COMPUTATION
   let ledgerOwnerPenalty = 0;
   if ((ownerStatus === 'Overdue' || soaConfig.owner.penalty) && !isVacant) {
-    ledgerOwnerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+    ledgerOwnerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
   }
   const ledgerOwnerTotalDue = ownerBase + ledgerOwnerPenalty;
 
@@ -190,7 +208,7 @@ export default function FinancialTab({ userData, units }: any) {
       let stat = "Upcoming";
       if (i < currentMonthIndex) stat = "Paid"; 
       else if (i === currentMonthIndex) stat = !isAssigned ? 'Unassigned' : ownerStatus; 
-      const dueDate = `${monthName} ${globalComp.collectionDay}, ${currentYear}`;
+      const dueDate = `${monthName} ${colDay}, ${currentYear}`;
       months.push({ monthName, year: currentYear, dueDate, status: stat, isCurrentMonth: i === currentMonthIndex });
     }
     return months;
@@ -306,10 +324,10 @@ export default function FinancialTab({ userData, units }: any) {
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] z-20 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
       
       {/* 🌟 PREMIUM HEADER */}
-      <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[var(--shadow-sm)]">
+      <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-[var(--shadow-sm)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
           <div className="flex justify-between items-center w-full md:w-auto">
@@ -639,7 +657,7 @@ export default function FinancialTab({ userData, units }: any) {
                         <div className="min-w-0">
                           <h4 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-lg tracking-tight truncate">Ledger & Projection</h4>
                           <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
-                            Due: Day {globalComp.collectionDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                            Due: Day {colDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {colDay + grace}
                           </div>
                         </div>
                       </div>
@@ -886,8 +904,8 @@ export default function FinancialTab({ userData, units }: any) {
                   <div className="flex flex-col items-center">
                     <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[var(--color-secondary)] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
                     <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-inner p-3">
-                      {globalComp.qrCodeUrl ? (
-                        <img src={globalComp.qrCodeUrl} alt="Scan to pay" className="w-full h-full object-contain p-1" />
+                      {activeQrCodeUrl ? (
+                        <img src={activeQrCodeUrl} alt="Scan to pay" className="w-full h-full object-contain p-1" />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
                           <span className="text-[10px] font-bold uppercase text-center mt-2">No QR Setup</span>
@@ -900,11 +918,11 @@ export default function FinancialTab({ userData, units }: any) {
                 {paymentMethod === 'Bank Transfer' && (
                   <div className="space-y-3">
                     <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-[var(--color-border)] pb-2">Admin Bank Details</p>
-                    {globalComp.bankName || globalComp.bankAccountNumber ? (
+                    {activeBankName || activeBankAccountNumber ? (
                       <div className="bg-slate-50 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] space-y-3">
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{globalComp.bankName}</span></p>
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountName}</span></p>
-                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{globalComp.bankAccountNumber}</span></div>
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{activeBankName}</span></p>
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{activeBankAccountName}</span></p>
+                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{activeBankAccountNumber}</span></div>
                       </div>
                     ) : (
                       <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)]">Bank details will be displayed here once configured by the administration.</p>
@@ -914,7 +932,7 @@ export default function FinancialTab({ userData, units }: any) {
                 {paymentMethod === 'Check' && (
                   <div className="space-y-2 text-center py-3 sm:py-4">
                     <p className="text-[11px] sm:text-xs font-bold text-slate-500">Make checks payable to:</p>
-                    <p className="font-black text-base sm:text-lg text-[var(--color-secondary)] break-words px-2 leading-tight">{globalComp.bankAccountName || 'HOA Administration'}</p>
+                    <p className="font-black text-base sm:text-lg text-[var(--color-secondary)] break-words px-2 leading-tight">{activeBankAccountName || 'HOA Administration'}</p>
                     <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-sm)] mt-4 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}

@@ -185,10 +185,21 @@ export default function OwnerDashboard() {
 
                   const unitArea = getUnitAreaValue(unit.unit_area);
 
-                  const rawDues = (orgData?.dues_rate || 0) * unitArea;
-                  const rawParking = (orgData?.default_parking || 0);
-                  const rawWater = (orgData?.default_water || 0);
-                  const rawElectricity = (orgData?.default_electricity || 0);
+                  // ==========================================
+                  // UNIT-SPECIFIC BILLING CALCULATION FALLBACK
+                  // ==========================================
+                  const activeDuesRate = unit.dues_rate ?? orgData?.dues_rate ?? 0;
+                  const activeParking = unit.parking ?? orgData?.default_parking ?? 0;
+                  const activeWater = unit.water ?? orgData?.default_water ?? 0;
+                  const activeElectricity = unit.electricity ?? orgData?.default_electricity ?? 0;
+
+                  const pType = unit.penalty_type ?? orgData?.penalty_type ?? 'percent';
+                  const pVal = unit.penalty_value ?? orgData?.penalty_value ?? 0;
+
+                  const rawDues = activeDuesRate * unitArea;
+                  const rawParking = activeParking;
+                  const rawWater = activeWater;
+                  const rawElectricity = activeElectricity;
 
                   const dues = soa.owner_dues ? rawDues : 0;
                   const parking = soa.owner_parking ? rawParking : 0;
@@ -205,10 +216,10 @@ export default function OwnerDashboard() {
                   let lateFee = 0;
                   if (soa.owner_status === 'Overdue' && !isOwnerVacant) {
                     anyOverdue = true; 
-                    if (orgData?.penalty_type === 'percent') {
-                      lateFee = baseTotal * ((orgData?.penalty_value || 0) / 100);
+                    if (pType === 'percent') {
+                      lateFee = baseTotal * (pVal / 100);
                     } else {
-                      lateFee = orgData?.penalty_value || 0;
+                      lateFee = pVal;
                     }
                   }
 
@@ -860,7 +871,7 @@ export default function OwnerDashboard() {
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
 
       {/* UNIFIED TOP NAVIGATION */}
-      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-md)]">
+      <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative shadow-[var(--shadow-md)] z-20">
         <div className="flex items-center gap-3">
           {orgLogo ? (
             <div 
@@ -996,8 +1007,8 @@ export default function OwnerDashboard() {
       {/* LAYOUT WRAPPER: Sidebar & Main Content */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Manager Style) */}
-        <aside className={`${isSidebarCollapsed ? 'md:w-[84px] px-2' : 'md:w-[260px] px-4'} bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-40 transition-all duration-300 relative shrink-0`}>
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Edge-to-Edge Profile) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px]' : 'md:w-[260px]'} bg-[var(--color-secondary)] pt-6 hidden md:flex flex-col transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
 
           {/* Collapse Toggle Button */}
           <button
@@ -1010,7 +1021,8 @@ export default function OwnerDashboard() {
             </span>
           </button>
 
-          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
+          {/* Navigation Links - Padding moved here */}
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto custom-scrollbar"}`}>
             <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Repairs" isActive={activeTab === "repair"} onClick={() => setActiveTab('repair')} collapsed={isSidebarCollapsed} />
@@ -1023,7 +1035,8 @@ export default function OwnerDashboard() {
             <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "leases"} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
-          <div className="shrink-0 pt-4 mt-auto border-t border-white/5">
+          {/* ✨ MATCHED UI: Premium Bottom User Tag (Edge-to-Edge Layout) */}
+          <div className="shrink-0 mt-auto border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
             <button 
               onClick={() => {
                 setIsWorkspaceModalOpen(true);
@@ -1034,18 +1047,31 @@ export default function OwnerDashboard() {
                 setShowConfirmPassword(false);
                 setIsEditingName(false);
               }}
-              className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}
+              className={`w-full flex items-center gap-3.5 py-4 transition-colors hover:bg-white/5 text-left group relative focus:outline-none ${isSidebarCollapsed ? "justify-center px-0" : "px-5"}`}
+              title={isSidebarCollapsed ? "View Profile Details" : undefined}
             >
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5 shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
-                {initials}
+              <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-slate-900 shadow-sm group-hover:scale-105 transition-transform shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
+                {isLoading ? '...' : initials}
               </div>
+              
               {!isSidebarCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold text-white truncate">{isLoading ? "..." : fullName}</p>
-                  <p className="text-[10px] text-slate-400 truncate font-extrabold">OWNER PROFILE</p>
+                <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
+                  {isLoading ? (
+                    <div className="space-y-1.5">
+                      <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse"></div>
+                      <div className="h-2 w-16 bg-white/5 rounded animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[15px] font-extrabold text-white truncate leading-none mb-1.5">{fullName}</p>
+                      <p className="text-[10px] font-extrabold text-white/50 truncate uppercase tracking-widest leading-none">OWNER PROFILE</p>
+                    </>
+                  )}
                 </div>
               )}
-              {isSidebarCollapsed && (
+
+              {/* Collapsed Tooltip for Profile */}
+              {isSidebarCollapsed && !isLoading && (
                 <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
                   {fullName}
                 </div>
@@ -1069,7 +1095,7 @@ export default function OwnerDashboard() {
                     {isLoading ? (
                       <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse inline-block mt-1"></div>
                     ) : (
-                      <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-700 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
                         Welcome back,
                         <span className="text-[var(--color-secondary)] break-words">{fullName}</span>
                       </h1>
@@ -1278,7 +1304,7 @@ export default function OwnerDashboard() {
 
           {/* TAB 2: MESSAGES */}
           {activeTab === 'messages' && (
-            <div className="absolute inset-0 bg-[var(--color-bg)] z-20 flex animate-in fade-in duration-300">
+            <div className="absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300">
               <ConversationTab userData={userData} units={myUnitsList} />
             </div>
           )}

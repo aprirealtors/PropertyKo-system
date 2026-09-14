@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
@@ -15,28 +15,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
-  
-  // Global Computation Settings
-  const [globalComp, setGlobalComp] = useState({
-    duesRate: 0,
-    water: 0,
-    electricity: 0,
-    parking: 0,
-    penaltyType: 'percent',
-    penaltyValue: 3,
-    collectionDay: 1,
-    gracePeriod: 15,
-    bankName: '',
-    bankAccountName: '',
-    bankAccountNumber: '',
-    qrCodeUrl: ''
-  });
 
   // Modal States
   const [isPaymentSelectionModalOpen, setIsPaymentSelectionModalOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false); 
   const [paymentModalParty, setPaymentModalParty] = useState<'owner' | 'tenant' | null>(null);
-  const [isComputationModalOpen, setIsComputationModalOpen] = useState(false);
+  const [isUnitConfigModalOpen, setIsUnitConfigModalOpen] = useState(false);
   const [isSOAModalOpen, setIsSOAModalOpen] = useState(false);
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
@@ -45,6 +29,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isSendingSOA, setIsSendingSOA] = useState(false);
   const [isSavingDefault, setIsSavingDefault] = useState(false); 
   const [isWaiving, setIsWaiving] = useState(false);
+  const [isSavingUnitConfig, setIsSavingUnitConfig] = useState(false);
 
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
@@ -56,27 +41,26 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     tenant: { dues: false, parking: false, water: false, electricity: false, penalty: false }
   });
 
-  // Computation Form States
-  const [compDuesRate, setCompDuesRate] = useState("");
-  const [compWater, setCompWater] = useState("");
-  const [compElec, setCompElec] = useState("");
-  const [compParking, setCompParking] = useState("");
-  const [compPenaltyType, setCompPenaltyType] = useState("percent");
-  const [compPenaltyValue, setCompPenaltyValue] = useState("");
-  const [compCollectionDay, setCompCollectionDay] = useState(""); 
-  const [compGracePeriod, setCompGracePeriod] = useState(""); 
-  const [compBankName, setCompBankName] = useState("");
-  const [compBankAccountName, setCompBankAccountName] = useState("");
-  const [compBankAccountNumber, setCompBankAccountNumber] = useState("");
+  // Unit-Specific Config Form States
+  const [unitCompDuesRate, setUnitCompDuesRate] = useState("");
+  const [unitCompWater, setUnitCompWater] = useState("");
+  const [unitCompElec, setUnitCompElec] = useState("");
+  const [unitCompParking, setUnitCompParking] = useState("");
+  const [unitCompPenaltyType, setUnitCompPenaltyType] = useState("percent");
+  const [unitCompPenaltyValue, setUnitCompPenaltyValue] = useState("");
+  const [unitCompCollectionDay, setUnitCompCollectionDay] = useState(""); 
+  const [unitCompGracePeriod, setUnitCompGracePeriod] = useState(""); 
+  const [unitCompBankName, setUnitCompBankName] = useState("");
+  const [unitCompBankAccountName, setUnitCompBankAccountName] = useState("");
+  const [unitCompBankAccountNumber, setUnitCompBankAccountNumber] = useState("");
+  const [unitCompQrUrl, setUnitCompQrUrl] = useState("");
   
   // QR Code Upload States
-  const [compQrUrl, setCompQrUrl] = useState("");
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (orgData?.admin_email) {
-      fetchBillingConfig();
       fetchAllUnits();
     }
   }, [orgData?.admin_email]);
@@ -113,31 +97,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       setFetchedPayment(null);
     }
   }, [isPaymentModalOpen, paymentModalParty, selectedUnit]);
-
-  const fetchBillingConfig = async () => {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
-      .eq('admin_email', orgData.admin_email)
-      .single();
-
-    if (data && !error) {
-      setGlobalComp({
-        duesRate: data.dues_rate || 0,
-        water: data.default_water || 0,
-        electricity: data.default_electricity || 0,
-        parking: data.default_parking || 0,
-        penaltyType: data.penalty_type || 'percent',
-        penaltyValue: data.penalty_value || 0,
-        collectionDay: data.collection_day || 1,
-        gracePeriod: data.grace_period_days || 15,
-        bankName: data.bank_name || '',
-        bankAccountName: data.bank_account_name || '',
-        bankAccountNumber: data.bank_account_number || '',
-        qrCodeUrl: data.qr_code_url || ''
-      });
-    }
-  };
 
   const fetchAllUnits = async () => {
     setIsLoading(true);
@@ -231,10 +190,23 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const hasOwnerAssign = isAssigned && (currentSoa.owner_dues || currentSoa.owner_parking || currentSoa.owner_water || currentSoa.owner_electricity || currentSoa.owner_penalty);
   const hasTenantAssign = isAssigned && (currentSoa.tenant_dues || currentSoa.tenant_parking || currentSoa.tenant_water || currentSoa.tenant_electricity || currentSoa.tenant_penalty);
   
-  const rawDues = globalComp.duesRate * unitArea;
-  const rawWater = globalComp.water;
-  const rawElectricity = globalComp.electricity;
-  const rawParking = globalComp.parking;
+  // ==========================================
+  // UNIT-SPECIFIC BILLING CALCULATION
+  // ==========================================
+  const activeDuesRate = selectedUnit?.dues_rate || 0;
+  const activeWater = selectedUnit?.water || 0;
+  const activeElectricity = selectedUnit?.electricity || 0;
+  const activeParking = selectedUnit?.parking || 0;
+  
+  const colDay = selectedUnit?.collection_day || 1;
+  const grace = selectedUnit?.grace_period_days || 15;
+  const pType = selectedUnit?.penalty_type || 'percent';
+  const pVal = selectedUnit?.penalty_value || 0;
+
+  const rawDues = activeDuesRate * unitArea;
+  const rawWater = activeWater;
+  const rawElectricity = activeElectricity;
+  const rawParking = activeParking;
 
   const activeConfig = currentSoa ? {
     owner: { dues: currentSoa.owner_dues, parking: currentSoa.owner_parking, water: currentSoa.owner_water, electricity: currentSoa.owner_electricity, penalty: currentSoa.owner_penalty },
@@ -258,32 +230,33 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
   let ownerPenalty = 0;
   if ((ownerStatus === 'Overdue' || currentSoa?.owner_penalty) && !isOwnerVacant) {
-    ownerPenalty = globalComp.penaltyType === 'percent' ? ownerBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+    ownerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
   }
 
   let tenantPenalty = 0;
   if ((tenantStatus === 'Overdue' || currentSoa?.tenant_penalty) && !isTenantVacant) {
-    tenantPenalty = globalComp.penaltyType === 'percent' ? tenantBase * (globalComp.penaltyValue / 100) : globalComp.penaltyValue;
+    tenantPenalty = pType === 'percent' ? tenantBase * (pVal / 100) : pVal;
   }
 
   const ownerTotalDue = ownerBase + ownerPenalty;
   const tenantTotalDue = tenantBase + tenantPenalty;
   const totalDue = ownerTotalDue + tenantTotalDue;
 
-  const openComputationModal = () => {
-    setCompDuesRate(globalComp.duesRate ? String(globalComp.duesRate) : "");
-    setCompWater(globalComp.water ? String(globalComp.water) : "");
-    setCompElec(globalComp.electricity ? String(globalComp.electricity) : "");
-    setCompParking(globalComp.parking ? String(globalComp.parking) : "");
-    setCompPenaltyType(globalComp.penaltyType);
-    setCompPenaltyValue(globalComp.penaltyValue ? String(globalComp.penaltyValue) : "");
-    setCompCollectionDay(String(globalComp.collectionDay));
-    setCompGracePeriod(String(globalComp.gracePeriod));
-    setCompBankName(globalComp.bankName);
-    setCompBankAccountName(globalComp.bankAccountName);
-    setCompBankAccountNumber(globalComp.bankAccountNumber);
-    setCompQrUrl(globalComp.qrCodeUrl); 
-    setIsComputationModalOpen(true);
+  const openUnitConfigModal = () => {
+    if (!selectedUnit) return;
+    setUnitCompDuesRate(selectedUnit.dues_rate != null ? String(selectedUnit.dues_rate) : "");
+    setUnitCompWater(selectedUnit.water != null ? String(selectedUnit.water) : "");
+    setUnitCompElec(selectedUnit.electricity != null ? String(selectedUnit.electricity) : "");
+    setUnitCompParking(selectedUnit.parking != null ? String(selectedUnit.parking) : "");
+    setUnitCompPenaltyType(selectedUnit.penalty_type || "percent");
+    setUnitCompPenaltyValue(selectedUnit.penalty_value != null ? String(selectedUnit.penalty_value) : "");
+    setUnitCompCollectionDay(selectedUnit.collection_day != null ? String(selectedUnit.collection_day) : "");
+    setUnitCompGracePeriod(selectedUnit.grace_period_days != null ? String(selectedUnit.grace_period_days) : "");
+    setUnitCompBankName(selectedUnit.bank_name || "");
+    setUnitCompBankAccountName(selectedUnit.bank_account_name || "");
+    setUnitCompBankAccountNumber(selectedUnit.bank_account_number || "");
+    setUnitCompQrUrl(selectedUnit.qr_code_url || "");
+    setIsUnitConfigModalOpen(true);
   };
 
   const openSOAModal = () => {
@@ -495,7 +468,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         .from('documents')
         .getPublicUrl(filePath);
 
-      setCompQrUrl(publicUrlData.publicUrl);
+      setUnitCompQrUrl(publicUrlData.publicUrl);
 
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -506,52 +479,44 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  const handleSaveComputation = async (e: React.FormEvent) => {
+  const handleSaveUnitConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!selectedUnit) return;
+    setIsSavingUnitConfig(true);
+
     const payload = {
-      dues_rate: parseFloat(compDuesRate) || 0,
-      default_water: parseFloat(compWater) || 0,
-      default_electricity: parseFloat(compElec) || 0,
-      default_parking: parseFloat(compParking) || 0,
-      penalty_type: compPenaltyType,
-      penalty_value: parseFloat(compPenaltyValue) || 0,
-      collection_day: parseInt(compCollectionDay) || 1,
-      grace_period_days: parseInt(compGracePeriod) || 15,
-      bank_name: compBankName,
-      bank_account_name: compBankAccountName,
-      bank_account_number: compBankAccountNumber,
-      qr_code_url: compQrUrl
+      dues_rate: unitCompDuesRate !== "" ? parseFloat(unitCompDuesRate) : null,
+      water: unitCompWater !== "" ? parseFloat(unitCompWater) : null,
+      electricity: unitCompElec !== "" ? parseFloat(unitCompElec) : null,
+      parking: unitCompParking !== "" ? parseFloat(unitCompParking) : null,
+      penalty_type: unitCompPenaltyType,
+      penalty_value: unitCompPenaltyValue !== "" ? parseFloat(unitCompPenaltyValue) : null,
+      collection_day: unitCompCollectionDay !== "" ? parseInt(unitCompCollectionDay) : null,
+      grace_period_days: unitCompGracePeriod !== "" ? parseInt(unitCompGracePeriod) : null,
+      bank_name: unitCompBankName,
+      bank_account_name: unitCompBankAccountName,
+      bank_account_number: unitCompBankAccountNumber,
+      qr_code_url: unitCompQrUrl
     };
 
     try {
       const { error } = await supabase
-        .from('organizations')
+        .from('units')
         .update(payload)
-        .eq('admin_email', orgData.admin_email)
-        .select();
+        .eq('id', selectedUnit.id);
 
       if (error) throw error;
 
-      setGlobalComp({
-        duesRate: payload.dues_rate,
-        water: payload.default_water,
-        electricity: payload.default_electricity,
-        parking: payload.default_parking,
-        penaltyType: payload.penalty_type,
-        penaltyValue: payload.penalty_value,
-        collectionDay: payload.collection_day,
-        gracePeriod: payload.grace_period_days,
-        bankName: payload.bank_name || '',
-        bankAccountName: payload.bank_account_name || '',
-        bankAccountNumber: payload.bank_account_number || '',
-        qrCodeUrl: payload.qr_code_url || ''
-      });
-
-      setIsComputationModalOpen(false);
+      // Update Local State
+      setAllUnits(prev => prev.map(u => u.id === selectedUnit.id ? { ...u, ...payload } : u));
+      setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
+      
+      setIsUnitConfigModalOpen(false);
     } catch (err: any) {
-      console.error("Failed to update global computation:", err);
-      alert(`${err.message}`);
+      console.error("Failed to update unit computation:", err);
+      alert(err.message || "Failed to update unit configuration");
+    } finally {
+      setIsSavingUnitConfig(false);
     }
   };
 
@@ -575,7 +540,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         else stat = 'Paid';
       }
       
-      const dueDate = `${monthName} ${globalComp.collectionDay}, ${currentYear}`;
+      const dueDate = `${monthName} ${colDay}, ${currentYear}`;
       
       months.push({
         monthName: monthName,
@@ -731,7 +696,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
+              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Manager</span>
               <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
@@ -763,10 +728,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="p-3 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>
-                  <button onClick={openComputationModal} className="text-[var(--color-primary)] hover:opacity-80 bg-[var(--color-primary)]/10 px-2 py-1 rounded-[var(--radius-sm)] transition-colors active:scale-95 flex items-center gap-1.5 border border-[var(--color-primary)]/20" title="Billing Settings">
-                    <Calculator size={13} strokeWidth={2.5} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Config</span>
-                  </button>
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2 sm:px-2.5 py-1 rounded-lg shadow-sm">{filteredUnits.length} Total</span>
               </div>
@@ -852,6 +813,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 
                 <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
                   
+                  {/* HEADER WITH NEW BUTTON LOCATION */}
                   <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/30">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <button 
@@ -864,11 +826,24 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                       </h3>
                     </div>
-                    {isOwnerVacant && isTenantVacant && (
-                      <span className="text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] border border-slate-200 uppercase tracking-wide shadow-sm shrink-0">
-                        Vacant
-                      </span>
-                    )}
+                    
+                    {/* TOP RIGHT ALIGNED ACTIONS (Vacant Badge + Unit Config) */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isOwnerVacant && isTenantVacant && (
+                        <span className="text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] border border-slate-200 uppercase tracking-wide shadow-sm shrink-0 hidden sm:inline-flex">
+                          Vacant
+                        </span>
+                      )}
+                      
+                      <button 
+                        onClick={openUnitConfigModal}
+                        className="text-slate-600 hover:text-[var(--color-primary)] bg-white hover:bg-[var(--color-primary)]/10 px-2 sm:px-3 py-1.5 rounded-[var(--radius-md)] transition-colors active:scale-95 flex items-center gap-1.5 border border-[var(--color-border)] hover:border-[var(--color-primary)]/30 shadow-sm"
+                        title="Configure Unit Billing Rates"
+                      >
+                        <Settings size={14} strokeWidth={2.5} className="shrink-0" />
+                        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider hidden sm:inline">Unit Config</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className={`grid grid-cols-1 ${!isTenantVacant ? 'lg:grid-cols-2 lg:divide-x lg:divide-[var(--color-border)]' : ''}`}>
@@ -979,7 +954,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
                 
                 {/* Action Buttons Row */}
-                <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 w-full mb-6">
+                <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 w-full mb-6 flex-wrap">
                   
                   {isAssigned && ((ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant) || (tenantTotalDue > 0 && tenantStatus !== 'Paid' && !isTenantVacant)) && (
                     <button 
@@ -998,7 +973,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       <AlertCircle className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="truncate">Penalties</span>
                     </button>
                   )}
-                  
+
                   <button 
                     onClick={openSOAModal}
                     className="w-full justify-center sm:w-auto bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 text-[var(--color-text)] px-2 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
@@ -1017,7 +992,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       <div className="min-w-0">
                         <h4 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-lg tracking-tight truncate">Ledger & Projections</h4>
                         <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
-                          Due: Day {globalComp.collectionDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {globalComp.collectionDay + globalComp.gracePeriod}
+                          Due: Day {colDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {colDay + grace}
                         </div>
                       </div>
                     </div>
@@ -1103,8 +1078,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         )}
       </div>
 
-      {/* 🌟 PREMIUM COMPUTATION MODAL */}
-      {isComputationModalOpen && (
+      {/* 🌟 UNIT-SPECIFIC CONFIGURATION MODAL (Merged from Global) */}
+      {isUnitConfigModalOpen && selectedUnit && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
@@ -1112,27 +1087,30 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
-                  <Calculator size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Settings size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Billing Configuration</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Unit Billing Config</h2>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">{selectedUnit.property_name} · Unit {selectedUnit.unit_number}</p>
+                </div>
               </div>
-              <button onClick={() => setIsComputationModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsUnitConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors active:scale-95 shrink-0">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
-              <form onSubmit={handleSaveComputation} className="space-y-4 sm:space-y-5">
+              <form onSubmit={handleSaveUnitConfig} className="space-y-4 sm:space-y-5">
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pb-5 border-b border-slate-100/80">
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Collection Start Day</label>
-                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={compCollectionDay} onChange={(e) => setCompCollectionDay(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                    <input type="number" min="1" max="31" placeholder="e.g. 1" value={unitCompCollectionDay} onChange={(e) => setUnitCompCollectionDay(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Day of the month (1-31)</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Grace Period (Days)</label>
-                    <input type="number" min="0" placeholder="e.g. 15" value={compGracePeriod} onChange={(e) => setCompGracePeriod(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                    <input type="number" min="0" placeholder="e.g. 15" value={unitCompGracePeriod} onChange={(e) => setUnitCompGracePeriod(e.target.value)} className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1.5 font-medium ml-1">Days before penalty hits</p>
                   </div>
                 </div>
@@ -1142,31 +1120,31 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Assoc. Dues (sqm)</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compDuesRate} onChange={(e) => setCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => setUnitCompDuesRate(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking Baseline</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compParking} onChange={(e) => setCompParking(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompParking} onChange={(e) => setUnitCompParking(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water Baseline</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compWater} onChange={(e) => setCompWater(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompWater} onChange={(e) => setUnitCompWater(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Elec. Baseline</label>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Elec.</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-[13px] sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={compElec} onChange={(e) => setCompElec(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompElec} onChange={(e) => setUnitCompElec(e.target.value)} className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)]" />
                     </div>
                   </div>
                 </div>
@@ -1174,11 +1152,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="border-t border-[var(--color-border)] pt-5">
                   <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-2 ml-1 truncate">Late Penalty Deduction</label>
                   <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-                    <select value={compPenaltyType} onChange={(e) => setCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)] bg-white">
+                    <select value={unitCompPenaltyType} onChange={(e) => setUnitCompPenaltyType(e.target.value)} className="w-full sm:w-[110px] shrink-0 px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[12px] sm:text-[13px] font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)] bg-white">
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={compPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={compPenaltyValue} onChange={(e) => setCompPenaltyValue(e.target.value)} className="w-full flex-1 px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)]" />
+                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => setUnitCompPenaltyValue(e.target.value)} className="w-full flex-1 px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-[13px] sm:text-sm font-bold text-slate-700 transition-all shadow-[var(--shadow-sm)]" />
                   </div>
                 </div>
 
@@ -1186,7 +1164,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-sm">
                   <label className="block text-[13px] sm:text-sm font-black text-[var(--color-secondary)] mb-1 sm:mb-1.5 tracking-tight truncate">Bank Transfer Details</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 sm:mb-5 font-medium leading-relaxed">
-                    Set up your organization's bank details here. These will be securely displayed to owners and tenants when they select "Bank Transfer" during payment.
+                    Set up this unit's bank details here. These will be securely displayed to owners and tenants when they select "Bank Transfer" during payment.
                   </p>
                   
                   <div className="space-y-3 sm:space-y-4">
@@ -1195,8 +1173,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       <input 
                         type="text" 
                         placeholder="e.g. BDO Unibank" 
-                        value={compBankName} 
-                        onChange={(e) => setCompBankName(e.target.value)} 
+                        value={unitCompBankName} 
+                        onChange={(e) => setUnitCompBankName(e.target.value)} 
                         className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                       />
                     </div>
@@ -1205,9 +1183,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         <label className="block text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1 truncate">Account Name</label>
                         <input 
                           type="text" 
-                          placeholder="e.g. HOA Admin" 
-                          value={compBankAccountName} 
-                          onChange={(e) => setCompBankAccountName(e.target.value)} 
+                          placeholder="e.g. HOA Admin / Owner Name" 
+                          value={unitCompBankAccountName} 
+                          onChange={(e) => setUnitCompBankAccountName(e.target.value)} 
                           className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                         />
                       </div>
@@ -1216,8 +1194,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         <input 
                           type="text" 
                           placeholder="e.g. 0012-3456" 
-                          value={compBankAccountNumber} 
-                          onChange={(e) => setCompBankAccountNumber(e.target.value)} 
+                          value={unitCompBankAccountNumber} 
+                          onChange={(e) => setUnitCompBankAccountNumber(e.target.value)} 
                           className="w-full px-3 sm:px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[12px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] bg-white" 
                         />
                       </div>
@@ -1229,13 +1207,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 p-4 sm:p-5 rounded-[1.25rem] sm:rounded-2xl mt-5 sm:mt-6 shadow-sm">
                   <label className="block text-[13px] sm:text-sm font-black text-[var(--color-secondary)] mb-1 sm:mb-1.5 tracking-tight truncate">Digital Wallet QR Code</label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-4 font-medium leading-relaxed">
-                    Upload your GCash, Maya, or QR Ph barcode. This will be displayed to tenants when they select "Digital Wallet" during payment.
+                    Upload your GCash, Maya, or QR Ph barcode. This will be displayed when they select "Digital Wallet" during payment.
                   </p>
                   
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-[var(--color-border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-2 shadow-inner">
-                      {compQrUrl ? (
-                        <img src={compQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
+                      {unitCompQrUrl ? (
+                        <img src={unitCompQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
                       ) : (
                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center">No QR</span>
                       )}
@@ -1257,26 +1235,28 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         {isUploadingQr ? (
                           <><Loader2 size={16} className="animate-spin text-[var(--color-primary)]" /> Uploading...</>
                         ) : (
-                          <><Upload size={16} className="text-[var(--color-primary)]" /> {compQrUrl ? 'Replace QR Image' : 'Upload QR Image'}</>
+                          <><Upload size={16} className="text-[var(--color-primary)]" /> {unitCompQrUrl ? 'Replace QR Image' : 'Upload QR Image'}</>
                         )}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 sm:pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
+                <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-4 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
                   <button 
                     type="button" 
-                    onClick={() => setIsComputationModalOpen(false)} 
+                    onClick={() => setIsUnitConfigModalOpen(false)} 
+                    disabled={isSavingUnitConfig}
                     className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
-                    className="w-full flex-1 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center truncate px-2"
+                    disabled={isSavingUnitConfig}
+                    className="w-full flex-1 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center gap-2 truncate px-2"
                   >
-                    Save Global Settings
+                    {isSavingUnitConfig ? <Loader2 size={16} className="animate-spin" /> : "Save Config for Unit"}
                   </button>
                 </div>
               </form>

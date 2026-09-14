@@ -162,10 +162,10 @@ export default function LeaseTab({ setActiveTab }: any) {
   const isExpiringSoon = diffDays !== null && diffDays >= 0 && diffDays <= 30;
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] z-20 overflow-hidden">
+    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
       
       {/* 🌟 PREMIUM HEADER */}
-      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 z-20 shadow-[var(--shadow-sm)]">
+      <div className="shrink-0 bg-white/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-[var(--shadow-sm)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           
           <div className="flex justify-between items-center w-full md:w-auto">

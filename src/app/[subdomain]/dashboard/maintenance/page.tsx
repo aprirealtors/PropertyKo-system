@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { 
   Bell, CheckCircle2, AlertTriangle, LogOut, 
   Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight, Lock, Key,
-  Eye, EyeOff, Edit2
+  Eye, EyeOff, Edit2, PanelLeft
 } from "lucide-react";
 
 // Import Modular Tabs
@@ -38,7 +38,7 @@ export default function MaintenanceDashboard() {
   
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
-
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   // Global Data States
   const [profile, setProfile] = useState({ name: "Staff", initials: "ST" });
   const [userEmail, setUserEmail] = useState<string>(""); 
@@ -414,41 +414,61 @@ export default function MaintenanceDashboard() {
       {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
         
-        {/* DESKTOP SIDEBAR */}
-        <aside className="w-[260px] bg-[var(--color-secondary)] py-6 hidden md:flex flex-col z-20 transition-all">
-          <div className="mb-4">
-            <h3 className="px-3 text-[10px] font-black text-white/40 tracking-[0.25em] uppercase">Overview</h3>
-          </div>
-          
-          <nav className="space-y-1.5 flex-1">
-            <NavButton active={activeTab === 'home'} onClick={() => setActiveTab('home')} icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} label="Home" />
-            <NavButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} badgeCount={metrics.assigned} icon={<Wrench size={18} strokeWidth={activeTab === 'tasks' ? 2.5 : 2} />} label="My Tasks" />
-            <NavButton active={activeTab === 'messages'} onClick={() => setActiveTab('messages')} badgeCount={unreadMessageCount} icon={<MessageSquare size={18} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />} label="Messages" />
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Edge-to-Edge Profile) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px]' : 'md:w-[260px]'} bg-[var(--color-secondary)] pt-6 hidden md:flex flex-col transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20`}>
+
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden md:flex absolute top-[72px] -right-3 w-6 h-6 rounded-full bg-white border border-[var(--color-border)] shadow-md items-center justify-center z-20 text-slate-500 hover:text-[var(--color-primary)] hover:scale-110 hover:shadow-lg transition-all duration-200 group"
+          >
+            <PanelLeft size={13} strokeWidth={2.5} className={`transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180" : ""}`} />
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+              {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            </span>
+          </button>
+
+          {/* Navigation Links - Padding moved here */}
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto custom-scrollbar"}`}>
+            <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
+            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => setActiveTab('home')} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="My Tasks" isActive={activeTab === "tasks"} onClick={() => setActiveTab('tasks')} badgeCount={metrics.assigned} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "messages"} onClick={() => setActiveTab('messages')} badgeCount={unreadMessageCount} collapsed={isSidebarCollapsed} />
           </nav>
 
-          {/* User Tag */}
-          <div className="mt-auto pt-4 border-t border-white/5">
-             <div 
-               onClick={() => {
-                 setIsWorkspaceModalOpen(true);
-                 setIsChangingPassword(false);
-                 setPasswordError(null);
-                 setShowCurrentPassword(false);
-                 setShowNewPassword(false);
-                 setShowConfirmPassword(false);
-                 setIsEditingName(false);
-               }}
-               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
-               title="View Profile Details"
-             >
-                <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center font-extrabold text-[13px] text-[var(--color-primary-text)] shadow-inner group-hover:scale-105 transition-transform uppercase border border-white/5" style={{backgroundColor: "var(--color-primary)"}}>
-                  {profile.initials}
+          {/* ✨ MATCHED UI: Premium Bottom User Tag (Edge-to-Edge Layout) */}
+          <div className="shrink-0 mt-auto border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
+            <button 
+              onClick={() => {
+                setIsWorkspaceModalOpen(true);
+                setIsChangingPassword(false);
+                setPasswordError(null);
+                setShowCurrentPassword(false);
+                setShowNewPassword(false);
+                setShowConfirmPassword(false);
+                setIsEditingName(false);
+              }}
+              className={`w-full flex items-center gap-3.5 py-4 transition-colors hover:bg-white/5 text-left group relative focus:outline-none ${isSidebarCollapsed ? "justify-center px-0" : "px-5"}`}
+              title={isSidebarCollapsed ? "View Profile Details" : undefined}
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-slate-900 shadow-sm group-hover:scale-105 transition-transform shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
+                {profile.initials}
+              </div>
+              
+              {!isSidebarCollapsed && (
+                <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
+                  <p className="text-[15px] font-extrabold text-white truncate leading-none mb-1.5">{profile.name}</p>
+                  <p className="text-[10px] font-bold text-white/50 truncate uppercase tracking-widest leading-none">STAFF PROFILE</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-extrabold text-white truncate">{profile.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate font-extrabold">STAFF PROFILE</p>
+              )}
+
+              {/* Collapsed Tooltip for Profile */}
+              {isSidebarCollapsed && (
+                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+                  {profile.name}
                 </div>
-             </div>
+              )}
+            </button>
           </div>
         </aside>
 
@@ -880,6 +900,79 @@ function NavButton({ active, onClick, icon, label, badgeCount }: any) {
       
       {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 rounded-r-full shadow-sm" style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 10px var(--color-primary)' }} />}
     </button>
+  );
+}
+
+// ✨ NAV SECTION LABEL: Typography with trailing divider
+function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="h-px bg-white/10 mx-4 my-3 first:mt-1" />;
+  }
+  return (
+    <div className="flex items-center gap-3 px-4 pt-5 pb-2 first:pt-2 select-none">
+      <span className="text-[11px] font-semibold text-slate-400/80 uppercase tracking-widest whitespace-nowrap">
+        {children}
+      </span>
+      <div className="h-px bg-white/5 flex-1 mt-0.5"></div>
+    </div>
+  );
+}
+
+// ✨ REFACTORED NAV ITEM: Uses CSS Variables for dynamic active states; supports collapsed tooltip mode
+function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number, collapsed?: boolean }) {
+  return (
+    <div className="relative group/navitem">
+      <button 
+        onClick={onClick} 
+        className={`w-full flex items-center gap-3 rounded-[var(--radius-xl)] text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
+          collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5"
+        } ${
+          isActive 
+            ? "text-[var(--nav-active-text)] shadow-[var(--shadow-sm)]" 
+            : "text-slate-300 hover:bg-white/5 hover:text-white"
+        }`}
+        style={{
+          backgroundColor: isActive ? 'var(--nav-active-bg)' : 'transparent',
+          borderLeftWidth: isActive && !collapsed ? 'var(--nav-border-left-width, 0px)' : '0px',
+          borderLeftColor: isActive ? 'var(--color-primary)' : 'transparent',
+        }}
+      >
+        <span className={`shrink-0 relative transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`}
+              style={{ color: isActive ? 'var(--nav-active-text)' : 'inherit' }}>
+          {icon}
+          {collapsed && badgeCount !== undefined && badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[var(--color-secondary)]"></span>
+          )}
+        </span>
+
+        {!collapsed && (
+          <>
+            <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
+            {badgeCount !== undefined && badgeCount > 0 && (
+              <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
+                isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'
+              }`}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
+          </>
+        )}
+
+        {!collapsed && !isActive && (!badgeCount || badgeCount <= 0) && (
+          <ChevronRight size={16} className="shrink-0 absolute right-3 opacity-0 group-hover:opacity-100 transition-all text-slate-500" />
+        )}
+      </button>
+
+      {/* Tooltip shown only in collapsed (icon-only) mode */}
+      {collapsed && (
+        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover/navitem:opacity-100 group-hover/navitem:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+          {label}
+          {badgeCount !== undefined && badgeCount > 0 && (
+            <span className="ml-1.5 text-red-400">({badgeCount > 99 ? '99+' : badgeCount})</span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
