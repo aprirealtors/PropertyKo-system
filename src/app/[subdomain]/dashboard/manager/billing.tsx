@@ -25,6 +25,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   
+  // Overdue Confirmation Modal States
+  const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
+  const [overdueConfig, setOverdueConfig] = useState({ owner: false, tenant: false });
+
   const [isSimulating, setIsSimulating] = useState(false);
   const [isSendingSOA, setIsSendingSOA] = useState(false);
   const [isSavingDefault, setIsSavingDefault] = useState(false); 
@@ -228,14 +232,18 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
+  // Define hypothetical penalties used in the Overdue Modal
+  const hypotheticalOwnerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
+  const hypotheticalTenantPenalty = pType === 'percent' ? tenantBase * (pVal / 100) : pVal;
+
   let ownerPenalty = 0;
   if ((ownerStatus === 'Overdue' || currentSoa?.owner_penalty) && !isOwnerVacant) {
-    ownerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
+    ownerPenalty = hypotheticalOwnerPenalty;
   }
 
   let tenantPenalty = 0;
   if ((tenantStatus === 'Overdue' || currentSoa?.tenant_penalty) && !isTenantVacant) {
-    tenantPenalty = pType === 'percent' ? tenantBase * (pVal / 100) : pVal;
+    tenantPenalty = hypotheticalTenantPenalty;
   }
 
   const ownerTotalDue = ownerBase + ownerPenalty;
@@ -304,8 +312,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     };
 
     if (statusOverride) {
-      if (!isOwnerVacant) payload.owner_status = statusOverride;
-      if (!isTenantVacant) payload.tenant_status = statusOverride;
+      payload.owner_status = !isOwnerVacant ? statusOverride : (existing?.owner_status || 'Pending');
+      payload.tenant_status = !isTenantVacant ? statusOverride : (existing?.tenant_status || 'Pending');
+    } else {
+      payload.owner_status = existing?.owner_status || 'Pending';
+      payload.tenant_status = existing?.tenant_status || 'Pending';
     }
 
     if (existing?.id) {
@@ -314,7 +325,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
     const { error } = await supabase
       .from('soa')
-      .upsert(payload);
+      .upsert(payload, { onConflict: 'unit_id' });
 
     if (error) {
       console.error("Supabase Database Error:", error);
@@ -337,6 +348,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
+  // Regular SEND without penalty logic overrides
   const handleSendSOA = async () => {
     setIsSendingSOA(true);
     try {
@@ -356,22 +368,18 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       if (members && members.length > 0) {
         if (ownerHasBill && !isOwnerVacant) {
-          const ownerMatch = members.find(m => 
-            m.name?.trim().toLowerCase() === selectedUnit?.owner_name?.trim().toLowerCase()
-          );
+          const ownerMatch = members.find(m => m.name?.trim().toLowerCase() === selectedUnit?.owner_name?.trim().toLowerCase());
           if (ownerMatch) ownerEmail = ownerMatch.email;
         }
         
         if (tenantHasBill && !isTenantVacant) {
-          const tenantMatch = members.find(m => 
-            m.name?.trim().toLowerCase() === selectedUnit?.tenant_name?.trim().toLowerCase()
-          );
+          const tenantMatch = members.find(m => m.name?.trim().toLowerCase() === selectedUnit?.tenant_name?.trim().toLowerCase());
           if (tenantMatch) tenantEmail = tenantMatch.email;
         }
       }
 
-      const finalOwnerTotal = (soaConfig.owner.dues ? rawDues : 0) + (soaConfig.owner.parking ? rawParking : 0) + (soaConfig.owner.water ? rawWater : 0) + (soaConfig.owner.electricity ? rawElectricity : 0) + (soaConfig.owner.penalty ? ownerPenalty : 0);
-      const finalTenantTotal = (soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0);
+      const finalOwnerTotal = ownerBase + ownerPenalty;
+      const finalTenantTotal = tenantBase + tenantPenalty;
 
       if (ownerHasBill && ownerEmail) {
         notificationsToInsert.push({
@@ -406,6 +414,114 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     } catch (err) {
       console.error("Failed to send SOA:", err);
       alert("There was an error saving the SOA configuration.");
+    } finally {
+      setIsSendingSOA(false);
+    }
+  };
+
+  // Dedicated Confirmed Overdue Submission based on Overdue Checkboxes
+  const handleConfirmOverdue = async () => {
+    setIsSendingSOA(true);
+    try {
+      const ownerHasBill = soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity;
+      const tenantHasBill = soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity;
+
+      const existing = allSoaConfigs[selectedUnit.id];
+
+      // Maintain existing penalties and ONLY append new ones checked in the modal
+      const effectiveOwnerPenalty = soaConfig.owner.penalty || overdueConfig.owner;
+      const effectiveTenantPenalty = soaConfig.tenant.penalty || overdueConfig.tenant;
+
+      const payload: any = {
+        unit_id: selectedUnit.id,
+        owner_dues: soaConfig.owner.dues,
+        owner_parking: soaConfig.owner.parking,
+        owner_water: soaConfig.owner.water,
+        owner_electricity: soaConfig.owner.electricity,
+        owner_penalty: effectiveOwnerPenalty, 
+        tenant_dues: soaConfig.tenant.dues,
+        tenant_parking: soaConfig.tenant.parking,
+        tenant_water: soaConfig.tenant.water,
+        tenant_electricity: soaConfig.tenant.electricity,
+        tenant_penalty: effectiveTenantPenalty, 
+      };
+
+      if (existing?.id) payload.id = existing.id;
+
+      // Ensure statuses update securely
+      payload.owner_status = (effectiveOwnerPenalty && ownerHasBill && !isOwnerVacant) ? 'Overdue' : (existing?.owner_status || 'Pending');
+      payload.tenant_status = (effectiveTenantPenalty && tenantHasBill && !isTenantVacant) ? 'Overdue' : (existing?.tenant_status || 'Pending');
+
+      const { error } = await supabase.from('soa').upsert(payload, { onConflict: 'unit_id' });
+      
+      if (error) {
+        console.error("Supabase Detailed Error:", JSON.stringify(error));
+        throw error;
+      }
+
+      // Update local state and UI immediately
+      setAllSoaConfigs(prev => ({ ...prev, [selectedUnit.id]: { ...existing, ...payload } }));
+      setSoaConfig(prev => ({
+        owner: { ...prev.owner, penalty: effectiveOwnerPenalty },
+        tenant: { ...prev.tenant, penalty: effectiveTenantPenalty }
+      }));
+
+      // Find emails and send notifications
+      const notificationsToInsert = [];
+      let ownerEmail = null;
+      let tenantEmail = null;
+
+      const { data: members } = await supabase.from('team_members').select('name, email').eq('admin_email', orgData.admin_email);
+
+      if (members && members.length > 0) {
+        if (ownerHasBill && !isOwnerVacant) {
+          const ownerMatch = members.find(m => m.name?.trim().toLowerCase() === selectedUnit?.owner_name?.trim().toLowerCase());
+          if (ownerMatch) ownerEmail = ownerMatch.email;
+        }
+        if (tenantHasBill && !isTenantVacant) {
+          const tenantMatch = members.find(m => m.name?.trim().toLowerCase() === selectedUnit?.tenant_name?.trim().toLowerCase());
+          if (tenantMatch) tenantEmail = tenantMatch.email;
+        }
+      }
+
+      const finalOwnerTotal = ownerBase + (effectiveOwnerPenalty ? hypotheticalOwnerPenalty : 0);
+      const finalTenantTotal = tenantBase + (effectiveTenantPenalty ? hypotheticalTenantPenalty : 0);
+
+      // ✨ CRITICAL FIX: Only send email to the party if their box was *just now* checked (overdueConfig is true)
+      if (ownerHasBill && ownerEmail && overdueConfig.owner) {
+        notificationsToInsert.push({
+          admin_email: orgData.admin_email,
+          recipient: ownerEmail,
+          type: 'BILLING',
+          title: '⚠️ OVERDUE: Statement of Account',
+          message: `URGENT: Your billing statement for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} is OVERDUE. Total Due including penalties: ₱${finalOwnerTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+          reference_id: selectedUnit.id,
+          is_read: false
+        });
+      }
+
+      // ✨ CRITICAL FIX: Only send email to the party if their box was *just now* checked (overdueConfig is true)
+      if (tenantHasBill && tenantEmail && overdueConfig.tenant) {
+        notificationsToInsert.push({
+          admin_email: orgData.admin_email,
+          recipient: tenantEmail,
+          type: 'BILLING',
+          title: '⚠️ OVERDUE: Statement of Account',
+          message: `URGENT: Your billing statement for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} is OVERDUE. Total Due including penalties: ₱${finalTenantTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`,
+          reference_id: selectedUnit.id,
+          is_read: false
+        });
+      }
+
+      if (notificationsToInsert.length > 0) {
+        await supabase.from('notifications').insert(notificationsToInsert);
+      }
+
+      setIsOverdueModalOpen(false);
+
+    } catch (err: any) {
+      console.error("OVERDUE ERROR:", err);
+      alert(`Failed to apply overdue status: ${err.message || 'Please check console'}`);
     } finally {
       setIsSendingSOA(false);
     }
@@ -1395,15 +1511,18 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                         <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
-                    {ownerPenalty > 0 && (
-                      <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.penalty && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
+
+                    {/* ✨ NEW: DISPLAY LATE PENALTY IF ASSIGNED IN DB */}
+                    {soaConfig.owner.penalty && !isOwnerVacant && (
+                      <label className="flex items-center justify-between gap-2 cursor-not-allowed opacity-70">
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.penalty && !isTenantVacant} checked={soaConfig.owner.penalty} onChange={(e) => handleToggleSoa('owner', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
-                          <span className="text-[12px] sm:text-[13px] font-bold text-red-600 transition-colors truncate">Late Penalty</span>
+                          <input type="checkbox" disabled checked className="rounded text-red-500 bg-red-100 border-red-200 w-4 h-4 shrink-0" />
+                          <span className="text-[12px] sm:text-[13px] font-bold text-red-600 truncate">Late Penalty</span>
                         </div>
                         <span className="font-black text-red-600 text-[12px] sm:text-[13px] shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
+
                   </div>
                   
                   <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/80 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-bl-2xl">
@@ -1459,19 +1578,22 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                           <span className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
-                      {tenantPenalty > 0 && (
-                        <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.penalty ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
+
+                      {/* ✨ NEW: DISPLAY LATE PENALTY IF ASSIGNED IN DB */}
+                      {soaConfig.tenant.penalty && (
+                        <label className="flex items-center justify-between gap-2 cursor-not-allowed opacity-70">
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                            <input type="checkbox" disabled={soaConfig.owner.penalty} checked={soaConfig.tenant.penalty} onChange={(e) => handleToggleSoa('tenant', 'penalty', e.target.checked)} className="rounded text-red-500 focus:ring-red-500 w-4 h-4 disabled:bg-slate-200 transition-all border-[var(--color-border)] shrink-0" />
-                            <span className="text-[12px] sm:text-[13px] font-bold text-red-600 transition-colors truncate">Late Penalty</span>
+                            <input type="checkbox" disabled checked className="rounded text-red-500 bg-red-100 border-red-200 w-4 h-4 shrink-0" />
+                            <span className="text-[12px] sm:text-[13px] font-bold text-red-600 truncate">Late Penalty</span>
                           </div>
                           <span className="font-black text-red-600 text-[12px] sm:text-[13px] shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
                       )}
+
                     </div>
 
                     <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/10 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 sm:py-4 sm:rounded-br-2xl">
-                      <span className="text-[9px] sm:text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-widest shrink-0">Tenant Total</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-[var(--color-primary)] opacity-80 uppercase tracking-widest shrink-0">Tenant Total</span>
                       <span className="font-black text-[var(--color-primary)] text-sm sm:text-base shrink-0">
                         ₱{((soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </span>
@@ -1480,7 +1602,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3 sm:pt-4 border-t border-[var(--color-border)]">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-3 sm:pt-4 border-t border-[var(--color-border)] mt-6">
                 <button 
                   onClick={() => setIsSOAModalOpen(false)} 
                   disabled={isSendingSOA || isSavingDefault}
@@ -1490,13 +1612,139 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 </button>
                 <div className="flex gap-2.5 sm:gap-3 w-full">
                   <button 
-                    onClick={handleSendSOA}
+                    onClick={() => handleSendSOA()}
                     disabled={isSendingSOA || isSavingDefault}
                     className="flex-1 min-w-0 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[11px] sm:text-[13px] font-bold shadow-[var(--shadow-md)] border border-transparent transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
                   >
-                    {isSendingSOA ? "Saving & Sending..." : "Save and Send"}
+                    {isSendingSOA ? "Processing..." : "Send Statement"}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsSOAModalOpen(false);
+                      
+                      // Pre-fill the overdue config based on whether they actually have a base bill assigned
+                      const ownerHasBill = soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity;
+                      const tenantHasBill = soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity;
+                      
+                      setOverdueConfig({
+                        owner: !!ownerHasBill && !isOwnerVacant && !soaConfig.owner.penalty,
+                        tenant: !!tenantHasBill && !isTenantVacant && !soaConfig.tenant.penalty
+                      });
+
+                      setIsOverdueModalOpen(true);
+                    }}
+                    disabled={isSendingSOA || isSavingDefault}
+                    className="flex-1 min-w-0 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:shadow-none text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[11px] sm:text-[13px] font-bold shadow-[var(--shadow-md)] border border-transparent transition-all flex justify-center items-center gap-1.5 sm:gap-2 active:scale-95 truncate px-2"
+                  >
+                    {isSendingSOA ? "Processing..." : "Mark Overdue"}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: DEDICATED OVERDUE PENALTY ASSIGNMENT MODAL */}
+      {isOverdueModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-red-50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center border border-red-200 shrink-0 shadow-sm">
+                  <AlertCircle size={16} strokeWidth={2.5} />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-red-600 tracking-tight">Mark as Overdue</h2>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsOverdueModalOpen(false);
+                  setIsSOAModalOpen(true); // Return to previous modal
+                }} 
+                className="text-red-400 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" 
+                disabled={isSendingSOA}
+              >
+                <X size={20} className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-5">
+              <p className="text-[12px] sm:text-[13px] text-slate-500 font-medium leading-relaxed">
+                Select which parties should receive the late penalty charge for this billing cycle.
+              </p>
+
+              <div className="space-y-4">
+                {/* Owner Penalty Assignment */}
+                {(!isOwnerVacant && (soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity)) ? (
+                  soaConfig.owner.penalty ? (
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50 text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                      Owner penalty already applied
+                    </div>
+                  ) : (
+                    <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer hover:border-red-300 transition-colors group">
+                      <input 
+                        type="checkbox" 
+                        checked={overdueConfig.owner} 
+                        onChange={(e) => setOverdueConfig(prev => ({...prev, owner: e.target.checked}))}
+                        className="mt-1 rounded text-red-500 focus:ring-red-500 w-4 h-4 border-slate-300 transition-all shrink-0" 
+                      />
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[13px] sm:text-sm font-bold text-slate-700 group-hover:text-red-600 transition-colors">Apply Late Penalty to Owner</span>
+                        <span className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Penalty amount: ₱{hypotheticalOwnerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                      </div>
+                    </label>
+                  )
+                ) : (
+                  <div className="p-4 rounded-xl border border-slate-100 bg-slate-50 text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                    Owner has no active bill
+                  </div>
+                )}
+
+                {/* Tenant Penalty Assignment */}
+                {(!isTenantVacant && (soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity)) ? (
+                  soaConfig.tenant.penalty ? (
+                    <div className="p-4 rounded-xl border border-slate-100 bg-slate-50 text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                      Tenant penalty already applied
+                    </div>
+                  ) : (
+                    <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-white shadow-sm cursor-pointer hover:border-red-300 transition-colors group">
+                      <input 
+                        type="checkbox" 
+                        checked={overdueConfig.tenant} 
+                        onChange={(e) => setOverdueConfig(prev => ({...prev, tenant: e.target.checked}))}
+                        className="mt-1 rounded text-red-500 focus:ring-red-500 w-4 h-4 border-slate-300 transition-all shrink-0" 
+                      />
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[13px] sm:text-sm font-bold text-slate-700 group-hover:text-red-600 transition-colors">Apply Late Penalty to Tenant</span>
+                        <span className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Penalty amount: ₱{hypotheticalTenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                      </div>
+                    </label>
+                  )
+                ) : (
+                  <div className="p-4 rounded-xl border border-slate-100 bg-slate-50 text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">
+                    Tenant has no active bill
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2.5 sm:gap-3 pt-4 border-t border-[var(--color-border)]">
+                <button 
+                  onClick={() => {
+                    setIsOverdueModalOpen(false);
+                    setIsSOAModalOpen(true);
+                  }}
+                  disabled={isSendingSOA}
+                  className="flex-1 py-3.5 text-[12px] sm:text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 rounded-[var(--radius-md)] border border-slate-200 transition-colors active:scale-95 shadow-sm"
+                >
+                  Back
+                </button>
+                <button 
+                  onClick={handleConfirmOverdue}
+                  disabled={isSendingSOA || (!overdueConfig.owner && !overdueConfig.tenant)}
+                  className="flex-[2] bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3.5 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-bold shadow-md border border-transparent transition-all flex justify-center items-center gap-2 active:scale-95"
+                >
+                  {isSendingSOA ? <Loader2 size={16} className="animate-spin" /> : "Confirm Overdue"}
+                </button>
               </div>
             </div>
           </div>

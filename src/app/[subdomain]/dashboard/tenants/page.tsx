@@ -51,13 +51,17 @@ export default function TenantDashboard() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
-  
+
+  // NEW: Delete Notification Modal States
+  const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
+
   // UNREAD MESSAGES STATE
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
   // State to hold Highlight ID for Repairs
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
-  
+
   // ✨ NEW: Rejected Ticket Modal State
   const [rejectedTicketModalData, setRejectedTicketModalData] = useState<any | null>(null);
 
@@ -96,12 +100,12 @@ export default function TenantDashboard() {
   const fetchTenantData = async () => {
     setIsLoading(true);
     const { data: authData } = await supabase.auth.getUser();
-    
+
     if (!authData.user) {
       router.push('/');
       return;
     }
-    
+
     try {
       setUserEmail(authData.user.email || "");
 
@@ -110,11 +114,11 @@ export default function TenantDashboard() {
         .select('*')
         .eq('email', authData.user.email)
         .single();
-        
+
       if (profile) {
         setUserData(profile);
         setTenantName(profile.name);
-        
+
         const cleanProfileName = profile.name.trim().toLowerCase();
 
         if (profile.admin_email) {
@@ -139,7 +143,7 @@ export default function TenantDashboard() {
             (u.tenant_name || '').trim().toLowerCase() === cleanProfileName ||
             (u.owner_name || '').trim().toLowerCase() === cleanProfileName
           );
-            
+
           if (unitData) {
             setUnit(unitData);
 
@@ -164,7 +168,7 @@ export default function TenantDashboard() {
                 const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
                 return isNaN(parsed) ? 0 : parsed;
               };
-              
+
               const unitArea = getUnitAreaValue(unitData.unit_area);
 
               // ==========================================
@@ -220,7 +224,7 @@ export default function TenantDashboard() {
           .eq('tenant_email', authData.user.email)
           .neq('sender_email', authData.user.email)
           .eq('is_read', false);
-          
+
         if (msgCount !== null) {
           setUnreadMessages(msgCount);
         }
@@ -243,7 +247,7 @@ export default function TenantDashboard() {
           .eq('is_hidden', false) 
           .order('created_at', { ascending: false })
           .limit(10);
-          
+
         if (notifData) {
           setNotifications(notifData);
           setUnreadCount(notifData.filter(n => !n.is_read).length);
@@ -404,6 +408,38 @@ export default function TenantDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
   };
 
+  // --- NEW: Initiate Single Delete Modal ---
+  const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
+    e.stopPropagation(); // Prevents clicking the background notification body
+    setNotificationToDelete(notif);
+    setIsDeleteNotifModalOpen(true);
+  };
+
+  // --- NEW: Actual Function Called by the Delete Modal ---
+  const confirmDeleteNotification = async () => {
+    if (!userEmail || !notificationToDelete) return;
+
+    // 1. Update local state immediately for snappy UI
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
+    
+    // 2. Adjust unread count if the deleted notification was unread
+    if (!notificationToDelete.is_read) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    // Close the modal
+    setIsDeleteNotifModalOpen(false);
+
+    // 3. Update database
+    await supabase
+      .from('notifications')
+      .update({ is_hidden: true })
+      .eq('id', notificationToDelete.id);
+
+    // Clear the tracked notification
+    setNotificationToDelete(null);
+  };
+
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -413,7 +449,7 @@ export default function TenantDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    
+
     // ✨ NEW: Kapag Rejected ang ticket, i-open yung Rejected Modal imbes na ang maintenance tab
     if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
       if (notif.reference_id) {
@@ -442,11 +478,11 @@ export default function TenantDashboard() {
   const getInitials = (name: string) => {
     // Return "T" for missing tenant names to keep it a single letter
     if (!name) return "T"; 
-    
+
     // Get the first character, remove leading spaces, and capitalize it
     return name.trim().charAt(0).toUpperCase();
   };
-  
+
   const initials = getInitials(tenantName);
 
   // --- Show Toast Function ---
@@ -461,7 +497,7 @@ export default function TenantDashboard() {
       showToast("Name cannot be empty", "error");
       return;
     }
-    
+
     // Only open the modal if the name actually changed
     if (editedName.trim() === tenantName) {
       setIsEditingName(false);
@@ -474,7 +510,7 @@ export default function TenantDashboard() {
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
-    
+
     try {
       const newName = editedName.trim();
 
@@ -483,14 +519,14 @@ export default function TenantDashboard() {
         data: { name: newName }
       });
       if (authError) throw authError;
-        
+
       // 2. Update name in the team_members table
       const { data, error: dbError } = await supabase
         .from('team_members')
         .update({ name: newName })
         .eq('email', userEmail)
         .select();
-        
+
       if (dbError) throw dbError;
 
       // 3. Catch Silent RLS Failures
@@ -504,20 +540,20 @@ export default function TenantDashboard() {
           .from('units')
           .update({ owner_name: newName })
           .eq('owner_name', tenantName); // Update where it matches the old name
-          
+
         if (unitError) console.error("Failed to update owner name in units", unitError);
       } else {
         const { error: unitError } = await supabase
           .from('units')
           .update({ tenant_name: newName })
           .eq('tenant_name', tenantName); // Update where it matches the old name
-          
+
         if (unitError) console.error("Failed to update tenant name in units", unitError);
       }
 
       setTenantName(newName);
       setUserData((prev: any) => ({ ...prev, name: newName }));
-      
+
       // ✨ NEW: Update the local unit state so the UI reflects the new name immediately
       if (unit) {
          setUnit((prev: any) => ({
@@ -525,7 +561,7 @@ export default function TenantDashboard() {
              [userRole === 'owner' ? 'owner_name' : 'tenant_name']: newName
          }));
       }
-      
+
       showToast("Profile name updated successfully!", "success");
       setIsEditingName(false);
     } catch (err: any) {
@@ -579,7 +615,7 @@ export default function TenantDashboard() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      
+
       // Reset toggles
       setShowCurrentPassword(false);
       setShowNewPassword(false);
@@ -593,7 +629,7 @@ export default function TenantDashboard() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
-      
+
       {/* HEADER */}
       <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-md">
         <div className="flex items-center gap-3">
@@ -682,7 +718,7 @@ export default function TenantDashboard() {
                         <div 
                           key={notif.id} 
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
+                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
                         >
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} border border-white shadow-[var(--shadow-sm)]`}>
                             <Icon size={18} />
@@ -692,7 +728,18 @@ export default function TenantDashboard() {
                               <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-slate-700'}`}>
                                 {notif.title}
                               </span>
-                              {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shrink-0 mt-1.5 shadow-[var(--shadow-sm)]"></span>}
+                              
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shrink-0 mt-1 shadow-[var(--shadow-sm)]"></span>}
+                                
+                                <button
+                                  onClick={(e) => handleInitiateDeleteNotification(e, notif)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Delete notification"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                             <p className={`text-xs line-clamp-2 mb-1.5 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-500'}`}>{notif.message}</p>
                             <span className="text-[10px] text-slate-400 font-medium">
@@ -716,7 +763,7 @@ export default function TenantDashboard() {
           <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[12px] sm:text-xs font-extrabold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-[var(--color-primary)]">
             {userRole === 'owner' ? 'Owner Portal' : 'Tenant Portal'}
           </span>
-          
+
           {/* Logout Icon Button */}
           <button 
             onClick={() => setShowLogoutModal(true)} 
@@ -729,10 +776,10 @@ export default function TenantDashboard() {
 
       {/* LAYOUT WRAPPER */}
       <div className="flex flex-1 overflow-hidden">
-        
+
         {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Edge-to-Edge Profile) */}
         <aside className={`${isSidebarCollapsed ? 'md:w-[84px]' : 'md:w-[260px]'} bg-[var(--color-secondary)] pt-6 hidden md:flex flex-col transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
-          
+
           {/* Collapse Toggle Button */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -743,7 +790,7 @@ export default function TenantDashboard() {
               {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             </span>
           </button>
-          
+
           {/* Navigation Links - Padding moved here */}
           <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto custom-scrollbar"}`}>
             <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
@@ -776,7 +823,7 @@ export default function TenantDashboard() {
               <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm text-slate-900 shadow-sm group-hover:scale-105 transition-transform shrink-0" style={{backgroundColor: "var(--color-primary)"}}>
                 {isLoading ? '...' : initials}
               </div>
-              
+
               {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
                   {isLoading ? (
@@ -871,7 +918,7 @@ export default function TenantDashboard() {
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
-            
+
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
               <button 
@@ -881,17 +928,17 @@ export default function TenantDashboard() {
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
-            
+
             {/* Content Area with custom-scrollbar */}
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
-              
+
               <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
-                
+
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
                   {isLoading ? '...' : initials}
                 </div>
-                
+
                 <div className="z-10 min-w-0 flex-1 text-white">
                   {isLoading ? (
                     <div className="space-y-2.5">
@@ -912,7 +959,7 @@ export default function TenantDashboard() {
                 <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 border-b border-slate-100">
                   Account Details
                 </h4>
-                
+
                 <div className="space-y-4 sm:space-y-5">
                   {/* --- MODIFIED FULL NAME SECTION --- */}
                   <div>
@@ -973,7 +1020,7 @@ export default function TenantDashboard() {
                     )}
                   </div>
                   {/* --- END MODIFIED FULL NAME SECTION --- */}
-                  
+
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
                     {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-2/3 animate-pulse mt-1"></div> : (
@@ -984,7 +1031,7 @@ export default function TenantDashboard() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Assigned Property</label>
                     {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-3/4 animate-pulse mt-1"></div> : (
@@ -993,7 +1040,7 @@ export default function TenantDashboard() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Access Role</label>
                     <span className="inline-flex text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] tracking-widest uppercase shadow-sm">
@@ -1027,7 +1074,7 @@ export default function TenantDashboard() {
                         {passwordError}
                       </div>
                     )}
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative">
@@ -1048,7 +1095,7 @@ export default function TenantDashboard() {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative">
@@ -1126,7 +1173,7 @@ export default function TenantDashboard() {
                   </form>
                 )}
               </div>
-              
+
             </div>
           </div>
         </div>
@@ -1136,16 +1183,16 @@ export default function TenantDashboard() {
       {isConfirmNameModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            
+
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
-            
+
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
-            
+
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
@@ -1193,11 +1240,43 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      {/* 🌟 PREMIUM DELETE NOTIFICATION MODAL */}
+      {isDeleteNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete Notification</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete this notification? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsDeleteNotifModalOpen(false);
+                  setNotificationToDelete(null);
+                }} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteNotification} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ✨ REJECTED TICKET MODAL (Triggered by Notification) */}
       {rejectedTicketModalData && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
-            
+
             {/* Red Header */}
             <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-3">
@@ -1213,9 +1292,9 @@ export default function TenantDashboard() {
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
-            
+
             <div className="p-6 sm:p-8 overflow-y-auto bg-[var(--color-bg)]/50 custom-scrollbar pb-10 sm:pb-8">
-              
+
               {/* Reason Box */}
               <div className="bg-red-500 rounded-[1.5rem] p-5 sm:p-6 text-white mb-6 shadow-[var(--shadow-md)] shadow-red-500/20">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-red-200 mb-2">Reason for rejection:</h4>
@@ -1227,7 +1306,7 @@ export default function TenantDashboard() {
               {/* Original Report Details */}
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Original Report</h4>
               <div className="bg-white rounded-[1.5rem] p-5 border border-[var(--color-border)] shadow-[var(--shadow-sm)] space-y-4">
-                
+
                 {rejectedTicketModalData.photo_url && (
                   <div className="w-full h-40 bg-[var(--color-bg)] rounded-[var(--radius-md)] overflow-hidden mb-4 border border-[var(--color-border)]">
                     <img src={rejectedTicketModalData.photo_url} alt="Reported issue" className="w-full h-full object-cover" />
@@ -1289,7 +1368,7 @@ export default function TenantDashboard() {
           </div>
         </div>
       )}
-      
+
       {/* TOAST UI */}
       {toast && (
         <div className={`fixed bottom-20 md:bottom-8 right-4 md:right-8 z-[100] flex items-center gap-3 px-5 py-4 rounded-[var(--radius-xl)] shadow-2xl font-semibold text-sm transition-all animate-in slide-in-from-bottom-5 fade-in duration-300 border bg-[var(--color-bg)] ${toast.type === "success" ? "border-l-4 border-l-[var(--color-primary)] text-[var(--color-text)]" : "border-l-4 border-l-red-500 text-[var(--color-text)]"}`}>
@@ -1307,7 +1386,7 @@ export default function TenantDashboard() {
         .custom-scrollbar::-webkit-scrollbar { 
           display: none; /* Chrome, Safari, Opera */
         }
-        
+
         .animate-bounce-slow {
           animation: bounce 3s infinite;
         }
@@ -1327,7 +1406,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
   const rentAmount = totalDue || 0; 
   const propertyName = unit?.property_name || "Unassigned Property";
   const unitNumber = unit?.unit_number ? `Unit ${unit.unit_number}` : "No Unit";
-  
+
   const getStatusColor = (status: string) => {
     if (status === 'Paid') return 'text-emerald-400';
     if (status === 'Overdue') return 'text-red-400';
@@ -1344,7 +1423,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
   // ✨ NEW: Generate Recent Statements Locally to avoid undefined array errors
   const recentStatementsArray = React.useMemo(() => {
     if (!unit || soaStatus === 'Unassigned') return [];
-    
+
     // Reverse engineer the base total by removing penalty if overdue
     // This is purely for UI display purposes in the Dashboard
     let baseTotal = rentAmount;
@@ -1401,7 +1480,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           )}
         </div>
       </header>
-      
+
       {/* Hero Card: Amount Due Selector Display (Premium Tech Theme) */}
       <section className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
         <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
@@ -1413,7 +1492,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
               <div className={`w-1.5 h-1.5 sm:w-2 h-2 rounded-full shrink-0 ${getIndicatorColor(soaStatus)}`}></div>
               <p className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
             </div>
-            
+
             {isLoading ? (
               <div className="space-y-3 mt-3 sm:mt-4">
                  <div className="h-8 sm:h-10 md:h-12 bg-white/10 rounded-[var(--radius-md)] w-32 sm:w-40 animate-pulse"></div>
@@ -1435,7 +1514,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
               </>
             )}
           </div>
-          
+
           <button 
             onClick={() => setActiveTab('pay')} 
             disabled={isLoading || soaStatus === 'Unassigned'}
@@ -1449,7 +1528,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
 
       {/* Metric Grid: 4 Interactive Columns */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-        
+
         {/* Card 1: Report Issue */}
         <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1462,7 +1541,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
             <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Snap a photo request</p>
           </div>
         </button>
-        
+
         {/* Card 2: My Lease */}
         <button onClick={() => setActiveTab('lease')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1475,7 +1554,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
             <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active contracts</p>
           </div>
         </button>
-        
+
         {/* Card 3: Financials */}
         <button onClick={() => setActiveTab('pay')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1488,7 +1567,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
             <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your billings</p>
           </div>
         </button>
-        
+
         {/* Card 4: Support */}
         <button onClick={handleConversationClick} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -1517,7 +1596,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
             View All
           </button>
         </div>
-        
+
         <div className="space-y-3">
           {isLoading ? (
             <div className="space-y-3">
@@ -1565,7 +1644,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                   </div>
                   <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                     <span className="font-black text-[var(--color-secondary)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
-                    <ChevronRight size={14} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
+                    <ChevronRight size={14} className="sm:w-4 sm:h-4 text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
                   </div>
                 </div>
               );
@@ -1676,10 +1755,10 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
       {active && (
         <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />
       )}
-      
+
       {/* Icon & Label Wrapper with Floating Animation */}
       <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${active ? '-translate-y-1 scale-[1.05]' : ''}`}>
-        
+
         {/* Icon & Badge */}
         <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
           {icon}

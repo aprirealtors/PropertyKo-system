@@ -73,6 +73,10 @@ export default function OwnerDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
+  // NEW: Delete Notification Modal States
+  const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
+
   // UNREAD MESSAGES STATE
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
@@ -708,6 +712,38 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
   };
 
+  // --- NEW: Initiate Single Delete Modal ---
+  const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
+    e.stopPropagation(); // Prevents clicking the background notification body
+    setNotificationToDelete(notif);
+    setIsDeleteNotifModalOpen(true);
+  };
+
+  // --- NEW: Actual Function Called by the Delete Modal ---
+  const confirmDeleteNotification = async () => {
+    if (!userEmail || !notificationToDelete) return;
+
+    // 1. Update local state immediately for snappy UI
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
+    
+    // 2. Adjust unread count if the deleted notification was unread
+    if (!notificationToDelete.is_read) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    // Close the modal
+    setIsDeleteNotifModalOpen(false);
+
+    // 3. Update database
+    await supabase
+      .from('notifications')
+      .update({ is_hidden: true })
+      .eq('id', notificationToDelete.id);
+
+    // Clear the tracked notification
+    setNotificationToDelete(null);
+  };
+
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -960,7 +996,7 @@ export default function OwnerDashboard() {
                         <div 
                           key={notif.id} 
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
+                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
                         >
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} border border-white shadow-[var(--shadow-sm)]`}>
                             <Icon size={18} />
@@ -970,7 +1006,18 @@ export default function OwnerDashboard() {
                               <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-slate-700'}`}>
                                 {notif.title}
                               </span>
-                              {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shrink-0 mt-1.5 shadow-[var(--shadow-sm)]"></span>}
+                              
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!notif.is_read && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shrink-0 mt-1 shadow-[var(--shadow-sm)]"></span>}
+                                
+                                <button
+                                  onClick={(e) => handleInitiateDeleteNotification(e, notif)}
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Delete notification"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                             <p className={`text-xs line-clamp-2 mb-1.5 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-500'}`}>{notif.message}</p>
                             <span className="text-[10px] text-slate-400 font-medium">
@@ -1583,7 +1630,7 @@ export default function OwnerDashboard() {
           <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
             {activeTab === 'messages' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'messages' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
-
+              
               <div className="relative w-5 h-5 block shrink-0">
                 <MessageSquare size={20} className="absolute inset-0" />
                 {unreadMessages > 0 && (
@@ -2480,6 +2527,38 @@ export default function OwnerDashboard() {
                 className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM DELETE NOTIFICATION MODAL */}
+      {isDeleteNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete Notification</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete this notification? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsDeleteNotifModalOpen(false);
+                  setNotificationToDelete(null);
+                }} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteNotification} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete
               </button>
             </div>
           </div>

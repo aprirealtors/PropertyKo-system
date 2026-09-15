@@ -23,13 +23,13 @@ import TeamTab from "./teamandsubscription";
 
 export default function AdminDashboard() {
   const router = useRouter();
-  
+
   // Navigation & Modal States
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  
+
   // User Profile Modal State
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
   const [adminProfile, setAdminProfile] = useState({ name: "System Admin", email: "" });
@@ -38,24 +38,27 @@ export default function AdminDashboard() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
-  // NEW: Confirm Name Change Modal State
   const [isConfirmNameModalOpen, setIsConfirmNameModalOpen] = useState(false);
 
   // Workspace Info Modal & White Label States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  // NEW: Logo Lightbox Modal State
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
-  
+
   // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [orgData, setOrgData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- Notifications States ---
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  
+  // NEW: Delete Notification Modal States
+  const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
 
@@ -122,7 +125,7 @@ export default function AdminDashboard() {
           const activeCount = ticketsData.filter(ticket => {
             const liveMatch = tasksData?.find(task => task.title === ticket.title && task.location === ticket.location);
             const currentLiveStatus = String(liveMatch ? liveMatch.status : ticket.status).toLowerCase().trim();
-            
+
             return currentLiveStatus === 'pending' || 
                    currentLiveStatus === 'open' || 
                    currentLiveStatus === 'in_progress' || 
@@ -269,14 +272,12 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- NEW: Trigger Modal Instead of Saving Immediately ---
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
       return;
     }
-    
-    // Only open the modal if the name actually changed
+
     if (editedName.trim() === adminProfile.name) {
       setIsEditingName(false);
       return;
@@ -285,19 +286,17 @@ export default function AdminDashboard() {
     setIsConfirmNameModalOpen(true);
   };
 
-  // --- NEW: Actual Save Function called from Modal ---
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
-    
+
     try {
-      // Update name directly in Supabase Auth user metadata
       const { error } = await supabase.auth.updateUser({
         data: { name: editedName.trim() }
       });
-        
+
       if (error) throw error;
-      
+
       setAdminProfile(prev => ({ ...prev, name: editedName.trim() }));
       showToast("Admin name updated successfully!", "success");
       setIsEditingName(false);
@@ -348,7 +347,7 @@ export default function AdminDashboard() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      
+
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmPassword(false);
@@ -431,6 +430,38 @@ export default function AdminDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
   };
 
+  // --- NEW: Initiate Single Delete Modal ---
+  const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
+    e.stopPropagation(); // Prevents clicking the background notification body
+    setNotificationToDelete(notif);
+    setIsDeleteNotifModalOpen(true);
+  };
+
+  // --- NEW: Actual Function Called by the Delete Modal ---
+  const confirmDeleteNotification = async () => {
+    if (!orgData?.admin_email || !notificationToDelete) return;
+
+    // 1. Update local state immediately for snappy UI
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
+    
+    // 2. Adjust unread count if the deleted notification was unread
+    if (!notificationToDelete.is_read) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    // Close the modal
+    setIsDeleteNotifModalOpen(false);
+
+    // 3. Update database
+    await supabase
+      .from('notifications')
+      .update({ is_hidden: true })
+      .eq('id', notificationToDelete.id);
+
+    // Clear the tracked notification
+    setNotificationToDelete(null);
+  };
+
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -456,16 +487,16 @@ export default function AdminDashboard() {
 
   const formatNotificationMessage = (text: string) => {
     if (!text) return { __html: "" };
-    
+
     let safeText = text
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
     safeText = safeText.replace(/\b(COMPLETED|ON HOLD|RESOLVED|PENDING|IN PROGRESS|SUCCESS|FAILED)\b/g, '<span class="font-black text-[var(--color-secondary)] bg-slate-200/70 border border-slate-300 px-1.5 py-0.5 rounded text-[9px] tracking-wider ml-0.5 mr-0.5">$1</span>');
-    
+
     safeText = safeText.replace(/^([a-zA-Z0-9\s]+?)\s(marked|put|requested|created|updated|resolved|submitted|assigned)\b/i, '<strong class="font-extrabold text-[var(--color-secondary)]">$1</strong> $2');
-    
+
     safeText = safeText.replace(/(Remarks|Reason|Note|Notes):\s*(.*)/gi, function(match, label, content) {
       return `<div class="mt-2.5 bg-white border border-slate-200/80 rounded-xl p-2.5 shadow-[var(--shadow-sm)]">
                 <span class="block text-[9px] font-black uppercase tracking-widest text-[var(--color-primary)] mb-0.5">${label}</span>
@@ -478,11 +509,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="h-[100dvh] w-full bg-[var(--color-bg)] flex flex-col font-[family-name:var(--font-corporate)] overflow-hidden relative">
-      
+
       {/* 🌟 PREMIUM HEADER (Themified) */}
       <header className="w-full bg-[var(--color-secondary)] text-white h-16 flex items-center justify-between px-4 sm:px-6 shrink-0 relative shadow-md z-20">
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-        
+
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsMobileMenuOpen(true)} 
@@ -506,9 +537,9 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2 sm:gap-4 relative">
-          
+
           {/* Notifications */}
           <div className="relative">
             <button 
@@ -522,11 +553,11 @@ export default function AdminDashboard() {
                 </span>
               )}
             </button>
-            
+
             {isNotifOpen && (
               <>
                 <div className="fixed inset-0 z-[90]" onClick={() => setIsNotifOpen(false)} />
-                
+
                 <div className="fixed top-[70px] left-4 right-4 sm:absolute sm:top-14 sm:left-auto sm:-right-2 sm:w-96 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 z-[100] overflow-hidden flex flex-col text-[var(--color-text)] animate-in slide-in-from-top-2 duration-200">
                   <div className="p-4 flex justify-between items-center bg-slate-50 border-b border-slate-100">
                     <h3 className="font-extrabold text-[var(--color-secondary)] text-sm">Notifications</h3>
@@ -535,7 +566,7 @@ export default function AdminDashboard() {
                       <button onClick={clearAllNotifications} className="text-xs font-bold text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"><Trash2 size={14} /> Clear</button>
                     </div>
                   </div>
-                  
+
                   <div className="max-h-[350px] sm:max-h-[400px] overflow-y-auto relative z-10 custom-scrollbar">
                     {notifications.length === 0 ? (
                       <div className="p-8 flex flex-col items-center justify-center text-slate-400 gap-3">
@@ -544,12 +575,24 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       notifications.map((notif) => (
-                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 ${!notif.is_read ? 'bg-blue-50/40' : 'opacity-80'}`}>
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-blue-50/40' : 'opacity-80'}`}>
                           <div className="flex justify-between items-start mb-1.5 gap-2">
                             <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-secondary)]' : 'text-slate-600'}`}>{notif.title}</span>
-                            {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shrink-0 mt-1 shadow-sm"></span>}
+                            
+                            {/* Updated delete button to trigger modal */}
+                            <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                              {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
+                              
+                              <button
+                                onClick={(e) => handleInitiateDeleteNotification(e, notif)}
+                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                title="Delete notification"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
-                          
+
                           <div 
                             className="text-xs text-slate-500 leading-relaxed mt-1"
                             dangerouslySetInnerHTML={formatNotificationMessage(notif.message)}
@@ -581,11 +624,11 @@ export default function AdminDashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden relative">
-        
+
         {isMobileMenuOpen && (
           <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-[50] sm:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
         )}
-        
+
         {/* 🌟 MODERN COLLAPSIBLE SIDEBAR (Themified) */}
         <aside 
           className={`fixed sm:relative inset-y-0 left-0 z-[60] sm:z-10 ${isSidebarCollapsed ? "sm:w-[84px]" : "sm:w-[260px]"} w-[260px] h-full bg-[var(--color-secondary)] text-slate-300 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full sm:translate-x-0"}`}
@@ -617,7 +660,7 @@ export default function AdminDashboard() {
             )}
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
-          
+
           {/* Workspace card */}
           <div className="p-2 sm:pt-4 pb-2 shrink-0">
             <div 
@@ -652,7 +695,7 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-          
+
           <nav className={`flex-1 py-2 space-y-1 px-2 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
             <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
             <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} collapsed={isSidebarCollapsed} />
@@ -721,7 +764,7 @@ export default function AdminDashboard() {
       {isUserProfileModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
-            
+
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Admin Profile</h2>
               <button 
@@ -731,12 +774,12 @@ export default function AdminDashboard() {
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
-            
+
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
               {/* Profile Banner Card */}
               <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
-                
+
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
                   {adminProfile.name
                     .split(' ')
@@ -761,7 +804,7 @@ export default function AdminDashboard() {
                   <div>
                     <div className="flex justify-between items-center mb-1.5 sm:mb-2">
                       <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block">Full Name</label>
-                      
+
                       {!isEditingName ? (
                         <button 
                           onClick={() => {
@@ -857,7 +900,7 @@ export default function AdminDashboard() {
                         {passwordError}
                       </div>
                     )}
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative">
@@ -878,7 +921,7 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative">
@@ -966,7 +1009,7 @@ export default function AdminDashboard() {
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
-            
+
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Organization Profile</h2>
               <button 
@@ -976,9 +1019,9 @@ export default function AdminDashboard() {
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
-            
+
             <div className="overflow-y-auto bg-[var(--color-bg)] custom-scrollbar flex-1 pb-8 sm:pb-0">
-              
+
               <div className="bg-[var(--color-secondary)] px-5 sm:px-8 py-6 sm:py-8 flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 relative shrink-0 text-center sm:text-left">
                 <div className="absolute top-0 left-0 right-0 h-full overflow-hidden opacity-10 pointer-events-none">
                   <div className="absolute -top-24 -right-10 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
@@ -991,7 +1034,7 @@ export default function AdminDashboard() {
                     ) : (
                       <Building className="text-slate-300 w-8 h-8 sm:w-10 sm:h-10" />
                     )}
-                    
+
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
                       <label className="cursor-pointer text-white flex flex-col items-center gap-1 w-full h-full justify-center">
                         <Upload className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
@@ -1012,7 +1055,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="text-center sm:text-left text-white flex-1 min-w-0 z-10 w-full">
                   <h3 className="text-xl sm:text-2xl font-black mb-1 truncate tracking-tight" title={orgData?.org_name}>
                     {orgData?.org_name || "Organization Name"}
@@ -1026,7 +1069,7 @@ export default function AdminDashboard() {
 
               <div className="p-4 sm:p-6 md:p-6">
                 <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
-                  
+
                   <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between bg-slate-50/50">
                     <h4 className="text-xs sm:text-sm font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
                       <Box size={14} className="text-slate-400 sm:w-4 sm:h-4" />
@@ -1036,7 +1079,7 @@ export default function AdminDashboard() {
                       View Only
                     </span>
                   </div>
-                  
+
                   <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {orgData ? (
@@ -1056,7 +1099,7 @@ export default function AdminDashboard() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]/30 group-hover:bg-[var(--color-primary)] transition-colors duration-300 shrink-0"></span>
                                 {formatColumnName(key)}
                               </label>
-                              
+
                               <div className="pl-2.5 border-l-2 border-slate-200 group-hover:border-[var(--color-primary)] transition-colors duration-300 overflow-x-auto custom-scrollbar pb-0.5">
                                 <p className={`text-xs sm:text-sm font-extrabold ${value ? 'text-[var(--color-text)]' : 'text-slate-400 italic'} whitespace-nowrap w-max pr-4 tracking-tight`}>
                                   {displayValue}
@@ -1077,7 +1120,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
             </div>
           </div>
         </div>
@@ -1087,7 +1130,7 @@ export default function AdminDashboard() {
       {isConfirmNameModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            
+
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
@@ -1136,6 +1179,38 @@ export default function AdminDashboard() {
                 className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM DELETE NOTIFICATION MODAL */}
+      {isDeleteNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete Notification</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete this notification? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsDeleteNotifModalOpen(false);
+                  setNotificationToDelete(null);
+                }} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteNotification} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete
               </button>
             </div>
           </div>
@@ -1198,7 +1273,7 @@ export default function AdminDashboard() {
         .custom-scrollbar::-webkit-scrollbar { 
           display: none; /* Chrome, Safari, Opera */
         }
-        
+
         .animate-bounce-slow {
           animation: bounce 3s infinite;
         }
