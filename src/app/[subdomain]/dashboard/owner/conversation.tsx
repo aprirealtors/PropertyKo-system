@@ -384,7 +384,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                         ) : (
                           <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-[var(--color-text)]'
+                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-secondary)]' : 'font-normal text-[var(--color-text)]'
                             }`}
                             title={`${customNames[role.id] || role.label} - ${role.id.charAt(0).toUpperCase() + role.id.slice(1)}`}
                           >
@@ -405,7 +405,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                       <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-400'}`}>
                         {lastMsg ? (
                           <span>
-                            <span className={unreadCount > 0 ? "text-[var(--color-secondary)] mr-1" : "text-slate-500 mr-1"}>
+                            <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>
                               {getSidebarMessagePrefix()}
                             </span>
                             {lastMsg.content}

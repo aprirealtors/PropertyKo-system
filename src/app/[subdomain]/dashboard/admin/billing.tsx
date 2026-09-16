@@ -812,8 +812,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
             </div>
@@ -1063,8 +1063,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 {/* Total Hero Card */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5 sm:mb-8 bg-[var(--color-secondary)] p-4 sm:p-6 rounded-[1.25rem] sm:rounded-3xl shadow-[var(--shadow-md)] w-full overflow-hidden">
                   <div className="min-w-0">
-                    <span className="font-bold text-white/70 text-[11px] sm:text-xs uppercase tracking-widest truncate block">Total Amount Due</span>
-                    {!isTenantVacant && <div className="text-[9px] sm:text-[10px] font-medium text-white/50 mt-1 truncate block">Combined Property Balance</div>}
+                    <span className="font-bold text-white/90 text-[11px] sm:text-xs uppercase tracking-widest truncate block">Total Amount Due</span>
+                    {!isTenantVacant && <div className="text-[9px] sm:text-[10px] font-medium text-white/90 mt-1 truncate block">Combined Property Balance</div>}
                   </div>
                   <span className="font-black text-white text-2xl sm:text-3xl md:text-4xl tracking-tight break-all sm:break-normal shrink-0">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>

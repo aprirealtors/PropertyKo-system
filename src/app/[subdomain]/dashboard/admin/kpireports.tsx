@@ -172,8 +172,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Premium Admin Profile Badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
             </div>
@@ -208,13 +208,13 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           {/* Scrollable Table Area */}
           <div className="flex-1 min-h-0 overflow-auto relative z-10 custom-scrollbar">
             <table className="w-full text-left text-sm relative">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Indicator</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Current Value</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap border-r border-white/20">Priority Use</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Traditional Was</th>
-                  <th className="px-6 py-4 whitespace-nowrap">With App</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Indicator</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Current Value</th>
+                  <th className="px-6 py-4 text-center whitespace-nowrap border-r border-white/20 font-extrabold">Priority Use</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Traditional Was</th>
+                  <th className="px-6 py-4 whitespace-nowrap font-extrabold">With App</th>
                 </tr>
               </thead>
               

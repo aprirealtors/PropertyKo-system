@@ -418,8 +418,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 />
               </div>
               <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-                <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
-                <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+                <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
+                <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                   {initials}
                 </div>
               </div>
@@ -1025,7 +1025,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     </div>
                   </div>
                   <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-[var(--color-border)] shrink-0">
-                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-xs font-bold bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-xs font-black bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
                     
                     {selectedInboxId && (
                       <button 
@@ -1038,7 +1038,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       </button>
                     )}
 
-                    <button type="submit" disabled={isSubmitting} className="bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-5 rounded-[var(--radius-sm)] text-xs font-bold transition-all shadow-md active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
+                    <button type="submit" disabled={isSubmitting} className="bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-5 rounded-[var(--radius-sm)] text-xs font-black transition-all shadow-md active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
                   </div>
                 </form>
               </div>

@@ -235,8 +235,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
             </div>
 
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>

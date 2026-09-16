@@ -353,8 +353,8 @@ export default function FinancialTab({ userData, units }: any) {
           </div>
           
           <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-            <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Owner</span>
-            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Owner</span>
+            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
               {userData?.name 
                 ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() 
                 : "OW"}
@@ -526,8 +526,8 @@ export default function FinancialTab({ userData, units }: any) {
                           <h3 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-xl tracking-tight leading-tight whitespace-normal break-words">
                             {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                           </h3>
-                          <p className="text-slate-500 text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium truncate">
-                            Tenant: <span className={`font-bold ${isVacant ? 'text-slate-400' : 'text-[var(--color-primary)]'}`}>{isVacant ? 'Vacant' : selectedUnit?.tenant_name || '—'}</span>
+                          <p className="text-[var(--color-text)] text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium truncate">
+                            Tenant: <span className={`font-bold ${isVacant ? 'text-slate-400' : 'text-[var(--color-secondary)]'}`}>{isVacant ? 'Vacant' : selectedUnit?.tenant_name || '—'}</span>
                           </p>
                         </div>
                       </div>
@@ -545,7 +545,7 @@ export default function FinancialTab({ userData, units }: any) {
                       {/* OWNER COLUMN */}
                       <div className="p-4 sm:p-6 md:p-8 relative flex flex-col">
                          <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)]">
-                             <h4 className="font-black text-slate-400 text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
+                             <h4 className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Owner</h4>
                              <p className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to You</p>
                          </div>
 
@@ -554,18 +554,18 @@ export default function FinancialTab({ userData, units }: any) {
                               <>
                                 {soaConfig.owner.dues && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
-                                    <span className="text-slate-500 font-medium truncate">Assoc. dues <span className="text-[10px] text-slate-400 ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
+                                    <span className="text-[var(--color-text)] font-medium truncate">Assoc. dues <span className="text-[10px] text-[var(--color-text)] ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
                                     <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                   </div>
                                 )}
                                 {soaConfig.owner.parking && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.owner.water && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.owner.electricity && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isVacant && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -581,24 +581,24 @@ export default function FinancialTab({ userData, units }: any) {
                       {/* TENANT COLUMN */}
                       <div className="p-4 sm:p-6 md:p-8 bg-[var(--color-bg)]/50 relative flex flex-col border-t lg:border-t-0 border-[var(--color-border)]">
                          <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)]">
-                             <h4 className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
-                             <p className="font-black text-[var(--color-primary)] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to Tenant</p>
+                             <h4 className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
+                             <p className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] uppercase tracking-widest truncate">Assigned to Tenant</p>
                          </div>
 
                          <div className="space-y-3 sm:space-y-3.5 flex-1 opacity-80 hover:opacity-100 transition-opacity">
                             {isAssigned ? (
                               <>
                                 {soaConfig.tenant.dues && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Assoc. dues</span><span className="font-bold text-slate-700 shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.tenant.parking && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Parking</span><span className="font-bold text-slate-700 shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.tenant.water && !isVacant && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Water</span><span className="font-bold text-slate-700 shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {soaConfig.tenant.electricity && !isVacant && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-slate-500 font-medium truncate">Electricity</span><span className="font-bold text-slate-700 shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                 )}
                                 {tenantStatus === 'Overdue' && tenantPenalty > 0 && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
@@ -618,9 +618,9 @@ export default function FinancialTab({ userData, units }: any) {
                     {/* Total Hero Banner inside the card */}
                     <div className="bg-[var(--color-primary)]/10 border-t border-[var(--color-primary)]/20 p-4 sm:p-6 md:p-8 text-[var(--color-primary-text)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                       <div className="min-w-0">
-                        <span className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 truncate block">Total Due <span className="font-medium text-[var(--color-primary)]/70 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
+                        <span className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 truncate block">Total Due <span className="font-medium text-[var(--color-secondary)]/70 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
                       </div>
-                      <span className="font-black text-[var(--color-primary)] text-3xl sm:text-4xl tracking-tight drop-shadow-sm shrink-0">
+                      <span className="font-black text-[var(--color-secondary)] text-3xl sm:text-4xl tracking-tight drop-shadow-sm shrink-0">
                         {isAssigned ? `₱${ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                       </span>
                     </div>
@@ -673,12 +673,12 @@ export default function FinancialTab({ userData, units }: any) {
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold border-b border-transparent sticky top-0 z-10 shadow-md">
                           <tr>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">PERIOD</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">DUE DATE</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">DUES</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">PARKING</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">UTILS</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white border-r border-red-700 text-[9px] sm:text-[10px] uppercase tracking-widest">
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">PERIOD</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">DUE DATE</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">DUES</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">PARKING</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">UTILS</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white border-r border-red-700 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">
                               PENALTY
                             </th>
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">STATUS</th>
@@ -1025,7 +1025,7 @@ function HistoryItem({ title, method, date, amount, status }: any) {
         </div>
       </div>
       <div className="shrink-0 flex flex-col items-end pl-2">
-        <span className="font-black text-[var(--color-primary)] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
+        <span className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
         <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] mt-1 border shadow-[var(--shadow-sm)] whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
           {status}
         </span>

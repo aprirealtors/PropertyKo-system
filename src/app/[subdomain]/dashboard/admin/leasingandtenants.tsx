@@ -245,8 +245,8 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -321,14 +321,14 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div key={lease.id} className="flex flex-col h-full group hover:-translate-y-1 transition-transform duration-300">
 
                   <div className="flex items-end">
-                    <div className={`px-4 py-2 rounded-t-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 z-10 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
+                    <div className={`px-4 py-2 rounded-t-xl text-[10px] text-[var(--color-secondary)] font-black uppercase tracking-wider flex items-center gap-1.5 z-10 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
                       <BadgeIcon size={14} />
                       {badgeText}
                     </div>
                   </div>
 
                   <div className={`flex-1 bg-white border rounded-b-[1.5rem] rounded-tr-[1.5rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] group-hover:shadow-lg transition-all flex flex-col relative overflow-hidden ${
-                      isActive ? 'border-[var(--color-primary)]/30 border-t-[var(--color-primary)]/30' : 
+                      isActive ?  'border-[var(--color-primary)]/30 border-t-[var(--color-primary)]/30' : 
                       isExpired ? 'border-red-200 border-t-red-200' :
                       isTerminated ? 'border-slate-300 border-t-slate-300' :
                       'border-amber-200/60 border-t-amber-200/60'

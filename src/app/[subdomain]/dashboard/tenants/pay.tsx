@@ -316,8 +316,8 @@ export default function PayTab() {
           </div>
           
           <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-            <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Tenant</span>
-            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Tenant</span>
+            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
               {unit?.tenant_name 
                 ? unit.tenant_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() 
                 : "TE"}
@@ -379,8 +379,8 @@ export default function PayTab() {
                       <h3 className="font-extrabold text-[var(--color-secondary)] text-xl sm:text-2xl md:text-3xl tracking-tight leading-tight whitespace-normal break-words">
                         {unit?.property_name} · Unit {unit?.unit_number}
                       </h3>
-                      <p className="text-slate-500 text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium whitespace-normal break-words">
-                        Tenant: <span className="font-bold text-[var(--color-primary)]">{unit?.tenant_name}</span>
+                      <p className="text-[var(--color-text)] text-[11px] sm:text-sm mt-1 sm:mt-1.5 font-medium whitespace-normal break-words">
+                        Tenant: <span className="font-bold text-[var(--color-secondary)]">{unit?.tenant_name}</span>
                       </p>
                     </div>
                     <div className="flex flex-wrap items-end gap-2 shrink-0">
@@ -394,7 +394,7 @@ export default function PayTab() {
 
                   <div className="p-4 sm:p-6 md:p-8 bg-[var(--color-bg)]/30 relative flex flex-col">
                     <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)]">
-                      <h4 className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
+                      <h4 className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-0.5 sm:mb-1">Tenant</h4>
                       <p className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] uppercase tracking-widest whitespace-normal break-words">Assigned to You</p>
                     </div>
 
@@ -402,16 +402,16 @@ export default function PayTab() {
                         {isAssigned ? (
                           <>
                             {soaConfig.dues && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Assoc. Dues <span className="text-[10px] ml-1 opacity-70 hidden sm:inline">({unitArea} sqm)</span></span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Assoc. Dues <span className="text-[10px] ml-1 opacity-70 hidden sm:inline">({unitArea} sqm)</span></span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
                             {soaConfig.parking && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
                             {soaConfig.water && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
                             {soaConfig.electricity && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-slate-500 font-medium whitespace-normal break-words">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                             )}
                             {tenantStatus === 'Overdue' && lateFee > 0 && (
                               <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-red-500 font-bold whitespace-normal break-words">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -426,9 +426,9 @@ export default function PayTab() {
 
                   <div className="bg-[var(--color-primary)]/10 border-t border-[var(--color-primary)]/20 p-5 sm:p-6 md:p-8 text-[var(--color-primary-text)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                     <div className="min-w-0">
-                      <span className="font-black text-[var(--color-primary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 block whitespace-normal break-words">Total Due <span className="font-medium text-[var(--color-primary)]/70 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
+                      <span className="font-black text-[var(--color-secondary)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1 block whitespace-normal break-words">Total Due <span className="font-medium text-[var(--color-secondary)]/70 ml-1 normal-case hidden sm:inline">(Your Account)</span></span>
                     </div>
-                    <span className="font-black text-[var(--color-primary)] text-3xl sm:text-4xl md:text-5xl tracking-tight drop-shadow-sm shrink-0 whitespace-normal break-words">
+                    <span className="font-black text-[var(--color-secondary)] text-3xl sm:text-4xl md:text-5xl tracking-tight drop-shadow-sm shrink-0 whitespace-normal break-words">
                       {isAssigned ? `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                     </span>
                   </div>
@@ -483,12 +483,12 @@ export default function PayTab() {
                     <table className="w-full text-left text-xs min-w-[800px] border-collapse">
                       <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold border-b border-transparent sticky top-0 z-20 shadow-sm">
                         <tr>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">PERIOD</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">DUE DATE</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">DUES</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">PARKING</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">UTILS</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700">PENALTY</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PERIOD</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUE DATE</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUES</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PARKING</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">UTILS</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700 font-extrabold">PENALTY</th>
                           <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-center whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">STATUS</th>
                           <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-white text-[9px] sm:text-[10px] uppercase tracking-widest">TOTAL</th>
                         </tr>
@@ -817,7 +817,7 @@ function HistoryItem({ title, method, date, amount, status }: any) {
         </div>
       </div>
       <div className="shrink-0 flex flex-col items-end pl-2">
-        <span className="font-black text-[var(--color-primary)] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
+        <span className="font-black text-[var(--color-secondary)] text-[13px] sm:text-[15px] whitespace-nowrap">{amount}</span>
         <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] mt-1 border shadow-[var(--shadow-sm)] whitespace-nowrap ${status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
           {status}
         </span>

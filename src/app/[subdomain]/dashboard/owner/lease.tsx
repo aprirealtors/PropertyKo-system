@@ -339,8 +339,8 @@ export default function LeaseTab({ userData, units }: any) {
             )}
 
           <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-            <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Owner</span>
-            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Owner</span>
+            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
               {userData?.name ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() : "OW"}
             </div>
           </div>
@@ -484,11 +484,11 @@ export default function LeaseTab({ userData, units }: any) {
                   <div className="flex flex-col gap-3 sm:gap-4 shrink-0">
                     <FormField label="Tenant Name" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={tenantName} />
                     <FormField label="Property" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`${propertyName} · ${unitNumber}`} />
-                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-primary)]" />
+                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-secondary)]" />
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary)]" />} value={leaseStartDate} />
-                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-primary)]" />} value={leaseEndDate} />
+                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseStartDate} />
+                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseEndDate} />
                     </div>
                     
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-[var(--color-border)]">
@@ -504,7 +504,7 @@ export default function LeaseTab({ userData, units }: any) {
                         }`}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-md)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-primary)]" : "border-[var(--color-border)] text-slate-400"}`}>
+                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-md)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-secondary)]" : "border-[var(--color-border)] text-slate-400"}`}>
                             <FileCheck size={20} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div className="text-left min-w-0">

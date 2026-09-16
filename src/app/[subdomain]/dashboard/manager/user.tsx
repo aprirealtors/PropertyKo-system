@@ -288,8 +288,8 @@ export default function UsersTab({ orgData }: any) {
 
             {/* Premium Admin Profile Badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -322,10 +322,10 @@ export default function UsersTab({ orgData }: any) {
             <table className="w-full text-left text-sm relative min-w-[600px]">
               <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Name / Email</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Role</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20">Unit(s) Assigned</th>
-                  <th className="px-6 py-4 text-right whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Name / Email</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Role</th>
+                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Unit(s) Assigned</th>
+                  <th className="px-6 py-4 text-right whitespace-nowrap font-extrabold">Status</th>
                 </tr>
               </thead>
               

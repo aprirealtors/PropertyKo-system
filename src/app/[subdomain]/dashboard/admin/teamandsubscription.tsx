@@ -334,8 +334,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-primary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                         You
                       </td>
                       <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
-                        <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm">Admin</span>
+                        <span className="bg-[var(--color-primary)]/10 text-[var(--color-secondary)] border border-[var(--color-primary)]/20 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm">Admin</span>
                       </td>
                       <td className="px-5 sm:px-6 py-4 text-slate-500 font-semibold whitespace-nowrap">Full Platform Access</td>
                       <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
@@ -472,7 +472,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
                 <div className="flex justify-between items-center py-4 border-b border-dashed border-[var(--color-border)]">
                   <span className="text-xs sm:text-sm text-slate-500 font-bold">Units Capacity</span>
-                  <span className="font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-xs sm:text-sm">
+                  <span className="font-black text-[var(--color-secondary)] bg-[var(--color-primary)]/10 px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-xs sm:text-sm">
                     {unitLimit} units
                   </span>
                 </div>
