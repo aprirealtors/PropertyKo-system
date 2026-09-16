@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, Shield, Briefcase, ChevronLeft, 
-  MessageSquare, Search, X, Edit, Check, CheckCheck 
+  MessageSquare, Search, X, Edit, Check, CheckCheck,
+  Pin, PinOff
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
@@ -18,6 +19,9 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   const [messages, setMessages] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string>(''); 
   const [newMessage, setNewMessage] = useState("");
+  // Save drafts per chat
+  const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   
@@ -35,9 +39,17 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
+  
+  // Real-time states
+  const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
   const onlineUsers = usePresence();
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const channelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -101,9 +113,14 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     fetchActualNames();
   }, [userData, units]);
 
+  // FIX: Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setSearchQuery("");
+    setNewMessage(messageDrafts[activeChat] || "");
+    if (inputRef.current) {
+      inputRef.current.style.height = '24px';
+    }
   }, [activeChat]);
 
   useEffect(() => {
@@ -150,8 +167,14 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   useEffect(() => {
     if (!userData?.email || !userData?.admin_email) return;
 
-    const channel = supabase
-      .channel('owner-messages')
+    // Use shared room pattern for typing broadcasts
+    const channel = supabase.channel(`chat-room-${userData.admin_email}`, {
+      config: { broadcast: { ack: false, self: false } }
+    });
+
+    channelRef.current = channel;
+
+    channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.${userData.admin_email}` },
         (payload) => {
           const msg = payload.new;
@@ -160,6 +183,8 @@ export default function ConversationTab({ userData, units }: { userData: any, un
               if (current.some(m => m.id === msg.id)) return current;
               return [...current, msg];
             });
+            // Auto-clear typing indicator when a message is received
+            setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
           }
         }
       )
@@ -169,6 +194,13 @@ export default function ConversationTab({ userData, units }: { userData: any, un
           setMessages((current) => current.map(m => m.id === updatedMsg.id ? updatedMsg : m));
         }
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { sender, recipient, isTyping } = payload.payload;
+        // FIX: Ensure we only show typing indicators explicitly directed to the Owner!
+        if (recipient === userData.email || recipient === 'owner') {
+          setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
+        }
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -186,6 +218,37 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     }
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNewMessage(val);
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: val }));
+
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
+    // Handle typing indicator broadcast
+    const activeRoleEmail = roleEmails[activeChat];
+    if (!isTypingRef.current && channelRef.current && activeChat && activeRoleEmail) {
+      isTypingRef.current = true;
+      channelRef.current.send({
+        type: 'broadcast', event: 'typing',
+        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: true }
+      });
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      if (channelRef.current && activeChat && activeRoleEmail) {
+        channelRef.current.send({
+          type: 'broadcast', event: 'typing',
+          payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+        });
+      }
+    }, 2000);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !userData || !activeChat || isSending) return;
@@ -198,9 +261,23 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     const textToSend = newMessage.trim();
     setIsSending(true);
     setNewMessage(""); 
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
+
+    // Clear typing status immediately upon sending
+    isTypingRef.current = false;
+    const activeRoleEmail = roleEmails[activeChat];
+    if (channelRef.current && activeRoleEmail) {
+      channelRef.current.send({
+        type: 'broadcast', event: 'typing',
+        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+      });
+    }
 
     setTimeout(() => {
-      inputRef.current?.focus();
+      if (inputRef.current) {
+        inputRef.current.style.height = '24px';
+        inputRef.current.focus();
+      }
     }, 10);
 
     const payload = {
@@ -210,7 +287,8 @@ export default function ConversationTab({ userData, units }: { userData: any, un
       content: textToSend,
       is_from_tenant: activeChat !== 'tenant',
       recipient_role: activeChat === 'tenant' ? 'owner' : activeChat, 
-      is_read: false 
+      is_read: false,
+      is_pinned: false
     };
 
     const tempId = `temp_${Date.now()}`;
@@ -236,10 +314,21 @@ export default function ConversationTab({ userData, units }: { userData: any, un
       setNewMessage(textToSend);
     } finally {
       setIsSending(false);
+      setTimeout(() => inputRef.current?.focus(), 10);
+    }
+  };
 
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 10);
+  const handleTogglePin = async (msgId: string, currentPinStatus: boolean) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !currentPinStatus } : m));
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_pinned: !currentPinStatus })
+        .eq('id', msgId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Failed to toggle pin status:", err);
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: currentPinStatus } : m));
     }
   };
 
@@ -255,12 +344,17 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   });
 
   const roleMessages = messages.filter((msg) => isMessageForRole(msg, activeChat));
+  const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
+  
   const displayedMessages = searchQuery.trim() === "" ? roleMessages : roleMessages.filter(msg => msg.content.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const activeRoleDetails = CHAT_ROLES.find(r => r.id === activeChat);
   const ActiveIcon = activeRoleDetails?.icon || User;
   const currentChatName = activeChat ? customNames[activeChat] : "";
-  const isActiveRoleOnline = activeChat && roleEmails[activeChat] ? onlineUsers.includes(roleEmails[activeChat]) : false;
+  
+  const activeRoleEmail = activeChat ? roleEmails[activeChat] : null;
+  const isActiveRoleOnline = activeRoleEmail ? onlineUsers.includes(activeRoleEmail) : false;
+  const isRemoteUserTyping = activeRoleEmail ? remoteTyping[activeRoleEmail] : false;
 
   const renderRoleBadge = (roleId: string | undefined) => {
     if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-primary)] px-1.5 py-0.5 rounded border border-[var(--color-primary)]/20 uppercase font-bold tracking-wider bg-[var(--color-primary)]/10">Tenant</span>;
@@ -281,8 +375,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   });
 
   return (
-    // ✨ FIX: Changed font-sans to corporate variable binding
-    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[70px] md:pb-0">
+    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[70px] md:pb-0 z-20">
       
       {/* SIDEBAR */}
       <div className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
@@ -326,6 +419,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
               const displayTime = lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
               const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== userData.email && isMessageForRole(m, role.id)).length;
               const isOnline = roleEmails[role.id] && onlineUsers.includes(roleEmails[role.id]);
+              const isTyping = roleEmails[role.id] && remoteTyping[roleEmails[role.id]];
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "";
@@ -345,7 +439,6 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                       : 'border border-transparent hover:bg-slate-50'
                   }`}
                 >
-                  {/* 1. AVATAR QUADRANT (Left) */}
                   <div className="relative shrink-0">
                     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       isActive && !isEditingNames 
@@ -357,10 +450,8 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                     {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>}
                   </div>
 
-                  {/* RIGHT SECTION: 2-Row Messenger Style */}
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     
-                    {/* 2. TOP ROW (Name & Time) */}
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
                       <div className="flex-1 min-w-0">
                         {isEditingNames ? (
@@ -400,10 +491,11 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                       </span>
                     </div>
 
-                    {/* 3. BOTTOM ROW (Message & Badge) */}
                     <div className="flex justify-between items-center w-full gap-2">
                       <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-400'}`}>
-                        {lastMsg ? (
+                        {isTyping ? (
+                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                        ) : lastMsg ? (
                           <span>
                             <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>
                               {getSidebarMessagePrefix()}
@@ -467,6 +559,30 @@ export default function ConversationTab({ userData, units }: { userData: any, un
               <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border ${isSearchActive ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-primary-text)] shadow-[var(--shadow-md)]' : 'text-[var(--color-primary)] border-[var(--color-border)] hover:bg-[var(--color-primary)]/5 bg-white shadow-[var(--shadow-sm)]'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
             </div>
 
+            {/* PINNED MESSAGES BANNER */}
+            {pinnedMessages.length > 0 && !searchQuery && (
+              <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 px-3 sm:px-4 md:px-6 py-2 flex items-start gap-2 shadow-sm z-10">
+                <Pin size={14} className="text-amber-600 mt-0.5 shrink-0" fill="currentColor" />
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  {pinnedMessages.map((pMsg, idx) => (
+                    <div key={pMsg.id} className="flex justify-between items-center gap-3">
+                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
+                        <span className="font-bold mr-1">{pMsg.sender_email === userData.email ? 'You:' : currentChatName + ':'}</span>
+                        {pMsg.content}
+                      </p>
+                      <button 
+                        onClick={() => handleTogglePin(pMsg.id, true)}
+                        className="text-amber-700/60 hover:text-amber-900 hover:bg-amber-100 p-1 rounded transition-colors shrink-0"
+                        title="Unpin message"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isSearchActive && (
               <div className="shrink-0 bg-[var(--color-bg)] border-b border-[var(--color-border)] p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-[var(--shadow-sm)] animate-in slide-in-from-top duration-200">
                 <div className="flex-1 relative">
@@ -498,19 +614,38 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                   const isMe = msg.sender_email === userData.email;
                   const isPending = msg.id.toString().startsWith('temp_');
                   return (
-                    <div key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`} className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200`}>
-                      <div 
-                        className={`max-w-[85%] sm:max-w-[80%] md:max-w-[65%] px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-[var(--shadow-sm)] border ${
-                          isMe 
-                            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                            : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
-                        } ${isPending ? 'opacity-60' : 'opacity-100'}`}
-                        style={{ overflowWrap: 'anywhere' }}
-                      >
-                        {msg.content}
+                    <div key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`} className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group`}>
+                      <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Bubble */}
+                        <div 
+                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-[var(--shadow-sm)] border relative ${
+                            isMe 
+                              ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                              : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                          } ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                          style={{ overflowWrap: 'anywhere' }}
+                        >
+                          {msg.is_pinned && (
+                            <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
+                              <Pin size={10} fill="currentColor" />
+                            </div>
+                          )}
+                          {msg.content}
+                        </div>
+                        
+                        {/* Message Actions (Hover) */}
+                        {!isPending && (
+                          <button 
+                            onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
+                            className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
+                            title={msg.is_pinned ? "Unpin message" : "Pin message"}
+                          >
+                            {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                          </button>
+                        )}
                       </div>
                       
-                      <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide">
+                      <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         {isMe && (
                           isPending ? <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" /> : 
@@ -526,17 +661,26 @@ export default function ConversationTab({ userData, units }: { userData: any, un
             </div>
 
             {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] z-10">
+            <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] z-10 relative">
+              
+              {/* TYPING INDICATOR (ABOVE INPUT) */}
+              {isRemoteUserTyping && (
+                <div className="absolute -top-6 left-4 text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                  <span className="flex gap-0.5 mt-0.5">
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </span>
+                  {currentChatName} is typing...
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
                 <div className="flex-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                    }}
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();

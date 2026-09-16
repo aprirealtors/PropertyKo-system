@@ -16,6 +16,8 @@ import {
   Edit,
   Check,
   CheckCheck,
+  Pin,
+  PinOff
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from "@/components/GlobalPresence";
@@ -51,6 +53,9 @@ export default function ConversationTab({
   const [messages, setMessages] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string>("");
   const [newMessage, setNewMessage] = useState("");
+  // Save drafts per chat
+  const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
@@ -70,10 +75,17 @@ export default function ConversationTab({
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
+
+  // Real-time states
+  const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
   const onlineUsers = usePresence();
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const activeChatRef = useRef(activeChat);
+  const channelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -166,9 +178,14 @@ export default function ConversationTab({
     fetchActualNames();
   }, [userData, unit]);
 
+  // FIX: Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setSearchQuery("");
+    setNewMessage(messageDrafts[activeChat] || "");
+    if (inputRef.current) {
+      inputRef.current.style.height = '24px';
+    }
   }, [activeChat]);
 
   useEffect(() => {
@@ -217,10 +234,16 @@ export default function ConversationTab({
   }, [activeChat, messages, userData?.email]);
 
   useEffect(() => {
-    if (!userData?.email) return;
+    if (!userData?.email || !userData?.admin_email) return;
 
-    const channel = supabase
-      .channel("tenant-messages")
+    // Use shared channel network for cross-role typing indicators
+    const channel = supabase.channel(`chat-room-${userData.admin_email}`, {
+      config: { broadcast: { ack: false, self: false } }
+    });
+
+    channelRef.current = channel;
+
+    channel
       .on(
         "postgres_changes",
         {
@@ -235,6 +258,8 @@ export default function ConversationTab({
             if (current.some((m) => m.id === msg.id)) return current;
             return [...current, msg];
           });
+          // Auto-clear typing indicator when a message is received
+          setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
         },
       )
       .on(
@@ -252,6 +277,13 @@ export default function ConversationTab({
           );
         },
       )
+      .on('broadcast', { event: 'typing' }, (payload) => {
+        const { sender, recipient, isTyping } = payload.payload;
+        // Ensure we only listen to typing indicators meant for this exact user
+        if (recipient === userData.email) {
+          setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
+        }
+      })
       .subscribe();
 
     return () => {
@@ -275,6 +307,37 @@ export default function ConversationTab({
     }
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setNewMessage(val);
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: val }));
+
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
+    // Handle typing indicator broadcast
+    const activeRoleEmail = roleEmails[activeChat];
+    if (!isTypingRef.current && channelRef.current && activeChat && activeRoleEmail) {
+      isTypingRef.current = true;
+      channelRef.current.send({
+        type: 'broadcast', event: 'typing',
+        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: true }
+      });
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+      if (channelRef.current && activeChat && activeRoleEmail) {
+        channelRef.current.send({
+          type: 'broadcast', event: 'typing',
+          payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+        });
+      }
+    }, 2000);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !userData || !activeChat || isSending) return;
@@ -282,9 +345,23 @@ export default function ConversationTab({
     const textToSend = newMessage.trim();
     setIsSending(true);
     setNewMessage("");
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
+
+    // Clear typing status immediately upon sending
+    isTypingRef.current = false;
+    const activeRoleEmail = roleEmails[activeChat];
+    if (channelRef.current && activeRoleEmail) {
+      channelRef.current.send({
+        type: 'broadcast', event: 'typing',
+        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+      });
+    }
 
     setTimeout(() => {
-      inputRef.current?.focus();
+      if (inputRef.current) {
+        inputRef.current.style.height = '24px';
+        inputRef.current.focus();
+      }
     }, 10);
 
     const payload = {
@@ -295,6 +372,7 @@ export default function ConversationTab({
       is_from_tenant: true,
       recipient_role: activeChat,
       is_read: false,
+      is_pinned: false
     };
 
     const tempId = `temp_${Date.now()}`;
@@ -334,6 +412,20 @@ export default function ConversationTab({
     }
   };
 
+  const handleTogglePin = async (msgId: string, currentPinStatus: boolean) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !currentPinStatus } : m));
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_pinned: !currentPinStatus })
+        .eq('id', msgId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Failed to toggle pin status:", err);
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: currentPinStatus } : m));
+    }
+  };
+
   const getLastMessage = (roleId: string) => {
     const roleMsgs = messages.filter((m) => isMessageForRole(m, roleId));
     return roleMsgs.length > 0 ? roleMsgs[roleMsgs.length - 1] : null;
@@ -348,6 +440,9 @@ export default function ConversationTab({
   const roleMessages = messages.filter((msg) =>
     isMessageForRole(msg, activeChat),
   );
+  
+  const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
+
   const displayedMessages =
     searchQuery.trim() === ""
       ? roleMessages
@@ -358,10 +453,10 @@ export default function ConversationTab({
   const activeRoleDetails = CHAT_ROLES.find((r) => r.id === activeChat);
   const ActiveIcon = activeRoleDetails?.icon || User;
   const currentChatName = activeChat ? customNames[activeChat] : "";
-  const isActiveRoleOnline =
-    activeChat && roleEmails[activeChat]
-      ? onlineUsers.includes(roleEmails[activeChat])
-      : false;
+  
+  const activeRoleEmail = activeChat ? roleEmails[activeChat] : null;
+  const isActiveRoleOnline = activeRoleEmail ? onlineUsers.includes(activeRoleEmail) : false;
+  const isRemoteUserTyping = activeRoleEmail ? remoteTyping[activeRoleEmail] : false;
 
   const renderRoleBadge = (roleId: string | undefined) => {
     if (roleId === "owner")
@@ -469,6 +564,7 @@ export default function ConversationTab({
               const isOnline =
                 roleEmails[role.id] &&
                 onlineUsers.includes(roleEmails[role.id]);
+              const isTyping = roleEmails[role.id] && remoteTyping[roleEmails[role.id]];
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "";
@@ -579,7 +675,9 @@ export default function ConversationTab({
                           unreadCount > 0 ? "font-bold text-slate-900" : "font-medium text-slate-400"
                         }`}
                       >
-                        {lastMsg ? (
+                        {isTyping ? (
+                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                        ) : lastMsg ? (
                           <span>
                             <span
                               className={
@@ -696,6 +794,30 @@ export default function ConversationTab({
               </button>
             </div>
 
+            {/* PINNED MESSAGES BANNER */}
+            {pinnedMessages.length > 0 && !searchQuery && (
+              <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 px-3 sm:px-4 md:px-6 py-2 flex items-start gap-2 shadow-sm z-10">
+                <Pin size={14} className="text-amber-600 mt-0.5 shrink-0" fill="currentColor" />
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  {pinnedMessages.map((pMsg, idx) => (
+                    <div key={pMsg.id} className="flex justify-between items-center gap-3">
+                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
+                        <span className="font-bold mr-1">{pMsg.sender_email === userData.email ? 'You:' : currentChatName + ':'}</span>
+                        {pMsg.content}
+                      </p>
+                      <button 
+                        onClick={() => handleTogglePin(pMsg.id, true)}
+                        className="text-amber-700/60 hover:text-amber-900 hover:bg-amber-100 p-1 rounded transition-colors shrink-0"
+                        title="Unpin message"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isSearchActive && (
               <div className="shrink-0 bg-[var(--color-bg)] border-b border-[var(--color-border)] p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-[var(--shadow-sm)] animate-in slide-in-from-top duration-200">
                 <div className="flex-1 relative">
@@ -761,20 +883,39 @@ export default function ConversationTab({
                           ? msg.id
                           : `${msg.id}-${idx}`
                       }
-                      className={`w-full flex flex-col ${isMe ? "items-end" : "items-start"} animate-in fade-in duration-200`}
+                      className={`w-full flex flex-col ${isMe ? "items-end" : "items-start"} animate-in fade-in duration-200 group`}
                     >
-                      <div
-                        className={`max-w-[85%] sm:max-w-[80%] md:max-w-[65%] px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-[var(--shadow-sm)] border ${
-                          isMe
-                            ? "bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]"
-                            : "bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]"
-                        } ${isPending ? "opacity-60" : "opacity-100"}`}
-                        style={{ overflowWrap: "anywhere" }}
-                      >
-                        {msg.content}
+                      <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        {/* Bubble */}
+                        <div
+                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-[var(--shadow-sm)] border relative ${
+                            isMe
+                              ? "bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]"
+                              : "bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]"
+                          } ${isPending ? "opacity-60" : "opacity-100"}`}
+                          style={{ overflowWrap: "anywhere" }}
+                        >
+                          {msg.is_pinned && (
+                            <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
+                              <Pin size={10} fill="currentColor" />
+                            </div>
+                          )}
+                          {msg.content}
+                        </div>
+
+                        {/* Message Actions (Hover) */}
+                        {!isPending && (
+                          <button 
+                            onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
+                            className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
+                            title={msg.is_pinned ? "Unpin message" : "Pin message"}
+                          >
+                            {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                          </button>
+                        )}
                       </div>
 
-                      <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide">
+                      <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
                         {new Date(msg.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -807,17 +948,26 @@ export default function ConversationTab({
             </div>
 
             {/* ✨ UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] z-10">
+            <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] z-10 relative">
+              
+              {/* TYPING INDICATOR (ABOVE INPUT) */}
+              {isRemoteUserTyping && (
+                <div className="absolute -top-6 left-4 text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                  <span className="flex gap-0.5 mt-0.5">
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </span>
+                  {currentChatName} is typing...
+                </div>
+              )}
+
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
                 <div className="flex-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                    }}
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -840,7 +990,7 @@ export default function ConversationTab({
                   className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-[var(--shadow-sm)] duration-200 mb-0.5 ${
                     newMessage.trim() 
                       ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90' 
-                      : 'bg-slate-50 text-slate-300 border-[var(--color-border)] cursor-not-allowed shadow-none'
+                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
                   {isSending ? (
