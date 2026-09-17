@@ -321,14 +321,14 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div key={lease.id} className="flex flex-col h-full group hover:-translate-y-1 transition-transform duration-300">
 
                   <div className="flex items-end">
-                    <div className={`px-4 py-2 rounded-t-xl text-[10px] text-[var(--color-secondary)] font-black uppercase tracking-wider flex items-center gap-1.5 z-10 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
+                    <div className={`px-4 py-2 rounded-t-xl text-[10px] text-[var(--color-secondary)] font-black uppercase tracking-wider flex items-center gap-1.5 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
                       <BadgeIcon size={14} />
                       {badgeText}
                     </div>
                   </div>
 
                   <div className={`flex-1 bg-white border rounded-b-[1.5rem] rounded-tr-[1.5rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] group-hover:shadow-lg transition-all flex flex-col relative overflow-hidden ${
-                      isActive ? 'border-[var(--color-primary)]/30 border-t-[var(--color-primary)]/30' : 
+                      isActive ?  'border-[var(--color-primary)]/30 border-t-[var(--color-primary)]/30' : 
                       isExpired ? 'border-red-200 border-t-red-200' :
                       isTerminated ? 'border-slate-300 border-t-slate-300' :
                       'border-amber-200/60 border-t-amber-200/60'
@@ -336,7 +336,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
                     <FolderOpen className="absolute -bottom-6 -right-6 text-slate-50 opacity-[0.4] w-32 h-32 rotate-[-10deg] pointer-events-none" />
 
-                    <div className="mb-5 relative z-10">
+                    <div className="mb-5 relative">
                       <h4 className="text-xl font-black text-[var(--color-secondary)] truncate tracking-tight">{lease.tenant_name}</h4>
                       <div className="flex items-center gap-1.5 mt-1">
                         <MapPin size={12} className="text-[var(--color-primary)]" />
@@ -344,7 +344,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                       </div>
                     </div>
 
-                    <div className="space-y-4 mb-6 flex-1 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative z-10">
+                    <div className="space-y-4 mb-6 flex-1 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative">
                       <div className="flex flex-col gap-1 pb-3 border-b border-[var(--color-border)]">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Users size={12}/> Property Owner</span>
                         <span className="text-sm font-bold text-slate-700 truncate">{lease.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
@@ -362,7 +362,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                       </div>
                     </div>
 
-                    <div className="mt-auto relative z-10">
+                    <div className="mt-auto relative">
                       {isPending ? (
                         <button 
                           onClick={() => handleOpenApproveModal(lease.id)}

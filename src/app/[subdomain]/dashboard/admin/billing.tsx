@@ -840,7 +840,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         ) : (
           <>
             {/* SIDEBAR */}
-            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex-col h-full z-10 shadow-sm ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
+            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex-col h-full shadow-sm ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="p-3 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-[var(--color-secondary)] text-[12px] sm:text-[13px] uppercase tracking-wider">Property Units</h3>

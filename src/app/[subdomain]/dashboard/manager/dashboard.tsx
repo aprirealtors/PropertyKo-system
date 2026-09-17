@@ -462,7 +462,7 @@ function StatCard({ title, value, subtext, icon: Icon }: { title: string, value?
     <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-[var(--shadow-sm)] flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
       <div className="absolute -top-6 -right-6 w-24 h-24 bg-slate-50 rounded-full blur-2xl group-hover:bg-[var(--color-primary)]/10 transition-colors pointer-events-none"></div>
 
-      <div className="flex justify-between items-start mb-3 relative z-10 shrink-0">
+      <div className="flex justify-between items-start mb-3 relative shrink-0">
         <div className="text-[10px] font-black text-slate-400 tracking-widest uppercase">{title}</div>
         {Icon && (
           <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] group-hover:scale-110 transition-all shadow-sm shrink-0">
@@ -470,7 +470,7 @@ function StatCard({ title, value, subtext, icon: Icon }: { title: string, value?
           </div>
         )}
       </div>
-      <div className="relative z-10 flex flex-col justify-end w-full h-full">
+      <div className="relative flex flex-col justify-end w-full h-full">
         {value && <div className="text-3xl font-black text-[var(--color-secondary)] mt-1 mb-1.5 tracking-tight group-hover:text-[var(--color-primary)] transition-colors">{value}</div>}
         <div className="text-xs text-slate-500 w-full">{subtext}</div>
       </div>

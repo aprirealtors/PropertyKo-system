@@ -301,10 +301,10 @@ export default function UsersTab({ orgData }: any) {
       <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
         <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
           {/* Table Header Section */}
-          <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
+          <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 gap-4">
             <h3 className="font-black text-lg text-[var(--color-secondary)] tracking-tight">Active Accounts</h3>
             <button 
               onClick={() => {
@@ -318,9 +318,9 @@ export default function UsersTab({ orgData }: any) {
           </div>
           
           {/* Scrollable Table Area */}
-          <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative z-10 w-full">
+          <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative w-full">
             <table className="w-full text-left text-sm relative min-w-[600px]">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 text-[10px] shadow-md">
                 <tr>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Name / Email</th>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Role</th>

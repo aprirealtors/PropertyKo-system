@@ -351,7 +351,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
           <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
             <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
               
-              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0 z-10">
+              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                     <Users size={16} strokeWidth={2.5} />
@@ -368,7 +368,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               
               <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar relative bg-white">
                 <table className="w-full text-left text-sm min-w-[600px] border-collapse">
-                  <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-md">
+                  <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md">
                     <tr>
                       <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
                       <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
