@@ -210,7 +210,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                       )}
                     </div>
                     
-                    <p className="text-[var(--color-primary)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{task.location}</span>
                     </p>
 
@@ -224,7 +224,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                       {task.status === 'pending' ? (
                         <button onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'in_progress'); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-[var(--shadow-md)] border border-transparent">Start Task</button>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 active:scale-[0.98] transition-all shadow-sm border border-[var(--color-primary)]/20">Update Report</button>
+                        <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-xl)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-sm border border-[var(--color-primary)]/20">Update Report</button>
                       )}
                     </div>
                   </div>
@@ -258,7 +258,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                       <span className="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">On Hold</span>
                     </div>
 
-                    <p className="text-slate-500 font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{task.location}</span>
                     </p>
 
@@ -269,7 +269,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     </div>
 
                     <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)]">
-                      <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 active:scale-[0.98] transition-all shadow-md border border-transparent">Update Report</button>
+                      <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-md border border-transparent">Update Report</button>
                     </div>
                   </div>
                 ))
@@ -302,7 +302,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                       <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">Success</span>
                     </div>
                     
-                    <p className="text-slate-500 font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{task.location}</span>
                     </p>
 
@@ -522,8 +522,14 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     <div className="mt-8 space-y-4 pt-2">
                       <div className="flex justify-between items-center border-t border-[var(--color-border)] pt-4">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={14} /> Location</span>
-                        <span className="font-extrabold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] text-xs">
+                        <span className="font-extrabold text-[var(--color-text)] bg-[var(--color-primary)]/10 px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] text-xs">
                           {reviewActiveTask.location}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-[var(--color-border)] pt-4">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><AlertCircle size={14} /> Reported On</span>
+                        <span className={`font-extrabold px-3 py-1.5 rounded-[var(--radius-sm)] border shadow-sm text-xs ${reviewActiveTask.status === 'in_progress' ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border-[var(--color-primary)]/20' : 'bg-white text-[var(--color-text)] border-[var(--color-border)]'}`}>
+                          {new Date(reviewActiveTask.created_at).toLocaleDateString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center border-t border-[var(--color-border)] pt-4">
@@ -532,6 +538,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                           {reviewActiveTask.priority}
                         </span>
                       </div>
+                      
                     </div>
                   </div>
 
@@ -622,7 +629,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     )}
                   </div>
 
-                  <div className="bg-amber-50/40 rounded-[1.5rem] p-5 border border-amber-100/50 space-y-2 shrink-0 flex flex-col justify-between flex-1">
+                  <div className="bg-amber-50/40 rounded-[1.5rem] p-5 border border-amber-100 space-y-2 shrink-0 flex flex-col justify-between flex-1">
                     <div>
                       <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block border-b border-amber-100 pb-2 mb-2">Reason for delay:</span>
                       <p className="text-sm text-amber-800 leading-relaxed font-bold">
@@ -682,6 +689,9 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div className="flex-1 bg-slate-50 rounded-[1.5rem] p-5 border border-[var(--color-border)] flex flex-col justify-between">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Description:</span>
                     <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewResolvedTask.description}</p>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-[var(--color-border)] pt-4 mt-5 shrink-0">
+                      Reported: {new Date(reviewResolvedTask.created_at).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
 

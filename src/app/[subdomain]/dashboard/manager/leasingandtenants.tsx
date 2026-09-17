@@ -267,7 +267,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
           </div>
           <button 
             onClick={() => handleOpenApproveModal()}
-            className="hidden sm:flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all shrink-0"
+            className="hidden sm:flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] px-5 py-2.5 rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all shrink-0"
           >
             Review All
           </button>
@@ -373,7 +373,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                       ) : (
                         <button
                           onClick={() => handleViewContract(lease)} 
-                          className="w-full bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 text-[var(--color-primary)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest border border-[var(--color-primary)]/20 hover:border-[var(--color-primary)]/40 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group/btn"
+                          className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest border border-[var(--color-primary)]/20 hover:border-[var(--color-primary)]/40 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group/btn"
                         >
                           <FileText size={18} strokeWidth={2.5} className="group-hover/btn:scale-110 transition-transform" /> View Folder
                         </button>

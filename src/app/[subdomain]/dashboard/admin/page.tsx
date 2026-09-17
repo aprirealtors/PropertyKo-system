@@ -811,7 +811,7 @@ export default function AdminDashboard() {
                             setEditedName(adminProfile.name);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/60 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -869,7 +869,7 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5">Access Role</label>
-                    <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+                    <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)]/60 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                       Full Admin Access
                     </span>
                   </div>
@@ -878,14 +878,14 @@ export default function AdminDashboard() {
 
               {/* --- Change Password Box --- */}
               <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center">
                   <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-primary)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-text)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
                     >
                       <Key size={14} /> Change Password
                     </button>
@@ -1028,14 +1028,14 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="relative group w-20 h-20 sm:w-24 sm:h-24 shrink-0 z-10">
-                  <div className="w-full h-full rounded-2xl border-[3px] border-white bg-white flex items-center justify-center overflow-hidden relative shadow-[var(--shadow-md)]">
+                  <div className="w-full h-full rounded-[var(--radius-xl)] border-[3px] border-[var(--color-primary)]/30 bg-white flex items-center justify-center overflow-hidden relative shadow-[var(--shadow-md)]">
                     {orgData?.logo_url ? (
                       <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain p-1.5 sm:p-2" />
                     ) : (
                       <Building className="text-slate-300 w-8 h-8 sm:w-10 sm:h-10" />
                     )}
 
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
+                    <div className="absolute inset-0 bg-[var(--color-secondary)] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
                       <label className="cursor-pointer text-white flex flex-col items-center gap-1 w-full h-full justify-center">
                         <Upload className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
                         <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-center leading-tight">Change<br/>Logo</span>
@@ -1060,7 +1060,7 @@ export default function AdminDashboard() {
                   <h3 className="text-xl sm:text-2xl font-black mb-1 truncate tracking-tight" title={orgData?.org_name}>
                     {orgData?.org_name || "Organization Name"}
                   </h3>
-                  <p className="text-white/70 text-xs font-semibold flex items-center justify-center sm:justify-start gap-1.5">
+                  <p className="text-[var(--color-primary)] text-xs font-semibold flex items-center justify-center sm:justify-start gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shadow-[0_0_10px_var(--color-primary)] animate-pulse"></span>
                     Active Workspace
                   </p>
@@ -1071,8 +1071,8 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
 
                   <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between bg-slate-50/50">
-                    <h4 className="text-xs sm:text-sm font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
-                      <Box size={14} className="text-slate-400 sm:w-4 sm:h-4" />
+                    <h4 className="text-xs sm:text-sm uppercase font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
+                      <Box size={14} className="text-[var(--color-primary)] sm:w-4 sm:h-4" />
                       Business Details
                     </h4>
                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2.5 py-1 rounded-md">

@@ -182,8 +182,8 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
             <div className="w-2 h-7 bg-[var(--color-primary)] rounded-full shadow-sm"></div>
             <h3 className="font-black text-lg sm:text-xl md:text-2xl text-[var(--color-secondary)] tracking-tight">Up Next For You</h3>
           </div>
-          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-text)] hover:bg-[var(--color-primary)] px-4 py-2.5 rounded-[var(--radius-md)] transition-all hidden sm:flex items-center gap-1.5 group shadow-[var(--shadow-sm)] active:scale-95 border border-[var(--color-primary)]/20 hover:border-transparent">
-            View all tasks <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:text-[var(--color-primary-text)] hover:bg-[var(--color-primary)] px-4 py-2.5 rounded-[var(--radius-md)] transition-all hidden sm:flex items-center gap-1.5 group shadow-[var(--shadow-sm)] active:scale-95 border border-[var(--color-primary)]/20 hover:border-transparent">
+            View All Tasks <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
           </button>
         </div>
 

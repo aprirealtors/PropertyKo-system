@@ -199,7 +199,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
             <button 
               onClick={handleExportCSV}
               disabled={filteredKPIs.length === 0}
-              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
             >
               <Download size={14} strokeWidth={2.5} /> Export Report
             </button>

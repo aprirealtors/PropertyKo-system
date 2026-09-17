@@ -199,7 +199,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
             <button 
               onClick={handleExportCSV}
               disabled={filteredKPIs.length === 0}
-              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
             >
               <Download size={14} strokeWidth={2.5} /> Export Report
             </button>
@@ -208,7 +208,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           {/* Scrollable Table Area */}
           <div className="flex-1 min-h-0 overflow-auto relative z-10 custom-scrollbar">
             <table className="w-full text-left text-sm relative">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
                 <tr>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Indicator</th>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Current Value</th>
