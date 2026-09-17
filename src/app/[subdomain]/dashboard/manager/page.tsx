@@ -663,7 +663,7 @@ export default function ManagerDashboard() {
                               
                               <button
                                 onClick={(e) => handleInitiateDeleteNotification(e, notif)}
-                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                                 title="Delete notification"
                               >
                                 <Trash2 size={14} />

@@ -775,7 +775,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
               </div>
 
               <div className="px-6 py-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 flex justify-end">
-                <button onClick={() => setSelectedTicketForModal(null)} className="w-full sm:w-auto px-8 bg-[var(--color-secondary)] hover:opacity-90 text-white py-3 rounded-[var(--radius-md)] text-sm font-bold transition-all shadow-[var(--shadow-md)] active:scale-[0.98] border border-transparent">
+                <button onClick={() => setSelectedTicketForModal(null)} className="w-full sm:w-auto px-8 bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 py-3 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] border border-transparent">
                   Close Details
                 </button>
               </div>

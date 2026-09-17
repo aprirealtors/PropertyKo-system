@@ -541,7 +541,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
-              <button onClick={() => setReviewActiveTask(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+              <button onClick={() => setReviewActiveTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>
@@ -636,7 +636,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewOnHoldTask(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
+              <button onClick={() => setReviewOnHoldTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
             </div>
           </div>
         </div>
@@ -728,7 +728,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewResolvedTask(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+              <button onClick={() => setReviewResolvedTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>

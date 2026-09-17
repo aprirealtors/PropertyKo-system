@@ -806,7 +806,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewActiveTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-bg)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">
+              <button onClick={() => setReviewActiveTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">
                 Close Details
               </button>
             </div>
@@ -903,7 +903,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+              <button onClick={() => setReviewTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>
@@ -1008,7 +1008,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
             </div>
           </div>
         </div>

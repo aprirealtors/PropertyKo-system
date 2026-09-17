@@ -76,6 +76,10 @@ export default function ConversationTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
 
+  // Pinned Message Accordion & Highlighting States
+  const [isPinnedExpanded, setIsPinnedExpanded] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+
   // Real-time states
   const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
   const onlineUsers = usePresence();
@@ -89,6 +93,18 @@ export default function ConversationTab({
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToMessage = (msgId: string) => {
+    // Automatically hide the pinned messages list when a pin is clicked
+    setIsPinnedExpanded(false); 
+    
+    const element = document.getElementById(`msg-${msgId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(msgId);
+      setTimeout(() => setHighlightedMsgId(null), 3000); // Remove highlight after 3 seconds
+    }
   };
 
   useEffect(() => {
@@ -182,6 +198,8 @@ export default function ConversationTab({
   useEffect(() => {
     setIsSearchActive(false);
     setSearchQuery("");
+    setIsPinnedExpanded(false);
+    setHighlightedMsgId(null);
     setNewMessage(messageDrafts[activeChat] || "");
     if (inputRef.current) {
       inputRef.current.style.height = '24px';
@@ -193,8 +211,8 @@ export default function ConversationTab({
   }, [userData]);
 
   useEffect(() => {
-    if (!searchQuery) scrollToBottom();
-  }, [messages, activeChat, searchQuery]);
+    if (!searchQuery && !highlightedMsgId) scrollToBottom();
+  }, [messages, activeChat, searchQuery, highlightedMsgId]);
 
   const isMessageForRole = (msg: any, roleId: string) => {
     return (msg.recipient_role || "admin") === roleId;
@@ -611,6 +629,7 @@ export default function ConversationTab({
                     
                     {/* 2. TOP ROW (Name & Time) */}
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
+                      {/* Name */}
                       <div className="flex-1 min-w-0">
                         {isEditingNames ? (
                           <input
@@ -714,7 +733,7 @@ export default function ConversationTab({
 
       {/* MAIN CHAT AREA */}
       <div
-        className={`flex-1 flex flex-col bg-slate-50 relative ${!activeChat ? "hidden md:flex" : "flex"}`}
+        className={`flex-1 min-w-0 flex flex-col bg-slate-50 relative ${!activeChat ? "hidden md:flex" : "flex"}`}
       >
         {!activeChat ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[var(--color-bg)]">
@@ -794,27 +813,79 @@ export default function ConversationTab({
               </button>
             </div>
 
-            {/* PINNED MESSAGES BANNER */}
+            {/* PINNED MESSAGES ACCORDION */}
             {pinnedMessages.length > 0 && !searchQuery && (
-              <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 px-3 sm:px-4 md:px-6 py-2 flex items-start gap-2 shadow-sm z-10">
-                <Pin size={14} className="text-amber-600 mt-0.5 shrink-0" fill="currentColor" />
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  {pinnedMessages.map((pMsg, idx) => (
-                    <div key={pMsg.id} className="flex justify-between items-center gap-3">
-                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
-                        <span className="font-bold mr-1">{pMsg.sender_email === userData.email ? 'You:' : currentChatName + ':'}</span>
-                        {pMsg.content}
+              <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 flex flex-col shadow-sm z-10 transition-all w-full overflow-hidden">
+                {/* Collapsed View / Header */}
+                <div 
+                  className="px-3 sm:px-4 md:px-6 py-2 flex items-center gap-2 cursor-pointer hover:bg-amber-100/50 transition-colors w-full min-w-0"
+                  onClick={() => {
+                    if (pinnedMessages.length === 1) {
+                      scrollToMessage(pinnedMessages[0].id);
+                    } else {
+                      setIsPinnedExpanded(!isPinnedExpanded);
+                    }
+                  }}
+                >
+                  <Pin size={14} className="text-amber-600 shrink-0 mt-0.5" fill="currentColor" />
+                  
+                  <div className="flex-1 min-w-0 flex justify-between items-center gap-3">
+                    {pinnedMessages.length === 1 ? (
+                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 min-w-0">
+                        <span className="font-bold mr-1">
+                          {pinnedMessages[0].sender_email === userData.email ? 'You:' : currentChatName + ':'}
+                        </span>
+                        {pinnedMessages[0].content}
                       </p>
-                      <button 
-                        onClick={() => handleTogglePin(pMsg.id, true)}
-                        className="text-amber-700/60 hover:text-amber-900 hover:bg-amber-100 p-1 rounded transition-colors shrink-0"
-                        title="Unpin message"
-                      >
-                        <X size={12} />
-                      </button>
+                    ) : (
+                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex items-center gap-2 flex-1 min-w-0">
+                        <span className="font-bold shrink-0">{pinnedMessages.length} Pinned Messages</span>
+                        <span className="hidden sm:inline text-amber-700/70 truncate min-w-0">- Latest: {pinnedMessages[pinnedMessages.length - 1].content}</span>
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {pinnedMessages.length === 1 ? (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleTogglePin(pinnedMessages[0].id, true); }}
+                          className="text-amber-700/60 hover:text-amber-900 hover:bg-amber-200/50 p-1 rounded transition-colors"
+                          title="Unpin message"
+                        >
+                          <X size={12} />
+                        </button>
+                      ) : (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-[var(--radius-sm)] shadow-sm shrink-0">
+                          {isPinnedExpanded ? 'Hide All' : 'Show All'}
+                        </span>
+                      )}
                     </div>
-                  ))}
+                  </div>
                 </div>
+
+                {/* Expanded View for Multiple Pins */}
+                {isPinnedExpanded && pinnedMessages.length > 1 && (
+                  <div className="flex flex-col border-t border-amber-200/50 bg-amber-50/50 w-full min-w-0">
+                    {pinnedMessages.map((pMsg) => (
+                      <div 
+                        key={pMsg.id} 
+                        className="flex justify-between items-center gap-3 px-3 sm:px-4 md:px-6 py-2.5 hover:bg-amber-100/50 cursor-pointer transition-colors border-b border-amber-100 last:border-0 w-full min-w-0"
+                        onClick={() => scrollToMessage(pMsg.id)}
+                      >
+                        <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 ml-6 min-w-0">
+                          <span className="font-bold mr-1">{pMsg.sender_email === userData.email ? 'You:' : currentChatName + ':'}</span>
+                          {pMsg.content}
+                        </p>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleTogglePin(pMsg.id, true); }}
+                          className="text-amber-700/60 hover:text-amber-900 hover:bg-amber-200/50 p-1 rounded transition-colors shrink-0"
+                          title="Unpin message"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -846,8 +917,8 @@ export default function ConversationTab({
               </div>
             )}
 
-            {/* MESSAGES SCROLL AREA (Modern Chat UI) */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar">
+            {/* MESSAGES SCROLL AREA */}
+            <div className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar">
               {isLoading ? (
                 <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
                   <Clock
@@ -869,7 +940,7 @@ export default function ConversationTab({
                   <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
                     {searchQuery
                       ? `We couldn't find "${searchQuery}" in this conversation.`
-                      : "Your messages are secure and directly sent to management."}
+                      : "Start a conversation to request information or coordinate operations."}
                   </p>
                 </div>
               ) : (
@@ -883,17 +954,20 @@ export default function ConversationTab({
                           ? msg.id
                           : `${msg.id}-${idx}`
                       }
-                      className={`w-full flex flex-col ${isMe ? "items-end" : "items-start"} animate-in fade-in duration-200 group`}
+                      id={`msg-${msg.id}`}
+                      className={`w-full flex flex-col ${isMe ? "items-end" : "items-start"} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                     >
                       <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                         {/* Bubble */}
                         <div
-                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed break-words font-medium shadow-[var(--shadow-sm)] border relative ${
+                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-[var(--shadow-sm)] border relative transition-all duration-500 ${
+                            highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
+                          } ${
                             isMe
                               ? "bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]"
                               : "bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]"
                           } ${isPending ? "opacity-60" : "opacity-100"}`}
-                          style={{ overflowWrap: "anywhere" }}
+                          style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
                         >
                           {msg.is_pinned && (
                             <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
@@ -907,7 +981,7 @@ export default function ConversationTab({
                         {!isPending && (
                           <button 
                             onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
-                            className={`opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
+                            className={`opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
                             title={msg.is_pinned ? "Unpin message" : "Pin message"}
                           >
                             {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
@@ -947,8 +1021,8 @@ export default function ConversationTab({
               <div ref={messagesEndRef} className="h-2" />
             </div>
 
-            {/* ✨ UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] z-10 relative">
+            {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
+            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-[var(--color-border)] z-10 relative">
               
               {/* TYPING INDICATOR (ABOVE INPUT) */}
               {isRemoteUserTyping && (
@@ -963,17 +1037,17 @@ export default function ConversationTab({
               )}
 
               <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
-                <div className="flex-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
+                <div className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange}
+                    onChange={handleMessageChange}  // <--- Using the dynamic handler!
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (newMessage.trim() && !isSending) {
                           handleSendMessage(e as any);
-                          e.currentTarget.style.height = 'auto';
+                          e.currentTarget.style.height = 'auto'; 
                         }
                       }
                     }}
@@ -1005,17 +1079,13 @@ export default function ConversationTab({
         )}
       </div>
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
+      <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
         .pb-safe { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-      `,
-        }}
-      />
+      `}} />
     </div>
   );
 }

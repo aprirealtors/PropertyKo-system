@@ -1012,7 +1012,7 @@ export default function OwnerDashboard() {
                                 
                                 <button
                                   onClick={(e) => handleInitiateDeleteNotification(e, notif)}
-                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                                  className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                                   title="Delete notification"
                                 >
                                   <Trash2 size={14} />
@@ -1932,7 +1932,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewActiveTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-bg)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">
+              <button onClick={() => setReviewActiveTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">
                 Close Details
               </button>
             </div>
@@ -2039,7 +2039,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
             </div>
           </div>
         </div>
@@ -2134,7 +2134,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewTicket(null)} className="w-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+              <button onClick={() => setReviewTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>
@@ -2306,14 +2306,14 @@ export default function OwnerDashboard() {
                   {/* --- END MODIFIED FULL NAME SECTION --- */}
 
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email Address</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Email Address</label>
                     <div className="w-full">
                       <p className="text-xs sm:text-sm font-bold text-[var(--color-text)]/80 break-all bg-slate-50 py-2 px-3 rounded-[var(--radius-md)] inline-block border border-[var(--color-border)] leading-normal">{userEmail || "Not available"}</p>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Owned Properties</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-2">Owned Properties</label>
                     <div className="text-xs sm:text-sm font-bold text-[var(--color-primary)] break-words leading-relaxed bg-[var(--color-primary)]/10 py-2 px-3 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
                       {myUnitsList.length > 0 
                         ? Object.entries(
