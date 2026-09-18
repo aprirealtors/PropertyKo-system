@@ -458,7 +458,7 @@ export default function MaintenanceDashboard() {
               {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
                   <p className="text-[15px] font-extrabold text-white truncate leading-none mb-1.5">{profile.name}</p>
-                  <p className="text-[10px] font-bold text-white/50 truncate uppercase tracking-widest leading-none">STAFF PROFILE</p>
+                  <p className="text-[10px] font-extrabold text-white/50 truncate uppercase tracking-widest leading-none">STAFF PROFILE</p>
                 </div>
               )}
 
@@ -518,7 +518,7 @@ export default function MaintenanceDashboard() {
       {/* 1. WORKSPACE PROFILE MODAL (STAFF PROFILE) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Staff Profile</h2>
@@ -563,7 +563,7 @@ export default function MaintenanceDashboard() {
                             setEditedName(profile.name);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -614,7 +614,7 @@ export default function MaintenanceDashboard() {
                   {/* --- END MODIFIED FULL NAME SECTION --- */}
                   
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1">Email Address</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 sm:mb-1">Email Address</label>
                     <div className="w-full">
                       <p className="text-xs sm:text-sm font-semibold text-slate-600 break-all bg-slate-50 py-2 px-3 rounded-xl inline-block border border-[var(--color-border)] leading-normal">
                         {userEmail}
@@ -623,8 +623,8 @@ export default function MaintenanceDashboard() {
                   </div>
                   
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Access Role</label>
-                    <span className="inline-flex text-[9px] sm:text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-3 sm:px-2 py-1 sm:py-0.5 rounded-lg sm:rounded-[var(--radius-sm)] tracking-widest uppercase shadow-sm sm:mt-1">
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-1">Access Role</label>
+                    <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                       Maintenance Staff
                     </span>
                   </div>
@@ -632,17 +632,19 @@ export default function MaintenanceDashboard() {
               </div>
 
               {/* --- Change Password Box --- */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5">
-                <div className="flex justify-between items-center mb-4">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+  
+                {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
+                <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : ''}`}>
                   <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-primary)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                     >
-                      <Key size={14} /> Change Password
+                      <Key size={12} strokeWidth={2.5} /> Change Password
                     </button>
                   )}
                 </div>
@@ -655,73 +657,74 @@ export default function MaintenanceDashboard() {
                         {passwordError}
                       </div>
                     )}
-                    
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Current Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <div className="relative group">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
                           required 
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
+                          autoFocus
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showCurrentPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
-                    
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">New Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <div className="relative group">
                         <input 
                           type={showNewPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showNewPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1.5">Confirm New Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <div className="relative group">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showConfirmPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-3">
                       <button 
                         type="button" 
                         onClick={() => {
@@ -735,19 +738,19 @@ export default function MaintenanceDashboard() {
                           setShowConfirmPassword(false);
                         }}
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-2.5 rounded-[var(--radius-md)] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs border border-transparent shadow-[var(--shadow-sm)]"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 transition-all text-xs border border-[var(--color-border)] active:scale-[0.98] shadow-sm"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-2.5 rounded-[var(--radius-md)] font-bold text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-colors shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-xl)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-[0.98] border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>
                         ) : (
-                          <><Lock size={14} /> Update Password</>
+                          <><Lock size={14} strokeWidth={2.5} /> Update Password</>
                         )}
                       </button>
                     </div>

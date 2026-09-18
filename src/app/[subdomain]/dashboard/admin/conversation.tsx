@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, ChevronLeft, MessageSquare, Search, 
-  X, Briefcase, Wrench, Key, Edit, Check, Shield, CheckCheck,
-  Pin, PinOff
+  X, Briefcase, Wrench, Key, Edit, Check, CheckCheck,
+  Pin, PinOff, CornerUpLeft, Copy
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
@@ -13,7 +13,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const [messages, setMessages] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string>(''); 
   const [newMessage, setNewMessage] = useState("");
-  // New state to remember what you were typing in each chat
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
 
   const [isLoading, setIsLoading] = useState(true);
@@ -27,18 +26,23 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false); 
 
-  // Pinned Message Accordion & Highlighting States
+  // Pinned Message & Highlighting States
   const [isPinnedExpanded, setIsPinnedExpanded] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+
+  // Reply & Mobile Long-Press States
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null);
 
   // Real-time states
   const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
   const onlineUsers = usePresence();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const channelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
 
   const scrollToBottom = () => {
@@ -46,14 +50,13 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   };
 
   const scrollToMessage = (msgId: string) => {
-    // Automatically hide the pinned messages list when a pin is clicked
     setIsPinnedExpanded(false); 
     
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setHighlightedMsgId(msgId);
-      setTimeout(() => setHighlightedMsgId(null), 3000); // Remove highlight after 3 seconds
+      setTimeout(() => setHighlightedMsgId(null), 3000);
     }
   };
 
@@ -76,12 +79,12 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     }
   }, [customNames, orgData?.admin_email]);
 
-  // FIX: Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setChatSearchQuery("");
     setIsPinnedExpanded(false);
     setHighlightedMsgId(null);
+    setReplyingTo(null);
     setNewMessage(messageDrafts[activeChat] || "");
     if (inputRef.current) {
       inputRef.current.style.height = '24px';
@@ -89,14 +92,8 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   }, [activeChat]);
 
   useEffect(() => {
-    if (orgData?.admin_email && adminProfile?.email) {
-      fetchData();
-    }
-  }, [orgData, adminProfile]);
-
-  useEffect(() => {
     if (!chatSearchQuery && !highlightedMsgId) scrollToBottom();
-  }, [messages, activeChat, chatSearchQuery, highlightedMsgId]);
+  }, [messages.length, activeChat, chatSearchQuery]); 
 
   const isMessageForContact = (msg: any, contactId: string) => {
     return msg.tenant_email === contactId;
@@ -108,7 +105,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       if (!activeContact || !orgData?.admin_email || messages.length === 0) return;
 
       const unreadIds = messages
-        .filter(m => !m.is_read && m.sender_email !== adminProfile.email && isMessageForContact(m, activeContact.id) && m.recipient_role === 'admin')
+        .filter(m => !m.is_read && m.sender_email !== adminProfile?.email && isMessageForContact(m, activeContact.id) && m.recipient_role === 'admin')
         .map(m => m.id);
 
       if (unreadIds.length === 0) return;
@@ -125,9 +122,79 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   }, [activeChat, messages, orgData?.admin_email, adminProfile?.email, contacts]);
 
   useEffect(() => {
-    if (!orgData?.admin_email || !adminProfile?.email) return;
+    const fetchChatData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: adminMsgs } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('admin_email', orgData.admin_email)
+          .eq('recipient_role', 'admin');
 
-    // We pass broadcast configurations to enable typing indicators
+        let sentMsgs: any[] = [];
+        if (adminProfile?.email) {
+          const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('admin_email', orgData.admin_email)
+            .eq('sender_email', adminProfile.email);
+          sentMsgs = data || [];
+        }
+
+        const allMsgsMap = new Map();
+        [...(adminMsgs || []), ...sentMsgs].forEach(m => allMsgsMap.set(m.id, m));
+        setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+
+        const { data: usersData } = await supabase
+          .from('team_members')
+          .select('name, email, role, access_level')
+          .eq('admin_email', orgData.admin_email)
+          .in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager']); 
+
+        const contactsMap = new Map();
+
+        if (usersData) {
+          usersData.forEach(user => {
+            if (user.email && user.email.trim() !== '') { 
+              let icon = User;
+              let type = user.role ? user.role.toLowerCase() : 'tenant';
+              let unitLabel = user.access_level || 'No assignments';
+
+              if (user.role === 'Owner') { icon = Key; type = 'owner'; }
+              if (user.role === 'Property manager') { icon = Briefcase; type = 'manager'; unitLabel = 'Maintenance & Daily Operations'; }
+              if (user.role === 'Maintenance staff') { icon = Wrench; type = 'maintenance'; unitLabel = 'Repairs & Operations'; }
+              if (user.role === 'Tenant') { type = 'tenant'; }
+
+              contactsMap.set(user.email, { 
+                id: user.email, name: user.name || user.email, unit: unitLabel, type: type, icon: icon
+              });
+            }
+          });
+        }
+        setContacts(Array.from(contactsMap.values()));
+
+        const initialNames: Record<string, string> = {};
+        contactsMap.forEach((val, key) => { initialNames[key] = val.name; });
+        setCustomNames(prev => ({ ...initialNames, ...prev }));
+
+      } catch (error) {
+        console.error("Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (orgData?.admin_email) {
+      fetchChatData();
+    } else {
+      const timer = setTimeout(() => setIsLoading(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [orgData?.admin_email, adminProfile?.email]);
+
+  useEffect(() => {
+    if (!orgData?.admin_email) return;
+
     const channel = supabase.channel(`chat-room-${orgData.admin_email}`, {
       config: { broadcast: { ack: false, self: false } }
     });
@@ -138,12 +205,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
         (payload) => {
           const msg = payload.new;
-          if (msg.recipient_role === 'admin' || msg.sender_email === adminProfile.email) {
+          if (msg.recipient_role === 'admin' || msg.sender_email === adminProfile?.email) {
             setMessages((current) => {
               if (current.some(m => m.id === msg.id)) return current;
               return [...current, msg];
             });
-            // Auto-clear typing indicator when a message is received
             setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
           }
         }
@@ -156,60 +222,14 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
         const { sender, recipient, isTyping } = payload.payload;
-        // FIX: Ensure we only show typing indicators explicitly directed to the Admin!
-        if (recipient === adminProfile.email || recipient === 'admin') {
+        if (recipient === adminProfile?.email || recipient === 'admin') {
           setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [orgData, adminProfile]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const { data: adminMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('recipient_role', 'admin');
-      const { data: sentMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('sender_email', adminProfile.email);
-
-      const allMsgsMap = new Map();
-      [...(adminMsgs || []), ...(sentMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
-      setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-
-      const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager']); 
-
-      const contactsMap = new Map();
-
-      if (usersData) {
-        usersData.forEach(user => {
-          if (user.email && user.email.trim() !== '') { 
-            let icon = User;
-            let type = user.role ? user.role.toLowerCase() : 'tenant';
-            let unitLabel = user.access_level || 'No assignments';
-
-            if (user.role === 'Owner') { icon = Key; type = 'owner'; }
-            if (user.role === 'Property manager') { icon = Briefcase; type = 'manager'; unitLabel = 'Maintenance & Daily Operations'; }
-            if (user.role === 'Maintenance staff') { icon = Wrench; type = 'maintenance'; unitLabel = 'Repairs & Operations'; }
-            if (user.role === 'Tenant') { type = 'tenant'; }
-
-            contactsMap.set(user.email, { 
-              id: user.email, name: user.name || user.email, unit: unitLabel, type: type, icon: icon
-            });
-          }
-        });
-      }
-      setContacts(Array.from(contactsMap.values()));
-
-      const initialNames: Record<string, string> = {};
-      contactsMap.forEach((val, key) => { initialNames[key] = val.name; });
-      setCustomNames(prev => ({ ...initialNames, ...prev }));
-
-    } catch (error) {
-      console.error("Fetch Error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [orgData?.admin_email, adminProfile?.email]);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -219,8 +239,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
 
-    // Handle typing indicator broadcast
-    if (!isTypingRef.current && channelRef.current && activeChat) {
+    if (!isTypingRef.current && channelRef.current && activeChat && adminProfile?.email) {
       isTypingRef.current = true;
       channelRef.current.send({
         type: 'broadcast', event: 'typing',
@@ -232,7 +251,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      if (channelRef.current && activeChat) {
+      if (channelRef.current && activeChat && adminProfile?.email) {
         channelRef.current.send({
           type: 'broadcast', event: 'typing',
           payload: { sender: adminProfile.email, recipient: activeChat, isTyping: false }
@@ -248,14 +267,21 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     const activeContact = contacts.find(c => c.id === activeChat);
     if (!activeContact) return;
 
-    const textToSend = newMessage.trim();
+    let textToSend = newMessage.trim();
+    
+    if (replyingTo) {
+      const snippet = replyingTo.content.length > 60 ? replyingTo.content.substring(0, 60) + "..." : replyingTo.content;
+      const senderName = replyingTo.sender_email === adminProfile?.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
+      textToSend = `> Replying to ${senderName}:\n> "${snippet}"\n\n${textToSend}`;
+    }
+
     setIsSending(true);
     setNewMessage("");
-    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
+    setReplyingTo(null);
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" }));
 
-    // Clear typing status immediately upon sending
     isTypingRef.current = false;
-    if (channelRef.current) {
+    if (channelRef.current && adminProfile?.email) {
       channelRef.current.send({
         type: 'broadcast', event: 'typing',
         payload: { sender: adminProfile.email, recipient: activeChat, isTyping: false }
@@ -272,7 +298,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     const payload = {
       tenant_email: activeChat, 
       admin_email: orgData.admin_email,
-      sender_email: adminProfile.email,
+      sender_email: adminProfile?.email || 'admin',
       content: textToSend,
       is_from_tenant: false, 
       recipient_role: activeContact.type === 'tenant' ? 'admin' : activeContact.type, 
@@ -314,6 +340,17 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       console.error("Failed to toggle pin status:", err);
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: currentPinStatus } : m));
     }
+  };
+
+  const handleTouchStart = (msgId: string) => {
+    longPressTimeoutRef.current = setTimeout(() => {
+      setLongPressedMsgId(msgId);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+  };
+
+  const handleTouchEndOrMove = () => {
+    if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current);
   };
 
   const getLastMessage = (contactId: string) => {
@@ -358,9 +395,26 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     return null;
   };
 
+  const renderMessageContent = (content: string) => {
+    const replyMatch = content.match(/^> Replying to (.*?):\n> "(.*?)"\n\n([\s\S]*)$/);
+    if (replyMatch) {
+      const [_, sender, snippet, actualMessage] = replyMatch;
+      return (
+        <div className="flex flex-col gap-1.5 text-left w-full">
+          <div className="bg-black/10 rounded border-l-[3px] border-current px-2.5 py-1.5 text-[11px] sm:text-[12px] opacity-80 shadow-sm leading-tight">
+            <span className="font-extrabold">{sender}</span><br/>
+            <span className="truncate block mt-0.5 line-clamp-1 italic text-[10px] sm:text-[11px]">{snippet}</span>
+          </div>
+          <span>{actualMessage}</span>
+        </div>
+      );
+    }
+    return <span>{content}</span>;
+  };
+
   return (
     <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
-
+      
       {/* SIDEBAR */}
       <div className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
 
@@ -400,14 +454,14 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               const isActive = activeChat === contact.id;
               const lastMsg = getLastMessage(contact.id);
               const displayTime = lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-              const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== adminProfile.email && isMessageForContact(m, contact.id)).length;
+              const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== adminProfile?.email && isMessageForContact(m, contact.id)).length;
               const isOnline = onlineUsers.includes(contact.id);
               const isTyping = remoteTyping[contact.id];
               const ContactIcon = contact.icon;
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
-                if (lastMsg.sender_email === adminProfile.email) return "You:";
+                if (lastMsg.sender_email === adminProfile?.email) return "You:";
                 const senderName = customNames[contact.id] || contact.name;
                 const firstName = senderName.split(' ')[0];
                 return `${firstName}:`;
@@ -551,7 +605,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                     {pinnedMessages.length === 1 ? (
                       <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 min-w-0">
                         <span className="font-bold mr-1">
-                          {pinnedMessages[0].sender_email === adminProfile.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}
+                          {pinnedMessages[0].sender_email === adminProfile?.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}
                         </span>
                         {pinnedMessages[0].content}
                       </p>
@@ -590,7 +644,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                         onClick={() => scrollToMessage(pMsg.id)}
                       >
                         <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 ml-6 min-w-0">
-                          <span className="font-bold mr-1">{pMsg.sender_email === adminProfile.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}</span>
+                          <span className="font-bold mr-1">{pMsg.sender_email === adminProfile?.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}</span>
                           {pMsg.content}
                         </p>
                         <button 
@@ -637,7 +691,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 </div>
               ) : (
                 displayedMessages.map((msg: any, idx: number) => {
-                  const isMe = msg.sender_email === adminProfile.email;
+                  const isMe = msg.sender_email === adminProfile?.email;
                   const isPending = msg.id.toString().startsWith('temp_');
                   return (
                     <div 
@@ -646,34 +700,51 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                       className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                     >
                       <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                        {/* Bubble */}
+                        
+                        {/* Bubble wrapper for touch events */}
                         <div 
-                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 ${
-                            highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
-                          } ${
-                            isMe 
-                              ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                              : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
-                          } ${isPending ? 'opacity-60' : 'opacity-100'}`}
-                          style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                          className="relative"
+                          onTouchStart={() => !isPending && handleTouchStart(msg.id)}
+                          onTouchEnd={handleTouchEndOrMove}
+                          onTouchMove={handleTouchEndOrMove}
                         >
-                          {msg.is_pinned && (
-                            <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
-                              <Pin size={10} fill="currentColor" />
-                            </div>
-                          )}
-                          {msg.content}
+                          <div 
+                            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
+                              highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
+                            } ${
+                              isMe 
+                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                            } ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                            style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                          >
+                            {msg.is_pinned && (
+                              <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
+                                <Pin size={10} fill="currentColor" />
+                              </div>
+                            )}
+                            {renderMessageContent(msg.content)}
+                          </div>
                         </div>
                         
-                        {/* Message Actions (Hover/Mobile Visible) */}
+                        {/* Message Actions (Hover Visible on Desktop) */}
                         {!isPending && (
-                          <button 
-                            onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
-                            className={`opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
-                            title={msg.is_pinned ? "Unpin message" : "Pin message"}
-                          >
-                            {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
-                          </button>
+                          <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <button 
+                              onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
+                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[var(--color-primary)] transition-colors"
+                              title="Reply"
+                            >
+                              <CornerUpLeft size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
+                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-amber-600 transition-colors"
+                              title={msg.is_pinned ? "Unpin message" : "Pin message"}
+                            >
+                              {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -697,7 +768,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
             </div>
 
             {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-[var(--color-border)] z-10 relative">
+            <div className="shrink-0 px-3 py-3 sm:px-4 sm:py-4 bg-white border-t border-[var(--color-border)] z-10 relative flex flex-col items-center">
 
               {/* TYPING INDICATOR (ABOVE INPUT) */}
               {isRemoteUserTyping && (
@@ -711,12 +782,27 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 </div>
               )}
 
-              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
-                <div className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
+              {/* REPLYING TO BANNER */}
+              {replyingTo && (
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center -mb-1 pb-2 z-0 animate-in slide-in-from-bottom-2">
+                  <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
+                    <span className="text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-wider">
+                      Replying to {replyingTo.sender_email === adminProfile?.email ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
+                    </span>
+                    <span className="text-[11px] sm:text-xs text-slate-500 truncate line-clamp-1">{replyingTo.content}</span>
+                  </div>
+                  <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
+                <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange}  // <--- Using the dynamic handler!
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -753,6 +839,60 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
           </>
         )}
       </div>
+
+      {/* Global Mobile Bottom Sheet for Long Press Actions */}
+      {longPressedMsgId && (
+        <>
+          <div 
+            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
+            onClick={() => setLongPressedMsgId(null)} 
+          />
+          <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
+            
+            {(() => {
+              const msg = messages.find(m => m.id === longPressedMsgId);
+              if (!msg) return null;
+              
+              return (
+                <div className="flex justify-around items-center max-w-sm mx-auto">
+                  <button 
+                    onClick={() => { setReplyingTo(msg); setLongPressedMsgId(null); setTimeout(() => inputRef.current?.focus(), 50); }} 
+                    className="flex flex-col items-center gap-3 text-slate-600 active:scale-95 transition-transform"
+                  >
+                    <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shadow-sm">
+                      <CornerUpLeft size={22} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Reply</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { navigator.clipboard.writeText(msg.content); setLongPressedMsgId(null); }} 
+                    className="flex flex-col items-center gap-3 text-slate-600 active:scale-95 transition-transform"
+                  >
+                    <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shadow-sm">
+                      <Copy size={22} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Copy</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { handleTogglePin(msg.id, msg.is_pinned); setLongPressedMsgId(null); }} 
+                    className={`flex flex-col items-center gap-3 active:scale-95 transition-transform ${msg.is_pinned ? 'text-amber-600' : 'text-slate-600'}`}
+                  >
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${msg.is_pinned ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
+                      {msg.is_pinned ? <PinOff size={22} strokeWidth={2.5} /> : <Pin size={22} strokeWidth={2.5} />}
+                    </div>
+                    <span className={`text-[11px] font-bold uppercase tracking-wider ${msg.is_pinned ? 'text-amber-600' : 'text-slate-500'}`}>
+                      {msg.is_pinned ? 'Unpin' : 'Pin'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

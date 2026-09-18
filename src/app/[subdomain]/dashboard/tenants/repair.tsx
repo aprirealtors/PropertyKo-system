@@ -390,10 +390,10 @@ export default function RepairTab({ highlightTicketId }: any) {
         <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
           <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
             <span className="flex items-center gap-2">
-              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20"><Inbox size={16} strokeWidth={2.5} /></div>
+              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20"><Inbox size={16} strokeWidth={2.5} /></div>
               Active Requests
             </span>
-            <span className="bg-white border border-[var(--color-border)] text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
+            <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
               {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
             </span>
           </h4>
@@ -411,7 +411,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                     key={t.id} 
                     id={`ticket-${t.id}`}
                     onClick={() => setReviewActiveTicket(t)}
-                    className={`group h-[200px] shrink-0 bg-white rounded-[1.5rem] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
+                    className={`group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
                       isHighlighted ? 'ring-4 ring-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 border-[var(--color-primary)] scale-[1.02] shadow-[var(--shadow-lg)] animate-pulse z-10' : 
                       t.priority === 'Urgent' ? 'border-l-4 border-l-red-500 border-t-[var(--color-border)] border-r-[var(--color-border)] border-b-[var(--color-border)] shadow-[var(--shadow-sm)]' : 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:border-[var(--color-primary)]/50'
                     }`}
@@ -421,7 +421,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                       <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
                     </div>
 
-                    <p className="text-[var(--color-primary)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                     </p>
 
@@ -433,7 +433,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                     <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--color-secondary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-sm border border-transparent">
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-sm border border-transparent">
                           {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                         </div>
                         <div className="flex flex-col">
@@ -454,7 +454,7 @@ export default function RepairTab({ highlightTicketId }: any) {
         <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
           <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
             <span className="flex items-center gap-2">
-              <div className="p-1.5 bg-amber-100 text-amber-600 rounded-[var(--radius-sm)] border border-amber-200"><PauseCircle size={16} strokeWidth={2.5} /></div>
+              <div className="p-1.5 bg-amber-100 text-amber-600 rounded-[var(--radius-xl)] border border-amber-200"><PauseCircle size={16} strokeWidth={2.5} /></div>
               Delayed / On Hold
             </span>
             <span className="bg-white border border-[var(--color-border)] text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
@@ -475,14 +475,14 @@ export default function RepairTab({ highlightTicketId }: any) {
                     key={t.id} 
                     id={`ticket-${t.id}`}
                     onClick={() => setReviewOnHoldTicket(t)}
-                    className="group h-[200px] shrink-0 bg-white rounded-[1.5rem] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[var(--shadow-sm)]"
+                    className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[var(--shadow-sm)]"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
-                      <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
+                      <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-xl)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] text-amber-700 border-amber-200/60`}>{t.label}</span>
                     </div>
 
-                    <p className="text-[var(--color-primary)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                     </p>
 
@@ -495,7 +495,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                     <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-amber-200">
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-amber-200">
                           {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                         </div>
                         <div className="flex flex-col">
@@ -536,14 +536,14 @@ export default function RepairTab({ highlightTicketId }: any) {
                     key={t.id} 
                     id={`ticket-${t.id}`}
                     onClick={() => setReviewTicket(t)} 
-                    className="group h-[200px] shrink-0 bg-white rounded-[1.5rem] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5"
+                    className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
                       <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
                     </div>
                     
-                    <p className="text-slate-500 font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                    <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                       <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                     </p>
 
@@ -556,7 +556,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                     <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-[10px] font-bold border border-[var(--color-primary)]/20">
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[10px] font-bold border border-[var(--color-primary)]/20">
                           {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                         </div>
                         <div className="flex flex-col">
@@ -594,7 +594,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 1. ENTERPRISE REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
             
             <div className="px-5 py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
               <div>
@@ -717,7 +717,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 2. ACTIVE REQUEST DETAILS MODAL */}
       {reviewActiveTicket && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
@@ -817,7 +817,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 3. REVIEW RESOLUTION MODAL */}
       {reviewTicket && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
@@ -964,10 +964,10 @@ export default function RepairTab({ highlightTicketId }: any) {
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-purple-200/60 shadow-[var(--shadow-sm)]">Update</span>
+                      <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-amber-200/60 shadow-[var(--shadow-sm)]">Update</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Staff Report</span>
                     </div>
-                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border ${reviewOnHoldTicket.color} shrink-0 shadow-[var(--shadow-sm)]`}>
+                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
                       {reviewOnHoldTicket.label}
                     </span>
                   </div>
@@ -1044,7 +1044,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 // -------------------------------------------------------------
 function KanbanSkeleton() {
   return (
-    <div className="h-[200px] shrink-0 bg-white rounded-[1.5rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
+    <div className="h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
       <div className="p-5 flex-1 flex flex-col gap-3">
         <div className="flex justify-between items-center mb-1 shrink-0">
           <div className="h-5 bg-slate-200 rounded-md w-1/2"></div>

@@ -436,7 +436,6 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
 
                   <AttentionItem label="Avg Repair Turn Around" value={`${avgTurnaroundDays} Days`} isUrgent={Number(avgTurnaroundDays) > 7} color="text-amber-500" />
 
-                  <AttentionItem label="Days in A/R (DSO)" value="--" isUrgent={false} />
                 </div>
 
                 <button 

@@ -132,7 +132,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
           </div>
           <div className="relative z-10 mt-2">
             <p className="text-4xl md:text-5xl font-black text-[var(--color-secondary)] tracking-tight group-hover:text-[var(--color-primary)] transition-colors duration-300">{metrics.assigned}</p>
-            <h3 className="text-slate-400 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Active Assigned</h3>
+            <h3 className="text-slate-400 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Active Assigned</h3>
           </div>
         </div>
 
@@ -154,7 +154,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
           </div>
           <div className="relative z-10 mt-2">
             <p className="text-4xl md:text-5xl font-black text-red-600 tracking-tight">{metrics.dueToday}</p>
-            <h3 className="text-red-400 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Urgent Tasks</h3>
+            <h3 className="text-red-400 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Urgent Tasks</h3>
           </div>
         </div>
 
@@ -170,19 +170,19 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
           </div>
           <div className="relative z-10 mt-2">
             <p className="text-4xl md:text-5xl font-black text-[var(--color-primary-text)] tracking-tight drop-shadow-sm">{metrics.doneThisWeek}</p>
-            <h3 className="text-[var(--color-primary-text)] opacity-80 text-xs md:text-sm font-bold mt-1 uppercase tracking-wider">Done Tasks</h3>
+            <h3 className="text-[var(--color-primary-text)] opacity-80 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Done Tasks</h3>
           </div>
         </div>
       </div>
 
       {/* 🚀 UP NEXT SECTION */}
-      <section className="bg-white rounded-[1.5rem] p-5 md:p-8 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
+      <section className="bg-white rounded-[var(--radius-xl)] p-5 md:p-8 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-6 border-b border-[var(--color-border)]/50 pb-5">
           <div className="flex items-center gap-3 md:gap-4">
             <div className="w-2 h-7 bg-[var(--color-primary)] rounded-full shadow-sm"></div>
             <h3 className="font-black text-lg sm:text-xl md:text-2xl text-[var(--color-secondary)] tracking-tight">Up Next For You</h3>
           </div>
-          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:text-[var(--color-primary-text)] hover:bg-[var(--color-primary)] px-4 py-2.5 rounded-[var(--radius-md)] transition-all hidden sm:flex items-center gap-1.5 group shadow-[var(--shadow-sm)] active:scale-95 border border-[var(--color-primary)]/20 hover:border-transparent">
+          <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-black bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 px-4 py-2.5 rounded-[var(--radius-md)] transition-all hidden sm:flex items-center gap-1.5 group shadow-[var(--shadow-sm)] active:scale-95 border border-[var(--color-primary)]/20 hover:border-transparent">
             View All Tasks <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
           </button>
         </div>

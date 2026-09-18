@@ -443,11 +443,11 @@ export default function FinancialTab({ userData, units }: any) {
                           </div>
                         </div>
                         <div className="flex flex-col items-end shrink-0 gap-1.5">
-                          {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
-                          {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
-                          {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
-                          {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
-                          {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-white border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
+                          {status === 'Paid' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-[var(--color-primary-text)] border-transparent' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>Paid</span>}
+                          {status === 'Overdue' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-[var(--color-primary-text)] border-transparent' : 'bg-red-50 text-red-600 border-red-100'}`}>Overdue</span>}
+                          {status === 'Pending' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-[var(--color-primary-text)] border-transparent' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>Pending</span>}
+                          {status === 'Sent' && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-[var(--color-primary-text)] border-transparent' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>Sent</span>}
+                          {(!status || status === 'Pending' && !allSoaConfigs[unit.id]) && <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-[var(--radius-sm)] border shadow-sm shrink-0 ${isSelected ? 'bg-white/20 text-[var(--color-primary-text)] border-transparent' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>Unassigned</span>}
                         </div>
                       </div>
                     )
@@ -663,7 +663,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </div>
                       <button 
                         onClick={handleExportCSV}
-                        className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 px-4 sm:px-5 py-2.5 rounded-[var(--radius-sm)] transition-all active:scale-95 border border-transparent shadow-[var(--shadow-sm)] shrink-0"
+                        className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 px-4 sm:px-5 py-2.5 rounded-[var(--radius-sm)] transition-all active:scale-95 border border-transparent shadow-[var(--shadow-sm)] shrink-0"
                       >
                         <Download size={16} className="w-4 h-4" /> Export CSV
                       </button>
@@ -671,7 +671,7 @@ export default function FinancialTab({ userData, units }: any) {
                     
                     <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] custom-scrollbar relative shadow-[var(--shadow-inner)]">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold border-b border-transparent sticky top-0 z-10 shadow-md">
+                        <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-center font-extrabold border-b border-transparent sticky top-0 z-10 shadow-md">
                           <tr>
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">PERIOD</th>
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">DUE DATE</th>
@@ -681,11 +681,11 @@ export default function FinancialTab({ userData, units }: any) {
                             <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white border-r border-red-700 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">
                               PENALTY
                             </th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest">STATUS</th>
-                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-white text-[9px] sm:text-[10px] uppercase tracking-widest">TOTAL</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap border-r border-white/20 text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">STATUS</th>
+                            <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">TOTAL</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white font-medium">
+                        <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] text-center bg-white font-medium">
                           {ledgerData.map((row, idx) => {
                             const isRowPaid = row.status === 'Paid';
                             const activeRow = row.isCurrentMonth;
@@ -694,15 +694,16 @@ export default function FinancialTab({ userData, units }: any) {
                             
                             return (
                               <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20" : "hover:bg-slate-50"}`}>
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-black uppercase text-[10px] sm:text-[11px] tracking-wide ${activeRow ? 'text-[var(--color-primary)]' : 'text-[var(--color-secondary)]'}`}>
-                                  {row.monthName} {row.year} {activeRow && <span className="ml-1 text-lg leading-none align-middle text-[var(--color-primary)]">•</span>}
+                                <td className={`relative px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap font-black uppercase text-[10px] sm:text-[11px] tracking-wide border-r border-[var(--color-border)] ${activeRow ? 'text-[var(--color-primary)]' : 'text-[var(--color-secondary)]'}`}>
+                                {activeRow && <div className="absolute inset-y-0 left-0 w-1 bg-[var(--color-primary)] rounded-r-sm pointer-events-none"></div>}
+                                {row.monthName} {row.year} {activeRow && <span className="ml-1 text-[9px] leading-none align-middle text-[var(--color-primary)]">(NOW)</span>}
                                 </td>
                                 <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-500 font-medium text-[11px] sm:text-xs">{row.dueDate}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</td>
-                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] text-center sm:text-xs">{ownerDues > 0 ? `₱${ownerDues.toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] text-center sm:text-xs">{ownerParking > 0 ? `₱${ownerParking.toLocaleString()}` : "0"}</td>
+                                <td className="px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-medium text-[11px] text-center sm:text-xs">{(ownerWater + ownerElectricity) > 0 ? `₱${(ownerWater + ownerElectricity).toLocaleString()}` : "0"}</td>
                                 
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-bold text-[11px] sm:text-xs ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] font-bold text-[11px] text-center sm:text-xs ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-400'}`}>
                                   {rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}
                                 </td>
                                 
@@ -715,7 +716,7 @@ export default function FinancialTab({ userData, units }: any) {
                                   {row.status === 'Upcoming' && <span className="text-slate-400">Upcoming</span>}
                                 </td>
 
-                                <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
+                                <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text)]'}`}>
                                   ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                                 </td>
                               </tr>
@@ -876,7 +877,7 @@ export default function FinancialTab({ userData, units }: any) {
                     {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                   </span>
                 </div>
-                <span className="font-black text-[var(--color-primary)] text-2xl sm:text-3xl tracking-tight shrink-0">
+                <span className="font-black text-[var(--color-text)] text-2xl sm:text-3xl tracking-tight shrink-0">
                   ₱{ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </span>
               </div>
@@ -889,7 +890,7 @@ export default function FinancialTab({ userData, units }: any) {
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
-                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-[var(--shadow-sm)] truncate ${paymentMethod === method ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-2 border-[var(--color-primary)]/40 shadow-[0_2px_8px_rgba(0,0,0,0.1)]' : 'bg-white text-slate-500 border border-[var(--color-border)] hover:bg-slate-50 hover:border-[var(--color-primary)]/30'}`}
+                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-[var(--radius-xl)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-[var(--shadow-sm)] truncate ${paymentMethod === method ? 'bg-[var(--color-primary)] text-[var(--color-text)] border-2 border-[var(--color-primary)]/40 shadow-[0_2px_8px_rgba(0,0,0,0.1)]' : 'bg-white text-slate-500 border border-[var(--color-border)] hover:bg-slate-50 hover:border-[var(--color-primary)]/30'}`}
                     >
                       {method}
                     </button>
@@ -920,9 +921,9 @@ export default function FinancialTab({ userData, units }: any) {
                     <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-[var(--color-border)] pb-2">Admin Bank Details</p>
                     {activeBankName || activeBankAccountNumber ? (
                       <div className="bg-slate-50 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] space-y-3">
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{activeBankName}</span></p>
-                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs truncate text-right">{activeBankAccountName}</span></p>
-                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{activeBankAccountNumber}</span></div>
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Bank:</span> <span className="font-black text-[var(--color-text)] text-[11px] sm:text-xs truncate text-right">{activeBankName}</span></p>
+                        <p className="flex justify-between items-center gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Name:</span> <span className="font-black text-[var(--color-text)] text-[11px] sm:text-xs truncate text-right">{activeBankAccountName}</span></p>
+                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{activeBankAccountNumber}</span></div>
                       </div>
                     ) : (
                       <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)]">Bank details will be displayed here once configured by the administration.</p>
@@ -933,7 +934,7 @@ export default function FinancialTab({ userData, units }: any) {
                   <div className="space-y-2 text-center py-3 sm:py-4">
                     <p className="text-[11px] sm:text-xs font-bold text-slate-500">Make checks payable to:</p>
                     <p className="font-black text-base sm:text-lg text-[var(--color-secondary)] break-words px-2 leading-tight">{activeBankAccountName || 'HOA Administration'}</p>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-sm)] mt-4 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-[var(--color-text)] bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-xl)] mt-4 uppercase tracking-wide leading-relaxed">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}
                 {paymentMethod === 'Cash' && (

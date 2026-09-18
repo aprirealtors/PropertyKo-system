@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, ChevronLeft, MessageSquare, Search, 
   X, Briefcase, Wrench, Key, Edit, Check, Shield, CheckCheck,
-  Pin, PinOff
+  Pin, PinOff, CornerUpLeft, Copy
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
@@ -32,14 +32,19 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   const [isPinnedExpanded, setIsPinnedExpanded] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
+  // Reply & Mobile Long-Press States
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null);
+
   // Real-time states
   const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
   const onlineUsers = usePresence();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const channelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
 
   const scrollToBottom = () => {
@@ -83,6 +88,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     setChatSearchQuery("");
     setIsPinnedExpanded(false);
     setHighlightedMsgId(null);
+    setReplyingTo(null);
     setNewMessage(messageDrafts[activeChat] || "");
     if (inputRef.current) {
       inputRef.current.style.height = '24px';
@@ -90,14 +96,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   }, [activeChat]);
 
   useEffect(() => {
-    if (orgData?.admin_email && managerProfile?.email) {
-      fetchData();
-    }
-  }, [orgData, managerProfile]);
-
-  useEffect(() => {
     if (!chatSearchQuery && !highlightedMsgId) scrollToBottom();
-  }, [messages, activeChat, chatSearchQuery, highlightedMsgId]);
+  }, [messages.length, activeChat, chatSearchQuery]);
 
   const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
     if (contactType === 'admin') {
@@ -130,6 +130,76 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     };
     markAsRead();
   }, [activeChat, messages, orgData?.admin_email, managerProfile?.email, contacts]);
+
+  useEffect(() => {
+    const fetchChatData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: tenantMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('recipient_role', 'manager');
+        const { data: sysMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).or(`tenant_email.eq.${managerProfile.email},sender_email.eq.${managerProfile.email}`).in('recipient_role', ['admin', 'maintenance']);
+
+        const allMsgsMap = new Map();
+        [...(tenantMsgs || []), ...(sysMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
+        setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+
+        const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff']); 
+
+        const contactsMap = new Map();
+        
+        contactsMap.set(orgData.admin_email, { 
+          id: orgData.admin_email, 
+          name: 'Admin', 
+          unit: 'System & Account Support', 
+          type: 'admin', 
+          icon: Shield 
+        });
+
+        if (usersData) {
+          usersData.forEach(user => {
+            if (user.email && user.email.trim() !== '') { 
+              let unitLabel = user.access_level ? user.access_level : 'No unit assigned';
+              let icon = User;
+              let type = user.role.toLowerCase();
+
+              if (user.role === 'Owner') { icon = Key; type = 'owner'; }
+              if (user.role === 'Maintenance staff') {
+                icon = Wrench;
+                unitLabel = 'Repairs & Operations';
+                type = 'maintenance'; 
+              }
+              if (user.role === 'Tenant') { type = 'tenant'; }
+              
+              contactsMap.set(user.email, { 
+                id: user.email, 
+                name: user.name || user.email, 
+                unit: unitLabel,
+                type: type, 
+                icon: icon
+              });
+            }
+          });
+        }
+
+        setContacts(Array.from(contactsMap.values()));
+
+        const initialNames: Record<string, string> = {};
+        contactsMap.forEach((val, key) => { initialNames[key] = val.name; });
+        setCustomNames(prev => ({ ...initialNames, ...prev }));
+
+      } catch (error) {
+        console.error("Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (orgData?.admin_email && managerProfile?.email) {
+      fetchChatData();
+    } else {
+      const timer = setTimeout(() => setIsLoading(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [orgData?.admin_email, managerProfile?.email]);
 
   useEffect(() => {
     if (!orgData?.admin_email || !managerProfile?.email) return;
@@ -175,68 +245,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [orgData, managerProfile]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const { data: tenantMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('recipient_role', 'manager');
-      const { data: sysMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).or(`tenant_email.eq.${managerProfile.email},sender_email.eq.${managerProfile.email}`).in('recipient_role', ['admin', 'maintenance']);
-
-      const allMsgsMap = new Map();
-      [...(tenantMsgs || []), ...(sysMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
-      setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-
-      const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff']); 
-
-      const contactsMap = new Map();
-      
-      contactsMap.set(orgData.admin_email, { 
-        id: orgData.admin_email, 
-        name: 'Admin', 
-        unit: 'System & Account Support', 
-        type: 'admin', 
-        icon: Shield 
-      });
-
-      if (usersData) {
-        usersData.forEach(user => {
-          if (user.email && user.email.trim() !== '') { 
-            let unitLabel = user.access_level ? user.access_level : 'No unit assigned';
-            let icon = User;
-            let type = user.role.toLowerCase();
-
-            if (user.role === 'Owner') { icon = Key; type = 'owner'; }
-            if (user.role === 'Maintenance staff') {
-              icon = Wrench;
-              unitLabel = 'Repairs & Operations';
-              type = 'maintenance'; 
-            }
-            if (user.role === 'Tenant') { type = 'tenant'; }
-            
-            contactsMap.set(user.email, { 
-              id: user.email, 
-              name: user.name || user.email, 
-              unit: unitLabel,
-              type: type, 
-              icon: icon
-            });
-          }
-        });
-      }
-
-      setContacts(Array.from(contactsMap.values()));
-
-      const initialNames: Record<string, string> = {};
-      contactsMap.forEach((val, key) => { initialNames[key] = val.name; });
-      setCustomNames(prev => ({ ...initialNames, ...prev }));
-
-    } catch (error) {
-      console.error("Fetch Error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [orgData?.admin_email, managerProfile?.email]);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -275,9 +284,18 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     const activeContact = contacts.find(c => c.id === activeChat);
     if (!activeContact) return;
 
-    const textToSend = newMessage.trim();
+    let textToSend = newMessage.trim();
+
+    // Append reply quote if replying to a message
+    if (replyingTo) {
+      const snippet = replyingTo.content.length > 60 ? replyingTo.content.substring(0, 60) + "..." : replyingTo.content;
+      const senderName = replyingTo.sender_email === managerProfile.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
+      textToSend = `> Replying to ${senderName}:\n> "${snippet}"\n\n${textToSend}`;
+    }
+
     setIsSending(true);
     setNewMessage(""); 
+    setReplyingTo(null);
     setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
 
     // Clear typing status immediately upon sending
@@ -352,6 +370,17 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   };
 
+  const handleTouchStart = (msgId: string) => {
+    longPressTimeoutRef.current = setTimeout(() => {
+      setLongPressedMsgId(msgId);
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 500);
+  };
+
+  const handleTouchEndOrMove = () => {
+    if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current);
+  };
+
   const getLastMessage = (contactId: string, type: string) => {
     const roleMsgs = messages.filter(m => isMessageForContact(m, contactId, type));
     return roleMsgs.length > 0 ? roleMsgs[roleMsgs.length - 1] : null;
@@ -401,6 +430,23 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">Maintenance</span>;
     if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-primary)] px-1.5 py-0.5 rounded border border-[var(--color-primary)]/20 uppercase font-bold tracking-wider bg-[var(--color-primary)]/10">Tenant</span>;
     return null;
+  };
+
+  const renderMessageContent = (content: string) => {
+    const replyMatch = content.match(/^> Replying to (.*?):\n> "(.*?)"\n\n([\s\S]*)$/);
+    if (replyMatch) {
+      const [_, sender, snippet, actualMessage] = replyMatch;
+      return (
+        <div className="flex flex-col gap-1.5 text-left w-full">
+          <div className="bg-black/10 rounded border-l-[3px] border-current px-2.5 py-1.5 text-[11px] sm:text-[12px] opacity-80 shadow-sm leading-tight">
+            <span className="font-extrabold">{sender}</span><br/>
+            <span className="truncate block mt-0.5 line-clamp-1 italic text-[10px] sm:text-[11px]">{snippet}</span>
+          </div>
+          <span>{actualMessage}</span>
+        </div>
+      );
+    }
+    return <span>{content}</span>;
   };
 
   return (
@@ -691,34 +737,51 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                     >
                       <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                        {/* Bubble */}
+                        
+                        {/* Bubble wrapper for touch events */}
                         <div 
-                          className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 ${
-                            highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
-                          } ${
-                            isMe 
-                              ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                              : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
-                          } ${isPending ? 'opacity-60' : 'opacity-100'}`}
-                          style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                          className="relative"
+                          onTouchStart={() => !isPending && handleTouchStart(msg.id)}
+                          onTouchEnd={handleTouchEndOrMove}
+                          onTouchMove={handleTouchEndOrMove}
                         >
-                          {msg.is_pinned && (
-                            <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
-                              <Pin size={10} fill="currentColor" />
-                            </div>
-                          )}
-                          {msg.content}
+                          <div 
+                            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
+                              highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
+                            } ${
+                              isMe 
+                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                            } ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                            style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                          >
+                            {msg.is_pinned && (
+                              <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
+                                <Pin size={10} fill="currentColor" />
+                              </div>
+                            )}
+                            {renderMessageContent(msg.content)}
+                          </div>
                         </div>
                         
-                        {/* Message Actions (Hover/Mobile Visible) */}
+                        {/* Message Actions (Hover Visible on Desktop) */}
                         {!isPending && (
-                          <button 
-                            onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
-                            className={`opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 shrink-0`}
-                            title={msg.is_pinned ? "Unpin message" : "Pin message"}
-                          >
-                            {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
-                          </button>
+                          <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <button 
+                              onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
+                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[var(--color-primary)] transition-colors"
+                              title="Reply"
+                            >
+                              <CornerUpLeft size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
+                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-amber-600 transition-colors"
+                              title={msg.is_pinned ? "Unpin message" : "Pin message"}
+                            >
+                              {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -742,7 +805,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
             </div>
 
             {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-[var(--color-border)] z-10 relative">
+            <div className="shrink-0 px-3 py-3 sm:px-4 sm:py-4 bg-white border-t border-[var(--color-border)] z-10 relative flex flex-col items-center">
               
               {/* TYPING INDICATOR (ABOVE INPUT) */}
               {isRemoteUserTyping && (
@@ -756,12 +819,27 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                 </div>
               )}
 
-              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2 sm:gap-3 items-end">
-                <div className="flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-[var(--radius-md)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)]">
+              {/* REPLYING TO BANNER */}
+              {replyingTo && (
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center -mb-1 pb-2 z-0 animate-in slide-in-from-bottom-2">
+                  <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
+                    <span className="text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-wider">
+                      Replying to {replyingTo.sender_email === managerProfile.email ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
+                    </span>
+                    <span className="text-[11px] sm:text-xs text-slate-500 truncate line-clamp-1">{replyingTo.content}</span>
+                  </div>
+                  <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
+                <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange}  // <--- Using the dynamic handler!
+                    onChange={handleMessageChange} 
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -798,6 +876,60 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
           </>
         )}
       </div>
+
+      {/* Global Mobile Bottom Sheet for Long Press Actions */}
+      {longPressedMsgId && (
+        <>
+          <div 
+            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
+            onClick={() => setLongPressedMsgId(null)} 
+          />
+          <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
+            
+            {(() => {
+              const msg = messages.find(m => m.id === longPressedMsgId);
+              if (!msg) return null;
+              
+              return (
+                <div className="flex justify-around items-center max-w-sm mx-auto">
+                  <button 
+                    onClick={() => { setReplyingTo(msg); setLongPressedMsgId(null); setTimeout(() => inputRef.current?.focus(), 50); }} 
+                    className="flex flex-col items-center gap-3 text-slate-600 active:scale-95 transition-transform"
+                  >
+                    <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shadow-sm">
+                      <CornerUpLeft size={22} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Reply</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { navigator.clipboard.writeText(msg.content); setLongPressedMsgId(null); }} 
+                    className="flex flex-col items-center gap-3 text-slate-600 active:scale-95 transition-transform"
+                  >
+                    <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shadow-sm">
+                      <Copy size={22} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Copy</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { handleTogglePin(msg.id, msg.is_pinned); setLongPressedMsgId(null); }} 
+                    className={`flex flex-col items-center gap-3 active:scale-95 transition-transform ${msg.is_pinned ? 'text-amber-600' : 'text-slate-600'}`}
+                  >
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center shadow-sm ${msg.is_pinned ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
+                      {msg.is_pinned ? <PinOff size={22} strokeWidth={2.5} /> : <Pin size={22} strokeWidth={2.5} />}
+                    </div>
+                    <span className={`text-[11px] font-bold uppercase tracking-wider ${msg.is_pinned ? 'text-amber-600' : 'text-slate-500'}`}>
+                      {msg.is_pinned ? 'Unpin' : 'Pin'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

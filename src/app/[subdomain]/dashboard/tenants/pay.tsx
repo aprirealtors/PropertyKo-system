@@ -473,7 +473,7 @@ export default function PayTab() {
                     </div>
                     <button 
                       onClick={handleExportCSV}
-                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 px-4 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all active:scale-95 border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0"
+                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 px-4 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all active:scale-95 border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0"
                     >
                       <Download size={16} className="w-4 h-4 sm:w-5 sm:h-5" /> Export CSV
                     </button>
@@ -481,19 +481,19 @@ export default function PayTab() {
                   
                   <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] custom-scrollbar shadow-[var(--shadow-inner)] max-h-[600px] relative">
                     <table className="w-full text-left text-xs min-w-[800px] border-collapse">
-                      <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] font-extrabold border-b border-transparent sticky top-0 z-20 shadow-sm">
+                      <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-center font-extrabold border-b border-transparent sticky top-0 z-20 shadow-sm">
                         <tr>
                           <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PERIOD</th>
                           <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUE DATE</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUES</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PARKING</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">UTILS</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700 font-extrabold">PENALTY</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-center whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20">STATUS</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 text-right whitespace-nowrap text-white text-[9px] sm:text-[10px] uppercase tracking-widest">TOTAL</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUES</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PARKING</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">UTILS</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700 font-extrabold">PENALTY</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">STATUS</th>
+                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">TOTAL</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white font-medium relative z-0">
+                      <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] text-center bg-white font-medium relative z-0">
                         {ledgerData.map((row, idx) => {
                           const isRowPaid = row.status === 'Paid';
                           const activeRow = row.isCurrentMonth;
@@ -521,7 +521,7 @@ export default function PayTab() {
                                 {row.status === 'Unassigned' && <span className="text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2 sm:px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">Unassigned</span>}
                                 {row.status === 'Upcoming' && <span className="text-slate-400 font-medium px-2 sm:px-3">Upcoming</span>}
                               </td>
-                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]'}`}>
+                              <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text)]'}`}>
                                 ₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}
                               </td>
                             </tr>
@@ -651,7 +651,7 @@ export default function PayTab() {
       {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[80vh] sm:max-h-[85vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
             {/* Header - Fixed */}
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
@@ -677,7 +677,7 @@ export default function PayTab() {
                     {unit?.property_name} · Unit {unit?.unit_number}
                   </span>
                 </div>
-                <span className="font-black text-[var(--color-primary)] text-2xl sm:text-3xl tracking-tight shrink-0 whitespace-nowrap">
+                <span className="font-black text-[var(--color-text)] text-2xl sm:text-3xl tracking-tight shrink-0 whitespace-nowrap">
                   ₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </span>
               </div>
@@ -689,7 +689,7 @@ export default function PayTab() {
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
-                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-[var(--shadow-sm)] whitespace-normal break-words leading-tight ${paymentMethod === method ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-2 border-[var(--color-primary)]/40 shadow-[0_2px_8px_rgba(0,0,0,0.1)]' : 'bg-white text-slate-500 border border-[var(--color-border)] hover:bg-[var(--color-bg)]'}`}
+                      className={`w-full px-2 sm:px-3 py-3 sm:py-3.5 rounded-[var(--radius-xl)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all shadow-[var(--shadow-sm)] whitespace-normal break-words leading-tight ${paymentMethod === method ? 'bg-[var(--color-primary)] text-[var(--color-text)] border-2 border-[var(--color-primary)]/40 shadow-[0_2px_8px_rgba(0,0,0,0.1)]' : 'bg-white text-slate-500 border border-[var(--color-border)] hover:bg-[var(--color-bg)]'}`}
                     >
                       {method}
                     </button>
@@ -717,9 +717,9 @@ export default function PayTab() {
                     <p className="font-black text-[10px] uppercase tracking-widest text-slate-400 mb-2 border-b border-[var(--color-border)] pb-2 whitespace-normal break-words">Admin Bank Details</p>
                     {activeBankName || activeBankAccountNumber ? (
                       <div className="bg-[var(--color-bg)] p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] space-y-3">
-                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Bank</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs text-right whitespace-normal break-words">{activeBankName}</span></p>
-                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Name</span> <span className="font-black text-[var(--color-secondary)] text-[11px] sm:text-xs text-right whitespace-normal break-words">{activeBankAccountName}</span></p>
-                        <div className="flex justify-between items-start gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Account No.</span> <span className="font-black font-mono text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs text-right break-all whitespace-normal">{activeBankAccountNumber}</span></div>
+                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Bank:</span> <span className="font-black text-[var(--color-text)] text-[11px] sm:text-xs text-right whitespace-normal break-words">{activeBankName}</span></p>
+                        <p className="flex justify-between items-start gap-3"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0 whitespace-normal break-words">Name:</span> <span className="font-black text-[var(--color-text)] text-[11px] sm:text-xs text-right whitespace-normal break-words">{activeBankAccountName}</span></p>
+                        <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{activeBankAccountNumber}</span></div>
                       </div>
                     ) : (
                       <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)] whitespace-normal break-words">Bank details will be displayed here once configured.</p>
@@ -730,7 +730,7 @@ export default function PayTab() {
                   <div className="space-y-2 text-center py-2 sm:py-3">
                     <p className="text-[11px] sm:text-xs font-bold text-slate-500 whitespace-normal break-words">Make checks payable to:</p>
                     <p className="font-black text-base sm:text-lg text-[var(--color-secondary)] px-2 leading-tight whitespace-normal break-words">{activeBankAccountName || 'HOA Administration'}</p>
-                    <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-sm)] mt-4 uppercase tracking-wide leading-relaxed whitespace-normal break-words">Please drop off post-dated checks at the admin office within 3 business days.</p>
+                    <p className="text-[9px] sm:text-[10px] font-bold text-[var(--color-text)] bg-amber-50 border border-amber-100 px-3 py-2.5 sm:py-3 rounded-[var(--radius-xl)] mt-4 uppercase tracking-wide leading-relaxed whitespace-normal break-words">Please drop off post-dated checks at the admin office within 3 business days.</p>
                   </div>
                 )}
                 {paymentMethod === 'Cash' && (

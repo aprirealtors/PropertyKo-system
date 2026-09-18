@@ -971,7 +971,7 @@ export default function TenantDashboard() {
                             setEditedName(tenantName);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -1035,7 +1035,7 @@ export default function TenantDashboard() {
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-2">Assigned Property</label>
                     {isLoading ? <div className="h-3.5 sm:h-4 bg-slate-100 rounded w-3/4 animate-pulse mt-1"></div> : (
-                      <div className="text-xs sm:text-sm font-bold text-[var(--color-primary)] break-words leading-relaxed bg-[var(--color-primary)]/10 py-2 px-3 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
+                      <div className="text-xs sm:text-sm font-bold text-[var(--color-text)] break-words leading-relaxed bg-slate-50 py-2 px-3 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
                         {unit?.property_name ? `${unit.property_name} - Unit ${unit.unit_number}` : "Not Assigned"}
                       </div>
                     )}
@@ -1043,23 +1043,24 @@ export default function TenantDashboard() {
 
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-2">Access Role</label>
-                    <span className="inline-flex text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] tracking-widest uppercase shadow-sm">
+                    <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                       {userRole === 'owner' ? 'Owner' : 'Tenant'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* --- Change Password Box --- */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em]">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+  
+                {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
+                <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : ''}`}>
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-primary)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                     >
                       <Key size={14} /> Change Password
                     </button>
@@ -1067,7 +1068,7 @@ export default function TenantDashboard() {
                 </div>
 
                 {isChangingPassword && (
-                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <form onSubmit={handlePasswordChange} className="space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
                     {passwordError && (
                       <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100 flex items-center gap-2">
                         <AlertTriangle size={14} className="shrink-0" />
@@ -1076,20 +1077,21 @@ export default function TenantDashboard() {
                     )}
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
                           required 
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
+                          autoFocus
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
                           {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
@@ -1097,7 +1099,7 @@ export default function TenantDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative">
                         <input 
                           type={showNewPassword ? "text" : "password"}
@@ -1105,13 +1107,13 @@ export default function TenantDashboard() {
                           minLength={6}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
                           {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
@@ -1119,7 +1121,7 @@ export default function TenantDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
                       <div className="relative">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
@@ -1127,13 +1129,13 @@ export default function TenantDashboard() {
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
                           {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
@@ -1154,14 +1156,14 @@ export default function TenantDashboard() {
                           setShowConfirmPassword(false);
                         }}
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95 border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 transition-all text-xs border border-[var(--color-border)] active:scale-[0.98] shadow-sm"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95 border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-xl)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95 border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>
@@ -1482,7 +1484,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       </header>
 
       {/* Hero Card: Amount Due Selector Display (Premium Tech Theme) */}
-      <section className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
+      <section className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
         <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
         <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-[var(--color-primary)]/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
 
@@ -1518,9 +1520,9 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           <button 
             onClick={() => setActiveTab('pay')} 
             disabled={isLoading || soaStatus === 'Unassigned'}
-            className="w-full bg-[var(--color-bg)] hover:bg-[var(--color-bg)]/80 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
+            className="w-full bg-[var(--color-bg)] hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
           >
-            {isLoading ? "Checking balance..." : (soaStatus === 'Paid' || soaStatus === 'Unassigned' || rentAmount === 0) ? "All caught up" : "See Statements"} 
+            {isLoading ? "Checking balance..." : (soaStatus === 'Paid' || soaStatus === 'Unassigned' || rentAmount === 0) ? "All caught up" : "View Statements"} 
             {!isLoading && rentAmount > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
           </button>
         </div>
@@ -1530,7 +1532,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
 
         {/* Card 1: Report Issue */}
-        <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1543,7 +1545,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 2: My Lease */}
-        <button onClick={() => setActiveTab('lease')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('lease')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1556,7 +1558,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 3: Financials */}
-        <button onClick={() => setActiveTab('pay')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('pay')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1569,7 +1571,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 4: Support */}
-        <button onClick={handleConversationClick} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={handleConversationClick} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1583,7 +1585,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       </div>
 
       {/* ✨ UPDATED: Recent Statements Section */}
-      <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
+      <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
         <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
           <div className="min-w-0">
             <h3 className="font-black text-base sm:text-lg text-[var(--color-secondary)] tracking-tight truncate">Recent Statements</h3>
@@ -1591,7 +1593,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           </div>
           <button 
             onClick={() => setActiveTab('pay')} 
-            className="text-[10px] sm:text-xs font-black text-[var(--color-primary)] hover:opacity-80 bg-[var(--color-primary)]/10 px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] shrink-0 whitespace-nowrap border border-[var(--color-primary)]/20"
+            className="text-[10px] sm:text-xs font-black text-[var(--color-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] shrink-0 whitespace-nowrap border border-[var(--color-primary)]/20"
           >
             View All
           </button>
@@ -1625,7 +1627,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                 <div 
                   key={idx} 
                   onClick={() => setActiveTab('pay')}
-                  className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
+                  className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-xl)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
@@ -1658,7 +1660,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
 
 function TransactionSkeleton() {
   return (
-    <div className="flex items-center justify-between p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-lg)] border border-[var(--color-border)] animate-pulse">
+    <div className="flex items-center justify-between p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] border border-[var(--color-border)] animate-pulse">
       <div className="flex items-center gap-4 w-full">
         <div className="w-10 h-10 rounded-[var(--radius-md)] bg-slate-200 shrink-0"></div>
         <div className="space-y-2 w-1/2">

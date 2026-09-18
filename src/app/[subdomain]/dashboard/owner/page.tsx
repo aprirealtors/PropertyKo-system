@@ -1161,7 +1161,7 @@ export default function OwnerDashboard() {
               </header>
 
               {/* Hero Card: Owner Bill Display */}
-              <section className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
+              <section className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
                 {/* Decorative background shapes */}
                 <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
                 <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-blue-500/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
@@ -1203,7 +1203,7 @@ export default function OwnerDashboard() {
                   <button 
                     onClick={() => setActiveTab('financials')} 
                     disabled={totalDue === 0}
-                    className="w-full bg-white hover:bg-slate-50 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
+                    className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
                   >
                     {isLoading ? "Checking..." : totalDue > 0 ? "View Statements" : "All caught up"} 
                     {!isLoading && totalDue > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
@@ -1215,7 +1215,7 @@ export default function OwnerDashboard() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
 
                 {/* Card 1: Report Issue */}
-                <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                     <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1228,7 +1228,7 @@ export default function OwnerDashboard() {
                 </button>
 
                 {/* Card 2: Owned Properties */}
-                <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                     <Home size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1245,7 +1245,7 @@ export default function OwnerDashboard() {
                 </button>
 
                 {/* Card 3: Collected Gross */}
-                <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                <button onClick={() => setActiveTab('leases')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                     <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1260,7 +1260,7 @@ export default function OwnerDashboard() {
                 </button>
 
                 {/* Card 4: Occupied Units */}
-                <button className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-2xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
+                <button className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                     <CheckCircle size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1276,7 +1276,7 @@ export default function OwnerDashboard() {
               </div>
 
               {/* Section: Recent Statements List */}
-              <section className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] border border-[var(--color-border)] transition-all hover:shadow-[var(--shadow-md)]">
+              <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] border border-[var(--color-border)] transition-all hover:shadow-[var(--shadow-md)]">
                 <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
                   <div className="min-w-0">
                     <h3 className="font-black text-base sm:text-lg text-[var(--color-secondary)] tracking-tight truncate">Recent Statements</h3>
@@ -1284,7 +1284,7 @@ export default function OwnerDashboard() {
                   </div>
                   <button 
                     onClick={() => setActiveTab('financials')} 
-                    className="text-[10px] sm:text-xs font-black text-[var(--color-primary)] hover:opacity-80 bg-[var(--color-primary)]/10 px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-[var(--color-primary)]/20"
+                    className="text-[10px] sm:text-xs font-black text-[var(--color-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-[var(--color-primary)]/20"
                   >
                     View All
                   </button>
@@ -1408,7 +1408,7 @@ export default function OwnerDashboard() {
                       <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20"><Inbox size={16} strokeWidth={2.5} /></div>
                       Active Requests
                     </span>
-                    <span className="bg-white border border-[var(--color-border)] text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
+                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
                     </span>
                   </h4>
@@ -1426,7 +1426,7 @@ export default function OwnerDashboard() {
                             key={t.id} 
                             id={`ticket-${t.id}`}
                             onClick={() => setReviewActiveTicket(t)}
-                            className={`group h-[200px] shrink-0 bg-white rounded-[1.5rem] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
+                            className={`group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
                               isHighlighted ? 'ring-4 ring-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 border-[var(--color-primary)] scale-[1.02] shadow-xl animate-pulse z-10' : 
                               t.priority === 'Urgent' ? 'border-l-4 border-l-red-500 shadow-[var(--shadow-sm)] border-[var(--color-border)]' : 'hover:border-[var(--color-primary)]/60 shadow-[var(--shadow-sm)] border-[var(--color-border)]'
                             }`}
@@ -1436,7 +1436,7 @@ export default function OwnerDashboard() {
                               <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
                             </div>
 
-                            <p className="text-[var(--color-primary)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                            <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                               <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                             </p>
 
@@ -1472,7 +1472,7 @@ export default function OwnerDashboard() {
                       <div className="p-1.5 bg-amber-100 text-amber-600 rounded-[var(--radius-sm)] border border-amber-200"><PauseCircle size={16} strokeWidth={2.5} /></div>
                       Delayed / On Hold
                     </span>
-                    <span className="bg-white border border-[var(--color-border)] text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
+                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : onHoldTasks.length}
                     </span>
                   </h4>
@@ -1490,14 +1490,14 @@ export default function OwnerDashboard() {
                             key={t.id} 
                             id={`ticket-${t.id}`}
                             onClick={() => setReviewOnHoldTicket(t)}
-                            className="group h-[200px] shrink-0 bg-white rounded-[1.5rem] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[var(--shadow-sm)]"
+                            className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[var(--shadow-sm)]"
                           >
                             <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                               <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
-                              <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
+                              <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] text-amber-700 border-amber-200/60`}>{t.label}</span>
                             </div>
 
-                            <p className="text-[var(--color-primary)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
+                            <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
                               <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                             </p>
 
@@ -1534,7 +1534,7 @@ export default function OwnerDashboard() {
                       <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 rounded-[var(--radius-sm)]"><CheckCircle2 size={16} strokeWidth={2.5} /></div>
                       Resolved
                     </span>
-                    <span className="bg-white border border-[var(--color-border)] text-slate-600 px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
+                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
                       {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : resolvedTasks.length}
                     </span>
                   </h4>
@@ -1551,7 +1551,7 @@ export default function OwnerDashboard() {
                             key={t.id} 
                             id={`ticket-${t.id}`}
                             onClick={() => setReviewTicket(t)} 
-                            className="group h-[200px] shrink-0 bg-white rounded-[1.5rem] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5"
+                            className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5"
                           >
                             <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                               <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
@@ -1689,9 +1689,9 @@ export default function OwnerDashboard() {
       {/* 1. REPORT REPAIR MODAL (Symptom-Based) */}
       {isRepairModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
 
-            <div className="px-5 py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
+            <div className="px-3 py-3 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight">Report an Issue</h2>
                 <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
@@ -1843,7 +1843,7 @@ export default function OwnerDashboard() {
       {/* ✨ 2. ACTIVE REQUEST DETAILS MODAL */}
       {reviewActiveTicket && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
 
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
@@ -1995,10 +1995,10 @@ export default function OwnerDashboard() {
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-purple-200/60 shadow-[var(--shadow-sm)]">Update</span>
+                      <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-amber-200/60 shadow-[var(--shadow-sm)]">Update</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Staff Report</span>
                     </div>
-                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border ${reviewOnHoldTicket.color} shrink-0 shadow-[var(--shadow-sm)]`}>
+                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
                       {reviewOnHoldTicket.label}
                     </span>
                   </div>
@@ -2048,7 +2048,7 @@ export default function OwnerDashboard() {
       {/* ✨ 4. REVIEW RESOLUTION MODAL (Before & After) */}
       {reviewTicket && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
 
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
@@ -2143,7 +2143,7 @@ export default function OwnerDashboard() {
       {/* REJECTED TICKET MODAL */}
       {rejectedTicketModalData && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300">
 
             {/* Red Header */}
             <div className="px-6 py-5 sm:px-8 sm:py-6 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
@@ -2212,7 +2212,7 @@ export default function OwnerDashboard() {
 
       {/* WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
 
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
@@ -2226,8 +2226,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
-
-              <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
+              <div className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
 
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
@@ -2239,7 +2238,7 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 space-y-4 sm:space-y-5">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 space-y-4 sm:space-y-5">
                 <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 border-b border-slate-100">
                   Account Details
                 </h4>
@@ -2255,7 +2254,7 @@ export default function OwnerDashboard() {
                             setEditedName(fullName);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -2314,7 +2313,7 @@ export default function OwnerDashboard() {
 
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-2">Owned Properties</label>
-                    <div className="text-xs sm:text-sm font-bold text-[var(--color-primary)] break-words leading-relaxed bg-[var(--color-primary)]/10 py-2 px-3 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
+                    <div className="text-xs sm:text-sm font-bold text-[var(--color-text)] break-words leading-relaxed bg-slate-50 py-2 px-3 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
                       {myUnitsList.length > 0 
                         ? Object.entries(
                             myUnitsList.reduce((acc: Record<string, string[]>, unit: any) => {
@@ -2336,7 +2335,7 @@ export default function OwnerDashboard() {
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Access Role</label>
                     <div className="shrink-0">
-                      <span className="inline-flex text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] tracking-widest uppercase shadow-sm">
+                      <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                         Owner
                       </span>
                     </div>
@@ -2344,91 +2343,94 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em]">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+  
+                {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
+                <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : ''}`}>
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-primary)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                     >
-                      <Key size={14} /> Change Password
+                      <Key size={12} strokeWidth={2.5} /> Change Password
                     </button>
                   )}
                 </div>
 
                 {isChangingPassword && (
-                  <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <form onSubmit={handlePasswordChange} className="space-y-4 sm:space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
                     {passwordError && (
-                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100 flex items-center gap-2">
-                        <AlertTriangle size={14} className="shrink-0" />
+                      <div className="p-3.5 bg-red-50 text-red-600 text-[11px] sm:text-xs font-bold rounded-[var(--radius-md)] border border-red-100 flex items-center gap-2.5 shadow-sm">
+                        <AlertTriangle size={16} className="shrink-0" strokeWidth={2.5} />
                         {passwordError}
                       </div>
                     )}
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <div className="relative group">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
                           required 
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-sm" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
+                          autoFocus
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showCurrentPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <div className="relative group">
                         <input 
                           type={showNewPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-sm" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showNewPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
-                      <div className="relative">
+                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <div className="relative group">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-[var(--color-bg)] focus:bg-white transition-all shadow-sm" 
+                          className="w-full px-4 pr-11 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showConfirmPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
@@ -2447,14 +2449,14 @@ export default function OwnerDashboard() {
                           setShowConfirmPassword(false);
                         }}
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-sm active:scale-95 border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 transition-all text-xs border border-[var(--color-border)] active:scale-[0.98] shadow-sm"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95 border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-xl)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-[0.98] border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>
@@ -2466,7 +2468,6 @@ export default function OwnerDashboard() {
                   </form>
                 )}
               </div>
-
             </div>
           </div>
         </div>
@@ -2509,7 +2510,7 @@ export default function OwnerDashboard() {
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
@@ -2627,7 +2628,7 @@ export default function OwnerDashboard() {
 // ✨ FIXED HEIGHT KANBAN SKELETON
 function KanbanSkeleton() {
   return (
-    <div className="h-[200px] shrink-0 bg-white rounded-3xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
+    <div className="h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
       <div className="p-5 flex-1 flex flex-col gap-3">
         <div className="flex justify-between items-center mb-1 shrink-0">
           <div className="h-5 bg-slate-200 rounded-md w-1/2"></div>
@@ -2644,7 +2645,7 @@ function KanbanSkeleton() {
 // ✨ STANDARDIZED EMPTY STATE
 function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-[1.5rem] border border-dashed border-[var(--color-border)] h-[200px] animate-in fade-in duration-300">
+    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-[var(--radius-xl)] border border-dashed border-[var(--color-border)] h-[200px] animate-in fade-in duration-300">
       <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-primary)]/50 border border-[var(--color-border)]">
         <Icon size={26} strokeWidth={1.5} />
       </div>

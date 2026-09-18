@@ -358,20 +358,20 @@ export default function LeaseTab({ setActiveTab }: any) {
                     <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[8px] sm:text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0 ${
                       lease.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200/60' : 
                       isExpired ? 'bg-red-50 text-red-600 border-red-200' : 
-                      'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'
+                      'bg-emerald-50 text-emerald-600 border-emerald-100'
                     }`}>
                       {lease.status === 'Pending' ? 'Pending Approval' : isExpired ? 'Expired' : 'Active'}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-3 sm:gap-4 shrink-0">
-                    <FormField label="Property Owner" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={ownerName} />
-                    <FormField label="Unit Address" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`${propertyName} · ${unitNumber}`} />
-                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-secondary)]" />
+                    <FormField label="Property Owner" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={ownerName} valueColor="text-[var(--color-text)]"/>
+                    <FormField label="Unit Address" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`${propertyName} · ${unitNumber}`} valueColor="text-[var(--color-text)]" />
+                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-text)]" />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseStartDate} />
-                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseEndDate} />
+                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseStartDate} valueColor="text-[var(--color-text)]" />
+                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseEndDate} valueColor="text-[var(--color-text)]"/>
                     </div>
 
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-[var(--color-border)]">
@@ -380,14 +380,14 @@ export default function LeaseTab({ setActiveTab }: any) {
                           if (hasDocument) window.open(lease.document_url, '_blank');
                         }}
                         disabled={!hasDocument}
-                        className={`w-full p-4 sm:p-5 rounded-[1.25rem] sm:rounded-[var(--radius-lg)] border flex items-center justify-between group transition-all ${
+                        className={`w-full p-4 sm:p-5 rounded-[var(--radius-xl)] border flex items-center justify-between group transition-all ${
                           hasDocument 
                             ? "bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 text-[var(--color-primary)] border-[var(--color-primary)]/30 active:scale-[0.98] cursor-pointer" 
                             : "bg-[var(--color-bg)] text-slate-400 border-[var(--color-border)] cursor-not-allowed opacity-80"
                         }`}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-md)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-secondary)]" : "border-[var(--color-border)] text-slate-400"}`}>
+                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-xl)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-secondary)]" : "border-[var(--color-border)] text-slate-400"}`}>
                             <FileCheck size={20} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div className="text-left min-w-0">
