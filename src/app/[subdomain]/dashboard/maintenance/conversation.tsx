@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, ChevronLeft, MessageSquare, Search, 
   X, Briefcase, Wrench, Key, Edit, Check, Shield, CheckCheck,
-  Pin, PinOff, CornerUpLeft, Copy
+  Pin, PinOff, CornerUpLeft, Copy, ChevronDown
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
@@ -38,8 +38,9 @@ export default function ConversationTab() {
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null);
 
-  // Real-time states
+  // Real-time & Scroll states
   const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const onlineUsers = usePresence();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,7 @@ export default function ConversationTab() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (profileEmail) {
@@ -75,6 +77,7 @@ export default function ConversationTab() {
     setIsPinnedExpanded(false);
     setHighlightedMsgId(null);
     setReplyingTo(null);
+    setShowScrollBottom(false);
     setNewMessage(messageDrafts[activeChat] || "");
     if (inputRef.current) {
       inputRef.current.style.height = '24px';
@@ -83,6 +86,13 @@ export default function ConversationTab() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollBottom(false);
+  };
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Show button if scrolled up more than 100px from the bottom
+    setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 100);
   };
 
   const scrollToMessage = (msgId: string) => {
@@ -94,6 +104,23 @@ export default function ConversationTab() {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setHighlightedMsgId(msgId);
       setTimeout(() => setHighlightedMsgId(null), 3000); // Remove highlight after 3 seconds
+    }
+  };
+
+  // Helper for dynamic message date/time display
+  const formatMessageTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    
+    const isToday = 
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
+
+    if (isToday) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     }
   };
 
@@ -329,6 +356,7 @@ export default function ConversationTab() {
         inputRef.current.style.height = '24px';
         inputRef.current.focus();
       }
+      scrollToBottom();
     }, 10);
 
     const authEmail = profileEmail;
@@ -721,100 +749,117 @@ export default function ConversationTab() {
               </div>
             )}
 
-            {/* MESSAGES SCROLL AREA */}
-            <div className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar">
-              {isLoading ? (
-                <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
-                  <Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...
-                </div>
-              ) : displayedMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300">
-                    <ActiveIcon size={24} className="sm:w-7 sm:h-7" />
+            {/* MESSAGES SCROLL AREA WITH FLOATING BUTTON*/}
+            <div className="flex-1 min-h-0 relative flex flex-col">
+              <div 
+                className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar"
+                onScroll={handleScroll}
+                ref={scrollContainerRef}
+              >
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
+                    <Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...
                   </div>
-                  <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">
-                    {chatSearchQuery ? "No messages found" : `Say hello to ${currentChatName}`}
-                  </h3>
-                  <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                    {chatSearchQuery ? `We couldn't find "${chatSearchQuery}" in this conversation.` : "Start a conversation to request information or coordinate operations."}
-                  </p>
-                </div>
-              ) : (
-                displayedMessages.map((msg: any, idx: number) => {
-                  const isMe = msg.sender_email === profileEmail;
-                  const isPending = msg.id.toString().startsWith('temp_');
-                  return (
-                    <div 
-                      key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`}
-                      id={`msg-${msg.id}`}
-                      className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
-                    >
-                      <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                        
-                        {/* Bubble wrapper for touch events */}
-                        <div 
-                          className="relative"
-                          onTouchStart={() => !isPending && handleTouchStart(msg.id)}
-                          onTouchEnd={handleTouchEndOrMove}
-                          onTouchMove={handleTouchEndOrMove}
-                        >
-                          <div 
-                            className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
-                              highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
-                            } ${
-                              isMe 
-                                ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                                : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
-                            } ${isPending ? 'opacity-60' : 'opacity-100'}`}
-                            style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
-                          >
-                            {msg.is_pinned && (
-                              <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
-                                <Pin size={10} fill="currentColor" />
-                              </div>
-                            )}
-                            {renderMessageContent(msg.content)}
-                          </div>
-                        </div>
-                        
-                        {/* Message Actions (Hover Visible on Desktop) */}
-                        {!isPending && (
-                          <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <button 
-                              onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
-                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[var(--color-primary)] transition-colors"
-                              title="Reply"
-                            >
-                              <CornerUpLeft size={14} />
-                            </button>
-                            <button 
-                              onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
-                              className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-amber-600 transition-colors"
-                              title={msg.is_pinned ? "Unpin message" : "Pin message"}
-                            >
-                              {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        {isMe && (
-                          isPending ? (
-                            <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" />
-                          ) : msg.is_read ? (
-                            <CheckCheck size={12} className="text-blue-500 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
-                          ) : (
-                            <CheckCheck size={12} className="text-slate-300 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
-                          )
-                        )}
-                      </div>
+                ) : displayedMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300">
+                      <ActiveIcon size={24} className="sm:w-7 sm:h-7" />
                     </div>
-                  );
-                })
+                    <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">
+                      {chatSearchQuery ? "No messages found" : `Say hello to ${currentChatName}`}
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
+                      {chatSearchQuery ? `We couldn't find "${chatSearchQuery}" in this conversation.` : "Start a conversation to request information or coordinate operations."}
+                    </p>
+                  </div>
+                ) : (
+                  displayedMessages.map((msg: any, idx: number) => {
+                    const isMe = msg.sender_email === profileEmail;
+                    const isPending = msg.id.toString().startsWith('temp_');
+                    return (
+                      <div 
+                        key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`}
+                        id={`msg-${msg.id}`}
+                        className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
+                      >
+                        <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                          
+                          {/* Bubble wrapper for touch events */}
+                          <div 
+                            className="relative"
+                            onTouchStart={() => !isPending && handleTouchStart(msg.id)}
+                            onTouchEnd={handleTouchEndOrMove}
+                            onTouchMove={handleTouchEndOrMove}
+                          >
+                            <div 
+                              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
+                                highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
+                              } ${
+                                isMe 
+                                  ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                  : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                              } ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                              style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+                            >
+                              {msg.is_pinned && (
+                                <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
+                                  <Pin size={10} fill="currentColor" />
+                                </div>
+                              )}
+                              {renderMessageContent(msg.content)}
+                            </div>
+                          </div>
+                          
+                          {/* Message Actions (Hover Visible on Desktop) */}
+                          {!isPending && (
+                            <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <button 
+                                onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
+                                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[var(--color-primary)] transition-colors"
+                                title="Reply"
+                              >
+                                <CornerUpLeft size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
+                                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-amber-600 transition-colors"
+                                title={msg.is_pinned ? "Unpin message" : "Pin message"}
+                              >
+                                {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          {formatMessageTime(msg.created_at)}
+                          {isMe && (
+                            isPending ? (
+                              <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" />
+                            ) : msg.is_read ? (
+                              <CheckCheck size={12} className="text-blue-500 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
+                            ) : (
+                              <CheckCheck size={12} className="text-slate-300 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} className="h-2" />
+              </div>
+
+              {/* FLOATING SCROLL TO BOTTOM BUTTON */}
+              {showScrollBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="absolute bottom-4 right-4 sm:right-6 z-20 bg-white text-[var(--color-primary)] p-2 sm:p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--color-border)] hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center animate-in zoom-in-75 duration-200"
+                  aria-label="Scroll to bottom"
+                >
+                  <ChevronDown size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />
+                </button>
               )}
-              <div ref={messagesEndRef} className="h-2" />
             </div>
 
             {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
