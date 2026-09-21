@@ -434,8 +434,8 @@ export default function ConversationTab() {
 
   // 🌟 Unified Role Badges (Themified)
   const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-[var(--color-secondary)] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-[var(--color-secondary)]/10 border border-[var(--color-secondary)]/20">Manager</span>;
-    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-slate-600 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-slate-100 border border-slate-200">Admin</span>;
+    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-blue-100 border border-blue-200">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-blue-100 border border-blue-200">Admin</span>;
     if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-amber-50 border border-amber-200/50">Maintenance</span>;
     return null;
   };
@@ -471,7 +471,7 @@ export default function ConversationTab() {
         {/* SIDEBAR HEADER */}
         <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-[var(--color-border)] bg-white">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Chats</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Chats</h1>
             <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
               className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]' : 'bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100'}`}
@@ -763,7 +763,7 @@ export default function ConversationTab() {
                               highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
                             } ${
                               isMe 
-                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
                                 : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
                             } ${isPending ? 'opacity-60' : 'opacity-100'}`}
                             style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
@@ -834,12 +834,12 @@ export default function ConversationTab() {
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center -mb-1 pb-2 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center pb-2 mb-4 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
-                    <span className="text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-wider">
+                    <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === profileEmail ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
                     </span>
-                    <span className="text-[11px] sm:text-xs text-slate-500 truncate line-clamp-1">{replyingTo.content}</span>
+                    <span className="text-[11px] sm:text-xs text-slate-600 truncate line-clamp-1">{replyingTo.content}</span>
                   </div>
                   <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0">
                     <X size={14} />

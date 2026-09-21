@@ -211,7 +211,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
 
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
               <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
                 <LayoutDashboard className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
               </div>
@@ -279,11 +279,11 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               />
             </div>
 
-            <div className="bg-white rounded-[2rem] shadow-[var(--shadow-sm)] p-6 sm:p-8 shrink-0">
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] p-6 sm:p-8 shrink-0">
 
               <div className="mb-12">
                 <div className="flex justify-between items-end mb-4">
-                  <h3 className="font-black text-[var(--color-secondary)] text-lg tracking-tight">Billing Collected This Month</h3>
+                  <h3 className="font-black text-[var(--color-text)] text-lg tracking-tight">Billing Collected This Month</h3>
                   <span className="bg-slate-50 text-slate-500 font-bold text-xs px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1.5">
                     <CreditCard size={14}/> ₱{totalCollectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})} 
                     <span className="font-medium text-slate-400">of ₱{totalExpectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
@@ -302,7 +302,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                     <PieChart size={22} strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h2 className="text-lg font-black text-[var(--color-secondary)] uppercase tracking-tight">Unit Distribution Overview</h2>
+                    <h2 className="text-lg font-black text-[var(--color-text)] uppercase tracking-tight">Unit Distribution Overview</h2>
                     <p className="text-slate-400 text-xs font-medium mt-0.5">Current Portfolio Occupancy Overview</p>
                   </div>
                 </div>
@@ -458,19 +458,19 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
 
 function StatCard({ title, value, subtext, icon: Icon }: { title: string, value?: string | React.ReactNode, subtext: React.ReactNode, icon?: any }) {
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-[1.5rem] shadow-[var(--shadow-sm)] flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
+    <div className="bg-white p-5 sm:p-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group overflow-hidden relative">
       <div className="absolute -top-6 -right-6 w-24 h-24 bg-slate-50 rounded-full blur-2xl group-hover:bg-[var(--color-primary)]/10 transition-colors pointer-events-none"></div>
 
       <div className="flex justify-between items-start mb-3 relative shrink-0">
         <div className="text-[10px] font-black text-slate-400 tracking-widest uppercase">{title}</div>
         {Icon && (
-          <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] group-hover:scale-110 transition-all shadow-sm shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-secondary)] group-hover:scale-110 transition-all shadow-sm shrink-0">
             <Icon size={16} strokeWidth={2.5} />
           </div>
         )}
       </div>
       <div className="relative flex flex-col justify-end w-full h-full">
-        {value && <div className="text-3xl font-black text-[var(--color-secondary)] mt-1 mb-1.5 tracking-tight group-hover:text-[var(--color-primary)] transition-colors">{value}</div>}
+        {value && <div className="text-3xl font-black text-[var(--color-text)] mt-1 mb-1.5 tracking-tight group-hover:text-[var(--color-secondary)] transition-colors">{value}</div>}
         <div className="text-xs text-slate-500 w-full">{subtext}</div>
       </div>
     </div>

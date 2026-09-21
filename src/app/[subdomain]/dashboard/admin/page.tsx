@@ -811,7 +811,7 @@ export default function AdminDashboard() {
                             setEditedName(adminProfile.name);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/60 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -877,17 +877,19 @@ export default function AdminDashboard() {
               </div>
 
               {/* --- Change Password Box --- */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                
+                {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
+                <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : 'mb-0'}`}>
+                  <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em]">
                     Security
                   </h4>
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-text)] text-xs font-bold hover:underline flex items-center gap-1 transition-colors"
+                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                     >
-                      <Key size={14} /> Change Password
+                      <Key size={12} strokeWidth={2.5} /> Change Password
                     </button>
                   )}
                 </div>
@@ -895,7 +897,7 @@ export default function AdminDashboard() {
                 {isChangingPassword && (
                   <form onSubmit={handlePasswordChange} className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                     {passwordError && (
-                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-lg border border-red-100 flex items-center gap-2">
+                      <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100 flex items-center gap-2 shadow-sm">
                         <AlertTriangle size={14} className="shrink-0" />
                         {passwordError}
                       </div>
@@ -903,70 +905,71 @@ export default function AdminDashboard() {
 
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
                           required 
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
+                          autoFocus
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showCurrentPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showCurrentPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input 
                           type={showNewPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showNewPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showNewPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
                           required 
                           minLength={6}
                           value={confirmNewPassword}
                           onChange={(e) => setConfirmNewPassword(e.target.value)}
-                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-full hover:bg-[var(--color-primary)]/5"
                         >
-                          {showConfirmPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          {showConfirmPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex gap-2 pt-3">
+                    <div className="flex gap-3 pt-3">
                       <button 
                         type="button" 
                         onClick={() => {
@@ -980,14 +983,14 @@ export default function AdminDashboard() {
                           setShowConfirmPassword(false);
                         }}
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-xs shadow-[var(--shadow-sm)] active:scale-95"
+                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 transition-all text-xs border border-[var(--color-border)] active:scale-[0.98] shadow-sm"
                       >
                         Cancel
                       </button>
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95"
+                        className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-[0.98] border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>

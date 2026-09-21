@@ -95,13 +95,13 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
       <div className="flex justify-between items-center mb-5 md:mb-8 gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.15em] mb-1.5 sm:mb-2">
-            <div className="p-1 bg-[var(--color-primary)]/10 rounded-md text-[var(--color-primary)] shrink-0">
+            <div className="p-1 bg-[var(--color-primary)]/10 rounded-md text-slate-400 shrink-0">
               <Calendar size={12} strokeWidth={3} />
             </div>
             <span>{currentDate}</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-[2.5rem] font-black tracking-tight leading-tight truncate text-[var(--color-secondary)] pb-1">
-            <span className="text-slate-700">{greeting}</span>, {profile.name?.split(' ')[0]} 👋
+          <h2 className="text-2xl sm:text-3xl md:text-[2.5rem] font-black tracking-tight leading-tight truncate text-black pb-1">
+            <span className="text-[var(--color-text)]">{greeting}</span>, {profile.name?.split(' ')[0]} 👋
           </h2>
           <p className="text-slate-500 mt-0.5 md:mt-1 text-xs sm:text-sm font-medium truncate leading-relaxed max-w-lg">
             Here's your maintenance overview for today.
@@ -110,7 +110,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         
         <div 
           onClick={openProfileModal}
-          className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 ring-4 ring-white"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 ring-4 ring-white"
           title="View Profile Details"
         >
           {profile.initials}
@@ -122,7 +122,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         
         {/* Active Assigned */}
         <div className="bg-gradient-to-br from-white to-slate-50 rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-sm)] flex flex-col justify-center transition-all duration-400 hover:shadow-md hover:-translate-y-1 hover:border-[var(--color-primary)]/40 group relative overflow-hidden h-full">
-          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-[var(--color-primary)]/5 transition-transform duration-700 group-hover:scale-[1.2] group-hover:text-[var(--color-primary)]/10">
+          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-[var(--color-text)]/10 transition-transform duration-700 group-hover:scale-[1.2] group-hover:opacity-100 group-hover:rotate-12">
             <Activity size={140} />
           </div>
           <div className="flex justify-between items-start mb-4 relative z-10">
@@ -131,14 +131,14 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
             </div>
           </div>
           <div className="relative z-10 mt-2">
-            <p className="text-4xl md:text-5xl font-black text-[var(--color-secondary)] tracking-tight group-hover:text-[var(--color-primary)] transition-colors duration-300">{metrics.assigned}</p>
+            <p className="text-4xl md:text-5xl font-black text-[var(--color-text)] tracking-tight group-hover:text-[var(--color-text)] transition-colors duration-300">{metrics.assigned}</p>
             <h3 className="text-slate-400 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Active Assigned</h3>
           </div>
         </div>
 
         {/* Urgent Tasks (Semantic Red) */}
-        <div className="bg-gradient-to-br from-white to-red-50/30 rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-sm)] relative overflow-hidden flex flex-col justify-center transition-all duration-400 hover:shadow-md hover:-translate-y-1 hover:border-red-200 group h-full">
-          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-red-50 transition-transform duration-700 group-hover:scale-[1.2] group-hover:-rotate-12 group-hover:text-red-100/80">
+        <div className="bg-gradient-to-br from-white to-red-80/50 rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-sm)] relative overflow-hidden flex flex-col justify-center transition-all duration-400 hover:shadow-md hover:-translate-y-1 hover:border-red-200 group h-full">
+          <div className="absolute -right-6 top-1/2 -translate-y-1/2 text-red-100 transition-transform duration-700 group-hover:scale-[1.2] group-hover:-rotate-12 group-hover:text-red-100/80">
             <AlertCircle size={140} />
           </div>
           <div className="flex justify-between items-start mb-4 relative z-10">
@@ -159,7 +159,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         </div>
 
         {/* Done Tasks */}
-        <div className="bg-[var(--color-primary)] rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-md)] relative overflow-hidden flex flex-col justify-center text-white transition-all duration-400 hover:shadow-lg hover:-translate-y-1 hover:opacity-90 group h-full">
+        <div className="bg-green-600 rounded-[var(--radius-lg)] p-6 shadow-[var(--shadow-md)] relative overflow-hidden flex flex-col justify-center text-white transition-all duration-400 hover:shadow-lg hover:-translate-y-1 hover:opacity-90 group h-full">
           <div className="absolute -right-4 top-1/2 -translate-y-1/2 text-white/10 transition-transform duration-700 group-hover:scale-[1.2] group-hover:rotate-6">
             <CheckCircle size={140} />
           </div>
@@ -169,8 +169,8 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
             </div>
           </div>
           <div className="relative z-10 mt-2">
-            <p className="text-4xl md:text-5xl font-black text-[var(--color-primary-text)] tracking-tight drop-shadow-sm">{metrics.doneThisWeek}</p>
-            <h3 className="text-[var(--color-primary-text)] opacity-80 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Done Tasks</h3>
+            <p className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-sm">{metrics.doneThisWeek}</p>
+            <h3 className="text-white opacity-90 text-xs md:text-sm font-black mt-1 uppercase tracking-wider">Done Tasks</h3>
           </div>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         <div className="flex items-center justify-between mb-6 border-b border-[var(--color-border)]/50 pb-5">
           <div className="flex items-center gap-3 md:gap-4">
             <div className="w-2 h-7 bg-[var(--color-primary)] rounded-full shadow-sm"></div>
-            <h3 className="font-black text-lg sm:text-xl md:text-2xl text-[var(--color-secondary)] tracking-tight">Up Next For You</h3>
+            <h3 className="font-black text-lg sm:text-xl md:text-2xl text-[var(--color-text)] tracking-tight">Up Next For You</h3>
           </div>
           <button onClick={() => setActiveTab && setActiveTab('tasks')} className="text-xs font-black bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 px-4 py-2.5 rounded-[var(--radius-md)] transition-all hidden sm:flex items-center gap-1.5 group shadow-[var(--shadow-sm)] active:scale-95 border border-[var(--color-primary)]/20 hover:border-transparent">
             View All Tasks <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" strokeWidth={3} />
@@ -216,7 +216,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
 
                   <div className="pl-2 flex flex-col flex-1 relative z-10">
                     <div className="flex justify-between items-start mb-2.5 gap-3">
-                      <h4 className={`font-black text-sm md:text-base leading-snug line-clamp-2 transition-colors ${task.priority === 'Urgent' ? 'text-red-950' : 'text-[var(--color-secondary)] group-hover:text-[var(--color-primary)]'}`}>
+                      <h4 className={`font-black text-sm md:text-base leading-snug line-clamp-2 transition-colors ${task.priority === 'Urgent' ? 'text-red-900' : 'text-[var(--color-text)] group-hover:text-[var(--color-text)]'}`}>
                         {task.title}
                       </h4>
                       {task.priority === 'Urgent' && (
@@ -234,7 +234,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
                   <div className="mt-auto pt-4 border-t border-[var(--color-border)] flex items-center justify-between pl-2 relative z-10">
                     <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] px-3 py-1.5 rounded-[var(--radius-sm)] border shadow-[var(--shadow-sm)] transition-colors ${
                       task.status === 'in_progress' 
-                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' 
+                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border-[var(--color-primary)]/20' 
                         : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:bg-white group-hover:border-slate-300 group-hover:text-[var(--color-text)]'
                     }`}>
                       {task.status === 'in_progress' ? 'In Progress' : 'Pending'}

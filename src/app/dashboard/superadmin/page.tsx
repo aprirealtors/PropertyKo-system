@@ -8,7 +8,7 @@ import {
   X, CreditCard, CheckCircle, Home, AlertTriangle, 
   LogOut, LayoutDashboard, History, User, ChevronRight, Folder,
   ChevronUp, ChevronDown, BarChart3, Users, Building2, Activity,
-  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2 // ✨ ADDED Security & Edit icons
+  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2, PanelLeft
 } from "lucide-react";
 
 // Import your tab components
@@ -23,6 +23,9 @@ export default function SuperAdminDashboard() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
 
+  // ✨ NEW: Collapsible Sidebar State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Database Data State
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
@@ -33,17 +36,19 @@ export default function SuperAdminDashboard() {
   // Layout Modal States
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  // NEW: Logo Lightbox Modal State
+  const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
 
-  // ✨ NEW: Superadmin Profile States
+  // Superadmin Profile States
   const [superadminProfile, setSuperadminProfile] = useState({ name: "System Admin", email: "" });
 
-  // ✨ NEW: Edit Name States
+  // Edit Name States
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
   const [isConfirmNameModalOpen, setIsConfirmNameModalOpen] = useState(false);
 
-  // ✨ NEW: Change Password States
+  // Change Password States
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -55,13 +60,13 @@ export default function SuperAdminDashboard() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ✨ NEW: Toast Notification State
+  // Toast Notification State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     fetchOrganizations();
     fetchLiveMRR(); 
-    fetchProfile(); // ✨ Fetch profile on load
+    fetchProfile(); 
   }, []);
 
   const fetchOrganizations = async () => {
@@ -98,7 +103,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // ✨ Fetch Super Admin Profile
+  // Fetch Super Admin Profile
   const fetchProfile = async () => {
     const { data: authData } = await supabase.auth.getUser();
     if (authData?.user) {
@@ -113,13 +118,13 @@ export default function SuperAdminDashboard() {
     router.push("/login");
   };
 
-  // ✨ Show Toast Function
+  // Show Toast Function
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ✨ Handle Name Update Initiation
+  // Handle Name Update Initiation
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
@@ -134,7 +139,7 @@ export default function SuperAdminDashboard() {
     setIsConfirmNameModalOpen(true);
   };
 
-  // ✨ Actual Save Function called from Modal
+  // Actual Save Function called from Modal
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
@@ -156,7 +161,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  // ✨ Handle Password Change
+  // Handle Password Change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -222,9 +227,12 @@ export default function SuperAdminDashboard() {
     <div className="flex flex-col h-[100dvh] bg-[#f4f7fb] text-slate-800 font-sans overflow-hidden">
       
       {/* HEADER */}
-      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative border-b border-white/10 shadow-sm">
+      <header className="h-16 bg-[#0a1e3f] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative border-b border-white/10 shadow-sm z-20">
         <div className="flex items-center gap-4">
-          <div className="bg-white p-2 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center">
+          <div 
+            onClick={() => setIsLogoModalOpen(true)}
+            className="bg-white p-2 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.1)] flex items-center justify-center cursor-pointer hover:shadow-md hover:scale-105 transition-all duration-300"
+          >
             <div className="relative w-28 h-6 sm:w-32 sm:h-7">
               <Image
                 src="/logos.png"
@@ -253,58 +261,72 @@ export default function SuperAdminDashboard() {
       </header>
 
       {/* LAYOUT WRAPPER */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         
-        {/* PREMIUM DESKTOP SIDEBAR */}
-        <aside className="w-64 bg-[#0a1e3f] px-4 py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-10">
-          <div className="mb-4">
-            <h3 className="px-3 text-[10px] font-black text-blue-300/70 tracking-[0.25em] uppercase">Overview</h3>
-          </div>
+        {/* ✨ PREMIUM DESKTOP SIDEBAR (Collapsible) */}
+        <aside className={`${isSidebarCollapsed ? 'md:w-[84px] px-2' : 'md:w-[260px] px-4'} bg-[#0a1e3f] py-6 hidden md:flex flex-col border-r border-white/5 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-10 transition-all duration-300 relative shrink-0`}>
           
-          <nav className="space-y-1.5 flex-1">
-            <NavButton 
-              active={activeTab === 'home'} 
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="hidden md:flex absolute top-[72px] -right-3 w-6 h-6 rounded-full bg-white border border-slate-200 shadow-md items-center justify-center z-20 text-slate-500 hover:text-blue-600 hover:scale-110 hover:shadow-lg transition-all duration-200 group"
+          >
+            <PanelLeft size={13} strokeWidth={2.5} className={`transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180" : ""}`} />
+            <span className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+              {isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            </span>
+          </button>
+
+          <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
+            <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
+            <NavItem 
+              isActive={activeTab === 'home'} 
               onClick={() => setActiveTab('home')} 
               icon={<Home size={18} strokeWidth={activeTab === 'home' ? 2.5 : 2} />} 
               label="Dashboard" 
+              collapsed={isSidebarCollapsed}
             />
 
-            <NavButton 
-              active={activeTab === 'organizations'} 
+            <NavItem 
+              isActive={activeTab === 'organizations'} 
               onClick={() => setActiveTab('organizations')} 
               icon={<Folder size={18} strokeWidth={activeTab === 'organizations' ? 2.5 : 2} />} 
               label="Organizations" 
+              collapsed={isSidebarCollapsed}
             />
 
-            <NavButton 
-              active={activeTab === 'systemlogs'} 
+            <NavItem 
+              isActive={activeTab === 'systemlogs'} 
               onClick={() => setActiveTab('systemlogs')} 
               icon={<Activity size={18} strokeWidth={activeTab === 'systemlogs' ? 2.5 : 2} />} 
               label="System Logs" 
+              collapsed={isSidebarCollapsed}
             />
             
-            <div className="mt-8 mb-4 pt-4 border-t border-white/10">
-              <h3 className="px-3 text-[10px] font-black text-blue-300/70 tracking-[0.25em] uppercase">Finance & Billing</h3>
+            <div className="pt-4">
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Finance & Billing</NavSectionLabel>
             </div>
 
-            <NavButton 
-              active={activeTab === 'billing'} 
+            <NavItem 
+              isActive={activeTab === 'billing'} 
               onClick={() => setActiveTab('billing')} 
               icon={<CreditCard size={18} strokeWidth={activeTab === 'billing' ? 2.5 : 2} />} 
               label="Organization Billing" 
+              collapsed={isSidebarCollapsed}
             />
 
-            <NavButton 
-              active={activeTab === 'paymenthistory'} 
+            <NavItem 
+              isActive={activeTab === 'paymenthistory'} 
               onClick={() => setActiveTab('paymenthistory')} 
               icon={<History size={18} strokeWidth={activeTab === 'paymenthistory' ? 2.5 : 2} />} 
               label="Payment History" 
+              collapsed={isSidebarCollapsed}
             />
           </nav>
 
           {/* Premium Bottom User Tag */}
-          <div className="mt-auto pt-4 border-t border-white/10">
-             <div 
+          <div className="shrink-0 pt-4 mt-auto border-t border-white/10">
+             <button 
                onClick={() => {
                  setIsAccountModalOpen(true);
                  setIsChangingPassword(false);
@@ -314,18 +336,29 @@ export default function SuperAdminDashboard() {
                  setShowConfirmPassword(false);
                  setIsEditingName(false);
                }}
-               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/10"
+               className={`w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/10 text-left group relative ${isSidebarCollapsed ? "justify-center" : ""}`}
                title="View Profile Details"
              >
-                <div className="w-9 h-9 rounded-full bg-blue-500/20 text-[#1e88e5] flex items-center justify-center font-bold text-xs border border-blue-500/30 shrink-0 uppercase tracking-wider">
+                <div className="w-9 h-9 rounded-full bg-blue-500/20 text-[#1e88e5] flex items-center justify-center font-bold text-xs border border-blue-500/30 shrink-0 uppercase tracking-wider shadow-inner group-hover:scale-105 transition-transform">
                   {getInitials(superadminProfile.name)}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-200 truncate">{superadminProfile.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5">Root Account</p>
-                </div>
-                <ChevronRight size={16} className="text-slate-500 shrink-0" />
-             </div>
+                
+                {!isSidebarCollapsed && (
+                  <>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-200 truncate">{superadminProfile.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate uppercase tracking-widest mt-0.5 font-extrabold">ROOT ACCOUNT</p>
+                    </div>
+                  </>
+                )}
+
+                {/* Collapsed Tooltip for Profile */}
+                {isSidebarCollapsed && (
+                  <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+                    {superadminProfile.name}
+                  </div>
+                )}
+             </button>
           </div>
         </aside>
 
@@ -664,7 +697,7 @@ export default function SuperAdminDashboard() {
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
-                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96] shadow-sm"
                 disabled={isSavingName}
               >
                 Cancel
@@ -699,6 +732,33 @@ export default function SuperAdminDashboard() {
                 onClick={handleLogout}
                 className="flex-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 text-white px-4 py-3.5 rounded-xl text-sm font-black shadow-lg shadow-red-500/20 active:scale-95"
               >Confirm Logout</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM LOGO LIGHTBOX MODAL */}
+      {isLogoModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-center justify-center p-4 sm:p-10 animate-in fade-in duration-300" onClick={() => setIsLogoModalOpen(false)}>
+          <div
+            className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl h-[50vh] sm:h-[70vh] flex items-center justify-center p-8 sm:p-12 transform transition-all animate-in zoom-in-95 duration-500 border border-white/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsLogoModalOpen(false)}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="relative w-full h-full">
+              <Image
+                src="/logos.png"
+                alt="PropertyKo Logo Expanded"
+                fill
+                className="object-contain drop-shadow-lg"
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                priority
+              />
             </div>
           </div>
         </div>
@@ -826,22 +886,75 @@ function StatCard({ title, value, subtext, icon: Icon }: { title: string, value:
   );
 }
 
-function NavButton({ active, onClick, icon, label, badge }: any) {
+// ✨ NAV SECTION LABEL
+function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="h-px bg-white/10 mx-4 my-3 first:mt-1" />;
+  }
   return (
-    <button 
-      onClick={onClick} 
-      className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
-        active ? 'bg-white/10 text-white shadow-sm border border-white/5' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        <div className={`transition-transform duration-300 ${active ? 'text-[#1e88e5] scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'}`}>
+    <div className="flex items-center gap-3 px-4 pt-5 pb-2 first:pt-2 select-none">
+      <span className="text-[11px] font-semibold text-blue-300/70 uppercase tracking-[0.25em] whitespace-nowrap">
+        {children}
+      </span>
+      <div className="h-px bg-white/5 flex-1 mt-0.5"></div>
+    </div>
+  );
+}
+
+// ✨ NAV ITEM
+function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { icon: React.ReactNode, label: string, isActive: boolean, onClick: () => void, badgeCount?: number, collapsed?: boolean }) {
+  return (
+    <div className="relative group/navitem">
+      <button 
+        onClick={onClick} 
+        className={`w-full flex items-center gap-3 rounded-xl text-[15px] font-extrabold transition-all duration-300 group overflow-hidden ${
+          collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5"
+        } ${
+          isActive 
+            ? "bg-white/10 text-white shadow-sm border border-white/5" 
+            : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+        }`}
+      >
+        <span className={`shrink-0 relative transition-transform duration-300 ${isActive ? "text-[#1e88e5] scale-110" : "group-hover:text-slate-300 group-hover:scale-110"}`}>
           {icon}
+          {collapsed && badgeCount !== undefined && badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-[#0a1e3f]"></span>
+          )}
+        </span>
+
+        {!collapsed && (
+          <>
+            <span className="truncate whitespace-nowrap flex-1 text-left pr-4 tracking-wide">{label}</span>
+            {badgeCount !== undefined && badgeCount > 0 && (
+              <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
+                isActive ? 'bg-white text-[#1e88e5]' : 'bg-red-500 text-white shadow-red-500/10'
+              }`}>
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
+          </>
+        )}
+
+        {/* Active Indicator Line */}
+        {!collapsed && isActive && (
+          <div className="absolute left-0 w-1.5 h-6 bg-[#1e88e5] rounded-r-full shadow-[0_0_10px_#1e88e5]" />
+        )}
+        {/* Hover arrow indicator */}
+        {!collapsed && !isActive && (!badgeCount || badgeCount <= 0) && (
+          <ChevronRight size={16} className="shrink-0 absolute right-3 opacity-0 group-hover:opacity-100 transition-all text-slate-500" />
+        )}
+      </button>
+
+      {/* Tooltip shown only in collapsed (icon-only) mode */}
+      {collapsed && (
+        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold whitespace-nowrap opacity-0 -translate-x-1 group-hover/navitem:opacity-100 group-hover/navitem:translate-x-0 transition-all duration-150 z-[70] shadow-lg">
+          {label}
+          {badgeCount !== undefined && badgeCount > 0 && (
+            <span className="ml-1.5 text-red-400">({badgeCount > 99 ? '99+' : badgeCount})</span>
+          )}
         </div>
-        <span className="tracking-wide">{label}</span>
-      </div>
-      {active && <div className="absolute left-0 -ml-4 w-1.5 h-6 bg-[#1e88e5] rounded-r-full shadow-[0_0_10px_#1e88e5]" />}
-    </button>
+      )}
+    </div>
   );
 }
 

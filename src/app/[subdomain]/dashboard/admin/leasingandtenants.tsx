@@ -220,7 +220,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500 bg-[var(--color-bg)]">
       
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
               <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
@@ -255,7 +255,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       </div>
 
       {pendingLeases.length > 0 && (
-        <div className="shrink-0 mb-5 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 p-4 sm:p-5 rounded-[1.5rem] flex items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500 mx-1 sm:mx-0">
+        <div className="shrink-0 mb-5 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 p-4 sm:p-5 rounded-[var(--radius-xl)] flex items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500 mx-1 sm:mx-0">
           <div className="flex items-center gap-4">
             <div className="bg-amber-100 p-3 rounded-2xl text-amber-600 shadow-inner border border-amber-200 shrink-0">
               <BellRing size={22} strokeWidth={2.5} className="animate-[wiggle_1s_ease-in-out_infinite]" />
@@ -327,7 +327,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                     </div>
                   </div>
 
-                  <div className={`flex-1 bg-white border rounded-b-[1.5rem] rounded-tr-[1.5rem] p-5 sm:p-6 shadow-[var(--shadow-sm)] group-hover:shadow-lg transition-all flex flex-col relative overflow-hidden ${
+                  <div className={`flex-1 bg-white border rounded-b-[var(--radius-xl)] rounded-tr-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] group-hover:shadow-lg transition-all flex flex-col relative overflow-hidden ${
                       isActive ?  'border-[var(--color-primary)]/30 border-t-[var(--color-primary)]/30' : 
                       isExpired ? 'border-red-200 border-t-red-200' :
                       isTerminated ? 'border-slate-300 border-t-slate-300' :
@@ -366,14 +366,14 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                       {isPending ? (
                         <button 
                           onClick={() => handleOpenApproveModal(lease.id)}
-                          className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center gap-2 group/btn border border-transparent"
+                          className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-xl)] text-xs font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center gap-2 group/btn border border-transparent"
                         >
                           <AlertTriangle size={16} className="group-hover/btn:animate-pulse" /> Review & Approve
                         </button>
                       ) : (
                         <button
                           onClick={() => handleViewContract(lease)} 
-                          className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest border border-[var(--color-primary)]/20 hover:border-[var(--color-primary)]/40 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group/btn"
+                          className="w-full bg-[var(--color-primary)] text-[var(--color-text)] px-4 py-3.5 rounded-[var(--radius-xl)] text-xs font-black uppercase tracking-widest border border-[var(--color-primary)]/20 hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 group/btn"
                         >
                           <FileText size={18} strokeWidth={2.5} className="group-hover/btn:scale-110 transition-transform" /> View Folder
                         </button>
@@ -391,7 +391,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* 🌟 PREMIUM APPROVAL MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
@@ -486,7 +486,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* 🌟 VIEW CONTRACT MODAL WITH RENEWAL TRACKING */}
       {isViewModalOpen && viewLeaseData && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
 
             <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
@@ -518,7 +518,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div className={`px-3 py-1.5 border rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-[var(--shadow-sm)] ${
                   viewLeaseData.status === 'Terminated' ? 'bg-slate-100 text-slate-500 border-slate-300' :
                   viewLeaseData.status === 'Expired' ? 'bg-red-50 text-red-600 border-red-200' :
-                  'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]'
+                  'bg-emerald-50 text-emerald-700 border-emerald-200'
                 }`}>
                   {viewLeaseData.status === 'Terminated' ? <XOctagon size={14} /> :
                    viewLeaseData.status === 'Expired' ? <AlertTriangle size={14} /> :
@@ -680,7 +680,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* ✨ UNIVERSAL CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30`}>
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>

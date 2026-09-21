@@ -302,11 +302,11 @@ export default function LeaseTab({ userData, units }: any) {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           <div className="flex justify-between items-center w-full md:w-auto">
             <div className="flex items-center gap-3">
-              <div className="p-2 sm:p-2.5 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
-                <FileText className="text-[var(--color-primary)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+              <div className="p-2 sm:p-2.5 bg-slate-200 rounded-[var(--radius-md)] border border-slate-300 shadow-sm shrink-0">
+                <FileText className="text-[var(--color-text)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight truncate">
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight truncate">
                   Lease Contracts
                 </h2>
                 <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium truncate">
@@ -314,7 +314,7 @@ export default function LeaseTab({ userData, units }: any) {
                 </p>
               </div>
             </div>
-            <div className="md:hidden w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-black text-xs shadow-inner border border-[var(--color-primary)]/20 shrink-0">
+            <div className="md:hidden w-9 h-9 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs shadow-inner border border-[var(--color-primary)]/20 shrink-0">
               {userData?.name ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() : "OW"}
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function LeaseTab({ userData, units }: any) {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full md:w-auto gap-3">
             {sortedUnits.length > 1 && (
               <div className="relative w-full sm:w-auto min-w-[240px] max-w-full group">
-                <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)] z-10 pointer-events-none w-4 h-4" strokeWidth={2.5} />
+                <Home className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text)] z-10 pointer-events-none w-4 h-4" strokeWidth={2.5} />
                 <select
                   value={selectedUnit?.id || ''}
                   onChange={(e) => setSelectedUnit(sortedUnits.find((u: any) => u.id === e.target.value))}
@@ -339,8 +339,8 @@ export default function LeaseTab({ userData, units }: any) {
             )}
 
           <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-            <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Owner</span>
-            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Owner</span>
+            <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
               {userData?.name ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() : "OW"}
             </div>
           </div>
@@ -470,7 +470,7 @@ export default function LeaseTab({ userData, units }: any) {
 
                 <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8">
                   <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-[var(--color-border)] pb-4 shrink-0 gap-3">
-                    <h3 className="font-black text-lg sm:text-xl text-[var(--color-secondary)] tracking-tight truncate">Contract Summary</h3>
+                    <h3 className="font-black text-lg sm:text-xl text-[var(--color-text)] tracking-tight truncate">Contract Summary</h3>
                     
                     <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[8px] sm:text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0 ${
                       isPending ? 'bg-amber-50 text-amber-700 border-amber-200/60' : 
@@ -482,13 +482,13 @@ export default function LeaseTab({ userData, units }: any) {
                   </div>
                   
                   <div className="flex flex-col gap-3 sm:gap-4 shrink-0">
-                    <FormField label="Tenant Name" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={tenantName} valueColor="text-[var(--color-text)]"/>
-                    <FormField label="Property" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`${propertyName} · ${unitNumber}`} valueColor="text-[var(--color-text)]" />
-                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-text)]" />
+                    <FormField label="Tenant Name" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={tenantName} valueColor="text-[var(--color-text)]"/>
+                    <FormField label="Property" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={`${propertyName} · ${unitNumber}`} valueColor="text-[var(--color-text)]" />
+                    <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-text)]" />
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseStartDate} valueColor="text-[var(--color-text)]" />
-                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-secondary)]" />} value={leaseEndDate} valueColor="text-[var(--color-text)]" />
+                      <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={leaseStartDate} valueColor="text-[var(--color-text)]" />
+                      <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={leaseEndDate} valueColor="text-[var(--color-text)]" />
                     </div>
                     
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-[var(--color-border)]">
@@ -504,11 +504,11 @@ export default function LeaseTab({ userData, units }: any) {
                         }`}
                       >
                         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-xl)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-secondary)]" : "border-[var(--color-border)] text-slate-400"}`}>
+                          <div className={`p-2.5 sm:p-3 bg-white shadow-sm border rounded-[var(--radius-xl)] shrink-0 ${hasDocument ? "border-[var(--color-primary)]/30 text-[var(--color-text)]" : "border-[var(--color-border)] text-slate-400"}`}>
                             <FileCheck size={20} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                           </div>
                           <div className="text-left min-w-0">
-                            <span className={`font-black text-[13px] sm:text-base block tracking-tight truncate ${hasDocument ? "text-[var(--color-secondary)]" : "text-slate-400"}`}>
+                            <span className={`font-black text-[13px] sm:text-base block tracking-tight truncate ${hasDocument ? "text-[var(--color-text)]" : "text-slate-400"}`}>
                               {hasDocument ? "View Full Contract" : "No Contract Available"}
                             </span>
                             <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mt-0.5 truncate">
@@ -534,7 +534,7 @@ export default function LeaseTab({ userData, units }: any) {
                 <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
                 
                 <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
-                  <div className="flex items-center gap-2 text-[var(--color-primary)] mb-5 sm:mb-6 pb-4 border-b border-white/10 shrink-0">
+                  <div className="flex items-center gap-2 text-white mb-5 sm:mb-6 pb-4 border-b border-white/10 shrink-0">
                     <FileText size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Lease Actions</span>
                   </div>

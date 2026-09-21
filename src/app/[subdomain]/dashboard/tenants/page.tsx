@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
-  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft,
+  Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft, MapPin,
   Droplets, Wind, Sparkles // <-- Added missing icon imports
 } from 'lucide-react';
 import Image from "next/image";
@@ -971,7 +971,7 @@ export default function TenantDashboard() {
                             setEditedName(tenantName);
                             setIsEditingName(true);
                           }}
-                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          className="text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                         >
                           <Edit2 size={12} strokeWidth={2.5} /> Edit
                         </button>
@@ -1060,7 +1060,7 @@ export default function TenantDashboard() {
                   {!isChangingPassword && (
                     <button 
                       onClick={() => setIsChangingPassword(true)}
-                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      className="text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 border border-[var(--color-primary)]/20 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                     >
                       <Key size={14} /> Change Password
                     </button>
@@ -1476,8 +1476,8 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           {isLoading ? (
             <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-1"></div>
           ) : (
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-700 mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
-              Welcome back, <span className="text-[var(--color-secondary)] break-words">{tenantName}</span>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-black mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+              Welcome back, <span className="text-[var(--color-text)] break-words">{tenantName}</span>
             </h1>
           )}
         </div>
@@ -1505,11 +1505,11 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight text-white break-all sm:break-normal">
                   ₱{rentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </h2>
-                <div className="text-[11px] sm:text-xs md:text-sm text-[white/80] font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
-                  <Home size={14} className="text-[var(--color-primary)] shrink-0" />
+                <div className="text-[11px] sm:text-xs md:text-sm text-white/70 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
+                  <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
                   <div className="truncate min-w-0">
                     <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
-                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[var(--color-primary)]`}>· Status: {soaStatus}</span>}
+                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[white/70]`}>· {soaStatus}</span>}
                     </p>
                   </div>
                 </div>
@@ -1532,7 +1532,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
 
         {/* Card 1: Report Issue */}
-        <button onClick={() => setActiveTab('repair')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1545,7 +1545,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 2: My Lease */}
-        <button onClick={() => setActiveTab('lease')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('lease')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1558,7 +1558,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 3: Financials */}
-        <button onClick={() => setActiveTab('pay')} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={() => setActiveTab('pay')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1571,7 +1571,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
         </button>
 
         {/* Card 4: Support */}
-        <button onClick={handleConversationClick} className="bg-[var(--color-primary)]/10 flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+        <button onClick={handleConversationClick} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
             <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
@@ -1585,10 +1585,10 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
       </div>
 
       {/* ✨ UPDATED: Recent Statements Section */}
-      <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] transition-all hover:shadow-[var(--shadow-md)]">
+      <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] border border-[var(--color-border)] transition-all hover:shadow-[var(--shadow-md)]">
         <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
           <div className="min-w-0">
-            <h3 className="font-black text-base sm:text-lg text-[var(--color-secondary)] tracking-tight truncate">Recent Statements</h3>
+            <h3 className="font-black text-base sm:text-lg text-[var(--color-text)] tracking-tight truncate">Recent Statements</h3>
             <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium hidden sm:block truncate">Overview of recent monthly financial statements</p>
           </div>
           <button 
@@ -1630,11 +1630,11 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                   className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-xl)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
                 >
                   <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-text)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
                       <FileText size={16} className="sm:w-[18px] sm:h-[18px] transition-colors" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-extrabold text-[var(--color-text)] text-xs sm:text-sm group-hover:text-[var(--color-primary)] transition-colors truncate">Statement {stmt.period}</p>
+                      <p className="font-extrabold text-[var(--color-text)] text-xs sm:text-sm group-hover:text-[var(--color-text)] transition-colors truncate">Statement {stmt.period}</p>
                       <span className={`inline-flex items-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] border ${
                         isSuccess 
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
@@ -1645,7 +1645,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                     </div>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-                    <span className="font-black text-[var(--color-secondary)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
+                    <span className="font-black text-[var(--color-text)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
                     <ChevronRight size={14} className="sm:w-4 sm:h-4 text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
                   </div>
                 </div>

@@ -141,12 +141,12 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       <div className="mb-4 shrink-0">
         <div className="bg-white px-5 py-4 sm:px-6 sm:py-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all">
           <div>
-            <h2 className="text-xl md:text-2xl font-black text-[var(--color-secondary)] tracking-tight">My Tasks</h2>
+            <h2 className="text-xl md:text-2xl font-black text-[var(--color-text)] tracking-tight">My Tasks</h2>
             <p className="text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">Manage and update your assigned tickets.</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2 bg-[var(--color-primary)]/5 px-3.5 py-2 rounded-2xl border border-[var(--color-primary)]/10 shadow-inner">
-              <Activity size={15} className="text-[var(--color-primary)] animate-pulse" strokeWidth={2.5} />
+              <Activity size={15} className="text-[var(--color-text)] animate-pulse" strokeWidth={2.5} />
               <span className="text-sm font-extrabold text-[var(--color-text)] tracking-tight">{isLoading ? "-" : openTasks.length} Active Tasks</span>
             </div>
           </div>
@@ -154,24 +154,24 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       </div>
 
       {/* ✨ MOBILE TAB SWITCHER (Nakatago sa Desktop) */}
-      <div className="md:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-2xl flex border border-slate-200/80 mx-1 sm:mx-0">
+      <div className="md:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-[var(--radius-xl)] flex border border-slate-200/80 mx-1 sm:mx-0">
         <button 
           onClick={() => setActiveView('open')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'open' ? 'bg-white text-[var(--color-primary)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'open' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
-          <Clock size={14} strokeWidth={2.5}/> Open <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : openTasks.length}</span>
+          <Clock size={14} strokeWidth={2.5}/> Open <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : openTasks.length}</span>
         </button>
         <button 
           onClick={() => setActiveView('on_hold')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'on_hold' ? 'bg-white text-amber-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'on_hold' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
-          <PauseCircle size={14} strokeWidth={2.5}/> Hold <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : onHoldTasks.length}</span>
+          <PauseCircle size={14} strokeWidth={2.5}/> Hold <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : onHoldTasks.length}</span>
         </button>
         <button 
           onClick={() => setActiveView('resolved')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'resolved' ? 'bg-white text-[var(--color-primary)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'resolved' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
-          <CheckCircle size={14} strokeWidth={2.5}/> Resolved <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : resolvedTasks.length}</span>
+          <CheckCircle size={14} strokeWidth={2.5}/> Resolved <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : resolvedTasks.length}</span>
         </button>
       </div>
 
@@ -182,8 +182,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           {/* ================= COLUMN 1: OPEN TASKS ================= */}
           <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
             {/* Desktop Only Header */}
-            <h4 className="hidden md:flex font-black text-[var(--color-secondary)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
-              <span className="flex items-center gap-2"><Clock size={16} className="text-[var(--color-primary)]" strokeWidth={2.5}/> Open &amp; In Progress</span>
+            <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
+              <span className="flex items-center gap-2"><Clock size={16} className="text-blue-700" strokeWidth={2.5}/> Open &amp; In Progress</span>
               <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-xl)] text-xs font-black border border-[var(--color-primary)]/20 shadow-inner">{isLoading ? "-" : openTasks.length}</span>
             </h4>
             
@@ -204,7 +204,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
                       {task.status === 'in_progress' ? (
-                        <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">Working</span>
+                        <span className="bg-blue-100 text-blue-700 border border-blue-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">Working</span>
                       ) : (
                         <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">New</span>
                       )}
@@ -222,9 +222,9 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                     <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)]">
                       {task.status === 'pending' ? (
-                        <button onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'in_progress'); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-[var(--shadow-md)] border border-transparent">Start Task</button>
+                        <button onClick={(e) => { e.stopPropagation(); updateTaskStatus(task.id, 'in_progress'); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-[var(--shadow-md)] border border-transparent">Start Task</button>
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-xl)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-sm border border-[var(--color-primary)]/20">Update Report</button>
+                        <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-xl)] text-xs font-black bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-sm border border-[var(--color-primary)]/20">Update Report</button>
                       )}
                     </div>
                   </div>
@@ -236,7 +236,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           {/* ================= COLUMN 2: ON HOLD TASKS ================= */}
           <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
             {/* Desktop Only Header */}
-            <h4 className="hidden md:flex font-black text-[var(--color-secondary)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
+            <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
               <span className="flex items-center gap-2"><PauseCircle size={16} className="text-amber-500" strokeWidth={2.5}/> On Hold</span>
               <span className="bg-amber-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-xl text-xs font-black border border-amber-100 shadow-inner">{isLoading ? "-" : onHoldTasks.length}</span>
             </h4>
@@ -269,7 +269,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     </div>
 
                     <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)]">
-                      <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-bold bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-md border border-transparent">Update Report</button>
+                      <button onClick={(e) => { e.stopPropagation(); openCompleteModal(task.id); }} className="w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 active:scale-[0.98] transition-all shadow-md border border-transparent">Update Report</button>
                     </div>
                   </div>
                 ))
@@ -280,8 +280,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           {/* ================= COLUMN 3: RESOLVED TASKS ================= */}
           <div className={`${activeView === 'resolved' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
             {/* Desktop Only Header */}
-            <h4 className="hidden md:flex font-black text-[var(--color-secondary)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
-              <span className="flex items-center gap-2"><CheckCircle size={16} className="text-[var(--color-primary)]" strokeWidth={2.5}/> Resolved</span>
+            <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
+              <span className="flex items-center gap-2"><CheckCircle size={16} className="text-green-700" strokeWidth={2.5}/> Resolved</span>
               <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-2.5 py-0.5 rounded-xl text-xs font-black border border-[var(--color-primary)]/20 shadow-inner">{isLoading ? "-" : resolvedTasks.length}</span>
             </h4>
             
@@ -299,7 +299,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-secondary)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
-                      <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">Success</span>
+                      <span className="bg-green-100 text-green-700 border border-green-200 text-[9px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-[var(--shadow-sm)]">Success</span>
                     </div>
                     
                     <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
@@ -307,8 +307,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     </p>
 
                     <div className="space-y-2 mb-3 flex-1 overflow-hidden">
-                      <p className="text-xs leading-relaxed font-semibold text-emerald-700 line-clamp-2">
-                        <CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} />
+                      <p className="text-xs leading-relaxed font-semibold text-green-700 line-clamp-2">
+                        <CheckCircle2 size={12} className="inline mr-1 text-green-500" strokeWidth={3} />
                         {task.remarks || "Task completed successfully."}
                       </p>
                     </div>
@@ -505,11 +505,11 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-primary)]/20 shadow-sm">Info</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-sm">Info</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Task Overview</span>
                     </div>
                     {reviewActiveTask.status === 'in_progress' ? (
-                      <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 text-[10px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-sm">Working</span>
+                      <span className="bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-sm">Working</span>
                     ) : (
                       <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black px-2 py-0.5 rounded-[var(--radius-sm)] uppercase tracking-wider shrink-0 shadow-sm">New</span>
                     )}
@@ -606,7 +606,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-amber-200/60 shadow-[var(--shadow-sm)]">After</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">After</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Report</span>
                     </div>
                     <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]">
@@ -631,7 +631,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                   <div className="bg-amber-50/40 rounded-[1.5rem] p-5 border border-amber-100 space-y-2 shrink-0 flex flex-col justify-between flex-1">
                     <div>
-                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block border-b border-amber-100 pb-2 mb-2">Reason for delay:</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-amber-100 pb-2 mb-2">Reason for delay:</span>
                       <p className="text-sm text-amber-800 leading-relaxed font-bold">
                         {reviewOnHoldTask.on_hold_reason || "Task is currently on hold."}
                       </p>
@@ -701,10 +701,10 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">After</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">After</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Resolution</span>
                     </div>
-                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]"><Check size={12} className="inline mr-1"/> Success</span>
+                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-green-100 text-green-700 border-green-200/60 shadow-[var(--shadow-sm)]"><Check size={12} className="inline mr-1"/> Success</span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-primary)]/20 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group relative z-10 p-1">
@@ -718,15 +718,15 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div className="bg-[var(--color-primary)]/5 rounded-[1.5rem] p-5 border border-[var(--color-primary)]/10 space-y-4 shrink-0 flex flex-col justify-between flex-1 relative z-10">
                     {reviewResolvedTask.remarks && (
                        <div>
-                         <span className="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest block border-b border-[var(--color-primary)]/20 pb-2 mb-2">My Remarks:</span>
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-primary)]/20 pb-2 mb-2">My Remarks:</span>
                          <p className="text-sm text-[var(--color-text)] leading-relaxed font-bold">"{reviewResolvedTask.remarks}"</p>
                        </div>
                     )}
 
                     <div className="mt-auto space-y-4 pt-2">
                       <div className="flex justify-between items-center border-t border-[var(--color-primary)]/20 pt-4">
-                        <span className="text-[10px] font-black text-[var(--color-primary)]/70 uppercase tracking-widest flex items-center gap-2"><PhilippinePesoIcon size={14} /> Materials Cost</span>
-                        <span className="font-extrabold text-[var(--color-primary)] bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] text-xs">
+                        <span className="text-[10px] font-black text-[var(--color-text)]/70 uppercase tracking-widest flex items-center gap-2"><PhilippinePesoIcon size={14} /> Materials Cost</span>
+                        <span className="font-extrabold text-[var(--color-text)] bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] text-xs">
                           {reviewResolvedTask.cost > 0 ? `₱${reviewResolvedTask.cost.toLocaleString()}` : "₱0.00"}
                         </span>
                       </div>
