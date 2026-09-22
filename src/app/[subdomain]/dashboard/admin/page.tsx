@@ -471,11 +471,16 @@ export default function AdminDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
+    if (type === 'BILLING' || type === 'SOA') {
+      // Pass the specific payload to automatically pop open the billing modal in TeamTab
+      handleTabChange("Team", "open_billing");
+    }
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
       if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
       handleTabChange("Maintenance"); 
-    } else handleTabChange("Dashboard");
+    } else {
+      handleTabChange("Dashboard");
+    }
   };
 
   const formatColumnName = (key: string) => {
@@ -715,6 +720,7 @@ export default function AdminDashboard() {
             <div className="pt-3 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>
+            {/* Added highlight payload delivery property to TeamTab */}
             <NavItem icon={<Settings size={18} strokeWidth={2.5} />} label="Team & Settings" isActive={activeTab === "Team"} onClick={() => handleTabChange("Team")} collapsed={isSidebarCollapsed} />
           </nav>
 
@@ -755,7 +761,9 @@ export default function AdminDashboard() {
             {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
             {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
-            {activeTab === "Team" && <TeamTab orgData={orgData} isLoading={isLoading} />}
+            
+            {/* Passes the action intent explicitly down to the Team settings tab */}
+            {activeTab === "Team" && <TeamTab orgData={orgData} isLoading={isLoading} actionIntent={highlightTicketId} />}
           </div>
         </main>
       </div>

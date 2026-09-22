@@ -41,7 +41,7 @@ const defaultTheme = {
   enableShadows: true
 };
 
-export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
+export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent }: any) {
   
   // Database States
   const [team, setTeam] = useState<any[]>([]);
@@ -63,6 +63,13 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ✨ Catch "open_billing" intention passed down from notifications
+  useEffect(() => {
+    if (actionIntent === "open_billing") {
+      setIsBillingModalOpen(true);
+    }
+  }, [actionIntent]);
 
   // ✨ NEW: Theme Action Confirmation Modal States
   const [themeConfirmModal, setThemeConfirmModal] = useState<{

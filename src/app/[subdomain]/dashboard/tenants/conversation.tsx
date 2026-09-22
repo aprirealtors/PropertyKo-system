@@ -141,6 +141,31 @@ export default function ConversationTab({
     }
   };
 
+  // Helper for Messenger-style sidebar time display
+  const formatSidebarTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+
+    // Set to midnight to calculate day differences accurately
+    const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const msInDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / msInDay);
+
+    if (diffDays === 0) {
+      // Today: Show Time
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays > 0 && diffDays < 7) {
+      // Within a week: Show Mon, Tue, Wed, etc.
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      // More than a week: Show Date (e.g. Oct 12)
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
   useEffect(() => {
     if (activeChat && !isLoading && !isSearchActive && !isSending) {
       setTimeout(() => {
@@ -649,12 +674,7 @@ export default function ConversationTab({
               const Icon = role.icon;
               const isActive = activeChat === role.id;
               const lastMsg = getLastMessage(role.id);
-              const displayTime = lastMsg
-                ? new Date(lastMsg.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "";
+              const displayTime = lastMsg ? formatSidebarTime(lastMsg.created_at) : '';
               const unreadCount = messages.filter(
                 (m) =>
                   !m.is_read &&
@@ -746,16 +766,12 @@ export default function ConversationTab({
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
                               unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
                             }`}
-                            title={`${customNames[role.id] || role.label} - ${role.id.charAt(0).toUpperCase() + role.id.slice(1)}`}
+                            title={`${customNames[role.id] || role.label}`}
                           >
                             {customNames[role.id] || role.label}
-                            <span className="font-semibold text-[10px] text-slate-400 ml-1.5 uppercase tracking-wider">
-                              {renderRoleBadge(role.id)}
-                            </span>
                           </h3>
                         )}
                       </div>
-                      
                       <span
                         className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${
                           unreadCount > 0 ? "font-bold text-[var(--color-primary)]" : "font-medium text-slate-400"
@@ -1164,13 +1180,13 @@ export default function ConversationTab({
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange} 
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (newMessage.trim() && !isSending) {
                           handleSendMessage(e as any);
-                          e.currentTarget.style.height = 'auto'; 
+                          e.currentTarget.style.height = 'auto';
                         }
                       }
                     }}
@@ -1190,7 +1206,11 @@ export default function ConversationTab({
                       : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  {isSending ? <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" /> : <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />}
+                  {isSending ? (
+                    <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
+                  ) : (
+                    <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
+                  )}
                 </button>
               </form>
             </div>

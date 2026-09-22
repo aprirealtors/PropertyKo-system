@@ -45,7 +45,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null); // Added this missing ref
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -69,7 +69,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     }
   };
 
-  // Helper for dynamic message date/time display
+  // Helper for dynamic message date/time display in main chat
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -83,6 +83,31 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else {
       return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  };
+
+  // Helper for Messenger-style sidebar time display
+  const formatSidebarTime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+
+    // Set to midnight to calculate day differences accurately
+    const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const msInDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / msInDay);
+
+    if (diffDays === 0) {
+      // Today: Show Time
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays > 0 && diffDays < 7) {
+      // Within a week: Show Mon, Tue, Wed, etc.
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      // More than a week: Show Date (e.g. Oct 12)
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
 
@@ -481,7 +506,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
             filteredContacts.map((contact: any) => {
               const isActive = activeChat === contact.id;
               const lastMsg = getLastMessage(contact.id);
-              const displayTime = lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+              const displayTime = lastMsg ? formatSidebarTime(lastMsg.created_at) : '';
               const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== adminProfile?.email && isMessageForContact(m, contact.id)).length;
               const isOnline = onlineUsers.includes(contact.id);
               const isTyping = remoteTyping[contact.id];
@@ -532,12 +557,9 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
                               unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
                             }`}
-                            title={`${customNames[contact.id] || contact.name} - ${contact.type.charAt(0).toUpperCase() + contact.type.slice(1)}`}
+                            title={`${customNames[contact.id] || contact.name}`}
                           >
                             {customNames[contact.id] || contact.name}
-                            <span className="font-semibold text-[10px] text-slate-400 ml-1.5 uppercase tracking-wider">
-                              {renderRoleBadge(contact.type)}
-                            </span>
                           </h3>
                         )}
                       </div>

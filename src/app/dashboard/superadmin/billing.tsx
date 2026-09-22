@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Search, Download, Home, 
-  X, Bell, Eye, Users, Folder, Calendar 
+  X, Bell, Eye, Users, Folder, Calendar, CheckCircle2 
 } from "lucide-react";
 
 // Helper to make the day look nice (1st, 2nd, 3rd, 15th, etc.)
@@ -64,6 +64,11 @@ export default function SuperAdminBilling({
   // UI & Modal States
   const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+  
+  // Reminder Modal States
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [reminderSuccess, setReminderSuccess] = useState(false);
 
   useEffect(() => {
     fetchOrganizations();
@@ -125,9 +130,48 @@ export default function SuperAdminBilling({
     org.admin_email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Derived Variables for Modal
+  const billingStatus = selectedOrg?.billing_status || 'Pending';
+  const nextBillingDateFormatted = calculateNextBillingDate(selectedOrg?.billing_day);
+  const orgStats = selectedOrg ? (liveStats[selectedOrg.admin_email] || { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 }) : null;
+
   // Handlers for the new modal buttons
   const handleSendReminder = () => {
-    alert(`Reminder sent to ${selectedOrg?.admin_email}`);
+    setIsReminderModalOpen(true);
+    setReminderSuccess(false);
+  };
+
+  const confirmSendReminder = async () => {
+    if (!selectedOrg || !orgStats) return;
+    setIsSendingReminder(true);
+
+    try {
+      const { error } = await supabase.from('notifications').insert({
+        admin_email: selectedOrg.admin_email,
+        recipient: 'ADMIN', 
+        type: 'BILLING',
+        title: 'Payment Reminder',
+        message: `This is a reminder that your monthly subscription payment of ₱${orgStats.totalMRR.toLocaleString()} is due on ${nextBillingDateFormatted}. Please review your billing details to avoid service interruption.`,
+        is_read: false,
+        is_hidden: false
+      });
+
+      if (error) throw error;
+
+      setReminderSuccess(true);
+      
+      // Close the secondary modal after 2 seconds on success
+      setTimeout(() => {
+        setIsReminderModalOpen(false);
+        setReminderSuccess(false);
+      }, 2000);
+
+    } catch (err) {
+      console.error("Error sending reminder:", err);
+      alert("Failed to send reminder.");
+    } finally {
+      setIsSendingReminder(false);
+    }
   };
 
   const handleViewPayment = () => {
@@ -140,134 +184,132 @@ export default function SuperAdminBilling({
     }
   };
 
-  // Derived Variables for Modal
-  const billingStatus = selectedOrg?.billing_status || 'Pending';
-  const nextBillingDateFormatted = calculateNextBillingDate(selectedOrg?.billing_day);
-  // ✨ Get live stats for the selected org in the modal
-  const orgStats = selectedOrg ? (liveStats[selectedOrg.admin_email] || { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 }) : null;
-
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-        
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0a1e3f] mb-2 tracking-tight">Billing & Revenue</h2>
-          <p className="text-slate-500 text-sm sm:text-base font-medium">Manage organization folders and their individual billing.</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2">
-            <Download size={16} />
-            Export CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Search & Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="font-extrabold text-xl text-[#0a1e3f] flex items-center gap-2">
-          <Folder size={22} className="text-[#1d82f5]" /> 
-          Client Folders
-        </h2>
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search folders..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/50 focus:border-[#1d82f5] bg-white shadow-sm transition-all"
-          />
-        </div>
-      </div>
-
-      {/* FOLDER GRID LAYOUT */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="bg-white rounded-3xl h-[320px] border border-slate-200 shadow-sm animate-pulse p-6 flex flex-col">
-              <div className="flex justify-between items-start mb-4 mt-2">
-                <div className="h-6 w-8 bg-slate-100 rounded-md"></div>
-                <div className="h-5 w-16 bg-slate-100 rounded-full"></div>
-              </div>
-              <div className="h-24 w-full bg-slate-100 rounded-2xl mb-4"></div>
-              <div className="h-4 w-3/4 bg-slate-100 rounded mb-2"></div>
-              <div className="h-3 w-1/2 bg-slate-100 rounded mb-auto"></div>
-              <div className="h-10 w-full bg-slate-100 rounded-xl mt-4"></div>
-            </div>
-          ))}
-        </div>
-      ) : filteredOrgs.length === 0 ? (
-        <div className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 py-20 text-center flex flex-col items-center">
-          <div className="bg-slate-50 p-5 rounded-full mb-4">
-            <Folder size={48} className="text-slate-300" />
+    <>
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+          
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0a1e3f] mb-2 tracking-tight">Billing & Revenue</h2>
+            <p className="text-slate-500 text-sm sm:text-base font-medium">Manage organization folders and their individual billing.</p>
           </div>
-          <h3 className="text-lg font-bold text-slate-700 mb-1">No Folders Found</h3>
-          <p className="text-slate-500">We couldn't find any organizations matching "{searchTerm}".</p>
+          <div className="flex gap-3">
+            <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center gap-2">
+              <Download size={16} />
+              Export CSV
+            </button>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredOrgs.map((org, index) => (
-            <div 
-              key={index} 
-              className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 p-6 flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group relative"
-            >
-              {/* Decorative Top Folder Tab */}
-              <div className="absolute top-0 left-8 w-14 h-1.5 bg-gradient-to-r from-[#1d82f5] to-blue-500 rounded-b-md opacity-80"></div>
-              
-              {/* Top Row: Folder Icon & Status */}
-              <div className="flex items-start justify-between mb-4 mt-2">
-                <div className="text-slate-300 group-hover:text-blue-200 transition-colors">
-                  <Folder size={24} strokeWidth={2.5} className="fill-slate-50 group-hover:fill-blue-50 transition-colors" />
-                </div>
-                <StatusBadge text="Active" color="green" />
-              </div>
-              
-              {/* LOGO PLACEHOLDER: BIG RECTANGLE WITH OBJECT-CONTAIN */}
-              <div className="w-full h-24 mb-4 bg-slate-50/80 border border-slate-100 shadow-inner rounded-2xl flex items-center justify-center overflow-hidden shrink-0 group-hover:border-blue-100 transition-colors p-3">
-                {org.logo_url ? (
-                  <img 
-                    src={org.logo_url} 
-                    alt={`${org.org_name} logo`} 
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <span className="text-xl font-black text-slate-400 tracking-widest uppercase">
-                    {org.org_name ? org.org_name.substring(0, 3) : "ORG"}
-                  </span>
-                )}
-              </div>
-              
-              <h3 className="font-extrabold text-[#0a1e3f] text-lg truncate mb-1" title={org.org_name}>
-                {org.org_name}
-              </h3>
-              <p className="text-xs text-slate-500 font-medium truncate mb-2" title={org.admin_email}>
-                {org.admin_email}
-              </p>
 
-              {/* Billing Date Indicator - Displays the Actual Next Date */}
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-5 bg-slate-50 w-fit px-2 py-1 rounded-md">
-                <Calendar size={12} className="text-[#1d82f5]" />
-                <span>Due: {org.billing_day ? calculateNextBillingDate(org.billing_day) : 'Not Set'}</span>
-              </div>
-              
-              {/* Footer action button */}
-              <div className="mt-auto pt-5 border-t border-slate-100">
-                <button 
-                  onClick={() => {
-                    setSelectedOrg(org);
-                    setIsBillingModalOpen(true);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1d82f5] text-slate-600 hover:text-white border border-slate-200 hover:border-[#1d82f5] px-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-sm"
-                >
-                  <Building2 size={16} />
-                  View Billing Info
-                </button>
-              </div>
-            </div>
-          ))}
+        {/* Search & Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h2 className="font-extrabold text-xl text-[#0a1e3f] flex items-center gap-2">
+            <Folder size={22} className="text-[#1d82f5]" /> 
+            Client Folders
+          </h2>
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search folders..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1d82f5]/50 focus:border-[#1d82f5] bg-white shadow-sm transition-all"
+            />
+          </div>
         </div>
-      )}
+
+        {/* FOLDER GRID LAYOUT */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="bg-white rounded-3xl h-[320px] border border-slate-200 shadow-sm animate-pulse p-6 flex flex-col">
+                <div className="flex justify-between items-start mb-4 mt-2">
+                  <div className="h-6 w-8 bg-slate-100 rounded-md"></div>
+                  <div className="h-5 w-16 bg-slate-100 rounded-full"></div>
+                </div>
+                <div className="h-24 w-full bg-slate-100 rounded-2xl mb-4"></div>
+                <div className="h-4 w-3/4 bg-slate-100 rounded mb-2"></div>
+                <div className="h-3 w-1/2 bg-slate-100 rounded mb-auto"></div>
+                <div className="h-10 w-full bg-slate-100 rounded-xl mt-4"></div>
+              </div>
+            ))}
+          </div>
+        ) : filteredOrgs.length === 0 ? (
+          <div className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 py-20 text-center flex flex-col items-center">
+            <div className="bg-slate-50 p-5 rounded-full mb-4">
+              <Folder size={48} className="text-slate-300" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-700 mb-1">No Folders Found</h3>
+            <p className="text-slate-500">We couldn't find any organizations matching "{searchTerm}".</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredOrgs.map((org, index) => (
+              <div 
+                key={index} 
+                className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 p-6 flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group relative"
+              >
+                {/* Decorative Top Folder Tab */}
+                <div className="absolute top-0 left-8 w-14 h-1.5 bg-gradient-to-r from-[#1d82f5] to-blue-500 rounded-b-md opacity-80"></div>
+                
+                {/* Top Row: Folder Icon & Status */}
+                <div className="flex items-start justify-between mb-4 mt-2">
+                  <div className="text-slate-300 group-hover:text-blue-200 transition-colors">
+                    <Folder size={24} strokeWidth={2.5} className="fill-slate-50 group-hover:fill-blue-50 transition-colors" />
+                  </div>
+                  <StatusBadge text="Active" color="green" />
+                </div>
+                
+                {/* LOGO PLACEHOLDER: BIG RECTANGLE WITH OBJECT-CONTAIN */}
+                <div className="w-full h-24 mb-4 bg-slate-50/80 border border-slate-100 shadow-inner rounded-2xl flex items-center justify-center overflow-hidden shrink-0 group-hover:border-blue-100 transition-colors p-3">
+                  {org.logo_url ? (
+                    <img 
+                      src={org.logo_url} 
+                      alt={`${org.org_name} logo`} 
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-xl font-black text-slate-400 tracking-widest uppercase">
+                      {org.org_name ? org.org_name.substring(0, 3) : "ORG"}
+                    </span>
+                  )}
+                </div>
+                
+                <h3 className="font-extrabold text-[#0a1e3f] text-lg truncate mb-1" title={org.org_name}>
+                  {org.org_name}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium truncate mb-2" title={org.admin_email}>
+                  {org.admin_email}
+                </p>
+
+                {/* Billing Date Indicator - Displays the Actual Next Date */}
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-5 bg-slate-50 w-fit px-2 py-1 rounded-md">
+                  <Calendar size={12} className="text-[#1d82f5]" />
+                  <span>Due: {org.billing_day ? calculateNextBillingDate(org.billing_day) : 'Not Set'}</span>
+                </div>
+                
+                {/* Footer action button */}
+                <div className="mt-auto pt-5 border-t border-slate-100">
+                  <button 
+                    onClick={() => {
+                      setSelectedOrg(org);
+                      setIsBillingModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#1d82f5] text-slate-600 hover:text-white border border-slate-200 hover:border-[#1d82f5] px-4 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.98] shadow-sm"
+                  >
+                    <Building2 size={16} />
+                    View Billing Info
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* --- MODALS PLACED OUTSIDE THE ANIMATED DIV SO THEY COVER THE WHOLE SCREEN --- */}
 
       {/* ORGANIZATION BILLING INFO MODAL */}
       {isBillingModalOpen && selectedOrg && orgStats && (
@@ -378,7 +420,50 @@ export default function SuperAdminBilling({
         </div>
       )}
 
-    </div>
+      {/* ✨ SEND PAYMENT REMINDER CONFIRMATION MODAL */}
+      {isReminderModalOpen && selectedOrg && (
+        <div className="fixed inset-0 bg-[#0a1e3f]/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col p-8 text-center animate-in zoom-in-95 duration-300">
+            {reminderSuccess ? (
+              <div className="flex flex-col items-center py-4 animate-in fade-in zoom-in duration-300">
+                <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-5 border-4 border-emerald-100 shadow-inner">
+                  <CheckCircle2 size={36} strokeWidth={2.5} />
+                </div>
+                <h3 className="text-2xl font-black text-[#0a1e3f] mb-2 tracking-tight">Reminder Sent!</h3>
+                <p className="text-sm font-medium text-slate-500">Successfully notified {selectedOrg.org_name}.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="w-20 h-20 bg-blue-50 text-[#1d82f5] rounded-3xl flex items-center justify-center mb-6 border-4 border-blue-100 shadow-inner">
+                  <Bell size={36} strokeWidth={2.5} />
+                </div>
+                <h3 className="text-2xl font-black text-[#0a1e3f] mb-3 tracking-tight">Send Reminder</h3>
+                <p className="text-sm text-slate-500 font-medium mb-8 leading-relaxed">
+                  Are you sure you want to send a billing reminder to <strong className="text-[#1d82f5]">{selectedOrg.org_name}</strong>? They will receive a notification in their admin portal.
+                </p>
+                
+                <div className="flex w-full gap-3">
+                  <button 
+                    onClick={() => setIsReminderModalOpen(false)}
+                    disabled={isSendingReminder}
+                    className="flex-1 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-sm transition-all border border-slate-200 active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={confirmSendReminder}
+                    disabled={isSendingReminder}
+                    className="flex-1 py-3.5 bg-[#0a1e3f] hover:bg-[#15305c] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0a1e3f]/25 flex justify-center items-center gap-2 active:scale-95"
+                  >
+                    {isSendingReminder ? <span className="animate-pulse">Sending...</span> : "Yes, Send"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
