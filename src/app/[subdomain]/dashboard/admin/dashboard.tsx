@@ -208,12 +208,12 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
 
       {/* 🌟 PREMIUM HEADER */}
       <div className="shrink-0 mb-6 px-1 sm:px-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-slate-200/60 shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
 
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-                <LayoutDashboard className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+              <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+                <LayoutDashboard className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Dashboard
             </h2>
@@ -234,9 +234,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               <span className="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase tracking-widest">Live Sync</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl shadow-sm">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm shadow-sm">
                 {initials}
               </div>
             </div>
@@ -298,7 +298,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
 
               <div className="pt-8 border-t border-slate-100/80">
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 rounded-2xl bg-[var(--color-secondary)] flex items-center justify-center text-white shadow-lg shrink-0 border border-[var(--color-secondary)]">
+                  <div className="w-12 h-12 rounded-2xl bg-white rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm flex items-center justify-center text-[var(--color-text)] shrink-0">
                     <PieChart size={22} strokeWidth={2.5} />
                   </div>
                   <div>
@@ -312,9 +312,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   <div className="relative w-56 h-56 sm:w-64 sm:h-64 shrink-0 transition-transform hover:scale-105 duration-500">
                     <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl rounded-full">
                       <g transform="rotate(-90 50 50)">
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-secondary)" strokeWidth="50" strokeDasharray={`${(ownersPct/100)*157.08} 157.08`} strokeDashoffset="0" className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-primary)" strokeWidth="50" strokeDasharray={`${(availablePct/100)*157.08} 157.08`} strokeDashoffset={`${-(ownersPct/100)*157.08}`} className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="#94a3b8" strokeWidth="50" strokeDasharray={`${(holdPct/100)*157.08} 157.08`} strokeDashoffset={`${-((ownersPct + availablePct)/100)*157.08}`} className="transition-all duration-1000 ease-out" />
+                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-slate-700)" strokeWidth="50" strokeDasharray={`${(ownersPct/100)*157.08} 157.08`} strokeDashoffset="0" className="transition-all duration-1000 ease-out" />
+                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-amber-500)" strokeWidth="50" strokeDasharray={`${(availablePct/100)*157.08} 157.08`} strokeDashoffset={`${-(ownersPct/100)*157.08}`} className="transition-all duration-1000 ease-out" />
+                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-blue-800)" strokeWidth="50" strokeDasharray={`${(holdPct/100)*157.08} 157.08`} strokeDashoffset={`${-((ownersPct + availablePct)/100)*157.08}`} className="transition-all duration-1000 ease-out" />
                         {ownersPct > 0 && availablePct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${(ownersPct/100)*360} 50 50)`} />}
                         {availablePct > 0 && holdPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${((ownersPct+availablePct)/100)*360} 50 50)`} />}
                         {holdPct > 0 && ownersPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(0 50 50)`} />}
@@ -326,16 +326,16 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   </div>
 
                   <div className="flex-1 w-full min-w-[280px] max-w-md bg-white rounded-[1.5rem] shadow-lg border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-shadow">
-                    <div className="bg-[var(--color-secondary)] px-6 py-4 flex items-center gap-3 text-white shrink-0">
-                      <PieChart size={18} className="text-white/70" strokeWidth={2.5}/>
-                      <span className="font-black text-[12px] tracking-[0.15em] uppercase">Unit Summary</span>
+                    <div className="bg-[var(--color-secondary)] px-6 py-4 flex items-center gap-5 text-white shrink-0">
+                      <PieChart size={24} className="text-white" strokeWidth={2.5}/>
+                      <span className="font-black text-[18px] tracking-[0.15em] uppercase">Summary Unit</span>
                     </div>
                     <div className="flex flex-col px-3 py-3 flex-1">
-                      <SummaryRow icon={<Users size={20} strokeWidth={2.5} className="text-[var(--color-secondary)]"/>} title="Owners of Units" sub="Total Occupied" count={ownersCount} pct={Math.round(ownersPct)} color="text-[var(--color-secondary)]" bg="bg-[var(--color-secondary)]/10" />
+                      <SummaryRow icon={<Users size={20} strokeWidth={2.5} className="text-[var(--color-text)]"/>} title="Owners of Units" sub="Total Occupied" count={ownersCount} pct={Math.round(ownersPct)} color="text-[var(--color-text)]" bg="bg-[var(--color-secondary)]/10" />
                       <div className="h-px bg-slate-100 mx-5"></div>
-                      <SummaryRow icon={<Building size={20} strokeWidth={2.5} className="text-[var(--color-primary)]"/>} title="Available Units" sub="Ready for Occupancy" count={availableCount} pct={Math.round(availablePct)} color="text-[var(--color-primary)]" bg="bg-[var(--color-primary)]/10" />
+                      <SummaryRow icon={<Building size={20} strokeWidth={2.5} className="text-[var(--color-text)]"/>} title="Available Units" sub="Ready for Occupancy" count={availableCount} pct={Math.round(availablePct)} color="text-blue-800" bg="bg-[var(--color-secondary)]/10" />
                       <div className="h-px bg-slate-100 mx-5"></div>
-                      <SummaryRow icon={<Lock size={20} strokeWidth={2.5} className="text-slate-500"/>} title="Hold Units" sub="On Hold / Reserved" count={holdCount} pct={Math.round(holdPct)} color="text-slate-500" bg="bg-slate-100" />
+                      <SummaryRow icon={<Lock size={20} strokeWidth={2.5} className="text-[var(--color-text)]"/>} title="Hold Units" sub="On Hold / Reserved" count={holdCount} pct={Math.round(holdPct)} color="text-amber-500" bg="bg-[var(--color-secondary)]/10" />
                     </div>
                     <div className="bg-[var(--color-secondary)] px-6 py-4 flex justify-between items-center mt-auto border-t border-white/10">
                       <div className="flex items-center gap-3">
@@ -355,9 +355,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
 
               <div className="mb-10">
                 <div className="flex justify-between items-end mb-4">
-                  <h3 className="font-black text-[var(--color-secondary)] text-lg tracking-tight">Occupancy Level</h3>
+                  <h3 className="font-black text-[var(--color-text)] text-lg tracking-tight">Occupancy Level</h3>
                   <span className="text-slate-500 text-xs font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                    <span className="text-[var(--color-secondary)]">{ownersCount} occupied</span> <span className="text-slate-300 mx-1">|</span> {totalVacantCount} vacant
+                    <span className="text-[var(--color-text)]">{ownersCount} occupied</span> <span className="text-slate-300 mx-1">|</span> {totalVacantCount} vacant
                   </span>
                 </div>
                 <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden mb-3 flex shadow-inner">
@@ -388,7 +388,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                       ) : (
                         units.slice(0, 3).map(unit => (
                           <tr key={unit.id} className="hover:bg-slate-50 transition-colors group">
-                            <td className="py-4 px-2 font-extrabold text-[var(--color-secondary)] group-hover:text-[var(--color-primary)] transition-colors flex items-center gap-3">
+                            <td className="py-4 px-2 font-extrabold text-[var(--color-text)] group-hover:text-[var(--color-secondary)] transition-colors flex items-center gap-3">
                               <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
                                 <Home size={14} />
                               </div>
@@ -396,7 +396,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                             </td>
                             <td className="py-4 px-2 text-slate-500 font-semibold">{unit.tenant_name || <span className="italic text-slate-300">Unassigned</span>}</td>
                             <td className="py-4 px-2 text-right">
-                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${unit.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'}`}>
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${unit.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border-[var(--color-primary)]/20'}`}>
                                 {unit.status}
                               </span>
                             </td>
@@ -411,8 +411,10 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col">
-            <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-[var(--shadow-md)] overflow-hidden flex flex-col w-full h-fit lg:h-full">
+          <div className="w-full h-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col min-h-0">
+            <div className="bg-white rounded-[2rem] shadow-[var(--shadow-md)] overflow-hidden flex flex-col w-full h-full border border-slate-100">
+              
+              {/* Top Header: Fixed */}
               <div className="bg-[var(--color-secondary)] p-6 sm:p-8 text-white relative overflow-hidden shrink-0">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-10 translate-x-10 pointer-events-none"></div>
                 <h3 className="font-black text-xl mb-1 flex items-center gap-2">
@@ -423,8 +425,9 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </p>
               </div>
 
-              <div className="p-6 sm:p-8 bg-white flex-1 flex flex-col">
-                <div className="space-y-3 mb-8">
+              {/* Middle Content: Scrollable */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 pb-2">
+                <div className="space-y-3">
                   <AttentionItem label="SOAs To Issue" value={soasToIssue.toString()} isUrgent={soasToIssue > 0} color="text-amber-500" />
                   
                   <AttentionItem label="Overdue Accounts" value={overdueAccountsCount.toString()} isUrgent={overdueAccountsCount > 0} color="text-red-500" />
@@ -435,16 +438,19 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   <AttentionItem label="Leases Expiring <30 Days" value={expiringSoon.toString()} isUrgent={expiringSoon > 0} color="text-amber-500" />
 
                   <AttentionItem label="Avg Repair Turn Around" value={`${avgTurnaroundDays} Days`} isUrgent={Number(avgTurnaroundDays) > 7} color="text-amber-500" />
-
                 </div>
+              </div>
 
+              {/* Bottom Action: Fixed */}
+              <div className="shrink-0 p-6 sm:p-8 pt-4 border-t border-slate-100 bg-slate-50/50">
                 <button 
                   onClick={() => onNavigate("Billing")}
-                  className="w-full mt-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black py-4 rounded-[var(--radius-lg)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-[0.98] uppercase tracking-wider text-xs border border-transparent"
+                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black py-4 rounded-[var(--radius-lg)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-[0.98] uppercase tracking-wider text-xs border border-transparent"
                 >
                   Issue SOAs & Collect <ArrowRight size={16} strokeWidth={3} />
                 </button>
               </div>
+
             </div>
           </div>
 
@@ -504,7 +510,7 @@ function SummaryRow({ icon, title, sub, count, pct, color, bg }: any) {
           {icon}
         </div>
         <div className="flex flex-col">
-          <div className="text-[14px] font-black text-[var(--color-secondary)] tracking-tight">{title}</div>
+          <div className="text-[14px] font-black text-[var(--color-text)] tracking-tight">{title}</div>
           <div className="text-[12px] font-medium text-slate-500">{sub} <span className="font-bold text-slate-400 ml-1">({count})</span></div>
         </div>
       </div>

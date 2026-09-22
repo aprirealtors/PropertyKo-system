@@ -744,7 +744,7 @@ export default function ConversationTab({
                         ) : (
                           <h3
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-secondary)]" : "font-normal text-[var(--color-text)]"
+                              unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
                             }`}
                             title={`${customNames[role.id] || role.label} - ${role.id.charAt(0).toUpperCase() + role.id.slice(1)}`}
                           >
@@ -853,7 +853,7 @@ export default function ConversationTab({
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h2 className="font-black text-[var(--color-secondary)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">
+                    <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">
                       {currentChatName}
                     </h2>
                     {renderRoleBadge(activeRoleDetails?.id)}

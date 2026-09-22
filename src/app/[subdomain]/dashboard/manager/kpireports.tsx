@@ -138,16 +138,16 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
   return (
     // LOCKED LAYOUT WINDOW SHELL
-    <div className="flex flex-col w-full h-[calc(100vh-40px)] md:h-[calc(100vh-50px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
+    <div className="flex flex-col w-full h-[calc(100vh-40px)] md:h-[calc(100vh-50px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
       
       {/* PREMIUM HEADER - Fixed Header Zone */}
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <BarChart3 className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+                <BarChart3 className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               KPI Reports
             </h2>
@@ -172,8 +172,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Premium Admin Profile Badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       </div>
 
       {/* KANBAN LAYOUT: Main Wrapper for Table */}
-      <div className="flex-1 w-full max-w-6xl mx-auto min-h-0 flex flex-col lg:pr-2 pb-6 lg:pb-12">
+      <div className="flex-1 w-full max-w-6xl mx-auto min-h-0 flex flex-col lg:pr-2 pb-2 lg:pb-4">
         <div className="flex-1 min-h-0 bg-white rounded-lg shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
@@ -190,16 +190,16 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           {/* Table Header Section */}
           <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-md)] border border-[var(--color-primary)]/20">
+              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-text)] rounded-[var(--radius-md)] border border-[var(--color-primary)]/20">
                 <Activity size={18} strokeWidth={2.5} />
               </div>
-              <h3 className="font-black text-lg text-[var(--color-secondary)] tracking-tight">KPI Scoreboard: On-demand vs. Monthly Manual</h3>
+              <h3 className="font-black text-lg text-[var(--color-text)] tracking-tight">KPI Scoreboard: On-demand vs. Monthly Manual</h3>
             </div>
             
             <button 
               onClick={handleExportCSV}
               disabled={filteredKPIs.length === 0}
-              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
             >
               <Download size={14} strokeWidth={2.5} /> Export Report
             </button>
@@ -277,10 +277,10 @@ function KPIRow({ label, current, use, was }: any) {
     
   return (
     <tr className="hover:bg-[var(--color-primary)]/5 transition-colors group">
-      <td className="px-6 py-4 font-black text-[var(--color-secondary)] tracking-tight whitespace-nowrap border-r border-[var(--color-border)]">
+      <td className="px-6 py-4 font-black text-[var(--color-text)] tracking-tight whitespace-nowrap border-r border-[var(--color-border)]">
         {label}
       </td>
-      <td className="px-6 py-4 font-bold text-[var(--color-primary)] whitespace-nowrap border-r border-[var(--color-border)] text-base">
+      <td className="px-6 py-4 font-bold text-[var(--color-text)] whitespace-nowrap border-r border-[var(--color-border)] text-base">
         {current}
       </td>
       <td className="px-6 py-4 text-center whitespace-nowrap border-r border-[var(--color-border)]">
@@ -288,11 +288,11 @@ function KPIRow({ label, current, use, was }: any) {
           {use}
         </span>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-400 font-semibold text-xs">
+      <td className="px-6 py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-500 font-semibold text-xs">
         {was}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors">
+        <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/10 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm group-hover:opacity-90 transition-colors">
           On-demand
         </span>
       </td>

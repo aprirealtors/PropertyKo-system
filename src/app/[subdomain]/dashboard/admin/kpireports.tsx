@@ -142,12 +142,12 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       
       {/* PREMIUM HEADER - Fixed Header Zone */}
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <BarChart3 className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+                <BarChart3 className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               KPI Reports
             </h2>
@@ -172,8 +172,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Premium Admin Profile Badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
                 {initials}
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           {/* Table Header Section */}
           <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-secondary)] rounded-[var(--radius-md)] border border-[var(--color-primary)]/20">
+              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-text)] rounded-[var(--radius-md)] border border-[var(--color-primary)]/20">
                 <Activity size={18} strokeWidth={2.5} />
               </div>
               <h3 className="font-black text-lg text-[var(--color-text)] tracking-tight">KPI Scoreboard: On-demand vs. Monthly Manual</h3>

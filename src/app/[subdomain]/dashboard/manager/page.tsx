@@ -841,7 +841,7 @@ export default function ManagerDashboard() {
       {/* 🌟 PREMIUM USER PROFILE MODAL */}
       {isUserProfileModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Manager Profile</h2>
@@ -1086,7 +1086,7 @@ export default function ManagerDashboard() {
       {/* 🌟 PREMIUM WORKSPACE MODAL (ORGANIZATION PROFILE) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
             
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Organization Profile</h2>
@@ -1099,10 +1099,10 @@ export default function ManagerDashboard() {
             </div>
             
             <div className="overflow-y-auto bg-[var(--color-bg)] custom-scrollbar flex-1 pb-8 sm:pb-0">
-              
+
               <div className="bg-[var(--color-secondary)] px-5 sm:px-8 py-6 sm:py-8 flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 relative shrink-0 text-center sm:text-left">
                 <div className="absolute top-0 left-0 right-0 h-full overflow-hidden opacity-10 pointer-events-none">
-                  <div className="absolute -top-24 -right-10 w-64 sm:w-96 h-64 sm:h-96 bg-[var(--color-primary)] rounded-full blur-3xl"></div>
+                  <div className="absolute -top-24 -right-10 w-64 sm:w-96 h-64 sm:h-96 bg-white rounded-full blur-3xl"></div>
                 </div>
 
                 <div className="relative group w-20 h-20 sm:w-24 sm:h-24 shrink-0 z-10">
@@ -1150,7 +1150,7 @@ export default function ManagerDashboard() {
                   
                   <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between bg-slate-50/50">
                     <h4 className="text-xs sm:text-sm uppercase font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
-                      <Box size={14} className="text-[var(--color-primary)] sm:w-4 sm:h-4" />
+                      <Box size={14} className="text-[var(--color-text)] sm:w-4 sm:h-4" />
                       Business Details
                     </h4>
                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2.5 py-1 rounded-md">

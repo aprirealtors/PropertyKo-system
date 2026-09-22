@@ -763,7 +763,7 @@ export default function AdminDashboard() {
       {/* 🌟 PREMIUM USER PROFILE MODAL */}
       {isUserProfileModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[1.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
 
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Admin Profile</h2>
@@ -1011,7 +1011,7 @@ export default function AdminDashboard() {
       {/* 🌟 PREMIUM WORKSPACE MODAL */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
 
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Organization Profile</h2>
@@ -1071,11 +1071,11 @@ export default function AdminDashboard() {
               </div>
 
               <div className="p-4 sm:p-6 md:p-6">
-                <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
+                <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
 
                   <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between bg-slate-50/50">
                     <h4 className="text-xs sm:text-sm uppercase font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
-                      <Box size={14} className="text-[var(--color-primary)] sm:w-4 sm:h-4" />
+                      <Box size={14} className="text-[var(--color-text)] sm:w-4 sm:h-4" />
                       Business Details
                     </h4>
                     <span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-200/50 px-2.5 py-1 rounded-md">

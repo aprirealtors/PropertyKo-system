@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
 
-// ✨ Sub-component for handling the Clickable Owner Dropdown
+// ✨ Sub-component for handling the Clickable Owner Dropdown (Themified)
 const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -15,17 +15,17 @@ const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviatio
   const primaryDisplay = abbreviation || owners[0];
   const hasMore = owners.length > 1;
 
-  if (!hasMore && !abbreviation) return <span className="font-bold text-[var(--color-secondary)] truncate block">{primaryDisplay}</span>;
+  if (!hasMore && !abbreviation) return <span className="font-bold text-[var(--color-text)] truncate block">{primaryDisplay}</span>;
 
   return (
     <div className="relative" onMouseLeave={() => setIsOpen(false)}>
       <button 
         onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }} 
-        className="flex items-center gap-1.5 text-[var(--color-primary)] hover:opacity-80 font-extrabold text-left transition-all active:scale-95 bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 px-2 py-0.5 -ml-2 rounded-[var(--radius-sm)] border border-transparent hover:border-[var(--color-primary)]/30 max-w-full"
+        className="flex items-center gap-1.5 text-[var(--color-text)] hover:opacity-80 font-extrabold text-left transition-all active:scale-95 bg-[var(--color-primary)] hover:opacity-90 px-2 py-0.5 -ml-2 rounded-[var(--radius-sm)] border border-transparent hover:border-[var(--color-primary)]/30 max-w-full"
       >
         <span className="inline-block truncate">{primaryDisplay}</span>
         {hasMore && (
-          <span className="shrink-0 bg-[var(--color-primary)]/20 text-[var(--color-primary)] text-[9px] font-black px-1.5 py-0.5 rounded-md border border-[var(--color-primary)]/30 shadow-sm">
+          <span className="shrink-0 bg-[var(--color-primary)] text-[var(--color-text)] text-[9px] font-black px-1.5 py-0.5 rounded-md border border-[var(--color-primary)]/30 shadow-sm">
             +{owners.length - 1}
           </span>
         )}
@@ -34,11 +34,11 @@ const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviatio
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-[calc(100vw-32px)] sm:w-72 max-w-sm bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] rounded-2xl p-4 z-[60] animate-in fade-in zoom-in-95 duration-200 whitespace-normal">
           <div className="text-[9px] font-black text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-2">
-            <Users size={12} className="text-[var(--color-primary)]/70" /> All Registered Owners
+            <Users size={12} className="text-[var(--color-text)]/70" /> All Registered Owners
           </div>
           <ul className="space-y-2">
             {owners.map((o, i) => (
-              <li key={i} className="text-xs text-[var(--color-secondary)] font-bold flex items-start gap-2.5 break-words bg-slate-50 p-2 rounded-xl border border-slate-100">
+              <li key={i} className="text-xs text-[var(--color-text)] font-bold flex items-start gap-2.5 break-words bg-slate-50 p-2 rounded-xl border border-slate-100">
                 <span className="text-slate-400 shrink-0 font-black">{i + 1}.</span> 
                 <span className="leading-relaxed break-words mt-0.5">{o}</span>
               </li>
@@ -70,7 +70,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Confirmation Modal States (Add/Edit/Import)
+  // Confirmation Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmType, setConfirmType] = useState<'add' | 'edit' | 'import' | null>(null);
   
@@ -406,23 +406,22 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const remainingUnits = Math.max(0, maxUnits - activeUnits); 
 
   return (
-    // ✨ LOCKED LAYOUT WINDOW SHELL - Using font-corporate
     <div className="flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* HEADER SECTION - Themified */}
       <div className="shrink-0 mb-4 px-2 sm:px-0 mt-2">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[1.5rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
           <div className="w-full md:w-auto">
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
-              <div className="p-2 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <FolderOpen className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <div className="p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+                <FolderOpen className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Properties & Units
             </h2>
             <p className="text-slate-500 text-sm mt-1.5 font-medium flex items-center gap-2">
               Vacancy Board & Inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> 
-              <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200 shadow-inner">
+              <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-[var(--color-border)] shadow-inner">
                 {isOrgLoading ? "..." : maxUnits} Units Limit
               </span>
             </p>
@@ -436,13 +435,13 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 placeholder="Search unit, tenant, owner..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm text-[var(--color-text)] placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all"
               />
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -453,8 +452,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       {/* ACTION CONTROLS ROW */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0 px-2 sm:px-0">
         <div className="flex items-center gap-3">
-          <h3 className="font-black text-[var(--color-secondary)] text-base tracking-tight">Property Summary Board</h3>
-          <span className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 text-xs font-black px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+          <h3 className="font-black text-[var(--color-text)] text-base tracking-tight">Property Summary Board</h3>
+          <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
             {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} Remaining Seats
           </span>
         </div>
@@ -468,7 +467,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 sm:flex-none justify-center bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
+            className="flex-1 sm:flex-none justify-center bg-[var(--color-primary)] border border-[var(--color-border)] hover:opacity-90 text-[var(--color-text)] px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
           >
             <ArrowUp size={16} strokeWidth={2.5} /> Import CSV
           </button>
@@ -479,7 +478,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             className={`flex-1 sm:flex-none justify-center px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all active:scale-95 flex items-center gap-2 ${
               remainingUnits === 0 && !isLoadingUnits 
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
-                : "bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] shadow-[var(--shadow-md)] border border-transparent"
+                : "bg-slate-100 hover:opacity-90 text-[var(--color-primary)] shadow-[var(--shadow-md)] border border-transparent"
             }`}
           >
             <Building size={16} strokeWidth={2.5} /> Add Unit
@@ -487,16 +486,15 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       </div>
 
-      {/* GRID WRAPPER (Responsive Folder Style) */}
-      <div className="flex-1 w-full min-h-0 bg-slate-50/70 rounded-t-[2rem] border-t border-[var(--color-border)] overflow-hidden flex flex-col mt-2 shadow-inner">
+      {/* GRID WRAPPER */}
+      <div className="flex-1 w-full min-h-0 bg-slate-50/70 rounded-t-[var(--radius-xl)] border-t border-[var(--color-border)] overflow-hidden flex flex-col mt-2 shadow-inner">
         <div className="flex-1 overflow-x-hidden overflow-y-auto pb-24 p-4 sm:p-6 lg:p-8 custom-scrollbar">
           
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
             
-            {/* Loading Skeleton Cards */}
             {isLoadingUnits ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5 h-[280px] animate-pulse flex flex-col relative overflow-hidden">
+                <div key={i} className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm p-5 h-[280px] animate-pulse flex flex-col relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-32 h-2 bg-slate-100 rounded-br-lg"></div>
                   <div className="flex justify-between items-start mb-4 mt-2">
                     <div>
@@ -523,45 +521,42 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               ))
             ) : units.length === 0 ? (
               
-              /* Empty State (No Units at all) */
-              <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white rounded-[2rem] border border-[var(--color-border)] border-dashed shadow-sm">
-                <div className="w-20 h-20 bg-slate-50 rounded-[1.5rem] flex items-center justify-center border border-slate-100 mb-4 shadow-inner">
+              <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] border-dashed shadow-sm">
+                <div className="w-20 h-20 bg-slate-50 rounded-[var(--radius-xl)] flex items-center justify-center border border-slate-100 mb-4 shadow-inner">
                   <FolderOpen size={36} className="text-slate-300" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-black text-[var(--color-secondary)] mb-2">No property folders yet</h3>
+                <h3 className="text-xl font-black text-[var(--color-text)] mb-2">No property folders yet</h3>
                 <p className="text-slate-400 text-sm font-medium mb-6 text-center max-w-sm px-4">Create your first unit or import a CSV file to populate your dashboard.</p>
-                <button onClick={openAddModal} className="bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/50 text-slate-600 hover:text-[var(--color-primary)] hover:shadow-sm px-6 py-3 rounded-[var(--radius-md)] font-bold text-sm transition-all active:scale-95 flex items-center gap-2">
+                <button onClick={openAddModal} className="bg-white border border-[var(--color-border)] text-slate-600 hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] hover:shadow-sm px-6 py-3 rounded-[var(--radius-md)] font-bold text-sm transition-all active:scale-95 flex items-center gap-2">
                   <Building size={18} /> Create First Unit
                 </button>
               </div>
 
             ) : filteredUnits.length === 0 ? (
               
-              /* Empty State (Search Yields No Results) */
-              <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white rounded-[2rem] border border-[var(--color-border)] border-dashed shadow-sm">
-                <div className="w-20 h-20 bg-slate-50 rounded-[1.5rem] flex items-center justify-center border border-slate-100 mb-4 shadow-inner">
+              <div className="col-span-full py-24 flex flex-col items-center justify-center bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] border-dashed shadow-sm">
+                <div className="w-20 h-20 bg-slate-50 rounded-[var(--radius-xl)] flex items-center justify-center border border-slate-100 mb-4 shadow-inner">
                   <Search size={36} className="text-slate-300" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-xl font-black text-[var(--color-secondary)] mb-2">No exact matches found</h3>
-                <p className="text-slate-400 text-sm font-medium text-center">Try adjusting your search query: <span className="font-bold text-[var(--color-text)]">"{searchQuery}"</span></p>
+                <h3 className="text-xl font-black text-[var(--color-text)] mb-2">No exact matches found</h3>
+                <p className="text-slate-400 text-sm font-medium text-center">Try adjusting your search query: <span className="font-bold text-slate-600">"{searchQuery}"</span></p>
               </div>
 
             ) : (
               
-              /* Render The Folder Cards */
               filteredUnits.map((unit) => (
-                <div key={unit.id} className="bg-white rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:shadow-lg hover:border-[var(--color-primary)]/30 transition-all duration-300 flex flex-col relative group overflow-hidden">
+                <div key={unit.id} className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:shadow-lg hover:border-[var(--color-primary)]/30 transition-all duration-300 flex flex-col relative group overflow-hidden">
                   
                   {/* Decorative Folder Tab Accent - Themified */}
-                  <div className={`absolute -top-[1px] -left-[1px] h-[8px] w-[35%] rounded-tl-[1.5rem] rounded-br-xl transition-colors z-10 border-t border-l ${unit.status === 'Vacant' ? 'bg-slate-300 border-slate-300' : 'bg-[var(--color-primary)] border-[var(--color-primary)]'}`}></div>
+                  <div className={`absolute -top-[1px] -left-[1px] h-[8px] w-[35%] rounded-tl-[var(--radius-xl)] rounded-br-[var(--radius-xl)] transition-colors z-10 border-t border-l ${unit.status === 'Vacant' ? 'bg-slate-300 border-slate-300' : 'bg-[var(--color-secondary)] border-[var(--color-primary)]'}`}></div>
 
                   {/* Header Area */}
                   <div className="p-5 border-b border-[var(--color-border)] flex justify-between items-start pt-6">
                     <div className="min-w-0 pr-3">
                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 truncate" title={unit.property_name}>{unit.property_name}</div>
-                      <div className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] truncate" title={String(unit.unit_number)}>{unit.unit_number}</div>
+                      <div className="text-xl sm:text-2xl font-black text-[var(--color-text)] truncate" title={String(unit.unit_number)}>{unit.unit_number}</div>
                     </div>
-                    <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${unit.status === 'Vacant' ? 'bg-slate-50 text-slate-500 border-[var(--color-border)]' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
+                    <span className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${unit.status === 'Vacant' ? 'bg-slate-50 text-slate-500 border-[var(--color-border)]' : 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border-[var(--color-primary)]/30'}`}>
                       {unit.status}
                     </span>
                   </div>
@@ -569,9 +564,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   {/* Body Area */}
                   <div className="px-5 py-4 flex-1 flex flex-col gap-4 text-sm bg-slate-50/40">
                     
-                    {/* Tags: Type & Area */}
                     <div className="flex justify-between items-center pb-3 border-b border-[var(--color-border)]/50">
-                      <span className="text-slate-600 font-bold flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] text-xs">
+                      <span className="text-slate-600 font-bold flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-md border border-[var(--color-border)] shadow-[var(--shadow-sm)] text-xs">
                         <Tag size={13} className="text-slate-400"/> {unit.unit_type}
                       </span>
                       <span className="text-slate-600 font-bold flex items-center gap-1.5 text-xs">
@@ -581,7 +575,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
                     {/* Owner Block */}
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-[var(--color-secondary)]/10 text-[var(--color-secondary)] rounded-lg flex items-center justify-center shrink-0 border border-[var(--color-secondary)]/20 shadow-sm">
+                      <div className="w-8 h-8 bg-[var(--color-secondary)]/10 text-[var(--color-text)] rounded-lg flex items-center justify-center shrink-0 border border-[var(--color-secondary)]/20 shadow-sm">
                         <User size={15} strokeWidth={2.5}/>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -597,27 +591,26 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
                     {/* Tenant Block */}
                     <div className="flex items-start gap-3 mt-1">
-                      <div className="w-8 h-8 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-lg flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20 shadow-sm">
+                      <div className="w-8 h-8 bg-[var(--color-secondary)]/10 text-[var(--color-text)] rounded-lg flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20 shadow-sm">
                         <Users size={15} strokeWidth={2.5}/>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Tenant</div>
-                        <div className="text-sm font-bold text-[var(--color-text)] truncate block">
+                        <div className="text-sm font-bold text-slate-700 truncate block">
                           {unit.tenant_name === '—' ? <span className="text-slate-300 italic font-medium">—</span> : unit.tenant_name}
                         </div>
                       </div>
                     </div>
 
-                    {/* Remarks Snippet */}
                     {unit.remarks && (
-                      <div className="mt-2 pt-3 border-t border-[var(--color-border)]/50 flex items-start gap-2 text-xs text-slate-500 bg-white p-2.5 rounded-xl border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                      <div className="mt-2 pt-3 border-t border-[var(--color-border)]/50 flex items-start gap-2 text-xs text-slate-500 bg-white p-2.5 rounded-xl border border-[var(--color-border)] shadow-sm">
                         <FileText size={14} className="text-slate-400 shrink-0 mt-0.5"/>
                         <span className="italic leading-relaxed break-words whitespace-pre-wrap block" title={unit.remarks}>{unit.remarks}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Footer Area / Actions */}
+                  {/* Footer Area */}
                   <div className="px-5 py-3.5 bg-white border-t border-[var(--color-border)] flex items-center justify-between">
                     <div className="flex gap-5">
                       <div className="flex flex-col" title="Turnover Date">
@@ -631,10 +624,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       </div>
                     </div>
 
-                    {/* Card Action: Edit only */}
                     <button
                       onClick={() => openEditModal(unit)}
-                      className="p-2.5 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-[var(--radius-sm)] transition-all border border-slate-100 hover:border-[var(--color-primary)]/30 shadow-sm active:scale-95 bg-slate-50 shrink-0"
+                      className="p-2.5 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-xl transition-all border border-slate-100 hover:border-[var(--color-primary)]/30 shadow-sm active:scale-95 bg-slate-50 shrink-0"
                       title="Edit Unit"
                     >
                       <Edit size={16} strokeWidth={2.5} />
@@ -649,38 +641,36 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* PREMIUM ADD / EDIT UNIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
-                {editingUnitId ? <Edit size={24} className="text-[var(--color-primary)]" /> : <Building size={24} className="text-[var(--color-primary)]" />}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight relative z-10 flex items-center gap-2">
+                {editingUnitId ? <Edit size={24} className="text-[var(--color-text)]" /> : <Building size={24} className="text-[var(--color-text)]" />}
                 {editingUnitId ? "Edit Unit Details" : "Add New Unit"}
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
             
             <div className="overflow-y-auto p-5 sm:p-8 custom-scrollbar bg-slate-50/50 flex-1">
               <form onSubmit={handleSaveUnit} className="space-y-5 sm:space-y-6 pb-6">
-                {errorMsg && <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-[var(--shadow-sm)] flex items-center gap-3"><AlertTriangle size={18} /> {errorMsg}</div>}
+                {errorMsg && <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} /> {errorMsg}</div>}
 
-                {/* Property Name */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
-                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 mb-2"><MapPin size={14} className="text-[var(--color-primary)]" /> Property Name</label>
-                  <input type="text" required placeholder="e.g. The Grove, Avida Towers" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
+                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 mb-2"><MapPin size={14} className="text-[var(--color-text)]" /> Property Name</label>
+                  <input type="text" required placeholder="e.g. The Grove, Avida Towers" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                 </div>
 
-                {/* Unit Details Row */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Building size={14} className="text-[var(--color-primary)]" /> Unit Number</label>
-                    <input type="text" required placeholder="e.g. 12B" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Building size={14} className="text-[var(--color-text)]" /> Unit Number</label>
+                    <input type="text" required placeholder="e.g. 12B" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Tag size={14} className="text-[var(--color-primary)]" /> Unit Type</label>
-                    <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting}>
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Tag size={14} className="text-[var(--color-text)]" /> Unit Type</label>
+                    <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting}>
                       <option value="Studio">Studio</option>
                       <option value="1BR">1BR</option>
                       <option value="2BR">2BR</option>
@@ -690,47 +680,44 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                     </select>
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Maximize size={14} className="text-[var(--color-primary)]" /> Unit Area</label>
-                    <input type="text" required placeholder="e.g. 50.06 sqm" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Maximize size={14} className="text-[var(--color-text)]" /> Unit Area</label>
+                    <input type="text" required placeholder="e.g. 50.06 sqm" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
-                {/* Ownership Row */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      <span className="flex items-center gap-2"><User size={14} className="text-[var(--color-primary)]" /> Owner Name(s)</span>
+                      <span className="flex items-center gap-2"><User size={14} className="text-[var(--color-text)]" /> Owner Name(s)</span>
                     </label>
-                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                     <p className="text-[10px] font-semibold text-slate-400 mt-2 px-1">Separate multiple names with a comma.</p>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
                       <Briefcase size={14} className="text-slate-400" /> Owner Abbreviation
                     </label>
-                    <input type="text" placeholder="e.g. CTMRISP (Optional)" value={ownerAbbreviation} onChange={(e) => setOwnerAbbreviation(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <input type="text" placeholder="e.g. CTMRISP (Optional)" value={ownerAbbreviation} onChange={(e) => setOwnerAbbreviation(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
-                {/* Business Name */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                   <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    <Building size={14} className="text-[var(--color-primary)]" /> Business Name (Optional)
+                    <Building size={14} className="text-[var(--color-text)]" /> Business Name (Optional)
                   </label>
-                  <input type="text" placeholder="e.g. Acme Corp" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                  <input type="text" placeholder="e.g. Acme Corp" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                 </div>
 
-                {/* Tenant Row (Read Only) */}
                 {editingUnitId && (
                   <div className="bg-[var(--color-secondary)]/5 border border-[var(--color-secondary)]/20 rounded-2xl p-5 shadow-inner">
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[var(--color-secondary)] mb-2">
-                      <Users size={14} className="text-[var(--color-secondary)]" /> Assigned Tenant
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-[var(--color-text)] mb-2">
+                      <Users size={14} className="text-[var(--color-text)]" /> Assigned Tenant
                     </label>
                     <input 
                       type="text" 
                       value={tenantName || "Vacant"} 
                       disabled 
-                      className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 bg-white/60 text-sm font-extrabold text-[var(--color-secondary)] cursor-not-allowed shadow-[var(--shadow-sm)]" 
+                      className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 bg-white/60 text-sm font-extrabold text-[var(--color-text)] cursor-not-allowed shadow-sm" 
                     />
                     <p className="text-[10px] text-slate-500 font-bold mt-2 px-1 tracking-wide">
                       Tenants are managed automatically through the Leases tab.
@@ -738,27 +725,25 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   </div>
                 )}
 
-                {/* Dates Row */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><CalendarDays size={14} className="text-slate-400" /> Turnover Date (Opt)</label>
-                    <input type="date" value={turnoverDate} onChange={(e) => setTurnoverDate(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold transition-all text-[var(--color-text)] bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <input type="date" value={turnoverDate} onChange={(e) => setTurnoverDate(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold transition-all text-[var(--color-text)] bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><CalendarDays size={14} className="text-slate-400" /> Acceptance Date (Opt)</label>
-                    <input type="date" value={acceptanceDate} onChange={(e) => setAcceptanceDate(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold transition-all text-[var(--color-text)] bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" disabled={isSubmitting} />
+                    <input type="date" value={acceptanceDate} onChange={(e) => setAcceptanceDate(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold transition-all text-[var(--color-text)] bg-slate-50 focus:bg-white" disabled={isSubmitting} />
                   </div>
                 </div>
 
-                {/* Remarks */}
-                <div className="bg-white p-5 rounded-2xl shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                   <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><FileText size={14} className="text-slate-400" /> Remarks (Optional)</label>
                   <textarea 
                     rows={2} 
                     placeholder="Enter any additional notes or tags..." 
                     value={remarks} 
                     onChange={(e) => setRemarks(e.target.value)} 
-                    className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-medium text-[var(--color-text)] transition-all resize-none bg-slate-50 focus:bg-white shadow-[var(--shadow-inner)]" 
+                    className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-medium text-[var(--color-text)] transition-all resize-none bg-slate-50 focus:bg-white" 
                     disabled={isSubmitting} 
                   />
                 </div>
@@ -785,7 +770,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   type="button" 
                   onClick={() => setIsModalOpen(false)} 
                   disabled={isSubmitting} 
-                  className="h-11 sm:h-12 flex-1 sm:flex-none px-4 sm:px-6 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-[var(--color-primary)]/30 hover:shadow-[var(--shadow-sm)] rounded-[var(--radius-md)] transition-all active:scale-95 flex items-center justify-center"
+                  className="h-11 sm:h-12 flex-1 sm:flex-none px-4 sm:px-6 text-xs font-black uppercase tracking-wider text-slate-500 hover:opacity-90 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-[var(--shadow-sm)] rounded-[var(--radius-md)] transition-all active:scale-95 flex items-center justify-center"
                 >
                   Cancel
                 </button>
@@ -793,7 +778,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   type="button" 
                   onClick={handleSaveUnit} 
                   disabled={isSubmitting} 
-                  className="h-11 sm:h-12 flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-5 sm:px-8 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center min-w-[110px] sm:min-w-[140px]"
+                  className="h-11 sm:h-12 flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-5 sm:px-8 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center min-w-[110px] sm:min-w-[140px] border border-transparent"
                 >
                   {isSubmitting ? <span className="animate-pulse">Saving...</span> : editingUnitId ? "Save Changes" : "Add Unit"}
                 </button>
@@ -806,22 +791,22 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* CSV IMPORT PREVIEW MODAL */}
       {isPreviewModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-[90vw] overflow-hidden transform transition-all h-[85vh] flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-[90vw] overflow-hidden transform transition-all h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <div>
-                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Review Import Data</h2>
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Review Import Data</h2>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Review your CSV entries. Delete any row you do not want to upload.</p>
               </div>
-              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isImporting}>
+              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isImporting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
             
             <div className="overflow-auto custom-scrollbar flex-1 bg-slate-50/50 p-6">
-              <div className="bg-white border border-[var(--color-border)] rounded-[1.5rem] overflow-hidden shadow-[var(--shadow-sm)]">
+              <div className="bg-white border border-slate-200/80 rounded-[1.5rem] overflow-hidden shadow-[var(--shadow-sm)]">
                 <table className="w-full text-left text-xs relative">
-                  <thead className="bg-[var(--color-bg)]/80 backdrop-blur-md text-slate-400 font-black uppercase tracking-widest sticky top-0 shadow-sm z-10 border-b border-[var(--color-border)]">
+                  <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 font-black uppercase tracking-widest sticky top-0 shadow-sm z-10 border-b border-[var(--color-border)]">
                     <tr>
                       <th className="px-5 py-4 whitespace-nowrap">Property</th>
                       <th className="px-5 py-4 whitespace-nowrap">Unit</th>
@@ -838,30 +823,30 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       <th className="px-5 py-4 whitespace-nowrap text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] font-medium">
+                  <tbody className="divide-y divide-slate-100 text-[var(--color-text)] font-medium">
                     {csvPreviewData.length === 0 ? (
                       <tr><td colSpan={13} className="px-5 py-12 text-center text-slate-400 font-bold">No rows remaining.</td></tr>
                     ) : (
                       csvPreviewData.map((row, idx) => (
                         <tr key={idx} className="hover:bg-[var(--color-primary)]/5 transition-colors">
-                          <td className="px-5 py-3 font-black text-[var(--color-secondary)] whitespace-nowrap">{row.property_name}</td>
+                          <td className="px-5 py-3 font-black text-[var(--color-text)] whitespace-nowrap">{row.property_name}</td>
                           <td className="px-5 py-3 font-bold whitespace-nowrap">{row.unit_number}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{row.unit_type}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-secondary)]">{row.owner_name}</td>
+                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.owner_name}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-secondary)]">{row.tenant_name}</td>
+                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.tenant_name}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.turnover_date) || '—'}</td>
                           <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.acceptance_date) || '—'}</td>
                           <td className="px-5 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
                           <td className="px-5 py-3 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${row.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
+                            <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${row.status === 'Vacant' ? 'bg-white text-slate-500 border-[var(--color-border)]' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
                               {row.status}
                             </span>
                           </td>
                           <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded-[var(--radius-sm)] border border-transparent hover:border-red-100 transition-all active:scale-95" title="Delete Row">
+                            <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded-lg border border-transparent hover:border-red-100 transition-all active:scale-95" title="Delete Row">
                               <Trash2 size={16} strokeWidth={2.5} />
                             </button>
                           </td>
@@ -887,7 +872,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 <button 
                   onClick={confirmCsvImport} 
                   disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
-                  className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center min-w-[180px]"
+                  className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex items-center justify-center min-w-[180px]"
                 >
                   {isImporting ? <span className="animate-pulse">Importing...</span> : "Confirm & Import"}
                 </button>
@@ -899,12 +884,12 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* ARE YOU SURE CONFIRMATION MODAL */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
             <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-[1.2rem] flex items-center justify-center mx-auto mb-5 border-2 border-amber-100 shadow-inner">
               <AlertTriangle size={32} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] tracking-tight mb-2">Confirm Action</h2>
+            <h2 className="text-2xl font-black text-[var(--color-text)] tracking-tight mb-2">Confirm Action</h2>
             <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
               {confirmType === 'add' && "Are you sure you want to add this new unit to your property database?"}
               {confirmType === 'edit' && "Are you sure you want to save these changes to the unit?"}
@@ -914,7 +899,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               <button
                 onClick={() => setShowConfirmModal(false)}
                 disabled={isSubmitting || isImporting}
-                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-[var(--color-secondary)] rounded-[var(--radius-md)] transition-all active:scale-95"
+                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95"
               >
                 Cancel
               </button>
@@ -924,7 +909,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                   if (confirmType === 'import') executeCsvImport();
                 }}
                 disabled={isSubmitting || isImporting}
-                className="flex-1 bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-[var(--shadow-md)] flex items-center justify-center active:scale-95"
+                className="flex-1 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-[var(--shadow-md)] flex items-center justify-center active:scale-95 border border-transparent"
               >
                 {isSubmitting || isImporting ? <span className="animate-pulse">Processing...</span> : "Yes, I'm sure"}
               </button>
@@ -935,27 +920,27 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* DELETE CONFIRMATION MODAL */}
       {unitToDelete && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-[1.2rem] flex items-center justify-center mx-auto mb-5 border-2 border-red-100 shadow-inner">
               <Trash2 size={32} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] tracking-tight mb-2">Delete Unit?</h2>
+            <h2 className="text-2xl font-black text-[var(--color-text)] tracking-tight mb-2">Delete Unit?</h2>
             <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
-              Are you sure you want to permanently delete <span className="font-bold text-[var(--color-secondary)]">{unitToDelete.property_name} - Unit {unitToDelete.unit_number}</span>? This action cannot be undone.
+              Are you sure you want to permanently delete <span className="font-bold text-[var(--color-text)]">{unitToDelete.property_name} - Unit {unitToDelete.unit_number}</span>? This action cannot be undone.
             </p>
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => setUnitToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-[var(--color-secondary)] rounded-[var(--radius-md)] transition-all active:scale-95"
+                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95"
               >
                 Cancel
               </button>
               <button
                 onClick={executeDeleteUnit}
                 disabled={isDeleting}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-[var(--shadow-md)] flex items-center justify-center active:scale-95 border border-transparent"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-lg flex items-center justify-center active:scale-95 border border-transparent"
               >
                 {isDeleting ? <span className="animate-pulse">Deleting...</span> : "Delete"}
               </button>
@@ -966,18 +951,18 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* SUCCESS MODAL */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in zoom-in-95 duration-300 border border-[var(--color-border)]">
-            <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-[var(--shadow-sm)]">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in zoom-in-95 duration-300 border border-[var(--color-border)]">
+            <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
               <CheckCircle2 size={40} strokeWidth={3} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] tracking-tight mb-2">Success!</h2>
+            <h2 className="text-2xl font-black text-[var(--color-text)] tracking-tight mb-2">Success!</h2>
             <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
               Your unit details have been successfully saved.
             </p>
             <button
               onClick={() => setShowSuccessModal(false)}
-              className="w-full bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-[var(--shadow-md)] active:scale-95"
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent"
             >
               Done
             </button>

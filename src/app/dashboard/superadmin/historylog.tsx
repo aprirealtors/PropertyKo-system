@@ -5,7 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Activity, Search, Trash2, PlusCircle, 
   RefreshCw, Clock, Database, User,
-  ChevronLeft, ChevronRight, Filter
+  ChevronLeft, ChevronRight, Filter, Download
 } from "lucide-react";
 
 export default function HistoryLog() {
@@ -136,6 +136,41 @@ export default function HistoryLog() {
 
   const totalPages = Math.ceil(totalLogs / limit) || 1;
 
+  // --- CSV Export Function ---
+  const handleExportCSV = () => {
+    if (filteredLogs.length === 0) return;
+
+    // Define CSV Headers
+    const headers = ['Timestamp', 'User', 'Organization', 'Action', 'Target Table', 'Specific Details'];
+    
+    // Map data and properly escape quotes/commas for CSV compatibility
+    const csvRows = filteredLogs.map(log => {
+      const timestamp = new Date(log.created_at).toLocaleString();
+      const user = log.actor_email || 'System Action';
+      const org = getOrgDisplayName(log.organization_id);
+      const action = log.action;
+      const table = log.table_name;
+      const details = formatDescription(log);
+
+      return [timestamp, user, org, action, table, details]
+        .map(value => `"${String(value).replace(/"/g, '""')}"`)
+        .join(',');
+    });
+
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    
+    // Create Blob and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `audit_logs_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
@@ -178,6 +213,17 @@ export default function HistoryLog() {
         </div>
 
         <div className="flex items-center gap-3 pr-2 w-full sm:w-auto justify-end">
+          <button
+            onClick={handleExportCSV}
+            disabled={filteredLogs.length === 0 || isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={14} />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+
+          <div className="w-px h-5 bg-slate-200 mx-1"></div>
+
           <span className="text-xs font-semibold text-slate-500">Show:</span>
           <select 
             value={limit} 

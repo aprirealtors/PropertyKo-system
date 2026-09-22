@@ -5,7 +5,7 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, 
-  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw
+  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw, Settings
 } from "lucide-react";
 
 // Helper function to calculate the actual upcoming date based on the declared billing day
@@ -317,10 +317,16 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
       
       {/* 🌟 PREMIUM HEADER */}
       <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 max-w-[1600px] mx-auto w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Team & Settings</h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1 font-medium truncate">Manage workspace access, billing, and branding</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2.5 sm:gap-3">
+              {/* ✨ ADDED PREMIUM ICON WRAPPER */}
+              <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+                <Settings className="text-[var(--color-text)]" size={22} strokeWidth={2.5} />
+              </div>
+              Team & Settings
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium truncate">Manage workspace access, billing, and branding</p>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
             <div className="relative w-full sm:w-64 shrink-0">
@@ -334,8 +340,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -349,14 +355,14 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
           
           {/* TEAM TABLE */}
           <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
-            <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
               
               <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                     <Users size={16} strokeWidth={2.5} />
                   </div>
-                  <h3 className="font-extrabold text-[var(--color-secondary)] text-base sm:text-lg tracking-tight">Access Control</h3>
+                  <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight">Access Control</h3>
                 </div>
                 <button 
                   onClick={() => setIsInviteModalOpen(true)}
@@ -378,18 +384,18 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
                     <tr className="bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 transition-colors">
-                      <td className="px-5 sm:px-6 py-4 font-black text-[var(--color-secondary)] whitespace-nowrap flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[var(--color-secondary)] text-white flex items-center justify-center text-[10px] font-bold shadow-sm">
+                      <td className="px-5 sm:px-6 py-4 font-black text-[var(--color-text)] whitespace-nowrap flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[12px] font-black shadow-sm">
                           {initials}
                         </div>
                         You
                       </td>
                       <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
-                        <span className="bg-[var(--color-primary)]/10 text-[var(--color-secondary)] border border-[var(--color-primary)]/20 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm">Admin</span>
+                        <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm">Admin</span>
                       </td>
-                      <td className="px-5 sm:px-6 py-4 text-slate-500 font-semibold whitespace-nowrap">Full Platform Access</td>
+                      <td className="px-5 sm:px-6 py-4 text-slate-800 font-semibold whitespace-nowrap">Full Platform Access</td>
                       <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
-                        <span className="bg-slate-800 text-white font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">Active</span>
+                        <span className="bg-emerald-100 text-emerald-700 font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">Active</span>
                       </td>
                     </tr>
                     
@@ -408,7 +414,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                         return (
                           <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
                             <td className="px-5 sm:px-6 py-4 font-bold text-[var(--color-text)] whitespace-nowrap flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors">
                                 {memberInitials}
                               </div>
                               {member.name}
@@ -433,7 +439,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               </div>
 
               <div className="shrink-0 p-4 sm:p-5 bg-[var(--color-primary)]/5 border-t border-[var(--color-border)] text-[11px] sm:text-xs text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
-                <Shield size={14} className="text-[var(--color-primary)] shrink-0" strokeWidth={2.5} />
+                <Shield size={14} className="text-[var(--color-text)] shrink-0" strokeWidth={2.5} />
                 Strict Role-Based Access Control (RBAC) enforced at the system layer.
               </div>
 
@@ -447,15 +453,15 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--color-primary)]/10 rounded-bl-full -mr-16 -mt-16 opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
               
               <div className="flex items-center gap-3 mb-6 sm:mb-8 relative z-10 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+                <div className="w-10 h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
                   <CreditCard size={18} strokeWidth={2.5} />
                 </div>
-                <h3 className="font-extrabold text-[var(--color-secondary)] text-lg sm:text-xl tracking-tight">Subscription</h3>
+                <h3 className="font-extrabold text-[var(--color-text)] text-lg sm:text-xl tracking-tight">Subscription</h3>
               </div>
               
               <div className="mb-8 sm:mb-10 relative z-10 bg-slate-50 rounded-[var(--radius-lg)] p-5 border border-[var(--color-border)] shadow-[var(--shadow-inner)] shrink-0">
                 <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-1">Current Plan</span>
-                <h4 className="text-3xl sm:text-4xl font-black text-[var(--color-secondary)] tracking-tight mb-1">Dynamic Rate</h4>
+                <h4 className="text-3xl sm:text-4xl font-black text-[var(--color-text)] tracking-tight mb-1">Dynamic Rate</h4>
                 <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-2">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
               </div>
               
@@ -466,13 +472,13 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                     <span className="text-[var(--color-secondary)]">{seatsUsed} / {seatLimit}</span>
                   </div>
                   <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-[var(--shadow-inner)]">
-                    <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[var(--color-primary)]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
+                    <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[var(--color-secondary)]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center py-4 border-b border-dashed border-[var(--color-border)]">
                   <span className="text-xs sm:text-sm text-slate-500 font-bold">Units Capacity</span>
-                  <span className="font-black text-[var(--color-secondary)] bg-[var(--color-primary)]/10 px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-xs sm:text-sm">
+                  <span className="font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-xs sm:text-sm">
                     {unitLimit} units
                   </span>
                 </div>
@@ -480,7 +486,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="flex justify-between items-center py-2">
                   <span className="text-xs sm:text-sm text-slate-500 font-bold">Next Invoice</span>
                   <div className="flex flex-col items-end gap-1.5">
-                    <span className="font-black text-[var(--color-secondary)] text-sm sm:text-base">{nextBillingDateFormatted}</span>
+                    <span className="font-black text-[var(--color-text)] text-sm sm:text-base">{nextBillingDateFormatted}</span>
                     <span className={`px-2.5 py-0.5 rounded-[var(--radius-sm)] border text-[9px] font-black uppercase tracking-widest shadow-sm ${getStatusColor(billingStatus)}`}>
                       {billingStatus}
                     </span>
@@ -505,7 +511,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                   <Palette size={18} strokeWidth={2.5} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-[var(--color-secondary)] text-lg tracking-tight">Theme Builder</h3>
+                  <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight">Theme Builder</h3>
                   <p className="text-xs text-slate-500 font-medium">Customize workspace branding</p>
                 </div>
               </div>
@@ -566,7 +572,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 </div>
 
                 <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-secondary)] mb-1.5">Interactive Corner Style</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5">Interactive Corner Style</label>
                   <p className="text-[9px] text-slate-400 font-medium mb-3">Applies only to buttons/badges to preserve structural layout.</p>
                   <div className="grid grid-cols-4 gap-1.5">
                     <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0px" })} className={`py-2 text-[10px] sm:text-xs font-bold border transition-all ${customTheme.borderRadius === "0px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Sharp</button>
@@ -578,7 +584,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
                 {/* ✨ UNLOCKED TYPOGRAPHY */}
                 <div className="pt-2">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-secondary)] mb-1.5">Workspace Typography</label>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5">Workspace Typography</label>
                   <div className="relative">
                     <select 
                       value={customTheme.fontFamily}
@@ -720,11 +726,11 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* VIEW DETAILS MODAL */}
       {isBillingModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-xl font-bold text-[var(--color-secondary)] tracking-tight">Subscription Details</h2>
-              <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1">
+              <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight">Subscription Details</h2>
+              <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-[var(--color-text)] transition-colors p-1">
                 <X size={20} />
               </button>
             </div>
@@ -733,7 +739,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               <div className="space-y-5">
                 <div className="bg-white p-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-2 flex justify-between items-center">
                   <div>
-                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[var(--color-secondary)]">Dynamic Rate</span></p>
+                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[var(--color-text)]">Dynamic Rate</span></p>
                     <p className="text-xs text-slate-500">For limit increases, contact admin.</p>
                   </div>
                   <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] border text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusColor(billingStatus)}`}>
@@ -744,34 +750,34 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
                     <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5">
-                      <Home size={16} className="text-[var(--color-primary)]" />
+                      <Home size={16} className="text-[var(--color-text)]" />
                       Units Capacity
                     </label>
-                    <p className="text-2xl font-extrabold text-[var(--color-secondary)] mt-1">{unitLimit}</p>
+                    <p className="text-2xl font-extrabold text-[var(--color-text)] mt-1">{unitLimit}</p>
                   </div>
                   <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
                     <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5">
-                      <Users size={16} className="text-[var(--color-primary)]" />
+                      <Users size={16} className="text-[var(--color-text)]" />
                       Team Limit
                     </label>
-                    <p className="text-2xl font-extrabold text-[var(--color-secondary)] mt-1">{seatLimit}</p>
+                    <p className="text-2xl font-extrabold text-[var(--color-text)] mt-1">{seatLimit}</p>
                   </div>
                 </div>
 
                 <div className="pt-2">
                   <label className="flex items-center justify-between text-sm font-bold text-[var(--color-text)] mb-1.5">
                     <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-[var(--color-primary)]" />
+                      <CreditCard size={16} className="text-[var(--color-text)]" />
                       Estimated Monthly Total
                     </div>
                   </label>
-                  <div className="w-full px-4 py-3 rounded-[var(--radius-lg)] border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/10 flex items-center justify-between shadow-[var(--shadow-sm)]">
+                  <div className="w-full px-4 py-3 rounded-[var(--radius-lg)] border border-[var(--color-text)]/20 bg-[var(--color-text)]/10 flex items-center justify-between shadow-[var(--shadow-sm)]">
                     <div>
-                      <p className="text-xs font-bold text-[var(--color-primary)] opacity-80 uppercase tracking-wider">Due on {nextBillingDateFormatted}</p>
-                      <p className="text-xs text-[var(--color-primary)] font-medium">₱99 Owner | ₱198 Tenanted</p>
+                      <p className="text-xs font-bold text-[var(--color-text)] opacity-80 uppercase tracking-wider">Due on {nextBillingDateFormatted}</p>
+                      <p className="text-xs text-[var(--color-text)] font-medium">₱99 Owner | ₱198 Tenanted</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-extrabold text-[var(--color-secondary)]">
+                      <p className="text-lg font-extrabold text-[var(--color-text)]">
                         ₱{monthlyCost.toLocaleString()}
                       </p>
                     </div>
@@ -800,15 +806,15 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
       {/* DIGITAL WALLET PAYMENT MODAL */}
       {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
             
             {paymentSuccess ? (
               <div className="px-6 py-12 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
                 <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-50">
                   <CheckCircle className="text-[#d97706]" size={40} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-black text-[var(--color-secondary)] mb-3 tracking-tight">Payment Submitted!</h3>
+                <h3 className="text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight">Payment Submitted!</h3>
                 <p className="text-slate-500 text-sm mb-10 leading-relaxed px-4">
                   Your payment receipt has been submitted successfully and is currently <strong className="text-amber-600">Pending Verification</strong>. Your account status will update once confirmed by the system admin.
                 </p>
@@ -823,18 +829,18 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
               <>
                 <div className="px-6 py-6 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] border-b border-[var(--color-border)]">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--color-secondary)] to-[var(--color-primary)]"></div>
-                  <h2 className="text-xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-2">
+                  <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
                     <CreditCard className="text-[var(--color-primary)]" size={20} strokeWidth={2.5} />
                     Submit Payment
                   </h2>
-                  <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+                  <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-text)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                     <X size={16} strokeWidth={2.5} />
                   </button>
                 </div>
                 
                 <div className="px-6 py-8 bg-[var(--color-bg)] overflow-y-auto max-h-[80vh] custom-scrollbar">
                   <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
-                    {orgData?.org_name || 'Organization'} · System Subscription - total <span className="font-black text-[var(--color-secondary)]">₱{monthlyCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    {orgData?.org_name || 'Organization'} · System Subscription - total <span className="font-black text-[var(--color-text)]">₱{monthlyCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </p>
                   
                   <div className="mb-6">
@@ -848,7 +854,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
 
                   <div className="mb-6 p-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)] text-sm text-[var(--color-text)]">
                     <div className="flex flex-col items-center">
-                      <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[var(--color-secondary)]">Scan QR code using GCash or QR Ph</p>
+                      <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[var(--color-text)]">Scan QR code using GCash or QR Ph</p>
                       <div className="w-40 h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-inner)] p-3">
                         <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
                       </div>
@@ -883,9 +889,9 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading }: any) {
       {/* ✨ THEME ACTION CONFIRMATION MODAL */}
       {themeConfirmModal.isOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
               themeConfirmModal.type === 'load' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' :
               themeConfirmModal.type === 'reset' ? 'bg-red-50 text-red-500 border-red-100' :
               'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'

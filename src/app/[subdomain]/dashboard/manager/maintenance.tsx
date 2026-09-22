@@ -5,7 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, 
   Inbox, PauseCircle, Trash2, CheckCircle, 
-  LayoutGrid, List, ArrowUpDown, Clock
+  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight
 } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
@@ -320,9 +320,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const getUniversalStatusUI = (status: string) => {
     const s = String(status || '').toLowerCase();
     if (s === 'rejected') return { label: 'Rejected', color: 'red', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: <AlertCircle size={16} /> };
-    if (s === 'pending' || s === 'open') return { label: 'New', color: 'amber', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: <Inbox size={16} /> };
-    if (s === 'in_progress' || s === 'in progress' || s === 'working') return { label: 'Working', color: 'blue', bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', icon: <Wrench size={16} /> };
-    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'purple', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: <PauseCircle size={16} /> };
+    if (s === 'pending' || s === 'open') return { label: 'New', color: 'slate', bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: <Inbox size={16} /> };
+    if (s === 'in_progress' || s === 'in progress' || s === 'working') return { label: 'Working', color: 'blue', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: <Wrench size={16} /> };
+    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'amber', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: <PauseCircle size={16} /> };
     if (s === 'completed' || s === 'resolved' || s === 'closed') return { label: 'Closed', color: 'emerald', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <CheckCircle2 size={16} /> };
     return { label: status || 'Unknown', color: 'slate', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', icon: <Inbox size={16} /> };
   };
@@ -401,10 +401,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         
         {/* PREMIUM HEADER */}
         <div className="shrink-0 mb-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
             <div>
-              <h2 className="text-2xl font-black text-[var(--color-secondary)] tracking-tight">Maintenance &amp; Repairs</h2>
-              <p className="text-slate-400 text-sm mt-0.5 font-medium">Tickets, Vendors & SLA Turnaround</p>
+              <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+                {/* ✨ ADDED PREMIUM ICON WRAPPER */}
+                <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+                  <Wrench className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
+                </div>
+                Maintenance &amp; Repairs
+              </h2>
+              <p className="text-slate-400 text-sm mt-1 font-medium">Tickets, Vendors & SLA Turnaround</p>
             </div>
             <div className="flex items-center gap-4 w-full sm:w-auto shrink-0">
               <div className="relative w-full sm:w-64">
@@ -418,8 +424,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 />
               </div>
               <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-                <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
-                <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+                <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Manager</span>
+                <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                   {initials}
                 </div>
               </div>
@@ -430,9 +436,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ SECONDARY ROW */}
         <div className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
           <div className="flex items-center gap-3">
-            <h3 className="font-extrabold text-[var(--color-secondary)] text-base tracking-tight">Workspace</h3>
+            <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight text-[var(--color-text)] px-3 py-1.5 rounded-[var(--radius-md)]">
+              Workspace
+            </h3>
             {inboxTickets.length > 0 && (
-              <span className="bg-red-50 border border-red-100 text-red-600 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-wider animate-pulse shadow-sm">
+              <span className="bg-red-50 border border-red-100 text-red-600 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-[10px] font-black  tracking-wider animate-pulse shadow-sm">
                 {inboxTickets.length} Pending Inbox
               </span>
             )}
@@ -491,10 +499,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pr-1 pb-3 custom-scrollbar animate-in fade-in duration-300">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-start w-full h-full min-h-[400px]">
               
-              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm">
                 <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
-                  <h4 className="font-black text-slate-700 text-sm flex items-center gap-2">● Open Tickets</h4>
-                  <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-amber-100 shadow-inner">{isLoadingTickets ? "-" : openTickets.length}</span>
+                  <h4 className="font-black text-[var(--color-text)] text-sm flex items-center gap-2">● Open Tickets</h4>
+                  <span className="bg-slate-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-slate-100 shadow-inner">{isLoadingTickets ? "-" : openTickets.length}</span>
                 </div>
                 <div className="flex flex-col space-y-4">
                   {isLoadingTickets ? (
@@ -503,16 +511,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     <EmptyState icon={Inbox} title="No open tickets" message="New maintenance requests will appear here." />
                   ) : (
                     openTickets.map((ticket) => (
-                      <TicketCard key={ticket.id} id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="yellow" statusLabel="New" onClick={() => setSelectedTicketForModal(ticket)} />
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="slate" statusLabel="New" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
                     ))
                   )}
                 </div>
               </div>
-  
-              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+
+              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm">
                 <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
-                  <h4 className="font-black text-blue-600 text-sm flex items-center gap-2">● In progress</h4>
-                  <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-blue-100 shadow-inner">{isLoadingTickets ? "-" : inProgressTickets.length}</span>
+                  <h4 className="font-black text-blue-700 text-sm flex items-center gap-2">● In progress</h4>
+                  <span className="bg-slate-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-slate-100 shadow-inner">{isLoadingTickets ? "-" : inProgressTickets.length}</span>
                 </div>
                 <div className="flex flex-col space-y-4">
                   {isLoadingTickets ? (
@@ -521,16 +531,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     <EmptyState icon={Wrench} title="No active work" message="Tasks currently being worked on will be shown here." />
                   ) : (
                     inProgressTickets.map((ticket) => (
-                      <TicketCard key={ticket.id} id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="blue" statusLabel="Working" onClick={() => setSelectedTicketForModal(ticket)} />
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="blue" statusLabel="Working" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
                     ))
                   )}
                 </div>
               </div>
-  
-              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+
+              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm">
                 <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
-                  <h4 className="font-black text-purple-600 text-sm flex items-center gap-2">● On Hold</h4>
-                  <span className="bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-purple-100 shadow-inner">{isLoadingTickets ? "-" : onHoldTickets.length}</span>
+                  <h4 className="font-black text-amber-600 text-sm flex items-center gap-2">● On Hold</h4>
+                  <span className="bg-slate-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-slate-100 shadow-inner">{isLoadingTickets ? "-" : onHoldTickets.length}</span>
                 </div>
                 <div className="flex flex-col space-y-4">
                   {isLoadingTickets ? (
@@ -539,16 +551,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     <EmptyState icon={PauseCircle} title="Nothing on hold" message="Tasks that need further action or parts will be placed here." />
                   ) : (
                     onHoldTickets.map((ticket) => (
-                      <TicketCard key={ticket.id} id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="purple" statusLabel="On Hold" onClick={() => setSelectedTicketForModal(ticket)} />
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="amber" statusLabel="On Hold" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
                     ))
                   )}
                 </div>
               </div>
-  
-              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-3xl p-4 sm:p-5 w-full shrink-0 shadow-sm">
+
+              <div className="flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm">
                 <div className="flex justify-between items-center mb-4 px-1 tracking-tight">
                   <h4 className="font-black text-emerald-600 text-sm flex items-center gap-2">● Resolved</h4>
-                  <span className="bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-emerald-100 shadow-inner">{isLoadingTickets ? "-" : resolvedTickets.length}</span>
+                  <span className="bg-slate-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black border border-slate-100 shadow-inner">{isLoadingTickets ? "-" : resolvedTickets.length}</span>
                 </div>
                 <div className="flex flex-col space-y-4">
                   {isLoadingTickets ? (
@@ -557,20 +571,22 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     <EmptyState icon={CheckCircle2} title="No resolved tickets" message="Successfully completed tasks will be logged here." />
                   ) : (
                     resolvedTickets.map((ticket) => (
-                      <TicketCard key={ticket.id} id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="green" statusLabel="Closed" onClick={() => setSelectedTicketForModal(ticket)} />
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="green" statusLabel="Closed" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
                     ))
                   )}
                 </div>
               </div>
-  
+
             </div>
           </div>
 
         ) : (
 
-          <div className="flex-1 w-full bg-white rounded-3xl shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col h-full animate-in fade-in duration-300">
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] overflow-hidden flex flex-col h-full animate-in fade-in duration-300">
             <div className="flex-1 overflow-auto custom-scrollbar">
-              <table className="w-full text-left text-sm min-w-[900px] border-collapse">
+              <table className="w-full text-left text-sm min-w-[900px] border-collapse relative">
                 <thead className="bg-slate-50/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-md">
                   <tr>
                     <th className="px-6 py-4 whitespace-nowrap">Ticket Details</th>
@@ -596,7 +612,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           className={`hover:bg-[var(--color-primary)]/5 transition-colors group cursor-pointer ${activeHighlightId === String(ticket.id) ? 'bg-[var(--color-primary)]/10' : ''}`}
                         >
                           <td className="px-6 py-4">
-                            <p className="font-extrabold text-[var(--color-secondary)] group-hover:text-[var(--color-primary)] text-[13px] sm:text-sm line-clamp-1 transition-colors">{ticket.title}</p>
+                            <p className="font-extrabold text-[var(--color-text)] group-hover:text-[var(--color-text)] text-[13px] sm:text-sm line-clamp-1 transition-colors">
+                              {ticket.title}
+                            </p>
                             <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{ticket.description || 'No description provided'}</p>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -613,7 +631,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-[var(--radius-sm)] w-fit">
-                              <MapPin size={12} className="text-[var(--color-primary)]" /> {ticket.location}
+                              <MapPin size={12} className="text-slate-600" /> {ticket.location}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -624,11 +642,19 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               <span className="text-xs font-bold text-slate-700">{getAssigneeName(ticket.assigned_to)}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <span className="text-xs font-bold text-slate-500">
+                          
+                          {/* ✨ HOVER STATE OVERLAY ON THE LAST COLUMN */}
+                          <td className="px-6 py-4 whitespace-nowrap text-right relative">
+                            <span className="text-xs font-bold text-slate-500 transition-opacity duration-200 group-hover:opacity-0">
                               {new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </span>
+                            <div className="absolute inset-y-0 right-6 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)] px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm backdrop-blur-sm">
+                                View Details <ArrowRight size={12} strokeWidth={3} />
+                              </span>
+                            </div>
                           </td>
+
                         </tr>
                       );
                     })
@@ -647,7 +673,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ UNIVERSAL TICKET DETAILS MODAL */}
         {selectedTicketForModal && (
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] max-h-[95vh] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] max-h-[95vh] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               
               <div className={`px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center shrink-0 ${getUniversalStatusUI(selectedTicketForModal.status).bg}`}>
                 <div className={`flex items-center gap-2.5 ${getUniversalStatusUI(selectedTicketForModal.status).text}`}>
@@ -656,17 +682,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     {getUniversalStatusUI(selectedTicketForModal.status).label}
                   </h2>
                 </div>
-                <button onClick={() => setSelectedTicketForModal(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-black/5 active:scale-90">
+                <button onClick={() => setSelectedTicketForModal(null)} className="text-slate-500 hover:text-slate-600 transition-colors p-2 rounded-[var(--radius-sm)] hover:opacity-90 active:scale-90">
                   <X size={18} strokeWidth={2.5} />
                 </button>
               </div>
 
               <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50">
                 <div className="mb-6">
-                  <h3 className="font-black text-xl sm:text-2xl text-[var(--color-secondary)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
+                  <h3 className="font-black text-xl sm:text-2xl text-[var(--color-text)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
                   <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-[var(--color-primary)]"/> {selectedTicketForModal.location}</span>
-                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><Clock size={12} className="text-[var(--color-primary)]"/> {new Date(selectedTicketForModal.created_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-slate-500"/> {selectedTicketForModal.location}</span>
+                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><Clock size={12} className="text-slate-500"/> {new Date(selectedTicketForModal.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
 
@@ -689,7 +715,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Assigned To</span>
-                    <span className="text-sm font-bold text-[var(--color-secondary)]">{getAssigneeName(selectedTicketForModal.assigned_to)}</span>
+                    <span className="text-sm font-bold text-[var(--color-text)]">{getAssigneeName(selectedTicketForModal.assigned_to)}</span>
                   </div>
                   {['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) ? (
                     <div className="bg-emerald-50 p-4 rounded-[1.5rem] border border-emerald-200 shadow-[var(--shadow-sm)]">
@@ -735,7 +761,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           ? 'text-amber-600 bg-amber-100' 
                           : 'text-emerald-600 bg-emerald-100'
                         }`}>
-                          {['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'Hold Evidence' : 'After / Resolution'}
+                          {['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'After Hold Evidence' : 'After / Resolution'}
                         </span>
                         
                         {selectedTicketForModal.resolution_photo_url || selectedTicketForModal.on_hold_photo_url ? (
@@ -786,20 +812,20 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* NEW TICKET MODAL */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col my-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
-                <h2 className="text-lg font-black text-[var(--color-secondary)] tracking-tight">Create New Ticket</h2>
-                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); } }} className="text-slate-400 hover:text-[var(--color-primary)] transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
+                <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
+                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
                   <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
-              <div className="p-6 overflow-y-auto max-h-[75vh] bg-slate-50/50">
+              <div className="p-5 overflow-y-auto max-h-[75vh] bg-slate-50/50">
                 <form onSubmit={handleAddTicket} className="space-y-5">
                   {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
                   
                   {inboxTickets.length > 0 && (
-                    <div className="bg-[var(--color-primary)]/10 p-4 rounded-[1.5rem] border border-[var(--color-primary)]/20 shadow-sm">
-                      <label className="flex items-center gap-2 text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider mb-2"><Bell size={14} className="text-[var(--color-primary)]" /> Process Pending Request</label>
+                    <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm">
+                      <label className="flex items-center gap-2 text-xs font-black text-[var(--color-text)] uppercase tracking-wider mb-2"><Bell size={14} className="text-[var(--color-text)]" /> Process Pending Request</label>
                       <select
                         value={selectedInboxId}
                         onChange={(e) => {
@@ -839,8 +865,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     </label>
                     <div>
                       {ticketImage ? (
-                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[1.5rem] border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-[var(--shadow-sm)]">
-                          <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[var(--radius-xl)] border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-[var(--shadow-sm)]">
+                          <div className="relative w-full h-32 sm:h-40 rounded-[var(--radius-lg)] overflow-hidden bg-slate-900 shadow-inner">
                             <img 
                               src={URL.createObjectURL(ticketImage)} 
                               alt="Ticket preview" 
@@ -866,8 +892,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           </div>
                         </div>
                       ) : existingPhotoUrl ? (
-                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[1.5rem] border-2 border-solid border-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 transition-all shadow-[var(--shadow-sm)]">
-                          <div className="relative w-full h-32 sm:h-40 rounded-lg overflow-hidden bg-slate-900 shadow-inner">
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[var(--radius-xl)] border-2 border-solid border-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 transition-all shadow-[var(--shadow-sm)]">
+                          <div className="relative w-full h-32 sm:h-40 rounded-[var(--radius-lg)] overflow-hidden bg-slate-900 shadow-inner">
                             <img 
                               src={existingPhotoUrl} 
                               alt="Resident's submitted photo" 
@@ -888,11 +914,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       ) : (
                         <div className="flex gap-3 w-full">
                           <label className="flex md:hidden flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer transition-all group text-center shadow-sm bg-white">
-                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <Camera size={20} strokeWidth={2.5} />
                             </div>
                             <div>
-                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] block leading-none mt-1">
+                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
                                 Take Photo
                               </span>
                             </div>
@@ -906,11 +932,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             />
                           </label>
                           <label className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer transition-all group text-center shadow-sm bg-white">
-                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
                             <div>
-                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] block leading-none mt-1">
+                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
                                 Upload Photo
                               </span>
                             </div>
@@ -1048,8 +1074,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         
         {/* ✨ REJECT TICKET MODAL */}
         {isRejectModalOpen && (
-          <div className="fixed inset-0 bg-[var(--color-secondary)]/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-red-50 shrink-0">
                 <div className="flex items-center gap-2 text-red-600">
                   <AlertCircle size={18} strokeWidth={2.5} />
@@ -1090,9 +1116,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   
   function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, onClick, isHighlighted }: any) {
     const colors: any = {
-      yellow: 'bg-amber-50 text-amber-700 border-amber-200/60',
+      slate: 'bg-slate-50 text-slate-700 border-slate-200/60',
       blue: 'bg-blue-50 text-blue-600 border-blue-200/60',
-      purple: 'bg-purple-50 text-purple-700 border-purple-200/60',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200/60',
       green: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
     };
   
@@ -1107,7 +1133,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     <div 
       id={id}
       onClick={onClick} 
-      className={`bg-white p-4 sm:p-5 rounded-3xl border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
+      className={`bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
         isHighlighted ? 'ring-4 ring-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 border-[var(--color-primary)]/50 scale-[1.02] shadow-xl animate-pulse z-10' 
         : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-[var(--color-border)] border-r-[var(--color-border)] shadow-sm hover:-translate-y-1.5 hover:shadow-md' 
         : statusColor === 'green' ? 'border-[var(--color-border)] shadow-sm hover:-translate-y-1.5 hover:shadow-md hover:border-emerald-200' 
@@ -1117,7 +1143,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
           <div className="flex items-start gap-2 min-w-0">
             {statusColor === 'green' && <CheckCircle size={16} className="text-emerald-600 mt-0.5 shrink-0" strokeWidth={2.5} />}
-            <h4 title={ticket.title} className={`font-extrabold text-[var(--color-secondary)] text-[15px] leading-snug tracking-tight line-clamp-2 ${statusColor !== 'green' ? 'transition-colors group-hover:text-[var(--color-primary)]' : ''}`}>
+            <h4 title={ticket.title} className={`font-extrabold text-[var(--color-text)] text-[15px] leading-snug tracking-tight line-clamp-2 ${statusColor !== 'green' ? 'transition-colors group-hover:opacity-90' : ''}`}>
               {ticket.title}
             </h4>
           </div>
@@ -1127,8 +1153,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         </div>
         
         <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
-          <p className="text-slate-500 font-bold text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate">
-            <MapPin size={12} className="text-[var(--color-primary)] shrink-0" />
+          <p className="text-[var(--color-text)] font-bold text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate">
+            <MapPin size={12} className="text-[var(--color-slate)] shrink-0" />
             <span className="truncate">{ticket.location}</span>
           </p>
           {ticket.priority === 'Urgent' && statusColor !== 'green' && (
@@ -1140,7 +1166,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   
         <div className={`flex justify-between items-center shrink-0 border-t pt-3 ${isHighlighted ? 'border-[var(--color-primary)]/20' : 'border-[var(--color-border)]'}`}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-black shadow-sm shrink-0 border border-slate-300">
+            <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[10px] font-black shadow-sm shrink-0 border border-slate-300">
               {assigneeName !== "Unassigned" ? assigneeName.substring(0, 1) : "?"}
             </div>
             <div className="flex flex-col min-w-0">
@@ -1155,7 +1181,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
 function SkeletonCard() {
   return (
-    <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-[var(--color-border)] flex flex-col h-[150px] animate-pulse shrink-0 overflow-hidden">
+    <div className="bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] flex flex-col h-[150px] animate-pulse shrink-0 overflow-hidden">
       <div className="flex justify-between items-start mb-3 shrink-0">
         <div className="h-4 bg-slate-200 rounded-md w-3/4"></div>
         <div className="h-4 bg-slate-200 rounded-lg w-16"></div>
@@ -1173,7 +1199,7 @@ function SkeletonCard() {
 
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
-    <div className="flex flex-col items-center justify-center h-[180px] border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-3xl p-4 text-center shrink-0">
+    <div className="flex flex-col items-center justify-center h-[180px] border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-4 text-center shrink-0">
       <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-2">
         <Icon size={18} className="text-slate-400" />
       </div>

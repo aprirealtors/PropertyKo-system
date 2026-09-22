@@ -322,7 +322,7 @@ export default function PaymentHistory() {
               <div className="bg-white rounded-[2rem] border border-slate-200/80 shadow-sm relative overflow-hidden flex flex-col lg:h-full">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 
-                <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
+                <div className="relative flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
                   
                   {/* Org Header & Stats */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-6 border-b border-slate-100 gap-4 shrink-0">

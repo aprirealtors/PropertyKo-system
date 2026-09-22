@@ -260,11 +260,11 @@ export default function UsersTab({ orgData }: any) {
       
       {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[2rem] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <UserCheck className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+                <UserCheck className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Client Accounts
             </h2>
@@ -305,7 +305,7 @@ export default function UsersTab({ orgData }: any) {
 
           {/* Table Header Section */}
           <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 gap-4">
-            <h3 className="font-black text-lg text-[var(--color-secondary)] tracking-tight">Active Accounts</h3>
+            <h3 className="font-black text-xl text-[var(--color-text)] tracking-tight">Active Accounts</h3>
             <button 
               onClick={() => {
                 setErrorMsg(null);
@@ -369,14 +369,14 @@ export default function UsersTab({ orgData }: any) {
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-[var(--color-primary)]/5 transition-colors group">
                       <td className="px-6 py-4 border-r border-[var(--color-border)]/50">
-                        <div className="font-black text-[var(--color-secondary)] tracking-tight">{user.name}</div>
+                        <div className="font-black text-[var(--color-text)] tracking-tight">{user.name}</div>
                         <div className="text-slate-500 font-semibold text-xs mt-0.5">{user.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap border-r border-[var(--color-border)]/50">
                         <span className={`font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-[var(--radius-sm)] border shadow-[var(--shadow-sm)] ${
                           user.role === 'Owner' 
-                            ? 'bg-purple-50 text-purple-700 border-purple-200/60' 
-                            : 'bg-blue-50 text-blue-700 border-blue-200/60'
+                            ? 'bg-slate-50 text-slate-700 border-purple-200/60' 
+                            : 'bg-slate-50 text-slate-700 border-blue-200/60'
                         }`}>
                           {user.role}
                         </span>
@@ -401,11 +401,11 @@ export default function UsersTab({ orgData }: any) {
       {/* 🌟 PREMIUM CREATE USER MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              <h2 className="text-xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
-                <UserPlus className="text-[var(--color-primary)]" size={22} strokeWidth={2.5} />
+              <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight relative z-10 flex items-center gap-2">
+                <UserPlus className="text-[var(--color-text)]" size={22} strokeWidth={2.5} />
                 Create Account
               </h2>
               <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
@@ -419,7 +419,7 @@ export default function UsersTab({ orgData }: any) {
                 <button
                   type="button"
                   onClick={() => { setRole("Tenant"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Tenant" ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Tenant" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
                   disabled={isSubmitting}
                 >
                   Tenant Account
@@ -427,7 +427,7 @@ export default function UsersTab({ orgData }: any) {
                 <button
                   type="button"
                   onClick={() => { setRole("Owner"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Owner" ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
+                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Owner" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
                   disabled={isSubmitting}
                 >
                   Owner Account
@@ -440,7 +440,7 @@ export default function UsersTab({ orgData }: any) {
                 {/* DYNAMIC UNIT SELECTION */}
                 <div>
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    <Home size={14} className="text-[var(--color-primary)]" /> Select Unit Allocation
+                    <Home size={14} className="text-slate-500" /> Select Unit Allocation
                   </label>
                   
                   <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
@@ -529,7 +529,7 @@ export default function UsersTab({ orgData }: any) {
                 </div>
 
                 <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-white border border-slate-200 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
                   <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
                     {isSubmitting ? "Creating..." : "Create Account"}
                   </button>

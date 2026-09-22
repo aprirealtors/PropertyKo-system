@@ -415,11 +415,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
   const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-primary)] px-1.5 py-0.5 rounded border border-[var(--color-primary)]/20 uppercase font-bold tracking-wider bg-[var(--color-primary)]/10">Owner</span>;
-    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-[var(--color-secondary)] px-1.5 py-0.5 rounded border border-[var(--color-secondary)]/20 uppercase font-bold tracking-wider bg-[var(--color-secondary)]/10">Manager</span>;
-    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 uppercase font-bold tracking-wider bg-slate-100">Admin</span>;
+    if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
+    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
     if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">Maintenance</span>;
-    if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-primary)] px-1.5 py-0.5 rounded border border-[var(--color-primary)]/20 uppercase font-bold tracking-wider bg-[var(--color-primary)]/10">Tenant</span>;
+    if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
     return null;
   };
 
@@ -449,7 +449,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         {/* SIDEBAR HEADER */}
         <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-[var(--color-border)] bg-white">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight">Chats</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Chats</h1>
             <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
               className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]' : 'bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100'}`}
@@ -530,7 +530,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                         ) : (
                           <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-secondary)]' : 'font-normal text-[var(--color-text)]'
+                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
                             }`}
                             title={`${customNames[contact.id] || contact.name} - ${contact.type.charAt(0).toUpperCase() + contact.type.slice(1)}`}
                           >
@@ -600,7 +600,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h2 className="font-black text-[var(--color-secondary)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
+                    <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
                     {renderRoleBadge(activeContactDetails?.type)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">

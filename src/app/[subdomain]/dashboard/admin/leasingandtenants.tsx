@@ -222,9 +222,9 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-secondary)] tracking-tight flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
               <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-                <Users className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+                <Users className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Leasing & Tenants
             </h2>
@@ -245,8 +245,8 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               />
             </div>
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -267,7 +267,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
           </div>
           <button 
             onClick={() => handleOpenApproveModal()}
-            className="hidden sm:flex items-center gap-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/70 text-[var(--color-text)] px-5 py-2.5 rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all shrink-0"
+            className="hidden sm:flex items-center gap-2 bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-text)] px-5 py-2.5 rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all shrink-0"
           >
             Review All
           </button>
@@ -312,7 +312,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               const badgeColor = isPending ? 'bg-amber-50 text-amber-600 border-amber-200/60' :
                                  isTerminated ? 'bg-slate-100 text-slate-500 border-slate-300' :
                                  isExpired ? 'bg-red-50 text-red-600 border-red-200' :
-                                 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30';
+                                 'bg-white text-[var(--color-text)] border-[var(--color-primary)]/40';
                                  
               const badgeText = isPending ? 'Pending' : isTerminated ? 'Terminated' : isExpired ? 'Expired' : 'Active';
               const BadgeIcon = isPending ? Clock : isTerminated ? XOctagon : isExpired ? AlertTriangle : CheckCircle;
@@ -321,7 +321,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div key={lease.id} className="flex flex-col h-full group hover:-translate-y-1 transition-transform duration-300">
 
                   <div className="flex items-end">
-                    <div className={`px-4 py-2 rounded-t-xl text-[10px] text-[var(--color-secondary)] font-black uppercase tracking-wider flex items-center gap-1.5 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
+                    <div className={`px-4 py-2 rounded-t-xl text-[10px] text-[var(--color-text)] font-black uppercase tracking-wider flex items-center gap-1.5 border-t border-l border-r relative shadow-[0_-2px_6px_rgba(0,0,0,0.02)] translate-y-[1px] transition-colors ${badgeColor}`}>
                       <BadgeIcon size={14} />
                       {badgeText}
                     </div>
@@ -337,9 +337,9 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                     <FolderOpen className="absolute -bottom-6 -right-6 text-slate-50 opacity-[0.4] w-32 h-32 rotate-[-10deg] pointer-events-none" />
 
                     <div className="mb-5 relative">
-                      <h4 className="text-xl font-black text-[var(--color-secondary)] truncate tracking-tight">{lease.tenant_name}</h4>
+                      <h4 className="text-xl font-black text-[var(--color-text)] truncate tracking-tight">{lease.tenant_name}</h4>
                       <div className="flex items-center gap-1.5 mt-1">
-                        <MapPin size={12} className="text-[var(--color-primary)]" />
+                        <MapPin size={12} className="text-[var(--color-text)]" />
                         <p className="text-xs font-bold text-slate-500 truncate">{lease.units?.property_name} · Unit {lease.units?.unit_number}</p>
                       </div>
                     </div>
@@ -390,15 +390,15 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
       {/* 🌟 PREMIUM APPROVAL MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
-                <CheckCircle className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight relative z-10 flex items-center gap-2">
+                <CheckCircle className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
                 Approve Lease
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -407,7 +407,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               <form onSubmit={confirmApproveLease} className="space-y-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                    <FolderOpen size={14} className="text-[var(--color-primary)]" /> Pending Folder Selection
+                    <FolderOpen size={14} className="text-[var(--color-text)]" /> Pending Folder Selection
                   </label>
                   {leasesList.filter(l => l.status === 'Pending').length === 0 ? (
                     <div className="p-4 text-sm font-bold text-amber-700 bg-amber-50 rounded-xl border border-amber-200/60">
@@ -432,7 +432,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                    <Users size={14} className="text-[var(--color-primary)]" /> Tenant Name
+                    <Users size={14} className="text-[var(--color-text)]" /> Tenant Name
                   </label>
                   <input
                     type="text"
@@ -447,7 +447,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                      <CalendarDays size={14} className="text-[var(--color-primary)]" /> Start Date
+                      <CalendarDays size={14} className="text-[var(--color-text)]" /> Start Date
                     </label>
                     <input 
                       required type="date"
@@ -470,7 +470,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 </div>
 
                 <div className="mt-8 flex gap-3 pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-slate-50/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-4 sm:px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-[var(--color-primary)]/50 hover:shadow-sm rounded-[var(--radius-md)] transition-all active:scale-95">
+                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-4 sm:px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:opacity-90 bg-white border border-slate-200 hover:border-[var(--color-primary)]/50 hover:shadow-sm rounded-[var(--radius-md)] transition-all active:scale-95">
                     Cancel
                   </button>
                   <button type="submit" disabled={isSubmitting || leasesList.filter(l => l.status === 'Pending').length === 0} className="flex-1 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] px-4 sm:px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex items-center justify-center">
@@ -490,11 +490,11 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
             <div className="px-6 sm:px-8 py-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] tracking-tight relative z-10 flex items-center gap-2">
-                <FileText className="text-[var(--color-primary)]" size={24} strokeWidth={2.5} />
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight relative z-10 flex items-center gap-2">
+                <FileText className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
                 Contract Details
               </h2>
-              <button onClick={() => setIsViewModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsViewModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0">
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -503,15 +503,15 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
                 <div>
-                  <h4 className="text-xl font-black text-[var(--color-secondary)]">{viewLeaseData.tenant_name}</h4>
+                  <h4 className="text-xl font-black text-[var(--color-text)]">{viewLeaseData.tenant_name}</h4>
                   <div className="flex flex-col gap-1 mt-1.5">
                     <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
-                      <MapPin size={14} className="text-[var(--color-primary)]"/>
+                      <MapPin size={14} className="text-slate-500"/>
                       {viewLeaseData.units?.property_name} · Unit {viewLeaseData.units?.unit_number}
                     </p>
                     <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
-                      <Users size={14} className="text-slate-400"/>
-                      Owner: <span className="text-slate-700">{viewLeaseData.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
+                      <Users size={14} className="text-slate-500"/>
+                      Owner: <span className="text-slate-500">{viewLeaseData.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
                     </p>
                   </div>
                 </div>
@@ -565,13 +565,13 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] space-y-4">
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                      <CalendarDays size={14} className="text-[var(--color-primary)]" /> Lease Start
+                      <CalendarDays size={14} className="text-slate-500" /> Lease Start
                     </label>
                     <div className="text-sm font-bold text-slate-700">{formatDate(viewLeaseData.start_date)}</div>
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                      <CalendarDays size={14} className="text-[var(--color-primary)]" /> Lease End
+                      <CalendarDays size={14} className="text-slate-500" /> Lease End
                     </label>
                     <div className="text-sm font-bold text-slate-700">{formatDate(viewLeaseData.end_date)}</div>
                   </div>
@@ -579,28 +579,28 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] flex flex-col justify-center">
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    <span className="text-[var(--color-primary)] font-black text-xs leading-none">₱</span> Monthly Rent Amount
+                    <span className="text-slate-500 font-black text-xs leading-none">₱</span> Monthly Rent Amount
                   </label>
-                  <div className="text-3xl font-black text-[var(--color-secondary)]">
+                  <div className="text-3xl font-black text-[var(--color-text)]">
                     ₱{(viewLeaseData.units?.monthly_rent || viewLeaseData.monthly_rent || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <p className="text-xs font-bold text-slate-400 mt-2">Agreed upon monthly rate.</p>
+                  <p className="text-xs font-black text-slate-400 mt-2">Agreed upon monthly rate.</p>
                 </div>
               </div>
 
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                 <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
-                  <FileText size={14} className="text-[var(--color-primary)]" /> Contract Document
+                  <FileText size={14} className="text-slate-500" /> Contract Document
                 </label>
 
                 {viewLeaseData.document_url || viewLeaseData.lease_document_url ? (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-[var(--radius-lg)] border border-[var(--color-border)]">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-[var(--color-border)] shrink-0">
-                        <FileText size={18} className="text-[var(--color-primary)]" />
+                        <FileText size={18} className="text-slate-500" />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-[var(--color-secondary)]">Lease Agreement</p>
+                        <p className="text-sm font-bold text-[var(--color-text)]">Lease Agreement</p>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PDF Document</p>
                       </div>
                     </div>
@@ -630,7 +630,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               {viewLeaseData.history && viewLeaseData.history.length > 0 && (
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
-                    <Clock size={14} className="text-[var(--color-primary)]" /> Lease History
+                    <Clock size={14} className="text-slate-500" /> Lease History
                   </label>
                   <div className="space-y-3">
                     {viewLeaseData.history.map((pastLease: any) => (
@@ -660,7 +660,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                               href={pastLease.document_url || pastLease.lease_document_url} 
                               target="_blank" 
                               rel="noreferrer" 
-                              className="p-1.5 bg-white border border-slate-200 rounded text-slate-400 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] shadow-sm transition-colors"
+                              className="p-1.5 bg-[var(--color-primary)] border border-slate-200 rounded text-[var(--color-text)] hover:opacity-90 shadow-sm transition-colors"
                             >
                               <Download size={14} />
                             </a>
@@ -679,7 +679,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
       {/* ✨ UNIVERSAL CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30`}>
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
@@ -708,8 +708,8 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
       {/* ✨ SUCCESS MODAL */}
       {successModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
@@ -726,8 +726,8 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
       {/* ✨ ERROR MODAL */}
       {errorModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-red-200">
               <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
@@ -735,7 +735,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {errorModal.message}
             </p>
-            <button onClick={() => setErrorModal({ isOpen: false, message: "" })} className="w-full bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all active:scale-95">
+            <button onClick={() => setErrorModal({ isOpen: false, message: "" })} className="w-full bg-slate-100 text-slate-600 hover:opacity-90 border border-transparent font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all active:scale-95">
               Close
             </button>
           </div>
