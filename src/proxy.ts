@@ -4,25 +4,9 @@ import type { NextRequest } from 'next/server';
 export function proxy(req: NextRequest) {
   const url = req.nextUrl;
   const hostname = req.headers.get("host") || "";
-  const isProd = process.env.NODE_ENV === "production";
-  const mainDomain = isProd ? "propertyko.com" : "localhost:3000";
-  const protocol = isProd ? "https://" : "http://";
+  const mainDomain = process.env.NODE_ENV === "production" ? "propertyko.com" : "localhost:3000";
 
-  // Extract the subdomain (if it exists)
-  let subdomain = "";
-  if (hostname !== mainDomain && hostname !== `www.${mainDomain}`) {
-    subdomain = hostname.replace(`.${mainDomain}`, "");
-  }
-
-  // ✨ NEW FIX: Prevent login and superadmin routes from being accessed on subdomains
-  if (subdomain) {
-    if (url.pathname.startsWith('/login') || url.pathname.startsWith('/dashboard/superadmin')) {
-      // Force redirect to the main domain
-      return NextResponse.redirect(new URL(url.pathname, `${protocol}${mainDomain}`));
-    }
-  }
-
-  // BYPASS RULE: Let the global login and superadmin pages load normally ON THE MAIN DOMAIN
+  // BYPASS RULE: Let the global login and superadmin pages load normally (Works on subdomains too)
   if (url.pathname.startsWith('/login') || url.pathname.startsWith('/dashboard/superadmin')) {
     return NextResponse.next();
   }
@@ -32,11 +16,13 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Extract the subdomain
+  const subdomain = hostname.replace(`.${mainDomain}`, "");
+
   if (subdomain) {
-    // REDIRECT RULE: If they just type the naked subdomain (causing the 404), send them to main login
-    // Note: We send them to the main domain login because we just banned /login on subdomains above
+    // REDIRECT RULE: If they just type the naked subdomain (causing the 404), send them to /login
     if (url.pathname === '/') {
-       return NextResponse.redirect(new URL('/login', `${protocol}${mainDomain}`));
+      return NextResponse.redirect(new URL('/login', req.url));
     }
 
     // Rewrite all other subdomain traffic into the [subdomain] folder
@@ -48,6 +34,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    // ✨ KEEP THIS FIX: Ensures PWA manifest and images work on subdomains
     "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

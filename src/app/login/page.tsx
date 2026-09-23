@@ -32,7 +32,6 @@ export default function Home() {
   // Detect Subdomain on mount
   useEffect(() => {
     const hostname = window.location.hostname;
-    // ✨ FIX: Simplified domain check
     const isMain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
     
     if (!isMain) {
@@ -73,19 +72,19 @@ export default function Home() {
           const protocol = isLocal ? "http://" : "https://";
           const baseDomain = isLocal ? "localhost:3000" : "propertyko.com";
 
-          // ✨ CROSS-TENANT SECURITY CHECK (Session Auto-Login)
+          // CROSS-TENANT SECURITY CHECK
           let currentSubdomain = null;
           if (!isMainDomain) {
-            // FIX: Robust subdomain extraction for both local and prod
             currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
           }
 
-          // 🚨 NEW FIX: Force superadmin to main domain if on a subdomain
+          // 🚨 IF SUPERADMIN HAS SESSION BUT IS ON SUBDOMAIN -> BOOT TO MAIN DOMAIN
           if (userEmail === "superadmin@propertyko.com" && currentSubdomain) {
             window.location.href = `${protocol}${baseDomain}/dashboard/superadmin`;
             return;
           }
 
+          // IF REGULAR USER ON WRONG SUBDOMAIN -> BOOT TO THEIR CORRECT SUBDOMAIN
           if (
             currentSubdomain && 
             orgData?.subdomain && 
@@ -153,7 +152,7 @@ export default function Home() {
         console.log("Not a registered organization admin, checking alternate roles...");
       }
 
-      // ✨ 3. CROSS-TENANT SECURITY CHECK (Manual Login)
+      // 3. CROSS-TENANT SECURITY CHECK
       const hostname = window.location.hostname;
       const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
       const isLocal = hostname.includes("localhost");
@@ -162,24 +161,24 @@ export default function Home() {
 
       let currentSubdomain = null;
       if (!isMainDomain) {
-        // FIX: Robust subdomain extraction that won't break on localhost
         currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
       }
 
-      // 🚨 NEW FIX: Force superadmin to main domain if trying to login on a subdomain
+      // 🚨 BLOCK SUPER ADMIN FROM SUBDOMAIN LOGINS
       if (userEmail === "superadmin@propertyko.com" && currentSubdomain) {
-        window.location.href = `${protocol}${baseDomain}/dashboard/superadmin`;
+        await supabase.auth.signOut();
+        setErrorMsg(`Super Admins cannot log in from a workspace. Please visit ${baseDomain} to access your dashboard.`);
+        setLoading(false);
         return;
       }
 
-      // If they are on a subdomain that does NOT match their registered organization
+      // BLOCK USERS TRYING TO LOGIN TO THE WRONG ORGANIZATION'S SUBDOMAIN
       if (
         currentSubdomain && 
         orgData?.subdomain && 
         currentSubdomain !== orgData.subdomain 
       ) {
         await supabase.auth.signOut();
-        // Dynamically show the correct local vs prod domain in the error message
         setErrorMsg(`Unauthorized access. This email is registered to the "${orgData.org_name}" workspace. Please visit ${orgData.subdomain}.${baseDomain} to log in.`);
         setLoading(false);
         return;
@@ -390,7 +389,7 @@ export default function Home() {
                   <Lock size={18} />
                 </div>
                 <input
-                  type="password" // Replaced {showPassword ? "text" : "password"} here for correct JSX compilation, handle visibility locally if strictly needed. Keeping standard format as requested.
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
