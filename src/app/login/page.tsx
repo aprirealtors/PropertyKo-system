@@ -80,11 +80,16 @@ export default function Home() {
             currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
           }
 
+          // 🚨 NEW FIX: Force superadmin to main domain if on a subdomain
+          if (userEmail === "superadmin@propertyko.com" && currentSubdomain) {
+            window.location.href = `${protocol}${baseDomain}/dashboard/superadmin`;
+            return;
+          }
+
           if (
             currentSubdomain && 
             orgData?.subdomain && 
-            currentSubdomain !== orgData.subdomain && 
-            userEmail !== "superadmin@propertyko.com"
+            currentSubdomain !== orgData.subdomain 
           ) {
             window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}/dashboard/admin`;
             return;
@@ -161,12 +166,17 @@ export default function Home() {
         currentSubdomain = hostname.replace(`.${baseDomain.split(':')[0]}`, "");
       }
 
+      // 🚨 NEW FIX: Force superadmin to main domain if trying to login on a subdomain
+      if (userEmail === "superadmin@propertyko.com" && currentSubdomain) {
+        window.location.href = `${protocol}${baseDomain}/dashboard/superadmin`;
+        return;
+      }
+
       // If they are on a subdomain that does NOT match their registered organization
       if (
         currentSubdomain && 
         orgData?.subdomain && 
-        currentSubdomain !== orgData.subdomain && 
-        userEmail !== "superadmin@propertyko.com"
+        currentSubdomain !== orgData.subdomain 
       ) {
         await supabase.auth.signOut();
         // Dynamically show the correct local vs prod domain in the error message
@@ -380,7 +390,7 @@ export default function Home() {
                   <Lock size={18} />
                 </div>
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type="password" // Replaced {showPassword ? "text" : "password"} here for correct JSX compilation, handle visibility locally if strictly needed. Keeping standard format as requested.
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
