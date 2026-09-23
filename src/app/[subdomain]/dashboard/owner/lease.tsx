@@ -418,8 +418,8 @@ export default function LeaseTab({ userData, units }: any) {
 
         {isLoadingLease ? (
           <>
-            <div className="w-full lg:flex-1 flex flex-col animate-pulse mt-4 lg:mt-24">
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col h-full">
+            <div className="w-full lg:flex-1 flex flex-col animate-pulse">
+              <div className="bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-6">
                   <div className="h-6 w-40 sm:w-48 bg-slate-200 rounded-md"></div>
                   <div className="h-6 w-20 sm:w-24 bg-slate-100 rounded-full"></div>
@@ -436,15 +436,15 @@ export default function LeaseTab({ userData, units }: any) {
                 </div>
               </div>
             </div>
-            <div className="w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col animate-pulse mt-4 lg:mt-24">
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col h-full">
+            <div className="w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col animate-pulse">
+              <div className="bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col h-full">
                 <div className="h-40 w-full bg-[var(--color-bg)] rounded-[var(--radius-md)]"></div>
               </div>
             </div>
           </>
         ) : isVacant ? (
           <div className="w-full flex-1 flex flex-col">
-            <div className="flex-1 bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-6 sm:p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
+            <div className="flex-1 bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-6 sm:p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
               <div className="absolute top-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 -translate-x-20 pointer-events-none z-0 opacity-60"></div>
               
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-inner border border-[var(--color-primary)]/20 relative z-10">

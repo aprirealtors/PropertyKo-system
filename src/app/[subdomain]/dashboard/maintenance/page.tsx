@@ -984,13 +984,13 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`relative flex flex-col items-center justify-center flex-1 py-2 transition-all duration-300 group ${active ? '' : 'text-slate-600 hover:text-slate-600'}`}
-      style={{ color: active ? 'var(--color-primary)' : '' }}
+      className={`relative flex flex-col items-center justify-center flex-1 py-4 transition-all duration-300 group ${active ? '' : 'text-slate-600 hover:text-slate-600'}`}
+      style={{ color: active ? 'var(--color-text)' : '' }}
     >
       {active && (
         <span 
           className="absolute inset-1 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" 
-          style={{ backgroundColor: 'var(--color-primary)', opacity: 0.1 }} 
+          style={{ backgroundColor: 'var(--color-primary)' }} 
         />
       )}
       

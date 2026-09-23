@@ -332,13 +332,13 @@ export default function PayTab() {
         
         {isLoading ? (
           <div className="flex-1 flex w-full flex-col lg:flex-row gap-5 sm:gap-6 animate-pulse p-4 sm:p-6 lg:p-8">
-            <div className="flex-1 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] p-5 sm:p-8 flex flex-col">
+            <div className="flex-1 bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] p-5 sm:p-8 flex flex-col">
               <div className="h-8 w-48 bg-slate-200 rounded-md mb-6"></div>
               <div className="h-48 w-full bg-[var(--color-bg)] rounded-[var(--radius-lg)] mb-6"></div>
               <div className="h-16 w-full bg-slate-100 rounded-[var(--radius-lg)] mb-4"></div>
               <div className="h-40 w-full bg-[var(--color-bg)] rounded-[var(--radius-lg)]"></div>
             </div>
-            <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0 bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col">
+            <div className="w-full lg:w-[340px] xl:w-[400px] shrink-0 bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-8 flex flex-col">
               <div className="h-6 w-32 bg-slate-200 rounded-md mb-6"></div>
               <div className="space-y-4">
                 {[1, 2, 3, 4].map(i => <div key={i} className="h-20 w-full bg-[var(--color-bg)] rounded-[var(--radius-md)]"></div>)}
@@ -347,7 +347,7 @@ export default function PayTab() {
           </div>
         ) : !unit ? (
           <div className="flex-1 flex items-center justify-center w-full bg-[var(--color-bg)] p-4">
-            <div className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-8 sm:p-14 text-center max-w-lg w-full animate-in fade-in duration-500">
+            <div className="bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-8 sm:p-14 text-center max-w-lg w-full animate-in fade-in duration-500">
               <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
                 <Receipt size={36} className="w-10 h-10" />
               </div>

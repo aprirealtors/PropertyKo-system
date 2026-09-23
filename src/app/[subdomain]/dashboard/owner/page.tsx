@@ -1358,7 +1358,7 @@ export default function OwnerDashboard() {
 
           {/* ✨ TAB 3: REPAIRS KANBAN */}
           {activeTab === 'repair' && (
-            <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8 md:pb-10">
+            <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 md:p-6 lg:p-8 md:pb-10">
 
               {/* Kanban Header */}
               <div className="flex-none shrink-0 mb-4 sm:mb-6">
@@ -1611,25 +1611,25 @@ export default function OwnerDashboard() {
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/90 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)]">
         <div className="flex justify-around items-center px-1 py-1.5 max-w-md mx-auto">
 
-          <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
-            {activeTab === 'home' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'home' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'home' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+          <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
+            {activeTab === 'home' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'home' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'home' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               <Home size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Home</span>
             </div>
           </button>
 
-          <button onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
-            {activeTab === 'repair' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'repair' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'repair' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+          <button onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
+            {activeTab === 'repair' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'repair' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'repair' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               <Wrench size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Repairs</span>
             </div>
           </button>
 
-          <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
-            {activeTab === 'messages' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'messages' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+          <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
+            {activeTab === 'messages' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'messages' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               
               <div className="relative w-5 h-5 block shrink-0">
                 <MessageSquare size={20} className="absolute inset-0" />
@@ -1645,18 +1645,18 @@ export default function OwnerDashboard() {
           </button>
 
           {/* FINANCE */}
-          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
-            {activeTab === 'financials' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'financials' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'financials' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+          <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
+            {activeTab === 'financials' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'financials' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'financials' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               <Receipt size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Finance</span>
             </div>
           </button>
 
           {/* LEASES */}
-          <button onClick={() => {setActiveTab('leases'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group">
-            {activeTab === 'leases' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'leases' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'leases' && !isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+          <button onClick={() => {setActiveTab('leases'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
+            {activeTab === 'leases' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'leases' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'leases' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               <FileText size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Lease</span>
             </div>
@@ -1673,10 +1673,10 @@ export default function OwnerDashboard() {
               setShowConfirmPassword(false);
               setIsEditingName(false);
             }} 
-            className="relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group"
+            className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]"
           >
-            {isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
-            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: isWorkspaceModalOpen ? 'var(--color-primary)' : '' }}>
+            {isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
+            <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
               <User size={20} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Profile</span>
             </div>
@@ -1693,10 +1693,10 @@ export default function OwnerDashboard() {
 
             <div className="px-3 py-3 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
               <div>
-                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight">Report an Issue</h2>
+                <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Report an Issue</h2>
                 <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
               </div>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-sm)] text-slate-500 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 rounded-[var(--radius-sm)] text-slate-500 hover:opacity-75 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -1854,7 +1854,7 @@ export default function OwnerDashboard() {
                   <Inbox size={16} className="text-blue-700 shrink-0" /> {reviewActiveTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewActiveTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewActiveTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -1954,7 +1954,7 @@ export default function OwnerDashboard() {
                   <PauseCircle size={16} className="text-amber-500 shrink-0" /> {reviewOnHoldTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -2059,7 +2059,7 @@ export default function OwnerDashboard() {
                   <CheckCircle2 size={16} className="text-green-700 shrink-0" /> {reviewTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -2156,7 +2156,7 @@ export default function OwnerDashboard() {
                   <p className="text-[10px] sm:text-xs font-bold text-red-400 uppercase tracking-widest mt-0.5">Admin Action</p>
                 </div>
               </div>
-              <button onClick={() => setRejectedTicketModalData(null)} className="w-10 h-10 flex items-center justify-center bg-white hover:bg-red-100 rounded-full text-red-400 hover:text-red-600 transition-colors shadow-sm active:scale-95 shrink-0">
+              <button onClick={() => setRejectedTicketModalData(null)} className="w-10 h-10 flex items-center justify-center bg-white hover:opacity-75 rounded-full text-red-400 hover:text-red-600 transition-colors shadow-sm active:scale-95 shrink-0">
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
@@ -2219,7 +2219,7 @@ export default function OwnerDashboard() {
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Owner Profile</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-slate-100 rounded-[var(--radius-xl)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-slate-100 rounded-[var(--radius-xl)] text-slate-400 hover:opacity-75 transition-colors active:scale-95 shrink-0"
               >
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
@@ -2490,7 +2490,7 @@ export default function OwnerDashboard() {
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
-                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:opacity-75 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
                 disabled={isSavingName}
               >
                 Cancel
@@ -2575,7 +2575,7 @@ export default function OwnerDashboard() {
           >
             <button
               onClick={() => setIsLogoModalOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
             >
               <X size={20} strokeWidth={2.5} />
             </button>

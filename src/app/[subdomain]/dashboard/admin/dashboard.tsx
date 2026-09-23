@@ -296,8 +296,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </div>
               </div>
 
-              <div className="pt-8 border-t border-slate-100/80">
-                <div className="flex items-center gap-4 mb-8">
+              <div className="pt-2 border-t border-slate-100/80">
+                <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-2xl bg-white rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm flex items-center justify-center text-[var(--color-text)] shrink-0">
                     <PieChart size={22} strokeWidth={2.5} />
                   </div>
@@ -313,8 +313,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                     <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl rounded-full">
                       <g transform="rotate(-90 50 50)">
                         <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-slate-700)" strokeWidth="50" strokeDasharray={`${(ownersPct/100)*157.08} 157.08`} strokeDashoffset="0" className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-amber-500)" strokeWidth="50" strokeDasharray={`${(availablePct/100)*157.08} 157.08`} strokeDashoffset={`${-(ownersPct/100)*157.08}`} className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-blue-800)" strokeWidth="50" strokeDasharray={`${(holdPct/100)*157.08} 157.08`} strokeDashoffset={`${-((ownersPct + availablePct)/100)*157.08}`} className="transition-all duration-1000 ease-out" />
+                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-blue-800)" strokeWidth="50" strokeDasharray={`${(availablePct/100)*157.08} 157.08`} strokeDashoffset={`${-(ownersPct/100)*157.08}`} className="transition-all duration-1000 ease-out" />
+                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-amber-500)" strokeWidth="50" strokeDasharray={`${(holdPct/100)*157.08} 157.08`} strokeDashoffset={`${-((ownersPct + availablePct)/100)*157.08}`} className="transition-all duration-1000 ease-out" />
                         {ownersPct > 0 && availablePct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${(ownersPct/100)*360} 50 50)`} />}
                         {availablePct > 0 && holdPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${((ownersPct+availablePct)/100)*360} 50 50)`} />}
                         {holdPct > 0 && ownersPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(0 50 50)`} />}
@@ -411,41 +411,42 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="w-full h-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col min-h-0">
-            <div className="bg-white rounded-[2rem] shadow-[var(--shadow-md)] overflow-hidden flex flex-col w-full h-full border border-slate-100">
+          <div className="w-full lg:h-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col lg:overflow-y-auto custom-scrollbar lg:pb-16">
+            
+            {/* Added shrink-0 and h-fit so it never gets crushed */}
+            <div className="bg-white rounded-[2rem] shadow-[var(--shadow-md)] flex flex-col w-full h-fit border border-slate-100 shrink-0">
               
-              {/* Top Header: Fixed */}
-              <div className="bg-[var(--color-secondary)] p-6 sm:p-8 text-white relative overflow-hidden shrink-0">
+              {/* Top Header: Compacted Padding */}
+              <div className="bg-[var(--color-secondary)] p-5 text-white relative overflow-hidden shrink-0 rounded-t-[2rem]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-                <h3 className="font-black text-xl mb-1 flex items-center gap-2">
-                  <AlertTriangle size={20} className="text-amber-400" strokeWidth={2.5}/> Needs Action
+                <h3 className="font-black text-lg mb-1 flex items-center gap-2">
+                  <AlertTriangle size={18} className="text-amber-400" strokeWidth={2.5}/> Needs Action
                 </h3>
-                <p className="text-white/70 text-xs font-medium leading-relaxed opacity-90">
+                <p className="text-white/70 text-[11px] font-medium leading-relaxed opacity-90">
                   Auto-flagged from live operations. The workflow that used to take 7 days a month.
                 </p>
               </div>
 
-              {/* Middle Content: Scrollable */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 pb-2">
-                <div className="space-y-3">
+              {/* Middle Content: Compacted Spacing to fit screen without scrolling */}
+              <div className="p-5 pb-4">
+                <div className="space-y-2.5">
                   <AttentionItem label="SOAs To Issue" value={soasToIssue.toString()} isUrgent={soasToIssue > 0} color="text-amber-500" />
                   
                   <AttentionItem label="Overdue Accounts" value={overdueAccountsCount.toString()} isUrgent={overdueAccountsCount > 0} color="text-red-500" />
 
                   <AttentionItem label="Open Repair Tickets" value={totalOpenRepairs.toString()} isUrgent={totalOpenRepairs > 0} color="text-red-500" />
 
-                  {/* ✨ UPDATED: Leases Expiring <30 Days Calculation */}
                   <AttentionItem label="Leases Expiring <30 Days" value={expiringSoon.toString()} isUrgent={expiringSoon > 0} color="text-amber-500" />
 
                   <AttentionItem label="Avg Repair Turn Around" value={`${avgTurnaroundDays} Days`} isUrgent={Number(avgTurnaroundDays) > 7} color="text-amber-500" />
                 </div>
               </div>
 
-              {/* Bottom Action: Fixed */}
-              <div className="shrink-0 p-6 sm:p-8 pt-4 border-t border-slate-100 bg-slate-50/50">
+              {/* Bottom Action */}
+              <div className="p-5 pt-0">
                 <button 
                   onClick={() => onNavigate("Billing")}
-                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black py-4 rounded-[var(--radius-lg)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-[0.98] uppercase tracking-wider text-xs border border-transparent"
+                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black py-3.5 rounded-[var(--radius-lg)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-[0.98] uppercase tracking-wider text-xs border border-transparent"
                 >
                   Issue SOAs & Collect <ArrowRight size={16} strokeWidth={3} />
                 </button>

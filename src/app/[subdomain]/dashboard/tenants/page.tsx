@@ -1751,11 +1751,11 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
     <button 
       onClick={onClick} 
       className={`relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group ${active ? '' : 'text-slate-500 hover:text-[var(--color-primary)]'}`}
-      style={{ color: active ? 'var(--color-primary)' : '' }}
+      style={{ color: active ? 'var(--color-text)' : '' }}
     >
       {/* Active Background Highlight */}
       {active && (
-        <span className="absolute inset-1 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />
+        <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />
       )}
 
       {/* Icon & Label Wrapper with Floating Animation */}

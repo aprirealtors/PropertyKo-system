@@ -338,7 +338,7 @@ export default function RepairTab({ highlightTicketId }: any) {
   });
 
   return (
-    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 lg:p-8 md:pb-10 font-[family-name:var(--font-corporate)]">
+    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 md:p-6 lg:p-8 md:pb-10 font-[family-name:var(--font-corporate)]">
       
       {/* Header */}
       <div className="flex-none shrink-0 mb-4 sm:mb-6">
@@ -601,7 +601,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Report an Issue</h2>
                 <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
               </div>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-sm)] text-slate-500 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-[var(--radius-sm)] text-slate-500 active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -728,7 +728,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                   <Inbox size={16} className="text-blue-700 shrink-0" /> {reviewActiveTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewActiveTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewActiveTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -828,7 +828,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                   <CheckCircle2 size={16} className="text-green-700 shrink-0" /> {reviewTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -923,7 +923,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                   <PauseCircle size={16} className="text-amber-500 shrink-0" /> {reviewOnHoldTicket.title}
                 </div>
               </div>
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>

@@ -329,9 +329,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center lg:justify-start gap-3 sm:gap-4 mb-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--color-bg)] rounded-[var(--radius-lg)] border border-[var(--color-border)] flex items-center justify-center shadow-[var(--shadow-sm)] shrink-0">
-                <UserCheck className="text-[var(--color-primary)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
+            <div className="flex items-center justify-center lg:justify-start mb-3 lg:ml-16">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+                <UserCheck className="text-[var(--color-text)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--color-text)" }}>
                 Welcome back
@@ -363,7 +363,7 @@ export default function Home() {
                   placeholder="Enter your registered email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
+                  className="w-full pl-11 pr-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
               </div>
@@ -384,7 +384,7 @@ export default function Home() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] border border-[var(--color-border)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
+                  className="w-full pl-11 pr-12 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
                 <button
@@ -439,12 +439,12 @@ export default function Home() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-xs opacity-60 flex items-center justify-center gap-1.5" style={{ color: "var(--color-text)" }}>
-            <ShieldCheck size={14} style={{ color: "var(--color-primary)" }} />
+          <p className="mt-4 text-center text-xs opacity-60 flex items-center justify-center gap-1.5" style={{ color: "var(--color-text)" }}>
+            <ShieldCheck size={14} style={{ color: "var(--color-text)" }} />
             Secure, role-based access control enabled.
           </p>
 
-          <div className="lg:hidden pt-8 border-t border-[var(--color-border)] flex flex-col items-center gap-4 text-xs opacity-60" style={{ color: "var(--color-text)" }}>
+          <div className="lg:hidden pt-4 flex flex-col items-center gap-4 text-xs opacity-60" style={{ color: "var(--color-text)" }}>
             <div className="flex gap-4">
               <a href="#" className="hover:opacity-100 transition-opacity">
                 Privacy Policy
