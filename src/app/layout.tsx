@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next"; // ✨ ADDED: Viewport
 import { Inter } from "next/font/google";
 import "./globals.css";
 import GlobalPresence from "@/components/GlobalPresence";
@@ -8,9 +8,23 @@ import { createClient } from "@supabase/supabase-js";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// ✨ ADDED: Viewport configuration for mobile browsers
+export const viewport: Viewport = {
+  themeColor: "#f8fafc", 
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "PropertyKo - Role-Based Access",
   description: "One platform, five doors in. Your property. Made simple.",
+  // ✨ ADDED: Apple web app configuration
+  appleWebApp: {
+    capable: true,
+    title: "PropertyKo",
+    statusBarStyle: "default",
+  },
 };
 
 // ✨ SAFE SERVER-SIDE SUPABASE CLIENT 
