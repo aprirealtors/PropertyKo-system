@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Calendar, Edit2, 
-  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe, Palette, Type, CheckCircle2, RotateCcw
+  X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe, Palette, Type, CheckCircle2, RotateCcw,
+  Ban, Trash2
 } from "lucide-react";
 
 // ✨ CONSTANT: Default PropertyKo Theme (Fallback/Reset)
@@ -32,12 +33,12 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   // State to store live calculated MRR from the units table
   const [liveStats, setLiveStats] = useState<Record<string, { totalMRR: number, ownerOnly: number, tenanted: number, activeCount: number }>>({});
   
-  // ✨ NEW: THEME BUILDER STATES
+  // THEME BUILDER STATES
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [activeThemeOrg, setActiveThemeOrg] = useState<any>(null);
   const [themeForm, setThemeForm] = useState(defaultTheme);
 
-  // ✨ NEW: THEME ACTION CONFIRMATION MODAL STATES
+  // THEME ACTION CONFIRMATION MODAL STATES
   const [themeConfirmModal, setThemeConfirmModal] = useState<{
     isOpen: boolean;
     type: 'reset' | 'apply' | null;
@@ -46,12 +47,21 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     confirmText: string;
     confirmStyle: string;
   }>({
-    isOpen: false,
-    type: null,
-    title: "",
-    message: "",
-    confirmText: "",
-    confirmStyle: ""
+    isOpen: false, type: null, title: "", message: "", confirmText: "", confirmStyle: ""
+  });
+
+  // ✨ NEW: ORG ACTIONS CONFIRMATION MODAL (Suspend & Delete)
+  const [actionConfirmModal, setActionConfirmModal] = useState<{
+    isOpen: boolean;
+    actionType: 'suspend' | 'activate' | 'delete' | null;
+    orgId: string | null;
+    title: string;
+    message: string;
+    confirmText: string;
+    confirmStyle: string;
+    iconType: 'ban' | 'trash' | 'check';
+  }>({
+    isOpen: false, actionType: null, orgId: null, title: "", message: "", confirmText: "", confirmStyle: "", iconType: 'ban'
   });
 
   // Form State
@@ -153,7 +163,8 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
           plan: plan,
           users_count: parseInt(usersCount) || 1,
           units_count: requestedUnits, 
-          billing_day: requestedDay 
+          billing_day: requestedDay,
+          status: 'active'
         }]);
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
@@ -218,10 +229,8 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     }
   };
 
-  // ✨ THEME BUILDER HANDLERS
   const openThemeModal = (org: any) => {
     setActiveThemeOrg(org);
-    // Load existing master_theme if available, otherwise fallback
     if (org.master_theme) {
       setThemeForm(org.master_theme);
     } else if (org.theme_config) {
@@ -235,21 +244,15 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
 
   const handleThemeSubmit = async () => {
     if (!activeThemeOrg) return;
-
     setIsSubmitting(true);
     setErrorMsg(null);
 
     try {
-      // Force enableShadows to true to protect structural layout
       const payload = { ...themeForm, enableShadows: true }; 
       
       const { error: dbError } = await supabase
         .from('organizations')
-        .update({ 
-          master_theme: payload,      // Save to Vault
-          theme_config: payload,      // Push to Display Window immediately
-          theme_preset: 'strict'      // Lock status
-        })
+        .update({ master_theme: payload, theme_config: payload, theme_preset: 'strict' })
         .eq('id', activeThemeOrg.id);
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
@@ -273,11 +276,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     try {
       const { error: dbError } = await supabase
         .from('organizations')
-        .update({ 
-          master_theme: null, // Clear the vault 
-          theme_config: defaultTheme, // Reset to PK Default
-          theme_preset: 'default' // Reset status
-        })
+        .update({ master_theme: null, theme_config: defaultTheme, theme_preset: 'default' })
         .eq('id', activeThemeOrg.id);
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
@@ -294,10 +293,64 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     }
   };
 
-  // ✨ ACTION DISPATCHER FOR CONFIRMATION MODAL
   const executeThemeAction = () => {
     if (themeConfirmModal.type === 'reset') handleRestoreDefaultTheme();
     if (themeConfirmModal.type === 'apply') handleThemeSubmit();
+  };
+
+  // ✨ MODAL TRIGGERS FOR ACTIONS
+  const confirmToggleStatus = (org: any) => {
+    const isSuspended = org.status === 'suspended';
+    setActionConfirmModal({
+      isOpen: true,
+      actionType: isSuspended ? 'activate' : 'suspend',
+      orgId: org.id,
+      title: isSuspended ? 'Reactivate Workspace?' : 'Suspend Workspace?',
+      message: isSuspended 
+        ? `Are you sure you want to restore access for ${org.org_name}? They will be able to log in again.` 
+        : `Are you sure you want to suspend ${org.org_name}? They will be immediately locked out of their workspace until reactivated.`,
+      confirmText: isSuspended ? 'Yes, Reactivate' : 'Yes, Suspend',
+      confirmStyle: isSuspended ? 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/25',
+      iconType: isSuspended ? 'check' : 'ban'
+    });
+  };
+
+  const confirmDeleteOrg = (org: any) => {
+    setActionConfirmModal({
+      isOpen: true,
+      actionType: 'delete',
+      orgId: org.id,
+      title: 'Delete Organization?',
+      message: `DANGER: Are you sure you want to permanently delete ${org.org_name}? This action cannot be undone and all their data will be lost.`,
+      confirmText: 'Yes, Delete',
+      confirmStyle: 'bg-red-500 hover:bg-red-600 shadow-red-500/25',
+      iconType: 'trash'
+    });
+  };
+
+  // ✨ EXECUTE CONFIRMED ACTIONS
+  const executeOrgAction = async () => {
+    if (!actionConfirmModal.orgId) return;
+    setIsSubmitting(true);
+
+    try {
+      if (actionConfirmModal.actionType === 'delete') {
+        const { error } = await supabase.from('organizations').delete().eq('id', actionConfirmModal.orgId);
+        if (error) throw error;
+      } else {
+        const newStatus = actionConfirmModal.actionType === 'suspend' ? 'suspended' : 'active';
+        const { error } = await supabase.from('organizations').update({ status: newStatus }).eq('id', actionConfirmModal.orgId);
+        if (error) throw error;
+      }
+      
+      await fetchOrganizations();
+      setActionConfirmModal(prev => ({ ...prev, isOpen: false }));
+    } catch (error: any) {
+      console.error(error);
+      alert(`Action failed: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredOrgs = organizations?.filter((org: any) => 
@@ -370,18 +423,21 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
               {filteredOrgs.map((org: any, index: number) => {
                 const orgStats = liveStats[org.admin_email] || { totalMRR: 0, ownerOnly: 0, tenanted: 0, activeCount: 0 };
+                const isSuspended = org.status === 'suspended';
 
                 return (
-                  <div key={index} className="bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border border-slate-200/60 flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group overflow-hidden">
+                  <div key={index} className={`bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] border flex flex-col hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group overflow-hidden ${isSuspended ? 'border-red-300 opacity-90' : 'border-slate-200/60'}`}>
                     
-                    <div className="h-24 bg-gradient-to-r from-blue-50 to-slate-100 w-full relative group-hover:from-blue-100 group-hover:to-blue-50 transition-colors">
-                      <div className="absolute top-4 right-4 z-10 flex items-center">
-                        {/* ✨ NEW: Strict Theme Badge */}
+                    <div className={`h-24 w-full relative transition-colors ${isSuspended ? 'bg-red-50' : 'bg-gradient-to-r from-blue-50 to-slate-100 group-hover:from-blue-100 group-hover:to-blue-50'}`}>
+                      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
                         {org.theme_preset === 'strict' && (
                           <StatusBadge text="Strict Spec" color="orange" />
                         )}
-                        <span className="ml-2"></span>
-                        <StatusBadge text="Active" color="green" />
+                        {isSuspended ? (
+                          <StatusBadge text="Suspended" color="red" />
+                        ) : (
+                          <StatusBadge text="Active" color="green" />
+                        )}
                       </div>
                     </div>
                     
@@ -405,7 +461,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                         {org.subdomain && (
                           <div className="flex items-center justify-center gap-1.5 text-[#1d82f5] text-xs font-bold mb-1">
                             <Globe size={12} />
-                            <span>{org.subdomain}.propertyko.com</span>
+                            <span className={isSuspended ? 'line-through opacity-70' : ''}>{org.subdomain}.propertyko.com</span>
                           </div>
                         )}
                         <div className="flex items-center justify-center gap-1.5 text-slate-500 text-xs font-medium mb-4">
@@ -460,12 +516,25 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                         >
                           <Edit2 size={14} /> Limits
                         </button>
-                        {/* ✨ NEW: Theme Builder Button */}
                         <button 
                           onClick={() => openThemeModal(org)}
                           className="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-[#0a1e3f] text-slate-600 hover:text-white border border-slate-200 hover:border-[#0a1e3f] px-2 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm outline-none focus:outline-none"
                         >
                           <Palette size={14} /> Branding
+                        </button>
+                        
+                        {/* ✨ MODAL TRIGGERS INSTEAD OF WINDOW.CONFIRM */}
+                        <button 
+                          onClick={() => confirmToggleStatus(org)}
+                          className={`w-full flex items-center justify-center gap-2 px-2 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm outline-none border ${isSuspended ? 'bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white border-emerald-200 hover:border-emerald-500' : 'bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white border-orange-200 hover:border-orange-500'}`}
+                        >
+                          <Ban size={14} /> {isSuspended ? "Reactivate" : "Suspend"}
+                        </button>
+                        <button 
+                          onClick={() => confirmDeleteOrg(org)}
+                          className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200 hover:border-red-600 px-2 py-3 rounded-xl font-bold text-xs transition-all active:scale-[0.98] shadow-sm outline-none focus:outline-none"
+                        >
+                          <Trash2 size={14} /> Delete
                         </button>
                       </div>
                     </div>
@@ -892,6 +961,48 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                 className={`flex-1 py-3 sm:py-3.5 rounded-[0.5rem] text-white font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent outline-none focus:outline-none ${themeConfirmModal.confirmStyle}`}
               >
                 {themeConfirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ ACTION CONFIRMATION MODAL (Suspend & Delete) */}
+      {actionConfirmModal.isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0a1e3f]/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-slate-200">
+            
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
+              actionConfirmModal.iconType === 'trash' ? 'bg-red-50 text-red-500 border-red-100' :
+              actionConfirmModal.iconType === 'check' ? 'bg-emerald-50 text-emerald-500 border-emerald-100' :
+              'bg-orange-50 text-orange-500 border-orange-100'
+            }`}>
+              {actionConfirmModal.iconType === 'trash' && <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+              {actionConfirmModal.iconType === 'check' && <CheckCircle2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+              {actionConfirmModal.iconType === 'ban' && <Ban size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[#0a1e3f] mb-2 tracking-tight">
+              {actionConfirmModal.title}
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              {actionConfirmModal.message}
+            </p>
+            
+            <div className="flex gap-3 sm:gap-4">
+              <button 
+                onClick={() => setActionConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                disabled={isSubmitting}
+                className="flex-1 py-3 sm:py-3.5 rounded-[0.5rem] font-black text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all active:scale-[0.96] text-xs sm:text-sm duration-200 outline-none focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeOrgAction} 
+                disabled={isSubmitting}
+                className={`flex-1 py-3 sm:py-3.5 rounded-[0.5rem] text-white font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent outline-none focus:outline-none ${actionConfirmModal.confirmStyle}`}
+              >
+                {isSubmitting ? "Processing..." : actionConfirmModal.confirmText}
               </button>
             </div>
           </div>

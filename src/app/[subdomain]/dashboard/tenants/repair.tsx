@@ -338,7 +338,7 @@ export default function RepairTab({ highlightTicketId }: any) {
   });
 
   return (
-    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 md:p-6 lg:p-8 md:pb-10 font-[family-name:var(--font-corporate)]">
+    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 md:pb-10 font-[family-name:var(--font-corporate)]">
       
       {/* Header */}
       <div className="flex-none shrink-0 mb-4 sm:mb-6">
@@ -476,7 +476,7 @@ export default function RepairTab({ highlightTicketId }: any) {
           
           <div className="flex flex-col space-y-4">
             {isLoading ? (
-              <KanbanSkeleton />
+              <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : onHoldTasks.length === 0 ? (
               <EmptyState icon={PauseCircle} title="No delays" message="If a repair needs parts or gets delayed, it will show here." />
             ) : (
@@ -781,7 +781,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                   <div className="w-full h-64 sm:h-[400px] bg-[var(--color-primary)]/5 rounded-[1.5rem] border border-[var(--color-primary)]/20 overflow-hidden flex flex-col items-center justify-center shrink-0 shadow-inner p-6 text-center">
                     <Clock size={48} className="text-[var(--color-text)]/50 mb-4" strokeWidth={1.5} />
-                    <h3 className="font-black text-blue-700 text-lg sm:text-xl mb-2">
+                    <h3 className="font-black text-[var(--color-text)] text-lg sm:text-xl mb-2">
                       {String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('progress') || String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('working') ? "Work in Progress" : "Request Received"}
                     </h3>
                     <p className="text-sm text-slate-600 font-medium max-w-[250px] mx-auto">
@@ -1033,7 +1033,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[var(--shadow-sm)] border-4 border-[var(--color-primary)]/20">
               <CheckCircle2 size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] mb-3">Request Sent!</h2>
+            <h2 className="text-2xl font-black text-[var(--color-secondary)] mb-3">Request Submitted!</h2>
             <p className="text-slate-500 text-sm mb-10 leading-relaxed font-medium px-2">
               Your repair request is now with the property manager. Check your Active Requests to track its progress.
             </p>
@@ -1052,20 +1052,42 @@ export default function RepairTab({ highlightTicketId }: any) {
 }
 
 // -------------------------------------------------------------
-// ✨ FIXED HEIGHT KANBAN SKELETON
+// ✨ FIXED HEIGHT KANBAN SKELETON (1:1 Realistic UI Match)
 // -------------------------------------------------------------
 function KanbanSkeleton() {
   return (
-    <div className="h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
-      <div className="p-5 flex-1 flex flex-col gap-3">
-        <div className="flex justify-between items-center mb-1 shrink-0">
-          <div className="h-5 bg-slate-200 rounded-md w-1/2"></div>
-        </div>
-        <div className="flex-1 flex flex-col gap-2.5">
-          <div className="h-3 bg-slate-200 rounded-md w-1/3 mt-2"></div>
-          <div className="h-3 bg-slate-100 rounded-md w-full mt-3"></div>
-        </div>
+    <div className="h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 flex flex-col animate-pulse">
+      
+      {/* Title & Badge Skeleton */}
+      <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
+        <div className="h-5 bg-slate-200 rounded-md w-2/3"></div>
+        <div className="h-5 w-16 bg-slate-100 rounded-[var(--radius-sm)] shrink-0"></div>
       </div>
+
+      {/* Location Skeleton */}
+      <div className="flex items-center gap-1.5 mb-2 shrink-0">
+        <div className="w-3.5 h-3.5 bg-slate-200 rounded-full shrink-0"></div>
+        <div className="h-3 bg-slate-200 rounded-md w-1/2"></div>
+      </div>
+
+      {/* Description Skeleton (2 lines) */}
+      <div className="space-y-2.5 mb-3 flex-1 overflow-hidden mt-2">
+        <div className="h-2.5 bg-slate-100 rounded-md w-full"></div>
+        <div className="h-2.5 bg-slate-100 rounded-md w-5/6"></div>
+      </div>
+
+      {/* Footer / Assigned Staff Skeleton */}
+      <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-slate-200 shrink-0"></div>
+          <div className="flex flex-col gap-1.5">
+            <div className="h-2 bg-slate-100 rounded w-12"></div>
+            <div className="h-2.5 bg-slate-200 rounded w-20"></div>
+          </div>
+        </div>
+        <div className="w-4 h-4 bg-slate-100 rounded shrink-0"></div>
+      </div>
+
     </div>
   );
 }

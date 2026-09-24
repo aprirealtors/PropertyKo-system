@@ -62,7 +62,7 @@ export default function Home() {
           
           const { data: orgData } = await supabase
             .from("organizations")
-            .select("subdomain, org_name")
+            .select("subdomain, org_name, status")
             .eq("admin_email", userEmail)
             .single();
             
@@ -150,6 +150,25 @@ export default function Home() {
 
       if (dbError) {
         console.log("Not a registered organization admin, checking alternate roles...");
+      }
+
+      // ✨ NEW SECURITY CHECKS: Deleted or Suspended Orgs
+      if (userRole === 'admin' && userEmail !== 'superadmin@propertyko.com') {
+        // If they are an org admin, but the org is missing from DB (Deleted)
+        if (!orgData || dbError) {
+          await supabase.auth.signOut();
+          setErrorMsg("Your workspace has been deleted or no longer exists. Please contact support.");
+          setLoading(false);
+          return;
+        }
+
+        // If the org is suspended for unpaid bills or other reasons
+        if (orgData.status === 'suspended') {
+          await supabase.auth.signOut();
+          setErrorMsg("Access Denied: Your workspace has been suspended due to pending billing. Please contact support.");
+          setLoading(false);
+          return;
+        }
       }
 
       // 3. CROSS-TENANT SECURITY CHECK

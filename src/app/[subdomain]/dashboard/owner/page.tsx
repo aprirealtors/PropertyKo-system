@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
-  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, PauseCircle, MessageSquare, FileCheck, AlertCircle,
+  Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, Mail, PauseCircle, MessageSquare, FileCheck, AlertCircle,
   Clock, Check, Lock, Key, Eye, EyeOff, Droplets, Zap, Wind, Sparkles, Edit2, PanelLeft
 } from "lucide-react";
 import ConversationTab from "./conversation"; 
@@ -222,7 +222,7 @@ export default function OwnerDashboard() {
               const curYear = d.getFullYear();
 
               let curStatus = 'Paid';
-              if (totalOwnerBill > 0) curStatus = anyOverdue ? 'Overdue' : 'Pending';
+              if (totalOwnerBill > 0) curStatus = anyOverdue ? 'Overdue Payment' : 'Pending Payment';
 
               recentStatementsArray.push({
                 period: `${monthNames[curMonth]} ${curYear}`,
@@ -914,27 +914,28 @@ export default function OwnerDashboard() {
 
         {/* MAIN CONTENT AREA */}
         <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'messages' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
+           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' || activeTab === 'messages' ? 'absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300' : ''}`}>
+             
+             {/* TAB 1: HOME (OVERVIEW) */}
+             {activeTab === 'home' && (
+               <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
 
-          {/* TAB 1: HOME (OVERVIEW) */}
-          {activeTab === 'home' && (
-            <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                 {/* Header Section */}
+              <header className="flex flex-row justify-between items-center pb-2 gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">Dashboard Overview</p>
 
-              {/* Header Section */}
-              <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end pb-2 gap-3 sm:gap-0">
-                <div className="w-full">
-                  <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-widest">Dashboard Overview</p>
-
-                    {isLoading ? (
-                      <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse inline-block mt-1"></div>
-                    ) : (
-                      <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-black mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
-                        Welcome back,
-                        <span className="text-[var(--color-text)] break-words">{fullName}</span>
-                      </h1>
-                    )}
+                  {isLoading ? (
+                    <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse inline-block mt-1"></div>
+                  ) : (
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-black mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      Welcome back,
+                      <span className="text-[var(--color-text)] break-words">{fullName}</span>
+                    </h1>
+                  )}
 
                   {businessNameDisplay && (
-                    <div className="flex items-center gap-2 mt-2.5 sm:mt-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-[var(--radius-sm)] w-fit shadow-[var(--shadow-sm)]">
+                    <div className="flex items-center gap-2 mt-2.5 sm:mt-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-3 py-1.5 rounded-[var(--radius-sm)] w-fit shadow-[var(--shadow-sm)]">
                       <Briefcase size={14} className="text-[var(--color-text)] shrink-0" />
                       <span className="text-[var(--color-text)] font-black text-[10px] sm:text-xs uppercase tracking-wider">{businessNameDisplay}</span>
                     </div>
@@ -943,233 +944,271 @@ export default function OwnerDashboard() {
                     <div className="h-6 w-32 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-2.5 sm:mt-2"></div>
                   )}
                 </div>
-              </header>
 
-              {/* Hero Card: Owner Bill Display */}
-              <section className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
-                {/* Decorative background shapes */}
-                <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
-                <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-blue-500/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
-
-                <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit backdrop-blur-sm">
-                      <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? (hasOverdue ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-pulse') : 'bg-[var(--color-primary)]'}`}></div>
-                      <p className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
-                    </div>
-
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight flex items-center min-h-[36px] sm:min-h-[40px] md:min-h-[48px] text-white break-all sm:break-normal">
-                      {isLoading ? (
-                        <div className="h-8 sm:h-10 md:h-12 w-40 sm:w-48 bg-white/10 rounded-[var(--radius-md)] animate-pulse"></div>
-                      ) : (
-                        `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
-                      )}
-                    </h2>
-
-                    <div className="text-[11px] sm:text-xs md:text-sm text-white/70 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
-                      <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
-                      <div className="truncate min-w-0">
-                        {isLoading ? (
-                          <div className="h-3 sm:h-4 bg-white/10 rounded-[var(--radius-sm)] animate-pulse w-32 sm:w-48"></div>
-                        ) : (
-                          <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
-                            {fullUnitsDisplay} Unit{myUnitsList.length > 1 ? 's' : ''} Assigned
-                            {totalDue > 0 && (
-                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-[var(--color-primary)]' : 'text-[var(--color-primary-text)]'}`}>
-                                · {hasOverdue ? 'Overdue Payment' : 'Pending Payment'}
-                              </span>
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={() => setActiveTab('financials')} 
-                    disabled={totalDue === 0}
-                    className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-text)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
-                  >
-                    {isLoading ? "Checking..." : totalDue > 0 ? "View Statements" : "All caught up"} 
-                    {!isLoading && totalDue > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
-                  </button>
-                </div>
-              </section>
-
-              {/* Metric Grid: 4 Interactive Columns */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 ">
-
-                {/* Card 1: Report Issue */}
-                <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                    <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="relative z-10 flex flex-col flex-1">
-                    <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Maintenance</h3>
-                    <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Report Issue</p>
-                    <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Create repair request</p>
-                  </div>
-                </button>
-
-                {/* Card 2: Owned Properties */}
-                <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                    <Home size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
-                    <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Properties</h3>
-                    <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
-                      {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10"></div> : `${unitsCount} ${unitsCount === 1 ? 'Unit' : 'Units'}`}
-                    </div>
-                    <div className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug truncate w-full">
-                      {isLoading ? <div className="h-2.5 sm:h-3 bg-slate-100 rounded animate-pulse w-16 sm:w-24"></div> : fullUnitsDisplay}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Card 3: Collected Gross */}
-                <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                    <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="relative z-10 flex flex-col flex-1 min-w-0">
-                    <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Gross Income</h3>
-                    <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px] truncate">
-                      {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-16 sm:w-20"></div> : `₱${collectedGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
-                    </div>
-                    <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Total revenue collected</p>
-                  </div>
-                </button>
-
-                {/* Card 4: Occupied Units */}
-                <button className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                    <CheckCircle size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                  </div>
-                  <div className="relative z-10 flex flex-col flex-1">
-                    <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Occupancy</h3>
-                    <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
-                      {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10 sm:w-14"></div> : `${occupiedCount} / ${unitsCount}`}
-                    </div>
-                    <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Active current leases</p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Section: Recent Statements List */}
-              <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] border border-[var(--color-border)] transition-all hover:shadow-[var(--shadow-md)]">
-                <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-black text-base sm:text-lg text-[var(--color-text)] tracking-tight truncate">Recent Statements</h3>
-                    <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial statements</p>
-                  </div>
-                  <button 
-                    onClick={() => setActiveTab('financials')} 
-                    className="text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-transparent"
-                  >
-                    View All
-                  </button>
-                </div>
-
-                <div className="space-y-3">
+                {/* ✨ PREMIUM INLINE PROFILE AVATAR */}
+                <div 
+                  onClick={() => setIsWorkspaceModalOpen(true)}
+                  className="w-12 h-12 md:w-16 md:h-16 rounded-[var(--radius-md)] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 mt-2 ring-4 ring-white/50"
+                  title="View Profile Details"
+                >
                   {isLoading ? (
-                    <div className="space-y-3">
-                      {[1, 2, 3].map((skeleton) => (
-                        <div key={skeleton} className="flex items-center justify-between p-3 sm:p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-md)] border border-[var(--color-border)] animate-pulse">
-                          <div className="space-y-2">
-                            <div className="h-3 sm:h-4 w-20 sm:w-28 bg-slate-200 rounded"></div>
-                            <div className="h-2.5 sm:h-3 w-12 sm:w-16 bg-slate-100 rounded"></div>
-                          </div>
-                          <div className="h-3 sm:h-4 w-16 sm:w-20 bg-slate-200 rounded"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : statements.length === 0 ? (
-                    <div className="py-8 sm:py-10 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center p-4 sm:p-6">
-                      <div className="p-3 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] text-slate-300 mb-2 sm:mb-3 shadow-[var(--shadow-sm)]">
-                        <FileText size={20} className="sm:w-6 sm:h-6" />
-                      </div>
-                      <p className="text-xs sm:text-sm text-[var(--color-text)] font-extrabold">No recent statements</p>
-                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 max-w-[200px] sm:max-w-[240px]">Monthly generated financial statements will appear here.</p>
-                    </div>
+                    <div className="w-full h-full rounded-[var(--radius-md)] md:rounded-[var(--radius-lg)] bg-white/20 animate-pulse"></div>
                   ) : (
-                    statements.slice(0, 3).map((stmt, idx) => {
-                      const isSuccess = String(stmt.status).toLowerCase() === 'success' || String(stmt.status).toLowerCase() === 'paid' || String(stmt.status).toLowerCase() === 'remitted';
-                      return (
-                        <div 
-                          key={idx} 
-                          onClick={() => setActiveTab('financials')}
-                          className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
-                        >
-                          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-text)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
-                              <FileText size={16} className="sm:w-[18px] sm:h-[18px] transition-colors" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-extrabold text-[var(--color-text)] text-xs sm:text-sm group-hover:text-[var(--color-text)] transition-colors truncate">Statement {stmt.period}</p>
-                              <span className={`inline-flex items-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] border ${
-                                isSuccess 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
-                                  : stmt.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'
-                              }`}>
-                                {stmt.status}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-                            <span className="font-black text-[var(--color-text)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
-                            <ChevronRight size={14} className="sm:w-4 sm:h-4 text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
-                          </div>
-                        </div>
-                      );
-                    })
+                    initials
                   )}
                 </div>
-              </section>
+              </header>
 
-            </div>
-          )}
+                 {/* Hero Card: Owner Bill Display */}
+                 <section className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden group border border-[var(--color-border)]">
+                   <div className="absolute -top-10 -right-10 w-48 sm:w-72 h-48 sm:h-72 bg-[var(--color-primary)]/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none group-hover:bg-[var(--color-primary)]/20 transition-colors duration-500"></div>
+                   <div className="absolute -bottom-10 -left-10 w-40 sm:w-52 h-40 sm:h-52 bg-blue-500/10 rounded-full blur-xl sm:blur-2xl pointer-events-none"></div>
 
-          {/* TAB 2: MESSAGES */}
-          {activeTab === 'messages' && (
-            <div className="absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300">
-              <ConversationTab userData={userData} units={myUnitsList} />
-            </div>
-          )}
+                   <div className="relative z-10 flex flex-col justify-between h-full space-y-5 sm:space-y-6">
+                     <div>
+                       <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full w-fit backdrop-blur-sm">
+                         <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0 ${totalDue > 0 ? (hasOverdue ? 'bg-red-400 animate-pulse' : 'bg-amber-400 animate-pulse') : 'bg-[var(--color-primary)]'}`}></div>
+                         <p className="text-white/80 text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Current Statement Balance</p>
+                       </div>
 
-          {/* ✨ TAB 3: REPAIRS KANBAN */}
-          {activeTab === 'repair' && (
-             <RepairTab 
-                userData={userData}
-                userEmail={userEmail}
-                myUnitsList={myUnitsList}
-                myTickets={myTickets}
-                liveTasks={liveTasks}
-                teamMembers={teamMembers}
-                isLoading={isLoading}
-                highlightTicketId={highlightTicketId}
-                setHighlightTicketId={setHighlightTicketId}
-                showToast={showToast}
-             />
-          )}
+                       <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight flex items-center min-h-[36px] sm:min-h-[40px] md:min-h-[48px] text-white break-all sm:break-normal">
+                         {isLoading ? (
+                           <div className="h-8 sm:h-10 md:h-12 w-40 sm:w-48 bg-white/10 rounded-[var(--radius-md)] animate-pulse"></div>
+                         ) : (
+                           `₱${totalDue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                         )}
+                       </h2>
 
-          {/* TAB 4: LEASES */}
-          {activeTab === 'leases' && (
-            <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
-              <LeaseTab userData={userData} units={myUnitsList} />
-            </div>
-          )}
+                       <div className="text-[11px] sm:text-xs md:text-sm text-white/80 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
+                         <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
+                         <div className="truncate min-w-0">
+                           {isLoading ? (
+                             <div className="h-3 sm:h-4 bg-white/10 rounded-[var(--radius-sm)] animate-pulse w-32 sm:w-48"></div>
+                           ) : (
+                             <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
+                               {fullUnitsDisplay} Unit{myUnitsList.length > 1 ? 's' : ''} Assigned
+                               {totalDue > 0 && (
+                                 <span className={`font-bold ml-1 ${hasOverdue ? 'text-white/80' : 'text-white/80'}`}>
+                                   · {hasOverdue ? 'Overdue Payment' : 'Pending Payment'}
+                                 </span>
+                               )}
+                             </p>
+                           )}
+                         </div>
+                       </div>
+                     </div>
 
-          {/* TAB 5: FINANCIALS */}
-          {activeTab === 'financials' && (
-            <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
-              <FinancialTab userData={userData} units={myUnitsList} />
-            </div>
-          )}
+                     <button 
+                       onClick={() => setActiveTab('financials')} 
+                       disabled={totalDue === 0}
+                       className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-text)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
+                     >
+                       {isLoading ? "Checking..." : totalDue > 0 ? "View Statements" : "All caught up"} 
+                       {!isLoading && totalDue > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
+                     </button>
+                   </div>
+                 </section>
+
+                 {/* Metric Grid: 4 Interactive Columns */}
+                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 ">
+
+                   {/* Card 1: Report Issue */}
+                   <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                       <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                     </div>
+                     <div className="relative z-10 flex flex-col flex-1">
+                       <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Maintenance</h3>
+                       <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Report Issue</p>
+                       <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Create repair request</p>
+                     </div>
+                   </button>
+
+                   {/* Card 2: Collected Gross */}
+                   {/* <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                       <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                     </div>
+                     <div className="relative z-10 flex flex-col flex-1 min-w-0">
+                       <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Gross Income</h3>
+                       <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px] truncate">
+                         {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-16 sm:w-20"></div> : `₱${collectedGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+                       </div>
+                       <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Total revenue collected</p>
+                     </div>
+                   </button> */}
+
+                   {/* Card 2: My Lease */}
+                  <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                      <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
+                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contract</h3>
+                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">My Lease</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active contracts</p>
+                    </div>
+                  </button>
+
+                   {/* Card 3: Owned Properties */}
+                  {/* <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                      <Home size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
+                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Properties</h3>
+                      <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
+                        {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10"></div> : `${unitsCount} ${unitsCount === 1 ? 'Unit' : 'Units'}`}
+                      </div>
+                      <div className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug truncate w-full">
+                        {isLoading ? <div className="h-2.5 sm:h-3 bg-slate-100 rounded animate-pulse w-16 sm:w-24"></div> : fullUnitsDisplay}
+                      </div>
+                    </div>
+                  </button> */}
+                  {/* Card 3: Financials */}
+                  <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                      <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                    </div>
+                    <div className="relative z-10 flex flex-col flex-1 min-w-0">
+                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
+                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Financials</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your financials</p>
+                    </div>
+                  </button>
+
+                   {/* Card 4: Occupied Units */}
+                   {/* <button className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
+                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                       <CheckCircle size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                     </div>
+                     <div className="relative z-10 flex flex-col flex-1">
+                       <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Occupancy</h3>
+                       <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
+                         {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10 sm:w-14"></div> : `${occupiedCount} / ${unitsCount}`}
+                       </div>
+                       <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Active current leases</p>
+                     </div>
+                   </button> */}
+                   {/* Card 4: Support */}
+                    <button onClick={handleConversationClick} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
+                        <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                      </div>
+                      <div className="relative z-10 flex flex-col flex-1">
+                        <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Messages</h3>
+                        <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Support</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message manager</p>
+                      </div>
+                    </button>
+                 </div>
+
+                 {/* Section: Recent Statements List */}
+                 <section className="bg-white rounded-[var(--radius-xl)] p-5 sm:p-6 shadow-[var(--shadow-sm)] border border-[var(--color-border)] transition-all hover:shadow-[var(--shadow-md)]">
+                   <div className="flex flex-row items-center justify-between mb-4 sm:mb-5 border-b border-[var(--color-border)] pb-3 sm:pb-4 gap-2">
+                     <div className="min-w-0">
+                       <h3 className="font-black text-base sm:text-lg text-[var(--color-text)] tracking-tight truncate">Recent Statements</h3>
+                       <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial statements</p>
+                     </div>
+                     <button 
+                       onClick={() => setActiveTab('financials')} 
+                       className="text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-transparent"
+                     >
+                       View All
+                     </button>
+                   </div>
+
+                   <div className="space-y-3">
+                     {isLoading ? (
+                       <div className="space-y-3">
+                         {[1, 2, 3].map((skeleton) => (
+                           <div key={skeleton} className="flex items-center justify-between p-3 sm:p-4 bg-[var(--color-bg)]/50 rounded-[var(--radius-md)] border border-[var(--color-border)] animate-pulse">
+                             <div className="space-y-2">
+                               <div className="h-3 sm:h-4 w-20 sm:w-28 bg-slate-200 rounded"></div>
+                               <div className="h-2.5 sm:h-3 w-12 sm:w-16 bg-slate-100 rounded"></div>
+                             </div>
+                             <div className="h-3 sm:h-4 w-16 sm:w-20 bg-slate-200 rounded"></div>
+                           </div>
+                         ))}
+                       </div>
+                     ) : statements.length === 0 ? (
+                       <div className="py-8 sm:py-10 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center p-4 sm:p-6">
+                         <div className="p-3 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] text-slate-300 mb-2 sm:mb-3 shadow-[var(--shadow-sm)]">
+                           <FileText size={20} className="sm:w-6 sm:h-6" />
+                         </div>
+                         <p className="text-xs sm:text-sm text-[var(--color-text)] font-extrabold">No recent statements</p>
+                         <p className="text-[10px] sm:text-xs text-slate-400 mt-1 max-w-[200px] sm:max-w-[240px]">Monthly generated financial statements will appear here.</p>
+                       </div>
+                     ) : (
+                       statements.slice(0, 3).map((stmt, idx) => {
+                         const isSuccess = String(stmt.status).toLowerCase() === 'success' || String(stmt.status).toLowerCase() === 'paid' || String(stmt.status).toLowerCase() === 'remitted';
+                         return (
+                           <div 
+                             key={idx} 
+                             onClick={() => setActiveTab('financials')}
+                             className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
+                           >
+                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-text)] group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors shadow-inner shrink-0">
+                                 <FileText size={16} className="sm:w-[18px] sm:h-[18px] transition-colors" />
+                               </div>
+                               <div className="min-w-0">
+                                 <p className="font-extrabold text-[var(--color-text)] text-xs sm:text-sm group-hover:text-[var(--color-text)] transition-colors truncate">Statement {stmt.period}</p>
+                                 <span className={`inline-flex items-center text-[9px] sm:text-[10px] font-black uppercase tracking-wider mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-[var(--radius-sm)] border ${
+                                   isSuccess 
+                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                                     : stmt.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                                 }`}>
+                                   {stmt.status}
+                                 </span>
+                               </div>
+                             </div>
+                             <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+                               <span className="font-black text-[var(--color-text)] text-sm sm:text-base md:text-lg">₱{stmt.net.toLocaleString()}</span>
+                               <ChevronRight size={14} className="sm:w-4 sm:h-4 text-slate-300 group-hover:text-[var(--color-primary)] transition-transform group-hover:translate-x-0.5 hidden sm:block" />
+                             </div>
+                           </div>
+                         );
+                       })
+                     )}
+                   </div>
+                 </section>
+
+               </div>
+             )}
+
+             {/* TAB 2: MESSAGES */}
+             {activeTab === 'messages' && (
+               <ConversationTab userData={userData} units={myUnitsList} />
+             )}
+
+             {/* ✨ TAB 3: REPAIRS KANBAN */}
+             {activeTab === 'repair' && (
+               <RepairTab highlightTicketId={highlightTicketId} />
+             )}
+
+             {/* TAB 4: LEASES */}
+             {activeTab === 'leases' && (
+               <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
+                 <LeaseTab userData={userData} units={myUnitsList} />
+               </div>
+             )}
+
+             {/* TAB 5: FINANCIALS */}
+             {activeTab === 'financials' && (
+               <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
+                 <FinancialTab userData={userData} units={myUnitsList} />
+               </div>
+             )}
+
+           </div>
         </main>
       </div>
 

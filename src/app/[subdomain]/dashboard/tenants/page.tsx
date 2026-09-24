@@ -160,7 +160,7 @@ export default function TenantDashboard() {
               .single();
 
             if (soaData && orgData) {
-              const currentStatus = (role === 'owner' ? soaData.owner_status : soaData.tenant_status) || 'Pending';
+              const currentStatus = (role === 'owner' ? soaData.owner_status : soaData.tenant_status) || 'Pending Payment';
               setSoaStatus(currentStatus);
 
               // Calculate matched totals
@@ -852,7 +852,7 @@ export default function TenantDashboard() {
 
         {/* MAIN CONTENT AREA */}
         <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
-           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' ? 'max-w-[1400px] h-full flex flex-col' : 'max-w-5xl'}`}>
+           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' ? 'absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300' : ''}`}>
              {activeTab === 'home' && (
                <HomeView 
                  setActiveTab={setActiveTab} 
@@ -1403,7 +1403,18 @@ export default function TenantDashboard() {
 // COMPONENTS
 // -------------------------------------------------------------------------------------------------
 
-function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, transactions, isLoading, totalDue, soaStatus, openProfileModal }: any) {
+function HomeView({ 
+  setActiveTab, 
+  handleConversationClick, 
+  tenantName, 
+  unit, 
+  transactions, 
+  isLoading, 
+  totalDue, 
+  soaStatus, 
+  openProfileModal, 
+  initials 
+}: any) {
   // Use dynamically calculated total to mirror PayTab logic exactly
   const rentAmount = totalDue || 0; 
   const propertyName = unit?.property_name || "Unassigned Property";
@@ -1470,15 +1481,44 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
   return (
     <div className="space-y-5 sm:space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
       {/* Header Section */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end pb-1 gap-2">
-        <div className="w-full min-w-0">
-          <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase tracking-widest">Dashboard Overview</p>
+      <header className="flex flex-row justify-between items-center pb-2 gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">Dashboard Overview</p>
+          
           {isLoading ? (
             <div className="h-7 sm:h-8 md:h-10 w-48 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-1"></div>
           ) : (
             <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-black mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
               Welcome back, <span className="text-[var(--color-text)] break-words">{tenantName}</span>
             </h1>
+          )}
+
+          {/* ✨ NEW: Tenant Unit/Property Badge */}
+          {unit && !isLoading && (
+            <div className="flex items-center gap-2 mt-2.5 sm:mt-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 px-3 py-1.5 rounded-[var(--radius-sm)] w-fit shadow-[var(--shadow-sm)] transition-all duration-300">
+              <Home size={14} className="text-[var(--color-text)] shrink-0" />
+              <span className="text-[var(--color-text)] font-black text-[10px] sm:text-xs uppercase tracking-wider">
+                Active Resident 
+              </span>
+            </div>
+          )}
+
+          {/* SKELETON FOR BADGE */}
+          {isLoading && !unit && (
+            <div className="h-6 w-40 bg-slate-200 rounded-[var(--radius-md)] animate-pulse mt-2.5 sm:mt-2"></div>
+          )}
+        </div>
+
+        {/* ✨ PREMIUM INLINE PROFILE AVATAR (Tenant) */}
+        <div 
+          onClick={openProfileModal} 
+          className="w-12 h-12 md:w-16 md:h-16 rounded-[var(--radius-md)] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 mt-2 ring-4 ring-white/50"
+          title="View Profile Details"
+        >
+          {isLoading ? (
+            <div className="w-full h-full rounded-[var(--radius-md)] md:rounded-[var(--radius-lg)] bg-white/20 animate-pulse"></div>
+          ) : (
+            initials
           )}
         </div>
       </header>
@@ -1505,11 +1545,11 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mt-3 sm:mt-4 tracking-tight text-white break-all sm:break-normal">
                   ₱{rentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </h2>
-                <div className="text-[11px] sm:text-xs md:text-sm text-white/70 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
+                <div className="text-[11px] sm:text-xs md:text-sm text-white/80 font-medium mt-3 flex items-center gap-2 bg-white/5 border border-white/5 p-2.5 sm:p-3 rounded-[var(--radius-md)] backdrop-blur-sm w-fit max-w-full">
                   <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
                   <div className="truncate min-w-0">
                     <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
-                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[white/70]`}>· {soaStatus}</span>}
+                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[white/80]`}>· {soaStatus}</span>}
                     </p>
                   </div>
                 </div>
@@ -1566,7 +1606,7 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
           <div className="relative z-10 flex flex-col flex-1 min-w-0">
             <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
             <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Financials</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your billings</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your financials</p>
           </div>
         </button>
 
@@ -1657,6 +1697,8 @@ function HomeView({ setActiveTab, handleConversationClick, tenantName, unit, tra
     </div>
   );
 }
+
+// ... rest of code
 
 function TransactionSkeleton() {
   return (

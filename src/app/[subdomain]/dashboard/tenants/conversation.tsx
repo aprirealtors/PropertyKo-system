@@ -662,7 +662,7 @@ export default function ConversationTab({
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-white custom-scrollbar">
           {isContactsLoading ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider">
-              <Clock className="animate-spin mb-2 text-[var(--color-primary)]" size={18} />{" "}
+              <Clock className="animate-spin mb-2 text-[var(--color-text)]" size={18} />{" "}
               Loading...
             </div>
           ) : filteredRoles.length === 0 ? (

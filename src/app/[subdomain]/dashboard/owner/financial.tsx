@@ -856,10 +856,10 @@ export default function FinancialTab({ userData, units }: any) {
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
                   <CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Submit Payment</h2>
+                <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Submit Payment</h2>
               </div>
               <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] hover:bg-slate-100 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
@@ -873,7 +873,7 @@ export default function FinancialTab({ userData, units }: any) {
               <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-5 sm:mb-6 gap-3 shrink-0">
                 <div className="min-w-0 flex-1">
                   <span className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Amount Due</span>
-                  <span className="truncate block text-[12px] sm:text-[14px] font-bold text-[var(--color-secondary)]">
+                  <span className="truncate block text-[12px] sm:text-[14px] font-bold text-[var(--color-text)]">
                     {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}
                   </span>
                 </div>
