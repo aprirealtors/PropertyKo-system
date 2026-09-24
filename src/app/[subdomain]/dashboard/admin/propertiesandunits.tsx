@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2, AlertTriangle, FolderOpen } from "lucide-react";
+import { Search, ArrowUp, X, Building, MapPin, Tag, User, Users, Briefcase, Maximize, CalendarDays, FileText, Edit, Trash2, CheckCircle2, AlertTriangle, FolderOpen, ListChecks } from "lucide-react";
 
 // ✨ Sub-component for handling the Clickable Owner Dropdown (Themified)
 const OwnerCell = ({ ownerName, abbreviation }: { ownerName: string, abbreviation?: string }) => {
@@ -74,9 +74,16 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmType, setConfirmType] = useState<'add' | 'edit' | 'import' | null>(null);
   
-  // Delete Modal States
+  // Single Delete Modal States
   const [unitToDelete, setUnitToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Mass Delete States
+  const [isMassDeleteModalOpen, setIsMassDeleteModalOpen] = useState(false);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [showMassDeleteModal, setShowMassDeleteModal] = useState(false);
+  const [isMassDeleting, setIsMassDeleting] = useState(false);
+  const [massDeleteSearchQuery, setMassDeleteSearchQuery] = useState("");
 
   // Form Fields
   const [propertyName, setPropertyName] = useState("");
@@ -195,6 +202,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       if (error) throw error;
 
       await fetchUnits();
+      setSelectedUnits(prev => prev.filter(id => id !== unitToDelete.id)); // Remove from selected if exists
       setUnitToDelete(null);
       if (isModalOpen && editingUnitId === unitToDelete.id) {
         setIsModalOpen(false);
@@ -205,6 +213,31 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       alert(`Failed to delete unit: ${err.message}`);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Mass Delete Execution
+  const executeMassDelete = async () => {
+    if (selectedUnits.length === 0) return;
+
+    setIsMassDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('units')
+        .delete()
+        .in('id', selectedUnits); // Mass delete based on IDs
+
+      if (error) throw error;
+
+      await fetchUnits();
+      setSelectedUnits([]);
+      setShowMassDeleteModal(false);
+      setIsMassDeleteModalOpen(false); // Close selection modal upon success
+    } catch (err: any) {
+      console.error("Error mass deleting units:", err);
+      alert(`Failed to delete units: ${err.message}`);
+    } finally {
+      setIsMassDeleting(false);
     }
   };
 
@@ -398,6 +431,37 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     );
   });
 
+  // Filtered Mass Delete Units
+  const filteredMassDeleteUnits = units.filter(unit => {
+    const searchLower = massDeleteSearchQuery.toLowerCase();
+    return (
+      (unit.property_name && unit.property_name.toLowerCase().includes(searchLower)) ||
+      (unit.unit_number && String(unit.unit_number).toLowerCase().includes(searchLower)) ||
+      (unit.owner_name && unit.owner_name.toLowerCase().includes(searchLower)) ||
+      (unit.status && unit.status.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // Mass select utilities for the modal (Filtered)
+  const toggleSelectAll = () => {
+    const filteredIds = filteredMassDeleteUnits.map(u => u.id);
+    const allFilteredSelected = filteredIds.every(id => selectedUnits.includes(id)) && filteredIds.length > 0;
+
+    if (allFilteredSelected) {
+      // Deselect only the currently filtered items
+      setSelectedUnits(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      // Select all filtered items without removing previously selected items outside the filter
+      setSelectedUnits(prev => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
+  const toggleUnitSelection = (id: string) => {
+    setSelectedUnits(prev => 
+      prev.includes(id) ? prev.filter(uId => uId !== id) : [...prev, id]
+    );
+  };
+
   const initials = orgData?.org_name 
   ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
   : "AD";
@@ -457,7 +521,20 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} Remaining Seats
           </span>
         </div>
-        <div className="flex flex-row gap-3 w-full sm:w-auto">
+        <div className="flex flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+          
+          <button 
+            onClick={() => {
+              setSelectedUnits([]); 
+              setMassDeleteSearchQuery("");
+              setIsMassDeleteModalOpen(true);
+            }}
+            className="flex-none justify-center bg-white border border-[var(--color-border)] hover:border-red-300 hover:bg-red-50 text-slate-500 hover:text-red-600 px-3 py-2.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex items-center active:scale-95"
+            title="Mass Delete Units"
+          >
+            <Trash2 size={18} strokeWidth={2.5} />
+          </button>
+
           <input 
             type="file" 
             accept=".csv" 
@@ -469,7 +546,8 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 sm:flex-none justify-center bg-[var(--color-primary)] border border-[var(--color-border)] hover:opacity-90 text-[var(--color-text)] px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
           >
-            <ArrowUp size={16} strokeWidth={2.5} /> Import CSV
+            <ArrowUp size={16} strokeWidth={2.5} className="hidden sm:block" /> 
+            <span>Import CSV</span>
           </button>
           
           <button 
@@ -638,6 +716,121 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           </div>
         </div>
       </div>
+
+      {/* MASS DELETE SELECTION MODAL */}
+      {isMassDeleteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-3xl flex flex-col max-h-[85vh] overflow-hidden border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] flex items-center gap-2">
+                  <div className="p-2 bg-red-50 text-red-500 rounded-[var(--radius-md)] border border-red-100 shadow-sm">
+                    <ListChecks size={24} strokeWidth={2.5} />
+                  </div>
+                  Mass Delete Units
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">Select the properties/units you want to permanently delete from the system.</p>
+              </div>
+              <button onClick={() => { setIsMassDeleteModalOpen(false); setMassDeleteSearchQuery(""); }} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0">
+                <X size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* In-Modal Search Bar */}
+            <div className="px-6 sm:px-8 py-3 bg-slate-50/50 border-b border-[var(--color-border)] shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} strokeWidth={2.5} />
+                <input 
+                  type="text" 
+                  placeholder="Search properties, units, owners..." 
+                  value={massDeleteSearchQuery}
+                  onChange={(e) => setMassDeleteSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] bg-white transition-all shadow-sm"
+                />
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-auto bg-slate-50/50 p-4 sm:p-6 custom-scrollbar">
+              {filteredMassDeleteUnits.length === 0 ? (
+                <div className="text-center py-12">
+                   <p className="text-slate-400 font-bold">No units found matching your search.</p>
+                </div>
+              ) : (
+                <div className="bg-white border border-slate-200/80 rounded-[var(--radius-lg)] overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-widest text-slate-400 font-black">
+                      <tr>
+                        <th className="px-5 py-4 w-12 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={filteredMassDeleteUnits.length > 0 && filteredMassDeleteUnits.every(u => selectedUnits.includes(u.id))} 
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer" 
+                          />
+                        </th>
+                        <th className="px-5 py-4">Property</th>
+                        <th className="px-5 py-4">Unit</th>
+                        <th className="px-5 py-4 hidden sm:table-cell">Owner</th>
+                        <th className="px-5 py-4 hidden md:table-cell">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredMassDeleteUnits.map(u => (
+                        <tr 
+                          key={u.id} 
+                          className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedUnits.includes(u.id) ? 'bg-[var(--color-primary)]/5' : ''}`}
+                          onClick={() => toggleUnitSelection(u.id)}
+                        >
+                          <td className="px-5 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedUnits.includes(u.id)} 
+                              onChange={() => toggleUnitSelection(u.id)}
+                              className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-5 py-3 font-bold text-slate-700">{u.property_name}</td>
+                          <td className="px-5 py-3 font-bold text-[var(--color-text)]">{u.unit_number}</td>
+                          <td className="px-5 py-3 text-xs text-slate-500 truncate max-w-[150px] hidden sm:table-cell">{u.owner_name}</td>
+                          <td className="px-5 py-3 hidden md:table-cell">
+                            <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-[10px] uppercase font-bold">{u.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 sm:px-8 py-5 border-t border-[var(--color-border)] bg-white flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+              <span className="text-sm font-black text-[var(--color-text)] bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                {selectedUnits.length} <span className="text-slate-500 font-bold">unit(s) selected</span>
+              </span>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button 
+                  onClick={() => { setIsMassDeleteModalOpen(false); setMassDeleteSearchQuery(""); }} 
+                  className="flex-1 sm:flex-none px-6 py-3 text-xs font-black uppercase tracking-wider text-slate-500 bg-white border border-slate-200 rounded-[var(--radius-md)] hover:bg-slate-50 hover:shadow-sm transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => setShowMassDeleteModal(true)} 
+                  disabled={selectedUnits.length === 0}
+                  className="flex-1 sm:flex-none px-6 py-3 text-xs font-black uppercase tracking-wider text-white bg-red-600 border border-red-700 rounded-[var(--radius-md)] hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <Trash2 size={16} /> Delete Selected
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* PREMIUM ADD / EDIT UNIT MODAL */}
       {isModalOpen && (
@@ -928,7 +1121,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       )}
 
-      {/* DELETE CONFIRMATION MODAL */}
+      {/* SINGLE DELETE CONFIRMATION MODAL */}
       {unitToDelete && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
@@ -953,6 +1146,37 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-lg flex items-center justify-center active:scale-95 border border-transparent"
               >
                 {isDeleting ? <span className="animate-pulse">Deleting...</span> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MASS DELETE CONFIRMATION MODAL */}
+      {showMassDeleteModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in zoom-in-95 duration-300 border border-[var(--color-border)]">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-[1.2rem] flex items-center justify-center mx-auto mb-5 border-2 border-red-100 shadow-inner">
+              <Trash2 size={32} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-2xl font-black text-[var(--color-text)] tracking-tight mb-2">Mass Delete?</h2>
+            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
+              Are you sure you want to permanently delete <span className="font-bold text-[var(--color-text)]">{selectedUnits.length} selected units</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setShowMassDeleteModal(false)}
+                disabled={isMassDeleting}
+                className="flex-1 px-4 py-3.5 text-xs uppercase tracking-widest font-black text-slate-500 bg-slate-100 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeMassDelete}
+                disabled={isMassDeleting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase tracking-widest font-black transition-all shadow-lg flex items-center justify-center active:scale-95 border border-transparent"
+              >
+                {isMassDeleting ? <span className="animate-pulse">Deleting...</span> : "Delete All"}
               </button>
             </div>
           </div>
