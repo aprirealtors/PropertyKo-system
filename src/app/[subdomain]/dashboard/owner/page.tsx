@@ -12,15 +12,7 @@ import {
 import ConversationTab from "./conversation"; 
 import FinancialTab from "./financial"; 
 import LeaseTab from "./lease";
-
-// ✨ ENTERPRISE: Symptom-Based Categories
-const CATEGORIES = [
-  { id: "Plumbing", label: "Plumbing / Water", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200" },
-  { id: "Electrical", label: "Electrical / Light", icon: Zap, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200" },
-  { id: "Aircon", label: "Aircon / HVAC", icon: Wind, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-200" },
-  { id: "Housekeeping", label: "Cleaning / Pest", icon: Sparkles, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200" },
-  { id: "General", label: "General Repair", icon: Wrench, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200" },
-];
+import RepairTab from "./repair"; // ✨ IMPORTED THE REPAIR TAB
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -46,27 +38,13 @@ export default function OwnerDashboard() {
   const [myTickets, setMyTickets] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
 
-  const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [repairIssue, setRepairIssue] = useState("");
-  const [repairTime, setRepairTime] = useState("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [selectedUnitForRepair, setSelectedUnitForRepair] = useState(""); 
-  const [repairPriority, setRepairPriority] = useState("Normal");
-  const [issueCategory, setIssueCategory] = useState(""); 
-
   // --- NEW: Edit Name States ---
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
   const [isConfirmNameModalOpen, setIsConfirmNameModalOpen] = useState(false);
 
-  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [reviewTicket, setReviewTicket] = useState<any | null>(null);
-
-  const [activeView, setActiveView] = useState<'open' | 'on_hold' | 'resolved'>('open');
-  const [reviewActiveTicket, setReviewActiveTicket] = useState<any | null>(null); 
 
   // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -82,12 +60,10 @@ export default function OwnerDashboard() {
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
   const [rejectedTicketModalData, setRejectedTicketModalData] = useState<any | null>(null);
-  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [reviewOnHoldTicket, setReviewOnHoldTicket] = useState<any>(null);
 
   // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -595,108 +571,6 @@ export default function OwnerDashboard() {
     setIsWorkspaceModalOpen(false);
   };
 
-  const openRepairModal = () => {
-    if (myUnitsList.length === 1) {
-      setSelectedUnitForRepair(`${myUnitsList[0].property_name} - ${myUnitsList[0].unit_number}`);
-    } else {
-      setSelectedUnitForRepair("");
-    }
-    setRepairPriority("Normal");
-    setIssueCategory(""); 
-    setRepairIssue(""); 
-    setIsRepairModalOpen(true);
-  };
-
-  const capitalizeWords = (str: string) => {
-    if (!str) return "";
-    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-  };
-
-  const handleReportRepair = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!issueCategory) {
-      showToast("Please select an issue category.", "error");
-      return;
-    }
-    if (!selectedImage) {
-      showToast("Please upload a photo of the issue.", "error");
-      return;
-    }
-    setIsSubmitting(true);
-
-    try {
-      let photoUrl = "";
-      if (selectedImage) {
-        const fileExt = selectedImage.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { data: imgData, error: uploadError } = await supabase.storage
-          .from('tickets')
-          .upload(`owner-uploads/${fileName}`, selectedImage);
-
-        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
-
-        if (imgData) {
-          const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
-          photoUrl = publicUrlData.publicUrl;
-        }
-      }
-
-      const capitalizedTime = capitalizeWords(repairTime);
-
-      const { data: currentAuth } = await supabase.auth.getUser();
-      const finalEmail = currentAuth.user?.email || userEmail;
-
-      const uniqueId = Math.floor(100000 + Math.random() * 900000);
-      const finalTitle = `${issueCategory} Ticket #${uniqueId}`;
-
-      const { data: newTicket, error } = await supabase
-        .from('tickets') 
-        .insert([{
-          admin_email: userData?.admin_email,
-          reporter_email: finalEmail,
-          title: finalTitle,
-          location: selectedUnitForRepair || userData?.access_level || "Owner's Unit",
-          description: `Best time to visit: ${capitalizedTime || 'Anytime'}. Reported by ${userData?.name || 'Owner'} (Owner).`, 
-          status: 'Open', 
-          photo_url: photoUrl,
-          priority: repairPriority,
-          remarks: issueCategory 
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase
-        .from('notifications')
-        .insert([{
-          admin_email: userData?.admin_email,
-          recipient: 'MANAGER',
-          type: 'TICKET',
-          title: 'New Repair Request',
-          message: `${userData?.name || 'An owner'} (Owner) reported a ${issueCategory} issue.`, 
-          reference_id: newTicket.id,
-          is_read: false
-        }]);
-
-      setIsRepairModalOpen(false);
-      setIssueCategory("");
-      setRepairIssue("");
-      setRepairTime("");
-      setRepairPriority("Normal");
-      setSelectedImage(null);
-      setSelectedUnitForRepair("");
-
-      setIsSuccessModalOpen(true);
-
-    } catch (err: any) {
-      console.error("Error submitting repair:", err);
-      showToast(err.message || "Failed to submit request", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const markAllAsRead = async () => {
     if (!userEmail) return;
     setNotifications(notifications.map(n => ({ ...n, is_read: true })));
@@ -777,95 +651,6 @@ export default function OwnerDashboard() {
       setActiveTab("home");
     }
   };
-
-  const getStatusBadge = (statusValue: string) => {
-    const s = String(statusValue || '').toLowerCase().trim();
-    if (s === 'pending' || s === 'open') return { label: 'Submitted', styles: 'bg-slate-100 text-slate-700 border-slate-200' };
-    if (s === 'in_progress' || s === 'in progress' || s === 'working' || s === 'assigned to maintenance') return { label: 'Working', styles: 'bg-blue-100 text-blue-700 border-blue-200' };
-    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', styles: 'bg-purple-100 text-purple-700 border-purple-200' };
-    if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', styles: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
-    if (s === 'failed') return { label: 'Failed', styles: 'bg-red-100 text-red-800 border-red-200' };
-    return { label: statusValue, styles: 'bg-slate-100 text-slate-700 border-slate-200' };
-  };
-
-  const enrichedTickets = useMemo(() => {
-    return myTickets.map(ticket => {
-      const match = liveTasks.find(task => task.title === ticket.title && task.location === ticket.location);
-      const currentLiveStatus = match ? match.status : ticket.status;
-      const badge = getStatusBadge(currentLiveStatus);
-
-      let staffName = "Pending Assignment";
-      if (match?.assigned_to) {
-        const memberMatch = teamMembers.find(m => m.email === match.assigned_to);
-        staffName = memberMatch?.name ? memberMatch.name : match.assigned_to.split('@')[0];
-      }
-
-      return {
-        ...ticket,
-        liveMatch: match,
-        currentLiveStatus,
-        label: badge.label,
-        color: badge.styles,
-        staffName,
-        priority: match?.priority || ticket.priority || 'Normal',
-        on_hold_reason: match?.on_hold_reason || ticket.on_hold_reason || null,
-        staffRemarks: match?.remarks || (ticket.status === 'Resolved' ? ticket.remarks : null)
-      };
-    });
-  }, [myTickets, liveTasks, teamMembers]);
-
-  useEffect(() => {
-    if (activeTab === "repair" && highlightTicketId && !isLoading && enrichedTickets.length > 0) {
-      const actualId = highlightTicketId.split('_')[0]; 
-      setTimeout(() => {
-        const matchingTicket = enrichedTickets.find(t => 
-          String(t.id) === actualId || 
-          (t.liveMatch && String(t.liveMatch.id) === actualId)
-        );
-
-        if (matchingTicket) {
-          const status = String(matchingTicket.currentLiveStatus).toLowerCase();
-
-          if (status === 'on_hold' || status === 'on hold') {
-            setActiveView('on_hold');
-            setReviewOnHoldTicket(matchingTicket);
-          } else if (status === 'completed' || status === 'resolved' || status === 'closed' || status === 'success') {
-            setActiveView('resolved');
-            setReviewTicket(matchingTicket);
-          } else {
-            setActiveView('open');
-            setReviewActiveTicket(matchingTicket);
-          }
-
-          const targetId = String(matchingTicket.id);
-          const targetElement = document.getElementById(`ticket-${targetId}`);
-
-          if (targetElement) {
-            targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
-            setActiveHighlightId(targetId);
-            setTimeout(() => {
-              setActiveHighlightId(null);
-            }, 3500);
-          }
-        }
-      }, 300);
-    }
-  }, [highlightTicketId, isLoading, enrichedTickets, activeTab]);
-
-  const openInProgressTasks = enrichedTickets.filter(t => {
-    const s = String(t.currentLiveStatus).toLowerCase();
-    return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
-  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
-
-  const onHoldTasks = enrichedTickets.filter(t => {
-    const s = String(t.currentLiveStatus).toLowerCase();
-    return s === 'on_hold' || s === 'on hold';
-  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
-
-  const resolvedTasks = enrichedTickets.filter(t => {
-    const s = String(t.currentLiveStatus).toLowerCase();
-    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success';
-  });
 
   const fullName = userData?.name || "Owner";
 
@@ -1190,7 +975,7 @@ export default function OwnerDashboard() {
                           <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
                             {fullUnitsDisplay} Unit{myUnitsList.length > 1 ? 's' : ''} Assigned
                             {totalDue > 0 && (
-                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-[var(--color-primary)]' : 'text[var(--color-primary-text)]'}`}>
+                              <span className={`font-bold ml-1 ${hasOverdue ? 'text-[var(--color-primary)]' : 'text-[var(--color-primary-text)]'}`}>
                                 · {hasOverdue ? 'Overdue Payment' : 'Pending Payment'}
                               </span>
                             )}
@@ -1203,7 +988,7 @@ export default function OwnerDashboard() {
                   <button 
                     onClick={() => setActiveTab('financials')} 
                     disabled={totalDue === 0}
-                    className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-secondary)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
+                    className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-text)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
                   >
                     {isLoading ? "Checking..." : totalDue > 0 ? "View Statements" : "All caught up"} 
                     {!isLoading && totalDue > 0 && <ChevronRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-0.5" />}
@@ -1284,7 +1069,7 @@ export default function OwnerDashboard() {
                   </div>
                   <button 
                     onClick={() => setActiveTab('financials')} 
-                    className="text-[10px] sm:text-xs font-black text-[var(--color-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-[var(--color-primary)]/20"
+                    className="text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-transparent"
                   >
                     View All
                   </button>
@@ -1358,239 +1143,20 @@ export default function OwnerDashboard() {
 
           {/* ✨ TAB 3: REPAIRS KANBAN */}
           {activeTab === 'repair' && (
-            <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-300 p-4 md:p-6 lg:p-8 md:pb-10">
-
-              {/* Kanban Header */}
-              <div className="flex-none shrink-0 mb-4 sm:mb-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:px-8 sm:py-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
-                  <div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-black tracking-tight">Repair Tickets</h2>
-                    <p className="text-slate-500 text-sm mt-1.5 font-medium">Request maintenance and track the progress live.</p>
-                  </div>
-                  <button 
-                    onClick={openRepairModal} 
-                    className="w-full sm:w-auto justify-center bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-8 py-3.5 rounded-[var(--radius-lg)] text-sm font-black transition-all shadow-[var(--shadow-md)] hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 active:scale-95 border border-transparent"
-                  >
-                    <Wrench size={18} strokeWidth={2.5}/> Request Repair
-                  </button>
-                </div>
-              </div>
-
-              {/* ✨ MOBILE TAB SWITCHER */}
-              <div className="md:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-[var(--radius-lg)] flex border border-slate-200/80 mx-1 sm:mx-0">
-                <button 
-                  onClick={() => setActiveView('open')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'open' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
-                >
-                  <Inbox size={14} strokeWidth={2.5}/> Active <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[10px]">{isLoading ? "-" : openInProgressTasks.length}</span>
-                </button>
-                <button 
-                  onClick={() => setActiveView('on_hold')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all ${activeView === 'on_hold' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
-                >
-                  <PauseCircle size={14} strokeWidth={2.5}/> Hold <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[10px]">{isLoading ? "-" : onHoldTasks.length}</span>
-                </button>
-                <button 
-                  onClick={() => setActiveView('resolved')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all ${activeView === 'resolved' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
-                >
-                  <CheckCircle2 size={14} strokeWidth={2.5}/> Resolved <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[10px]">{isLoading ? "-" : resolvedTasks.length}</span>
-                </button>
-              </div>
-
-              {/* Grid Kanban (Hybrid UI) */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full overflow-y-auto custom-scrollbar">
-
-                {/* ================= Column 1: Active Tickets ================= */}
-                <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
-                  <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
-                    <span className="flex items-center gap-2">
-                      <div className="p-1.5 text-blue-700 rounded-[var(--radius-sm)]"><Inbox size={16} strokeWidth={2.5} /></div>
-                      Active Requests
-                    </span>
-                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
-                      {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : openInProgressTasks.length}
-                    </span>
-                  </h4>
-
-                  <div className="flex flex-col space-y-4">
-                    {isLoading ? (
-                      <><KanbanSkeleton /><KanbanSkeleton /></>
-                    ) : openInProgressTasks.length === 0 ? (
-                      <EmptyState icon={Inbox} title="No active requests" message="When you report an issue, it will be tracked here." />
-                    ) : (
-                      openInProgressTasks.map(t => {
-                        const isHighlighted = activeHighlightId === String(t.id);
-                        return (
-                          <div 
-                            key={t.id} 
-                            id={`ticket-${t.id}`}
-                            onClick={() => setReviewActiveTicket(t)}
-                            className={`group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
-                              isHighlighted ? 'ring-4 ring-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 border-[var(--color-primary)] scale-[1.02] shadow-xl animate-pulse z-10' : 
-                              t.priority === 'Urgent' ? 'border-l-4 border-l-red-500 shadow-[var(--shadow-sm)] border-[var(--color-border)]' : 'hover:border-[var(--color-primary)]/60 shadow-[var(--shadow-sm)] border-[var(--color-border)]'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
-                              <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
-                              <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
-                            </div>
-
-                            <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
-                              <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
-                            </p>
-
-                            <div className="space-y-2 mb-3 flex-1 overflow-hidden">
-                              <p className="text-xs leading-relaxed font-semibold text-slate-500 line-clamp-2">
-                                {t.description}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-transparent">
-                                  {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned Staff</span>
-                                  <span className="text-xs font-bold text-[var(--color-text)]">{t.staffName}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={16} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-colors" />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* ================= Column 2: On Hold ================= */}
-                <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
-                  <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
-                    <span className="flex items-center gap-2">
-                      <div className="p-1.5 text-amber-600 rounded-[var(--radius-sm)]"><PauseCircle size={16} strokeWidth={2.5} /></div>
-                      Delayed / On Hold
-                    </span>
-                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
-                      {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : onHoldTasks.length}
-                    </span>
-                  </h4>
-
-                  <div className="flex flex-col space-y-4">
-                    {isLoading ? (
-                      <KanbanSkeleton />
-                    ) : onHoldTasks.length === 0 ? (
-                      <EmptyState icon={PauseCircle} title="No delays" message="If a repair needs parts or gets delayed, it will show here." />
-                    ) : (
-                      onHoldTasks.map(t => {
-                        const holdReason = t.on_hold_reason;
-                        return (
-                          <div 
-                            key={t.id} 
-                            id={`ticket-${t.id}`}
-                            onClick={() => setReviewOnHoldTicket(t)}
-                            className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[var(--shadow-sm)]"
-                          >
-                            <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
-                              <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
-                              <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] text-amber-700 border-amber-200/60`}>{t.label}</span>
-                            </div>
-
-                            <p className="text-[var(--color-text)] font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
-                              <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
-                            </p>
-
-                            <div className="space-y-2 mb-3 flex-1 overflow-hidden">
-                              <p className="text-xs leading-relaxed font-semibold text-amber-700 line-clamp-2">
-                                <AlertTriangle size={12} className="inline mr-1 text-amber-500" strokeWidth={2.5} />
-                                {holdReason || "Awaiting management review."}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 mt-auto pt-3 border-t border-[var(--color-border)] flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center text-[10px] font-bold shadow-[var(--shadow-sm)] border border-amber-200">
-                                  {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned Staff</span>
-                                  <span className="text-xs font-bold text-[var(--color-text)]">{t.staffName}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={16} className="text-slate-300 group-hover:text-amber-500 transition-colors" />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* ================= Column 3: Resolved ================= */}
-                <div className={`${activeView === 'resolved' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
-                  <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
-                    <span className="flex items-center gap-2">
-                      <div className="p-1.5 text-green-700 rounded-[var(--radius-sm)]"><CheckCircle2 size={16} strokeWidth={2.5} /></div>
-                      Resolved
-                    </span>
-                    <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
-                      {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : resolvedTasks.length}
-                    </span>
-                  </h4>
-
-                  <div className="flex flex-col space-y-4">
-                    {isLoading ? (
-                      <><KanbanSkeleton /><KanbanSkeleton /></>
-                    ) : resolvedTasks.length === 0 ? (
-                      <EmptyState icon={CheckCircle} title="No resolved tasks" message="Completed tasks and resolution photos will be logged here." />
-                    ) : (
-                      resolvedTasks.map(t => {
-                        return (
-                          <div 
-                            key={t.id} 
-                            id={`ticket-${t.id}`}
-                            onClick={() => setReviewTicket(t)} 
-                            className="group h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[var(--shadow-sm)] p-5"
-                          >
-                            <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
-                              <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{t.title}</h4>
-                              <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${t.color}`}>{t.label}</span>
-                            </div>
-
-                            <p className="text-slate-500 font-extrabold text-xs flex items-center gap-1.5 truncate mb-2 shrink-0">
-                              <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
-                            </p>
-
-                            <div className="space-y-2 mb-3 flex-1 overflow-hidden">
-                              <p className="text-xs leading-relaxed font-semibold text-emerald-700 line-clamp-2">
-                                <CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} />
-                                {t.staffRemarks || "Task completed successfully."}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[10px] font-bold border border-[var(--color-primary)]/20">
-                                  {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Fixed By</span>
-                                  <span className="text-xs font-bold text-[var(--color-text)]">{t.staffName}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={16} className="text-slate-300 group-hover:text-[var(--color-primary)] transition-colors" />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
+             <RepairTab 
+                userData={userData}
+                userEmail={userEmail}
+                myUnitsList={myUnitsList}
+                myTickets={myTickets}
+                liveTasks={liveTasks}
+                teamMembers={teamMembers}
+                isLoading={isLoading}
+                highlightTicketId={highlightTicketId}
+                setHighlightTicketId={setHighlightTicketId}
+                showToast={showToast}
+             />
           )}
+
           {/* TAB 4: LEASES */}
           {activeTab === 'leases' && (
             <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
@@ -1686,460 +1252,7 @@ export default function OwnerDashboard() {
       </nav>
 
       {/* MODALS */}
-      {/* 1. REPORT REPAIR MODAL (Symptom-Based) */}
-      {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
-
-            <div className="px-3 py-3 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
-              <div>
-                <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Report an Issue</h2>
-                <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
-              </div>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 rounded-[var(--radius-sm)] text-slate-500 hover:opacity-75 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
-                <X size={18} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 pb-safe">
-              <form onSubmit={handleReportRepair} className="space-y-6">
-
-                {myUnitsList.length > 1 && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Property Unit</label>
-                    <div className="relative">
-                      <select
-                        required
-                        value={selectedUnitForRepair}
-                        onChange={(e) => setSelectedUnitForRepair(e.target.value)}
-                        className="w-full px-4 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 text-sm font-bold text-[var(--color-text)] bg-white hover:border-[var(--color-primary)]/50 transition-all cursor-pointer shadow-[var(--shadow-sm)] appearance-none pr-10"
-                        disabled={isSubmitting}
-                      >
-                        <option value="" disabled>Select which unit needs repair...</option>
-                        {[...myUnitsList]
-                          .sort((a, b) => {
-                            const nameA = `${a.property_name} - ${a.unit_number}`;
-                            const nameB = `${b.property_name} - ${b.unit_number}`;
-                            return nameA.localeCompare(nameB, undefined, { numeric: true });
-                          })
-                          .map((u) => (
-                            <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>
-                              {u.property_name} - {u.unit_number}
-                            </option>
-                          ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
-                        <ChevronRight size={16} className="rotate-90"/>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Visual Category Grid */}
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 1: Select Category</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                    {CATEGORIES.map(cat => {
-                      const isSelected = issueCategory === cat.id;
-                      const Icon = cat.icon;
-                      return (
-                        <div 
-                          key={cat.id}
-                          onClick={() => {
-                            setIssueCategory(cat.id);
-                          }}
-                          className={`cursor-pointer rounded-[var(--radius-md)] border-2 flex flex-col items-center justify-center p-3 sm:p-4 text-center transition-all duration-200 active:scale-95 ${
-                            isSelected ? `${cat.border} ${cat.bg} shadow-[var(--shadow-md)] scale-[1.02]` : 'border-[var(--color-border)] bg-white hover:border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]'
-                          }`}
-                        >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${isSelected ? 'bg-white shadow-[var(--shadow-sm)]' : cat.bg}`}>
-                            <Icon size={20} className={cat.color} strokeWidth={isSelected ? 2.5 : 2} />
-                          </div>
-                          <span className={`text-[10px] sm:text-xs font-black tracking-tight ${isSelected ? cat.color : 'text-[var(--color-text)]'}`}>{cat.label}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Animated reveal for the rest of the form */}  
-                {issueCategory && (
-                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Step 2: Upload Photo (Required)</label>
-
-                      {selectedImage ? (
-                        <div className="flex flex-col w-full p-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-[var(--shadow-sm)]">
-                          <div className="relative w-full h-32 rounded-[var(--radius-md)] overflow-hidden bg-slate-900 mb-2">
-                            <img src={URL.createObjectURL(selectedImage)} alt="Repair issue preview" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex items-center justify-between px-2 pb-1">
-                            <span className="text-[10px] text-[var(--color-primary)] font-black uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12} strokeWidth={3}/> Image Ready</span>
-                            <button type="button" onClick={(e) => { e.preventDefault(); setSelectedImage(null); }} className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-100 px-2 py-1 rounded-[var(--radius-sm)] transition-colors" disabled={isSubmitting}>Remove</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {/* MOBILE VIEW (Side-by-side) */}
-                          <div className="flex md:hidden gap-3 w-full">
-                            <label className="flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-[var(--shadow-sm)] transition-all group">
-                              <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors"><Camera size={20} strokeWidth={2.5}/></div>
-                              <span className="text-[10px] sm:text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Take Photo</span>
-                              <input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])} className="hidden" disabled={isSubmitting} />
-                            </label>
-                            <label className="flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-[var(--shadow-sm)] transition-all group">
-                              <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                              </div>
-                              <span className="text-[10px] sm:text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Gallery</span>
-                              <input type="file" accept="image/*" onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])} className="hidden" disabled={isSubmitting} />
-                            </label>
-                          </div>
-
-                          {/* DESKTOP VIEW (Full Width Upload) */}
-                          <div className="hidden md:flex w-full">
-                            <label className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-[var(--shadow-sm)] transition-all group">
-                              <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                              </div>
-                              <span className="text-sm font-black text-[var(--color-text)] group-hover:text-[var(--color-primary)] uppercase tracking-wide">Upload Photo</span>
-                              <span className="text-xs text-slate-400 font-medium">Click to browse from your computer</span>
-                              <input type="file" accept="image/*" onChange={(e) => e.target.files && setSelectedImage(e.target.files[0])} className="hidden" disabled={isSubmitting} />
-                            </label>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Priority</label>
-                        <select required value={repairPriority} onChange={(e) => setRepairPriority(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 text-xs sm:text-sm font-bold text-[var(--color-text)] bg-white hover:border-[var(--color-primary)]/50 transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
-                          <option value="Normal">Normal</option>
-                          <option value="Urgent">🚨 Urgent</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Preferred Time</label>
-                        <input type="text" required placeholder="e.g. Morning..." value={repairTime} onChange={(e) => setRepairTime(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 text-xs sm:text-sm font-bold text-[var(--color-text)] placeholder:text-slate-400 transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
-                      </div>
-                    </div>
-
-                    <div className="pt-2 sm:pt-4 pb-2">
-                      <button type="submit" disabled={isSubmitting} className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent py-4 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex justify-center items-center gap-2">
-                        {isSubmitting ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending...</> : "Submit Request"}
-                      </button>
-                    </div>
-
-                  </div>
-                )}
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✨ 2. ACTIVE REQUEST DETAILS MODAL */}
-      {reviewActiveTicket && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-
-            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
-              <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
-                  Request Details
-                </h2>
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
-                  <Inbox size={16} className="text-blue-700 shrink-0" /> {reviewActiveTicket.title}
-                </div>
-              </div>
-              <button onClick={() => setReviewActiveTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
-                <X size={24} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
-                {/* SUBMITTED DETAILS */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Report</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Issue Evidence</span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
-                    {reviewActiveTicket.photo_url ? (
-                      <img src={reviewActiveTicket.photo_url} alt="Reported issue" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-700" />
-                    ) : (
-                      <div className="text-center text-slate-400 p-4"><Camera size={32} className="mx-auto mb-2 opacity-40" /><span className="text-xs font-bold block uppercase tracking-widest">No photo</span></div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 bg-slate-50 rounded-[1.5rem] p-5 border border-[var(--color-border)] flex flex-col justify-start">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Description:</span>
-                    <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewActiveTicket.description}</p>
-                  </div>
-                </div>
-
-                {/* CURRENT STATUS */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)] flex flex-col space-y-5">
-                  <div className="flex justify-between items-center relative z-10">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">Status</span>
-                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Current Progress</span>
-                    </div>
-                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border ${reviewActiveTicket.color} shrink-0 shadow-[var(--shadow-sm)]`}>{reviewActiveTicket.label}</span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-[var(--color-primary)]/5 rounded-[1.5rem] border border-[var(--color-primary)]/20 overflow-hidden flex flex-col items-center justify-center shrink-0 shadow-inner p-6 text-center">
-                    <Clock size={48} className="text-[var(--color-text)]/50 mb-4" strokeWidth={1.5} />
-                    <h3 className="font-black text-blue-700 text-lg sm:text-xl mb-2">
-                      {String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('progress') || String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('working') ? "Work in Progress" : "Request Received"}
-                    </h3>
-                    <p className="text-sm text-slate-600 font-medium max-w-[250px] mx-auto">
-                      {String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('progress') || String(reviewActiveTicket.currentLiveStatus).toLowerCase().includes('working') ? "Our maintenance staff is currently working on your request." : "Your request is in queue and will be assigned to a staff member shortly."}
-                    </p>
-                  </div>
-
-                  <div className="bg-[var(--color-primary)]/5 rounded-[1.5rem] p-5 border border-[var(--color-primary)]/10 space-y-4 shrink-0 flex flex-col justify-between flex-1 relative z-10">
-                    <div className="mt-auto pt-2 space-y-4">
-                      {/* ✨ MOVED "REPORTED ON" HERE */}
-                      <div className="flex justify-between items-center border-b border-[var(--color-primary)]/10 pb-4">
-                        <span className="text-[10px] font-black text-[var(--color-text)]/80 uppercase tracking-widest flex items-center gap-2">
-                          <Clock size={14} className="shrink-0" /> Reported On
-                        </span>
-                        <span className="font-extrabold text-[var(--color-text)] text-xs">
-                          {new Date(reviewActiveTicket.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      {/* ASSIGNED TO */}
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-black text-[var(--color-text)]/80 uppercase tracking-widest flex items-center gap-2">
-                          <User size={14} className="shrink-0" /> Assigned To
-                        </span>
-                        <span className="font-extrabold text-[var(--color-text)] bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] text-xs truncate max-w-[150px] sm:max-w-[200px]">
-                          {reviewActiveTicket.staffName}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewActiveTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">
-                Close Details
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✨ 3. REVIEW ON HOLD MODAL (Before & After) */}
-      {reviewOnHoldTicket && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-
-            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
-              <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
-                  Hold Details
-                </h2>
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
-                  <PauseCircle size={16} className="text-amber-500 shrink-0" /> {reviewOnHoldTicket.title}
-                </div>
-              </div>
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
-                <X size={24} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
-                {/* BEFORE COLUMN */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-300/60 shadow-[var(--shadow-sm)]">Before</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Initial Report</span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
-                    {reviewOnHoldTicket.photo_url ? (
-                      <img src={reviewOnHoldTicket.photo_url} alt="Reported issue" className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105" />
-                    ) : (
-                      <div className="text-center text-slate-400 p-4">
-                        <Camera size={32} className="mx-auto mb-2 opacity-40" />
-                        <span className="text-xs font-bold block uppercase tracking-widest">No photo</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 bg-slate-50 rounded-2xl p-5 border border-[var(--color-border)] flex flex-col justify-between">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Description:</span>
-                    <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">
-                      {reviewOnHoldTicket.description}
-                    </p>
-                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-[var(--color-border)] pt-5 mt-5 shrink-0">
-                      Reported: {new Date(reviewOnHoldTicket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* ON HOLD UPDATE COLUMN */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Update</span>
-                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Staff Report</span>
-                    </div>
-                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
-                      {reviewOnHoldTicket.label}
-                    </span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-amber-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
-                    {(reviewOnHoldTicket.liveMatch?.on_hold_photo_url || reviewOnHoldTicket.liveMatch?.resolution_photo_url) ? (
-                      <img 
-                        src={reviewOnHoldTicket.liveMatch?.on_hold_photo_url || reviewOnHoldTicket.liveMatch?.resolution_photo_url} 
-                        alt="On hold status" 
-                        className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105" 
-                      />
-                    ) : (
-                      <div className="text-center text-slate-400 p-4">
-                        <PauseCircle size={40} strokeWidth={1.5} className="mx-auto mb-3 opacity-40 text-amber-500" />
-                        <span className="text-xs font-black block uppercase tracking-widest text-amber-600/70">Awaiting action or parts</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-amber-50 rounded-[1.5rem] p-5 border border-amber-100/50 space-y-2 shrink-0 flex flex-col justify-between flex-1">
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-amber-100 pb-2 mb-2">Reason for delay:</span>
-                      <p className="text-sm text-amber-800 leading-relaxed font-bold">
-                        {reviewOnHoldTicket.liveMatch?.on_hold_reason || reviewOnHoldTicket.liveMatch?.remarks || "Task is currently on hold. We will update you soon as possible."}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs sm:text-sm border-t border-amber-200/60 pt-4 mt-2">
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><User size={12} /> Staff</span>
-                      <span className="font-bold tracking-widest text-slate-500 bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-slate-100 shadow-[var(--shadow-sm)]">
-                        {reviewOnHoldTicket.staffName || "Pending Assignment"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewOnHoldTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✨ 4. REVIEW RESOLUTION MODAL (Before & After) */}
-      {reviewTicket && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-
-            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
-              <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
-                  Resolution Details
-                </h2>
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
-                  <CheckCircle2 size={16} className="text-green-700 shrink-0" /> {reviewTicket.title}
-                </div>
-              </div>
-              <button onClick={() => setReviewTicket(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:opacity-75 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
-                <X size={24} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
-                {/* BEFORE */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Before</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Initial Report</span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
-                    {reviewTicket.photo_url ? (
-                      <img src={reviewTicket.photo_url} alt="Reported issue" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-700" />
-                    ) : (
-                      <div className="text-center text-slate-400 p-4"><Camera size={32} className="mx-auto mb-2 opacity-40" /><span className="text-xs font-bold block uppercase tracking-widest">No photo</span></div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 bg-slate-50 rounded-[1.5rem] p-5 border border-[var(--color-border)] flex flex-col justify-between">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Description:</span>
-                    <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewTicket.description}</p>
-                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-[var(--color-border)] pt-4 mt-5 shrink-0">
-                      Reported: {new Date(reviewTicket.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-
-                {/* AFTER */}
-                <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-bl-full blur-2xl pointer-events-none"></div>
-
-                  <div className="flex justify-between items-center relative z-10">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200 shadow-[var(--shadow-sm)]">After</span>
-                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Resolution Status</span>
-                    </div>
-                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-green-100 text-green-700 border-green-200/60 shadow-sm"><Check size={12} className="inline mr-1"/> Success</span>
-                  </div>
-
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-primary)]/20 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group relative z-10 p-1">
-                    {reviewTicket.liveMatch?.resolution_photo_url ? (
-                      <img src={reviewTicket.liveMatch.resolution_photo_url} alt="Resolution proof" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-700" />
-                    ) : (
-                      <div className="text-center text-[var(--color-primary)]/60 p-4"><CheckCircle2 size={32} className="mx-auto mb-2 opacity-60" /><span className="text-xs font-bold block uppercase tracking-widest text-[var(--color-primary)]/70">No evidence photo</span></div>
-                    )}
-                  </div>
-
-                  <div className="bg-[var(--color-primary)]/5 rounded-[1.5rem] p-5 border border-[var(--color-primary)]/10 space-y-4 shrink-0 flex flex-col justify-between flex-1 relative z-10">
-                    {reviewTicket.staffRemarks && (
-                       <div>
-                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-primary)]/20 pb-2 mb-2">Staff Remarks:</span>
-                         <p className="text-sm text-[var(--color-text)] leading-relaxed font-bold">"{reviewTicket.staffRemarks}"</p>
-                       </div>
-                    )}
-
-                    <div className="mt-auto space-y-4 pt-2">
-                      <div className="flex justify-between items-center border-t border-[var(--color-primary)]/20 pt-4">
-                        <span className="text-[10px] font-black text-[var(--color-text)]/70 uppercase tracking-widest flex items-center gap-2"><User size={14} /> Fixed By</span>
-                        <span className="font-extrabold text-[var(--color-text)] bg-white px-3 py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] text-xs">
-                          {reviewTicket.cost ? `${reviewTicket.staffName} (Cost: ${reviewTicket.cost})` : reviewTicket.staffName}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewTicket(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* REJECTED TICKET MODAL */}
       {rejectedTicketModalData && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
@@ -2333,7 +1446,7 @@ export default function OwnerDashboard() {
                   </div>
 
                   <div>
-                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2">Access Role</label>
+                    <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1.5 sm:mb-2">Access Role</label>
                     <div className="shrink-0">
                       <span className="inline-flex text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)]/50 border border-[var(--color-primary)]/20 px-3 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
                         Owner
@@ -2624,36 +1737,6 @@ export default function OwnerDashboard() {
 // -------------------------------------------------------------------------------------------------
 // COMPONENTS
 // -------------------------------------------------------------------------------------------------
-
-// ✨ FIXED HEIGHT KANBAN SKELETON
-function KanbanSkeleton() {
-  return (
-    <div className="h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden flex flex-col animate-pulse">
-      <div className="p-5 flex-1 flex flex-col gap-3">
-        <div className="flex justify-between items-center mb-1 shrink-0">
-          <div className="h-5 bg-slate-200 rounded-md w-1/2"></div>
-        </div>
-        <div className="flex-1 flex flex-col gap-2.5">
-          <div className="h-3 bg-slate-200 rounded-md w-1/3 mt-2"></div>
-          <div className="h-3 bg-slate-100 rounded-md w-full mt-3"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ✨ STANDARDIZED EMPTY STATE
-function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-[var(--radius-xl)] border border-dashed border-[var(--color-border)] h-[200px] animate-in fade-in duration-300">
-      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-text)]/50 border border-[var(--color-border)]">
-        <Icon size={26} strokeWidth={1.5} />
-      </div>
-      <h4 className="font-extrabold text-[var(--color-text)] mb-1.5">{title}</h4>
-      <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
-    </div>
-  );
-}
 
 // ✨ NAV SECTION LABEL: Typography with trailing divider
 function NavSectionLabel({ children, collapsed }: { children: React.ReactNode, collapsed?: boolean }) {

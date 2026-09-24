@@ -456,7 +456,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
           {/* SUBSCRIPTION PANEL */}
           <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto custom-scrollbar gap-6 pb-6 pr-1">
             
-            <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-6 sm:p-8 flex flex-col relative group shrink-0 overflow-hidden">
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-6 sm:p-8 flex flex-col relative group shrink-0 overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--color-primary)]/10 rounded-bl-full -mr-16 -mt-16 opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
               
               <div className="flex items-center gap-3 mb-6 sm:mb-8 relative z-10 shrink-0">
@@ -678,11 +678,11 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
       {/* ADD USER MODAL */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-xl font-bold text-[var(--color-secondary)] tracking-tight">Add Workspace User</h2>
-              <button onClick={() => !isSubmitting && setIsInviteModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1" disabled={isSubmitting}>
+              <h2 className="text-xl font-bold text-[var(--color-text)] tracking-tight">Add Workspace User</h2>
+              <button onClick={() => !isSubmitting && setIsInviteModalOpen(false)} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
@@ -692,22 +692,22 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                 {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-secondary)] mb-1.5"><UserPlus size={16} className="text-[var(--color-primary)]" /> Full Name</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><UserPlus size={16} className="text-[var(--color-text)]" /> Full Name</label>
                   <input type="text" required placeholder="e.g. Maria Lopez" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-secondary)] mb-1.5"><Mail size={16} className="text-[var(--color-primary)]" /> Login Email</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
                   <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-secondary)] mb-1.5"><Lock size={16} className="text-[var(--color-primary)]" /> Initial Password</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
                   <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-secondary)] mb-1.5"><Shield size={16} className="text-[var(--color-primary)]" /> System Role</label>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Shield size={16} className="text-[var(--color-text)]" /> System Role</label>
                   <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
                     <option value="Property manager">Property Manager</option>
                     <option value="Maintenance staff">Maintenance Staff</option>
@@ -715,7 +715,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[var(--color-secondary)] mb-1.5">Property Scope Access</label>
+                  <label className="block text-sm font-bold text-[var(--color-text)] mb-1.5">Property Scope Access</label>
                   <input type="text" required placeholder="e.g. All properties, Future Point Only" value={memberAccess} onChange={(e) => setMemberAccess(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 

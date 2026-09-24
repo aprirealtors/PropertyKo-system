@@ -40,7 +40,7 @@ export default function MaintenanceDashboard() {
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   // Global Data States
-  const [profile, setProfile] = useState({ name: "Staff", initials: "ST" });
+  const [profile, setProfile] = useState({ name: "Staff", initials: "S" });
   const [userEmail, setUserEmail] = useState<string>(""); 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,18 +112,28 @@ export default function MaintenanceDashboard() {
         .eq('email', user.email)
         .single();
 
+      // if (userData) {
+      //   const nameParts = userData.name.split(" ");
+      //   const initials = nameParts.length > 1 
+      //     ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
+      //     : userData.name.substring(0, 2).toUpperCase();
+      //   setProfile({ name: userData.name, initials });
+      // } else if (user.user_metadata?.name || user.user_metadata?.full_name) {
+      //   const metaName = user.user_metadata.name || user.user_metadata.full_name;
+      //   const nameParts = metaName.split(" ");
+      //   const initials = nameParts.length > 1 
+      //     ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
+      //     : metaName.substring(0, 2).toUpperCase();
+      //   setProfile({ name: metaName, initials });
+      // }
       if (userData) {
-        const nameParts = userData.name.split(" ");
-        const initials = nameParts.length > 1 
-          ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
-          : userData.name.substring(0, 2).toUpperCase();
+        // ✨ UPDATED: Grab only the first letter
+        const initials = userData.name.charAt(0).toUpperCase();
         setProfile({ name: userData.name, initials });
       } else if (user.user_metadata?.name || user.user_metadata?.full_name) {
         const metaName = user.user_metadata.name || user.user_metadata.full_name;
-        const nameParts = metaName.split(" ");
-        const initials = nameParts.length > 1 
-          ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
-          : metaName.substring(0, 2).toUpperCase();
+        // ✨ UPDATED: Grab only the first letter
+        const initials = metaName.charAt(0).toUpperCase();
         setProfile({ name: metaName, initials });
       }
 
@@ -288,10 +298,8 @@ export default function MaintenanceDashboard() {
       }
       
       const newName = editedName.trim();
-      const nameParts = newName.split(" ");
-      const initials = nameParts.length > 1 
-        ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
-        : newName.substring(0, 2).toUpperCase();
+      // ✨ UPDATED: Grab only the first letter
+      const initials = newName.charAt(0).toUpperCase();
 
       setProfile({ name: newName, initials });
       showToast("Staff name updated successfully!", "success");

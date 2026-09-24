@@ -478,7 +478,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             className={`flex-1 sm:flex-none justify-center px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all active:scale-95 flex items-center gap-2 ${
               remainingUnits === 0 && !isLoadingUnits 
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
-                : "bg-slate-100 hover:opacity-90 text-[var(--color-primary)] shadow-[var(--shadow-md)] border border-transparent"
+                : "bg-slate-100 hover:opacity-90 text-[var(--color-text)] shadow-[var(--shadow-md)] border border-transparent"
             }`}
           >
             <Building size={16} strokeWidth={2.5} /> Add Unit
@@ -792,7 +792,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       {/* CSV IMPORT PREVIEW MODAL */}
       {isPreviewModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-[90vw] overflow-hidden transform transition-all h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[90vw] h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header: Fixed */}
             <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Review Import Data</h2>
@@ -803,64 +805,71 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               </button>
             </div>
             
-            <div className="overflow-auto custom-scrollbar flex-1 bg-slate-50/50 p-6">
-              <div className="bg-white border border-slate-200/80 rounded-[1.5rem] overflow-hidden shadow-[var(--shadow-sm)]">
-                <table className="w-full text-left text-xs relative">
-                  <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 font-black uppercase tracking-widest sticky top-0 shadow-sm z-10 border-b border-[var(--color-border)]">
-                    <tr>
-                      <th className="px-5 py-4 whitespace-nowrap">Property</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Unit</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Type</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Area</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Owner(s)</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Abbr.</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Business Name</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Tenant</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Turnover</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Acceptance</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Remarks</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Status</th>
-                      <th className="px-5 py-4 whitespace-nowrap text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-[var(--color-text)] font-medium">
-                    {csvPreviewData.length === 0 ? (
-                      <tr><td colSpan={13} className="px-5 py-12 text-center text-slate-400 font-bold">No rows remaining.</td></tr>
-                    ) : (
-                      csvPreviewData.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-[var(--color-primary)]/5 transition-colors">
-                          <td className="px-5 py-3 font-black text-[var(--color-text)] whitespace-nowrap">{row.property_name}</td>
-                          <td className="px-5 py-3 font-bold whitespace-nowrap">{row.unit_number}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{row.unit_type}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.owner_name}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.tenant_name}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.turnover_date) || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.acceptance_date) || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
-                          <td className="px-5 py-3 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${row.status === 'Vacant' ? 'bg-white text-slate-500 border-[var(--color-border)]' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
-                              {row.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-right whitespace-nowrap">
-                            <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded-lg border border-transparent hover:border-red-100 transition-all active:scale-95" title="Delete Row">
-                              <Trash2 size={16} strokeWidth={2.5} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            {/* Middle Section: Strict height constraints so the horizontal slider stays visible on screen */}
+            <div className="flex-1 min-h-0 bg-slate-50/50 p-4 sm:p-6 flex flex-col">
+              {/* ✨ The white card holds the border and radius, preventing scrollbars from looking messy */}
+              <div className="flex-1 min-h-0 flex flex-col bg-white border border-slate-200/80 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] overflow-hidden">
+                
+                {/* ✨ The actual scrolling container. Always exactly the height of the white card. */}
+                <div className="overflow-auto w-full h-full">
+                  <table className="w-full text-left text-xs relative min-w-[1200px]">
+                    <thead className="bg-slate-50/90 backdrop-blur-md text-slate-400 font-black uppercase tracking-widest sticky top-0 shadow-sm z-10 border-b border-[var(--color-border)]">
+                      <tr>
+                        <th className="px-5 py-4 whitespace-nowrap">Property</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Unit</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Type</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Area</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Owner(s)</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Abbr.</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Business Name</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Tenant</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Turnover</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Acceptance</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Remarks</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Status</th>
+                        <th className="px-5 py-4 whitespace-nowrap text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[var(--color-text)] font-medium">
+                      {csvPreviewData.length === 0 ? (
+                        <tr><td colSpan={13} className="px-5 py-12 text-center text-slate-400 font-bold">No rows remaining.</td></tr>
+                      ) : (
+                        csvPreviewData.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-[var(--color-primary)]/5 transition-colors">
+                            <td className="px-5 py-3 font-black text-[var(--color-text)] whitespace-nowrap">{row.property_name}</td>
+                            <td className="px-5 py-3 font-bold whitespace-nowrap">{row.unit_number}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{row.unit_type}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{row.unit_area || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.owner_name}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{row.owner_abbreviation || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{row.business_name || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap font-bold text-[var(--color-text)]">{row.tenant_name}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.turnover_date) || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">{formatDate(row.acceptance_date) || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap max-w-[150px] truncate" title={row.remarks}>{row.remarks || '—'}</td>
+                            <td className="px-5 py-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] ${row.status === 'Vacant' ? 'bg-white text-slate-500 border-[var(--color-border)]' : 'bg-white/10 text-[var(--color-text)] shadow-[var(--shadow-sm)] border-[var(--color-primary)]/20'}`}>
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right whitespace-nowrap">
+                              <button onClick={() => removePreviewRow(idx)} className="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded-lg border border-transparent hover:border-red-100 transition-all active:scale-95" title="Delete Row">
+                                <Trash2 size={16} strokeWidth={2.5} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
+            {/* Footer: Fixed */}
             <div className="px-6 sm:px-8 py-5 border-t border-[var(--color-border)] flex flex-col sm:flex-row items-center justify-between bg-[var(--color-bg)] shrink-0 gap-4">
-              <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                Ready to import: <span className="text-[var(--color-primary)] text-base ml-1 mr-1 bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-sm">{csvPreviewData.length}</span> units
+              <div className="text-[11px] font-black uppercase tracking-widest text-[var(--color-text)]">
+                Ready to import: <span className="text-[var(--color-text)] text-base ml-1 mr-1 bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-sm">{csvPreviewData.length}</span> units
                 {units.length + csvPreviewData.length > maxUnits && (
                   <span className="text-red-500 flex items-center gap-1.5 mt-2 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 normal-case tracking-normal font-bold">
                     <AlertTriangle size={14} /> Exceeds remaining plan limits! Delete some rows.
@@ -868,7 +877,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 )}
               </div>
               <div className="flex gap-3 w-full sm:w-auto">
-                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:shadow-[var(--shadow-sm)] rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
+                <button type="button" onClick={() => setIsPreviewModalOpen(false)} disabled={isImporting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-white hover:text-slate-600 hover:shadow-[var(--shadow-sm)] rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
                 <button 
                   onClick={confirmCsvImport} 
                   disabled={isImporting || csvPreviewData.length === 0 || (units.length + csvPreviewData.length > maxUnits)} 
@@ -878,6 +887,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 </button>
               </div>
             </div>
+            
           </div>
         </div>
       )}

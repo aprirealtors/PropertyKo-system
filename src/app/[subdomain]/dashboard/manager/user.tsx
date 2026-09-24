@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, UserCheck, Eye, EyeOff } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff } from "lucide-react";
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -264,7 +264,7 @@ export default function UsersTab({ orgData }: any) {
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
               <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <UserCheck className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
+                <Users className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Client Accounts
             </h2>
@@ -288,8 +288,8 @@ export default function UsersTab({ orgData }: any) {
 
             {/* Premium Admin Profile Badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5  rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-secondary)] uppercase tracking-wider">Manager</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Manager</span>
+              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -299,7 +299,7 @@ export default function UsersTab({ orgData }: any) {
 
       {/* ✨ FULL WIDTH KANBAN DATA TABLE CONTAINER */}
       <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
-        <div className="flex-1 min-h-0 bg-white rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
+        <div className="flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
