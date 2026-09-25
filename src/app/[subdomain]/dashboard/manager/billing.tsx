@@ -1100,7 +1100,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     onClick={openSOAModal}
                     className="w-full justify-center sm:w-auto bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/90 text-[var(--color-text)] px-2 sm:px-5 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-[11px] sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5 sm:gap-2"
                   >
-                    <Send className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--color-primary)]" /> <span className="truncate">Assign SOA</span>
+                    <Send className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--color-text)]" /> <span className="truncate">Assign SOA</span>
                   </button>
                 </div>
 
@@ -1208,11 +1208,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-text)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-text)]/20 shrink-0 shadow-sm">
                   <Settings size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">Unit Billing Config</h2>
+                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Unit Billing Config</h2>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">{selectedUnit.property_name} · Unit {selectedUnit.unit_number}</p>
                 </div>
               </div>
@@ -1369,7 +1369,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                     type="button" 
                     onClick={() => setIsUnitConfigModalOpen(false)} 
                     disabled={isSavingUnitConfig}
-                    className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
+                    className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 bg-white border border-slate-200 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
                   >
                     Cancel
                   </button>
@@ -1456,7 +1456,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto custom-scrollbar transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 z-10 px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/90 backdrop-blur-md">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-secondary)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-text)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-text)]/20 shrink-0">
                   <Send size={16} className="translate-x-[-1px] translate-y-[1px] sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate">Assign Balances <span className="text-[var(--color-text)] font-black ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
@@ -1762,7 +1762,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-md)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
-              <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] tracking-tight truncate pr-2">Payment Verification</h2>
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate pr-2">Payment Verification</h2>
               <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
                 <X size={20} className="w-5 h-5" />
               </button>

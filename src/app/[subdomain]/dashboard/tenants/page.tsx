@@ -851,8 +851,8 @@ export default function TenantDashboard() {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
-           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' ? 'absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300' : ''}`}>
+        <main className={`flex-1 relative ${activeTab === 'repair' || activeTab === 'conversation' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
+           <div className={`mx-auto w-full ${activeTab === 'repair' ? 'absolute inset-0 bg-[var(--color-bg)] flex' : ''}`}>
              {activeTab === 'home' && (
                <HomeView 
                  setActiveTab={setActiveTab} 
@@ -1479,7 +1479,7 @@ function HomeView({
   }, [unit, soaStatus, rentAmount]);
 
   return (
-    <div className="space-y-5 sm:space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
+    <div className="space-y-5 sm:space-y-6 md:space-y-8 max-w-6xl mx-auto">
       {/* Header Section */}
       <header className="flex flex-row justify-between items-center pb-2 gap-4">
         <div className="flex-1 min-w-0">
@@ -1571,55 +1571,55 @@ function HomeView({
       {/* Metric Grid: 4 Interactive Columns */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
 
-        {/* Card 1: Report Issue */}
+        {/* Card 1: Repair Tickets */}
         <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-            <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+            <PenTool size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
           </div>
           <div className="relative z-10 flex flex-col flex-1">
             <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Maintenance</h3>
-            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Report Issue</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Snap a photo request</p>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Repair Tickets</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Request & track repairs</p>
           </div>
         </button>
 
-        {/* Card 2: My Lease */}
+        {/* Card 2: Lease Agreement */}
         <button onClick={() => setActiveTab('lease')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-            <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+            <FileText size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
           </div>
           <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
-            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contract</h3>
-            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">My Lease</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active contracts</p>
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contracts</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Lease Agreement</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active agreements</p>
           </div>
         </button>
 
-        {/* Card 3: Financials */}
+        {/* Card 3: Account Billing */}
         <button onClick={() => setActiveTab('pay')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-            <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+            <Receipt size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
           </div>
           <div className="relative z-10 flex flex-col flex-1 min-w-0">
-            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
-            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Financials</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your financials</p>
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Financials</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Account Billing</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View & pay balances</p>
           </div>
         </button>
 
-        {/* Card 4: Support */}
+        {/* Card 4: Admin Support */}
         <button onClick={handleConversationClick} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-            <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+            <Mail size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
           </div>
           <div className="relative z-10 flex flex-col flex-1">
-            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Messages</h3>
-            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Support</p>
-            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message manager</p>
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Communications</h3>
+            <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Admin Support</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message property manager</p>
           </div>
         </button>
       </div>

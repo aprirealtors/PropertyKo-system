@@ -864,7 +864,7 @@ export default function OwnerDashboard() {
               <NavSectionLabel collapsed={isSidebarCollapsed}>Finance & Docs</NavSectionLabel>
             </div>
             <NavItem icon={<Receipt size={18} strokeWidth={2.5} />} label="Financials" isActive={activeTab === "financials"} onClick={() => {setActiveTab('financials'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
-            <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "leases"} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="Lease Documents" isActive={activeTab === "leases"} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
           {/* ✨ MATCHED UI: Premium Bottom User Tag (Edge-to-Edge Layout) */}
@@ -913,12 +913,12 @@ export default function OwnerDashboard() {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className={`flex-1 relative transition-all ${activeTab === 'repair' || activeTab === 'messages' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
-           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'repair' || activeTab === 'messages' ? 'absolute inset-0 bg-[var(--color-bg)] flex animate-in fade-in duration-300' : ''}`}>
+        <main className={`flex-1 relative ${activeTab === 'repair' || activeTab === 'messages' ? 'flex flex-col overflow-hidden pb-16 md:pb-0' : 'overflow-y-auto p-4 md:p-8 pb-28'}`}>
+           <div className={`mx-auto w-full ${activeTab === 'repair' || activeTab === 'messages' ? 'absolute inset-0 bg-[var(--color-bg)] flex' : ''}`}>
              
              {/* TAB 1: HOME (OVERVIEW) */}
              {activeTab === 'home' && (
-               <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
+               <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
 
                  {/* Header Section */}
               <header className="flex flex-row justify-between items-center pb-2 gap-4">
@@ -1011,103 +1011,59 @@ export default function OwnerDashboard() {
 
                  {/* Metric Grid: 4 Interactive Columns */}
                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 ">
-
-                   {/* Card 1: Report Issue */}
+                   
+                   {/* Card 1: Report Issue -> Repair Tickets */}
                    <button onClick={() => setActiveTab('repair')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                      <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                       <PenTool size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                       <PenTool size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
                      </div>
                      <div className="relative z-10 flex flex-col flex-1">
                        <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Maintenance</h3>
-                       <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Report Issue</p>
-                       <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Create repair request</p>
+                       <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Repair Tickets</p>
+                       <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track property issues</p>
                      </div>
                    </button>
 
-                   {/* Card 2: Collected Gross */}
-                   {/* <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
-                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                       <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                     </div>
-                     <div className="relative z-10 flex flex-col flex-1 min-w-0">
-                       <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Gross Income</h3>
-                       <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px] truncate">
-                         {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-16 sm:w-20"></div> : `₱${collectedGross.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
-                       </div>
-                       <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Total revenue collected</p>
-                     </div>
-                   </button> */}
-
-                   {/* Card 2: My Lease */}
+                   {/* Card 2: My Lease -> Lease Documents */}
                   <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                      <FileText size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                      <FileText size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
                     </div>
                     <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
-                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contract</h3>
-                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">My Lease</p>
-                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active contracts</p>
+                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Contracts</h3>
+                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Lease Documents</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View active agreements</p>
                     </div>
                   </button>
 
-                   {/* Card 3: Owned Properties */}
-                  {/* <button onClick={() => setActiveTab('leases')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                      <Home size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                    </div>
-                    <div className="relative z-10 flex flex-col flex-1 w-full min-w-0">
-                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Properties</h3>
-                      <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
-                        {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10"></div> : `${unitsCount} ${unitsCount === 1 ? 'Unit' : 'Units'}`}
-                      </div>
-                      <div className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug truncate w-full">
-                        {isLoading ? <div className="h-2.5 sm:h-3 bg-slate-100 rounded animate-pulse w-16 sm:w-24"></div> : fullUnitsDisplay}
-                      </div>
-                    </div>
-                  </button> */}
-                  {/* Card 3: Financials */}
+                   {/* Card 3: Financials -> Account Billing */}
                   <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                      <Receipt size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                      <Receipt size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
                     </div>
                     <div className="relative z-10 flex flex-col flex-1 min-w-0">
-                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
-                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Financials</p>
-                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Track your financials</p>
+                      <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Financials</h3>
+                      <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Account Billing</p>
+                      <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Monitor dues & records</p>
                     </div>
                   </button>
 
-                   {/* Card 4: Occupied Units */}
-                   {/* <button className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full cursor-default">
-                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                       <CheckCircle size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
-                     </div>
-                     <div className="relative z-10 flex flex-col flex-1">
-                       <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Occupancy</h3>
-                       <div className="text-sm sm:text-lg font-black text-[var(--color-text)] mt-0.5 sm:mt-1 flex items-center min-h-[20px] sm:min-h-[28px]">
-                         {isLoading ? <div className="h-4 sm:h-5 bg-slate-200 rounded animate-pulse w-10 sm:w-14"></div> : `${occupiedCount} / ${unitsCount}`}
-                       </div>
-                       <p className="text-[9px] sm:text-[11px] font-semibold text-slate-400 mt-1 leading-snug hidden sm:block">Active current leases</p>
-                     </div>
-                   </button> */}
-                   {/* Card 4: Support */}
+                   {/* Card 4: Support -> Admin Support */}
                     <button onClick={handleConversationClick} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
-                        <Mail size={18} className="text-[var(--color-primary)] sm:w-5 sm:h-5" />
+                        <Mail size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
                       </div>
                       <div className="relative z-10 flex flex-col flex-1">
-                        <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Messages</h3>
-                        <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Support</p>
-                        <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message manager</p>
+                        <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Communications</h3>
+                        <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Admin Support</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">Message management</p>
                       </div>
                     </button>
+
                  </div>
 
                  {/* Section: Recent Statements List */}
@@ -1213,48 +1169,49 @@ export default function OwnerDashboard() {
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/90 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)]">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/90 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)] border-t border-[var(--color-border)]/50">
         <div className="flex justify-around items-center px-1 py-1.5 max-w-md mx-auto">
 
+          {/* HOME */}
           <button onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
             {activeTab === 'home' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'home' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'home' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              <Home size={20} />
+              <Home size={20} strokeWidth={2.5} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Home</span>
             </div>
           </button>
 
+          {/* REPAIRS */}
           <button onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
             {activeTab === 'repair' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'repair' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'repair' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              <Wrench size={20} />
+              <Wrench size={20} strokeWidth={2.5} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Repairs</span>
             </div>
           </button>
 
+          {/* CHAT / MESSAGES */}
           <button onClick={handleConversationClick} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
             {activeTab === 'messages' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'messages' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'messages' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              
               <div className="relative w-5 h-5 block shrink-0">
-                <MessageSquare size={20} className="absolute inset-0" />
+                <MessageSquare size={20} strokeWidth={2.5} className="absolute inset-0" />
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] z-20">
+                  <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] z-20 animate-pulse">
                     {unreadMessages > 99 ? '99+' : unreadMessages}
                   </span>
                 )}
               </div>
-
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Chat</span>
             </div>
           </button>
 
-          {/* FINANCE */}
+          {/* BILLING (Previously Finance) */}
           <button onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
             {activeTab === 'financials' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'financials' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'financials' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              <Receipt size={20} />
-              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Finance</span>
+              <Receipt size={20} strokeWidth={2.5} />
+              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Billing</span>
             </div>
           </button>
 
@@ -1262,8 +1219,8 @@ export default function OwnerDashboard() {
           <button onClick={() => {setActiveTab('leases'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} className="relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group rounded-[var(--radius-md)]">
             {activeTab === 'leases' && !isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${activeTab === 'leases' && !isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: activeTab === 'leases' && !isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              <FileText size={20} />
-              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Lease</span>
+              <FileText size={20} strokeWidth={2.5} />
+              <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Leases</span>
             </div>
           </button>
 
@@ -1282,7 +1239,7 @@ export default function OwnerDashboard() {
           >
             {isWorkspaceModalOpen && <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />}
             <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${isWorkspaceModalOpen ? '-translate-y-1 scale-[1.05]' : 'text-slate-500 group-hover:text-[var(--color-primary)]'}`} style={{ color: isWorkspaceModalOpen ? 'var(--color-text)' : '' }}>
-              <User size={20} />
+              <User size={20} strokeWidth={2.5} />
               <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">Profile</span>
             </div>
           </button>

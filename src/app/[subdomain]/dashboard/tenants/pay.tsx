@@ -360,8 +360,8 @@ export default function PayTab() {
         ) : (
           <>
             {/* ✨ LEFT MAIN AREA (SOA Summary & Ledger) */}
-            <div className={`flex-1 flex-col bg-[var(--color-bg)] relative lg:overflow-y-auto custom-scrollbar ${!isMobileHistoryVisible ? 'flex' : 'hidden md:flex'}`}>
-              <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-24 lg:pb-12">
+            <div className={`flex-1 flex-col bg-[var(--color-bg)] relative lg:overflow-y-auto ${!isMobileHistoryVisible ? 'flex' : 'hidden md:flex'}`}>
+              <div className="p-2 sm:p-4 lg:p-6 space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-24 lg:pb-12">
                 
                 <div className="md:hidden flex justify-end">
                   <button 
@@ -479,7 +479,7 @@ export default function PayTab() {
                     </button>
                   </div>
                   
-                  <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] custom-scrollbar shadow-[var(--shadow-inner)] max-h-[600px] relative">
+                  <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-[var(--shadow-inner)] relative">
                     <table className="w-full text-left text-xs min-w-[800px] border-collapse">
                       <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-center font-extrabold border-b border-transparent sticky top-0 z-20 shadow-sm">
                         <tr>
@@ -603,22 +603,21 @@ export default function PayTab() {
 
                 return (
                   <>
-                    <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center">
-                      <h3 className="font-black text-[var(--color-text)] text-[12px] sm:text-[13px] uppercase tracking-wider flex items-center gap-2 whitespace-normal break-words">
-                        <History size={16} className="text-[var(--color-text)] w-4 h-4 sm:w-5 sm:h-5"/> Transaction History
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2 sm:px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)] whitespace-nowrap">{paidHistory.length} Total</span>
-                        <button 
-                          onClick={() => setIsMobileHistoryVisible(false)}
-                          className="md:hidden p-1.5 text-slate-400 hover:bg-[var(--color-bg)] rounded-[var(--radius-sm)] active:scale-95 transition-colors"
-                        >
-                          <X size={18} strokeWidth={2.5}/>
-                        </button>
+                    <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center shadow-[var(--shadow-sm)] z-10">
+                     <div className="flex items-center gap-2">
+                          <button onClick={() => setIsMobileHistoryVisible(false)} className="mr-1 text-slate-400 hover:bg-slate-100 p-1.5 rounded-[var(--radius-sm)] transition-colors active:scale-95">
+                            <ChevronLeft size={22} strokeWidth={2.5} />
+                          </button>
+                          <h3 className="font-black text-[var(--color-text)] text-[13px] uppercase tracking-wider flex items-center gap-2">
+                            <History size={16} className="text-[var(--color-text)]"/> Transaction History
+                          </h3>
+                        </div>
+                        <span className="text-[10px] font-bold text-slate-500 bg-[var(--color-bg)] border border-[var(--color-border)] px-2.5 py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">
+                          {isLoading ? '...' : paidHistory.length} Total
+                        </span>
                       </div>
-                    </div>
                     
-                    <div className="flex-1 overflow-y-visible md:overflow-y-auto custom-scrollbar p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-[var(--color-bg)]/30 pb-24 md:pb-4">
+                    <div className="flex-1 overflow-y-visible md:overflow-y-auto p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-[var(--color-bg)]/30 pb-24 md:pb-4">
                       {paidHistory.length === 0 ? (
                         <div className="text-center py-10 sm:py-12 px-5 border border-dashed border-[var(--color-border)] rounded-[var(--radius-lg)] w-full bg-white shadow-sm">
                           <div className="w-12 h-12 bg-[var(--color-bg)] rounded-full flex items-center justify-center mx-auto mb-3 border border-[var(--color-border)]">

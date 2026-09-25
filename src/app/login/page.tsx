@@ -286,7 +286,7 @@ export default function Home() {
             priority
           />
         </div>
-        <div className="w-10 h-10 border-4 border-[var(--color-primary)]/20 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-[#0a1e3f]/20 border-t-[#0a1e3f] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -439,7 +439,7 @@ export default function Home() {
                   placeholder="Enter your registered email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
+                  className="w-full pl-11 pr-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-text)] focus:ring-1 focus:ring-[var(--color-text)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
               </div>
@@ -460,7 +460,7 @@ export default function Home() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-12 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
+                  className="w-full pl-11 pr-12 py-3 rounded-[var(--radius-lg)] bg-[var(--color-bg)] text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-text)] focus:ring-1 focus:ring-[var(--color-text)] transition-all shadow-[var(--shadow-inner)] placeholder-opacity-40"
                   required
                 />
                 <button

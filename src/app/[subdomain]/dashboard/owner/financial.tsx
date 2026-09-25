@@ -418,7 +418,7 @@ export default function FinancialTab({ userData, units }: any) {
                     {sortedUnits.length} Total
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1 bg-[var(--color-bg)]/30">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-[var(--color-bg)]/30">
                   {sortedUnits.map((unit: any) => {
                     const status = localStatuses[unit.id];
                     const isSelected = selectedUnit?.id === unit.id;
@@ -465,7 +465,7 @@ export default function FinancialTab({ userData, units }: any) {
                     {paidHistory.length} Total
                   </span>
                 </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2.5">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
                   {paidHistory.length === 0 ? (
                     <div className="text-center py-8">
                       <AlertCircle className="text-[var(--color-text)]/30 mx-auto mb-2" size={24} />
@@ -498,7 +498,7 @@ export default function FinancialTab({ userData, units }: any) {
                   <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Choose a unit from the sidebar to view billing details.</p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
                   
                   {/* ✨ MOBILE VIEW HISTORY BUTTON */}
                   <div className="md:hidden flex justify-end">
@@ -669,7 +669,7 @@ export default function FinancialTab({ userData, units }: any) {
                       </button>
                     </div>
                     
-                    <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] custom-scrollbar relative shadow-[var(--shadow-inner)]">
+                    <div className="hidden md:block overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-md)] relative shadow-[var(--shadow-inner)]">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-center font-extrabold border-b border-transparent sticky top-0 z-10 shadow-md">
                           <tr>
@@ -806,7 +806,7 @@ export default function FinancialTab({ userData, units }: any) {
                  </span>
               </div>
               
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3 bg-[var(--color-bg)]/30 mb-16">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5 sm:space-y-3 bg-[var(--color-bg)]/30 mb-16">
                  {isLoading ? (
                    [1, 2, 3, 4, 5].map((i) => (
                      <div key={i} className="flex items-center justify-between p-3.5 sm:p-4 rounded-[var(--radius-md)] border bg-white border-[var(--color-border)] shadow-[var(--shadow-sm)] animate-pulse">

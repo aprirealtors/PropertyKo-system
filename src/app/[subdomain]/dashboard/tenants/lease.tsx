@@ -175,7 +175,7 @@ export default function LeaseTab({ setActiveTab }: any) {
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight truncate">
-                  My Lease
+                  Lease Agreement
                 </h2>
                 <p className="text-slate-500 text-[11px] sm:text-xs mt-0.5 font-medium truncate">
                   View your contract details and history

@@ -770,7 +770,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                 ref={scrollContainerRef}
               >
                 {isLoading ? (
-                  <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2"><Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...</div>
+                  <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2"><Clock size={14} className="animate-spin text-[var(--color-text)] sm:w-4 sm:h-4" /> Loading...</div>
                 ) : activeChat === 'tenant' && !tenantEmail ? (
                   <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300"><User size={24} className="sm:w-7 sm:h-7" /></div>

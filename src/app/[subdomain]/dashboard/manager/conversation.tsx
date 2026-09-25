@@ -532,7 +532,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
         {/* SIDEBAR LIST */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-white custom-scrollbar">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[var(--color-primary)]" size={18} /> Loading...</div>
+            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[var(--color-text)]" size={18} /> Loading...</div>
           ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400 text-[10px] sm:text-xs font-semibold">
               No conversations found.
@@ -765,7 +765,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
               >
                 {isLoading ? (
                   <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
-                    <Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...
+                    <Clock size={14} className="animate-spin text-[var(--color-text)] sm:w-4 sm:h-4" /> Loading...
                   </div>
                 ) : displayedMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">

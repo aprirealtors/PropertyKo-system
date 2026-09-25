@@ -110,7 +110,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         
         <div 
           onClick={openProfileModal}
-          className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 ring-4 ring-white"
+          className="w-14 h-14 md:w-16 md:h-16 rounded-[var(--radius-lg)] md:rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center font-black text-xl md:text-2xl border border-[var(--color-primary)]/20 shadow-sm cursor-pointer hover:shadow-md hover:scale-105 hover:-rotate-3 active:scale-95 transition-all duration-300 shrink-0 ring-4 ring-white"
           title="View Profile Details"
         >
           {profile.initials}
@@ -254,9 +254,9 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         {upNextTasks.length > 0 && (
           <button 
             onClick={() => setActiveTab && setActiveTab('tasks')} 
-            className="w-full mt-6 sm:hidden bg-white text-[var(--color-secondary)] py-4 rounded-[var(--radius-md)] font-extrabold text-sm border border-[var(--color-border)] hover:bg-[var(--color-bg)] flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[var(--shadow-sm)]"
+            className="w-full mt-6 sm:hidden bg-[var(--color-primary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-extrabold text-sm border border-[var(--color-border)] hover:opacity-90 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[var(--shadow-sm)]"
           >
-            View all your tasks <ChevronRight size={16} strokeWidth={2.5} />
+            View All Tasks <ChevronRight size={16} strokeWidth={2.5} />
           </button>
         )}
       </section>
