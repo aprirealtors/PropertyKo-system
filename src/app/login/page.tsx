@@ -1,6 +1,7 @@
+// src/app/login/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +16,10 @@ import {
   Building2,
   Users,
   UserCheck,
+  MessageSquare,
+  X,
+  Send,
+  Check
 } from "lucide-react";
 
 export default function Home() {
@@ -28,6 +33,14 @@ export default function Home() {
   
   // State to track if user is on a subdomain
   const [isSubdomain, setIsSubdomain] = useState(false);
+
+  // ✨ CUSTOMER SUPPORT CONTACT STATES
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [supportName, setSupportName] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
   // Detect Subdomain on mount
   useEffect(() => {
@@ -117,6 +130,41 @@ export default function Home() {
     
     checkSession();
   }, [router]);
+
+  // ✨ CONTACT US FORM SUBMIT HANDLER
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supportName.trim() || !supportEmail.trim() || !supportMessage.trim()) return;
+
+    setIsSubmittingSupport(true);
+
+    const formattedMessage = `Name: ${supportName.trim()}\n\nMessage:\n${supportMessage.trim()}`;
+
+    const payload = {
+      admin_email: 'superadmin@propertyko.com',
+      tenant_email: supportEmail.trim(), 
+      sender_email: supportEmail.trim(),
+      content: formattedMessage,
+      recipient_role: 'superadmin',
+      is_from_tenant: true,
+      is_read: false
+    };
+
+    const { error } = await supabase.from('messages').insert([payload]);
+
+    setIsSubmittingSupport(false);
+
+    if (error) {
+      console.error("Support message send failed:", error);
+      alert("Failed to send message. Please check your connection or try again later.");
+    } else {
+      // Trigger Beautiful Success Modal
+      setIsSuccessModalOpen(true);
+      setSupportName("");
+      setSupportEmail("");
+      setSupportMessage("");
+    }
+  };
 
   // HANDLE LOGIN
   const handleLogin = async (e: React.FormEvent) => {
@@ -244,7 +292,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f]">
+    <div className="min-h-screen w-full flex bg-white font-sans text-slate-900 selection:bg-[#359b46]/20 selection:text-[#0a1e3f] relative overflow-hidden">
       {/* =========================================
           LEFT PANEL - BRANDING (Hidden on Mobile)
           ========================================= */}
@@ -485,6 +533,104 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* ✨ FULLY UPGRADED & SIZED CONTACT SUPPORT WIDGET */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+        {isSupportOpen && (
+          <div className="mb-4 w-[360px] sm:w-[380px] h-auto min-h-[520px] max-h-[85vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
+            <div className="bg-[#0a1e3f] p-4 sm:p-5 flex justify-between items-center text-white shrink-0 shadow-sm z-10">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={20} className="text-[#359b46]" />
+                <h3 className="font-bold text-base tracking-tight">Contact Support</h3>
+              </div>
+              <button onClick={() => { setIsSupportOpen(false); setIsSuccessModalOpen(false); }} className="text-slate-300 hover:text-white transition-colors active:scale-95">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 bg-slate-50 overflow-y-auto p-5 sm:p-6 flex flex-col custom-scrollbar">
+              {isSuccessModalOpen ? (
+                <div className="flex flex-col items-center justify-center h-full text-center animate-in zoom-in-95 duration-300 py-10">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-5 shadow-inner border-4 border-emerald-50">
+                    <Check size={32} strokeWidth={3} />
+                  </div>
+                  <h4 className="font-black text-slate-800 text-lg mb-2 tracking-tight">Message Sent!</h4>
+                  <p className="text-sm text-slate-500 mb-8 leading-relaxed px-2">We've received your request and our admin team will reach out to you via email shortly.</p>
+                  <button 
+                    onClick={() => { setIsSuccessModalOpen(false); setIsSupportOpen(false); }}
+                    className="w-full bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl hover:bg-slate-300 transition-colors text-sm shadow-sm active:scale-95"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col h-full animate-in fade-in duration-300">
+                  <p className="text-[13px] text-slate-600 mb-6 leading-relaxed font-medium">
+                    Have a question or need assistance? Send us a message and we'll respond in your personal email as soon as possible.
+                  </p>
+                  <form onSubmit={handleContactSubmit} className="flex flex-col gap-5 flex-1">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Full Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. John Doe" 
+                        value={supportName} 
+                        onChange={e => setSupportName(e.target.value)} 
+                        required 
+                        className="w-full p-3.5 text-sm font-medium rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:border-transparent focus:ring-2 focus:ring-[#359b46] bg-slate-50/50 shadow-sm transition-all" 
+                        disabled={isSubmittingSupport} 
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Email Address</label>
+                      <input 
+                        type="email" 
+                        placeholder="john@example.com" 
+                        value={supportEmail} 
+                        onChange={e => setSupportEmail(e.target.value)} 
+                        required 
+                        className="w-full p-3.5 text-sm font-medium rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:border-transparent focus:ring-2 focus:ring-[#359b46] bg-slate-50/50 shadow-sm transition-all" 
+                        disabled={isSubmittingSupport} 
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Message</label>
+                      <textarea 
+                        placeholder="How can we help you?" 
+                        value={supportMessage} 
+                        onChange={e => setSupportMessage(e.target.value)} 
+                        required 
+                        className="w-full p-3.5 text-sm font-medium rounded-xl border border-slate-200 focus:outline-none focus:bg-white focus:border-transparent focus:ring-2 focus:ring-[#359b46] bg-slate-50/50 shadow-sm flex-1 resize-none custom-scrollbar transition-all min-h-[120px]" 
+                        disabled={isSubmittingSupport} 
+                      />
+                    </div>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmittingSupport || !supportName.trim() || !supportEmail.trim() || !supportMessage.trim()} 
+                      className="w-full bg-gradient-to-r from-[#359b46] to-[#2c813a] text-white font-bold py-3.5 rounded-xl hover:shadow-lg hover:shadow-green-500/20 disabled:opacity-50 transition-all text-sm shadow-md mt-2 flex justify-center items-center gap-2 active:scale-95 border border-transparent"
+                    >
+                      {isSubmittingSupport ? <span className="animate-pulse">Sending...</span> : <><Send size={16} strokeWidth={2.5} className="-ml-1" /> Send Message</>}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <button 
+          onClick={() => { setIsSupportOpen(!isSupportOpen); if(!isSupportOpen) setIsSuccessModalOpen(false); }} 
+          className="w-14 h-14 bg-[#0a1e3f] rounded-full text-white shadow-2xl flex items-center justify-center hover:scale-105 transition-all duration-300 border-2 border-white/10 hover:border-white/30 hover:shadow-[#0a1e3f]/40"
+        >
+          {isSupportOpen ? <X size={24} strokeWidth={2.5} /> : <MessageSquare size={24} strokeWidth={2.5} />}
+        </button>
+      </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}} />
     </div>
   );
 }

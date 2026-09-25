@@ -1,16 +1,16 @@
-// src/app/dashboard/admin/conversation.tsx
+// src/app/dashboard/superadmin/conversation.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, ChevronLeft, MessageSquare, Search, 
-  X, Briefcase, Wrench, Key, Edit, Check, CheckCheck,
-  Pin, PinOff, CornerUpLeft, Copy, ChevronDown, ShieldCheck
+  X, ShieldCheck, Edit, Check, CheckCheck,
+  Pin, PinOff, CornerUpLeft, Copy, ChevronDown
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
 
-export default function ConversationTab({ orgData, adminProfile }: { orgData: any, adminProfile: any }) {
+export default function SuperAdminConversation() {
   const [messages, setMessages] = useState<any[]>([]);
   const [activeChat, setActiveChat] = useState<string>(''); 
   const [newMessage, setNewMessage] = useState("");
@@ -22,7 +22,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
   const [isEditingNames, setIsEditingNames] = useState(false);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
-  const [searchQuery, setSearchQuery] = useState("");
   const [contactSearch, setContactSearch] = useState(""); 
   const [chatSearchQuery, setChatSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false); 
@@ -43,11 +42,12 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
   const channelRef = useRef<any>(null);
-  const superAdminChannelRef = useRef<any>(null); // ✨ NEW: Dedicated ref for cross-channel typing
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const superAdminEmail = 'superadmin@propertyko.com';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,13 +56,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Show button if scrolled up more than 100px from the bottom
     setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 100);
   };
 
   const scrollToMessage = (msgId: string) => {
     setIsPinnedExpanded(false); 
-    
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -71,66 +69,39 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     }
   };
 
-  // Helper for dynamic message date/time display in main chat
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
-    
-    const isToday = 
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear();
-
-    if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
+    const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+    if (isToday) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    else return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  // Helper for Messenger-style sidebar time display
   const formatSidebarTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
-
-    // Set to midnight to calculate day differences accurately
     const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const msInDay = 1000 * 60 * 60 * 24;
-    const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / msInDay);
+    const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) {
-      // Today: Show Time
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays > 0 && diffDays < 7) {
-      // Within a week: Show Mon, Tue, Wed, etc.
-      return date.toLocaleDateString([], { weekday: 'short' });
-    } else {
-      // More than a week: Show Date (e.g. Oct 12)
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    }
+    if (diffDays === 0) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    else if (diffDays > 0 && diffDays < 7) return date.toLocaleDateString([], { weekday: 'short' });
+    else return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
   useEffect(() => {
-    if (orgData?.admin_email) {
-      const storedNames = localStorage.getItem(`custom_chat_names_${orgData.admin_email}`);
-      if (storedNames) {
-        try {
-          setCustomNames(JSON.parse(storedNames));
-        } catch (e) {
-          console.error("Error parsing stored aliases", e);
-        }
-      }
+    const storedNames = localStorage.getItem(`custom_chat_names_${superAdminEmail}`);
+    if (storedNames) {
+      try { setCustomNames(JSON.parse(storedNames)); } catch (e) { console.error(e); }
     }
-  }, [orgData?.admin_email]);
+  }, []);
 
   useEffect(() => {
-    if (orgData?.admin_email && Object.keys(customNames).length > 0) {
-      localStorage.setItem(`custom_chat_names_${orgData.admin_email}`, JSON.stringify(customNames));
+    if (Object.keys(customNames).length > 0) {
+      localStorage.setItem(`custom_chat_names_${superAdminEmail}`, JSON.stringify(customNames));
     }
-  }, [customNames, orgData?.admin_email]);
+  }, [customNames]);
 
   useEffect(() => {
     setIsSearchActive(false);
@@ -140,111 +111,87 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     setReplyingTo(null);
     setShowScrollBottom(false);
     setNewMessage(messageDrafts[activeChat] || "");
-    if (inputRef.current) {
-      inputRef.current.style.height = '24px';
-    }
+    if (inputRef.current) inputRef.current.style.height = '24px';
   }, [activeChat]);
 
   useEffect(() => {
     if (!chatSearchQuery && !highlightedMsgId) scrollToBottom();
   }, [messages.length, activeChat, chatSearchQuery]); 
 
-  // ✨ UPDATED: Support routing superadmin contact checks
   const isMessageForContact = (msg: any, contactId: string) => {
-    if (contactId === 'superadmin@propertyko.com') {
-      return msg.admin_email === 'superadmin@propertyko.com' && msg.tenant_email === orgData?.admin_email;
-    }
     return msg.tenant_email === contactId;
   };
 
+  // Mark active chat as read
   useEffect(() => {
     const markAsRead = async () => {
       const activeContact = contacts.find(c => c.id === activeChat);
-      if (!activeContact || !orgData?.admin_email || messages.length === 0) return;
+      if (!activeContact || messages.length === 0) return;
 
       const unreadIds = messages
-        .filter(m => !m.is_read && m.sender_email !== adminProfile?.email && isMessageForContact(m, activeContact.id) && m.recipient_role === 'admin')
+        .filter(m => !m.is_read && m.sender_email !== superAdminEmail && isMessageForContact(m, activeContact.id))
         .map(m => m.id);
 
       if (unreadIds.length === 0) return;
 
       setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, is_read: true } : m));
-
-      try {
-        await supabase.from('messages').update({ is_read: true }).in('id', unreadIds);
-      } catch (err) {
-        console.error("Could not update read status:", err);
-      }
+      try { await supabase.from('messages').update({ is_read: true }).in('id', unreadIds); } catch (err) { }
     };
     markAsRead();
-  }, [activeChat, messages, orgData?.admin_email, adminProfile?.email, contacts]);
+  }, [activeChat, messages, contacts]);
 
+  // Fetch all org admins and chats
   useEffect(() => {
     const fetchChatData = async () => {
       setIsLoading(true);
       try {
-        const { data: adminMsgs } = await supabase
+        // 1. Fetch all Organizations to get their admins
+        const { data: orgsData } = await supabase.from('organizations').select('admin_email, org_name');
+
+        // 2. Fetch all messages directed to superadmin
+        const { data: msgsData } = await supabase
           .from('messages')
           .select('*')
-          .eq('admin_email', orgData.admin_email)
-          .eq('recipient_role', 'admin');
+          .eq('admin_email', superAdminEmail)
+          .order('created_at', { ascending: true });
 
-        let sentMsgs: any[] = [];
-        if (adminProfile?.email) {
-          const { data } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('admin_email', orgData.admin_email)
-            .eq('sender_email', adminProfile.email);
-          sentMsgs = data || [];
-        }
-
-        // Fetch chats exchanged with Superadmin
-        const { data: superAdminMsgs } = await supabase.from('messages')
-          .select('*').eq('admin_email', 'superadmin@propertyko.com').eq('tenant_email', orgData.admin_email);
-
-        const allMsgsMap = new Map();
-        [...(adminMsgs || []), ...(sentMsgs || []), ...(superAdminMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
-        setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-
-        const { data: usersData } = await supabase
-          .from('team_members')
-          .select('name, email, role, access_level')
-          .eq('admin_email', orgData.admin_email)
-          .in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager']); 
+        if (msgsData) setMessages(msgsData);
 
         const contactsMap = new Map();
+        const initialNames: Record<string, string> = {};
 
-        // Add SuperAdmin Support Contact Pin
-        contactsMap.set('superadmin@propertyko.com', {
-          id: 'superadmin@propertyko.com', name: 'PropertyKo Support', unit: 'System Administrator', type: 'superadmin', icon: ShieldCheck
-        });
-
-        if (usersData) {
-          usersData.forEach(user => {
-            if (user.email && user.email.trim() !== '') { 
-              let icon = User;
-              let type = user.role ? user.role.toLowerCase() : 'tenant';
-              let unitLabel = user.access_level || 'No assignments';
-
-              if (user.role === 'Owner') { icon = Key; type = 'owner'; }
-              if (user.role === 'Property manager') { icon = Briefcase; type = 'manager'; unitLabel = 'Maintenance & Daily Operations'; }
-              if (user.role === 'Maintenance staff') { icon = Wrench; type = 'maintenance'; unitLabel = 'Repairs & Operations'; }
-              if (user.role === 'Tenant') { type = 'tenant'; }
-
-              contactsMap.set(user.email, { 
-                id: user.email, name: user.name || user.email, unit: unitLabel, type: type, icon: icon
+        // Populate all workspace admins by default
+        if (orgsData) {
+          orgsData.forEach(org => {
+            if (org.admin_email) {
+              contactsMap.set(org.admin_email, {
+                id: org.admin_email,
+                name: org.org_name || org.admin_email,
+                type: 'Workspace Admin',
+                icon: ShieldCheck
               });
+              initialNames[org.admin_email] = org.org_name || org.admin_email;
             }
           });
         }
-        setContacts(Array.from(contactsMap.values()));
 
-        // Ensure PropertyKo Support name stays clean unless edited
-        const initialNames: Record<string, string> = { 'superadmin@propertyko.com': 'PropertyKo Support' };
-        contactsMap.forEach((val, key) => { 
-          if(key !== 'superadmin@propertyko.com') initialNames[key] = val.name; 
-        });
+        // Add any other users who messaged (e.g. from login page support)
+        if (msgsData) {
+          msgsData.forEach(m => {
+            const sender = m.tenant_email;
+            if (sender && !contactsMap.has(sender) && sender !== superAdminEmail) {
+              contactsMap.set(sender, {
+                id: sender,
+                name: sender,
+                type: 'Support Request',
+                icon: User
+              });
+              initialNames[sender] = sender;
+            }
+          });
+        }
+
+        setContacts(Array.from(contactsMap.values()));
         setCustomNames(prev => ({ ...initialNames, ...prev }));
 
       } catch (error) {
@@ -254,38 +201,36 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       }
     };
 
-    if (orgData?.admin_email) {
-      fetchChatData();
-    } else {
-      const timer = setTimeout(() => setIsLoading(false), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [orgData?.admin_email, adminProfile?.email]);
+    fetchChatData();
+  }, []);
 
+  // Realtime Subscriptions
   useEffect(() => {
-    if (!orgData?.admin_email) return;
-
-    // Normal Organization Chat Channel
-    const channel = supabase.channel(`chat-room-${orgData.admin_email}`, {
+    const channel = supabase.channel(`chat-room-${superAdminEmail}`, {
       config: { broadcast: { ack: false, self: false } }
     });
 
     channelRef.current = channel;
 
     channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.${superAdminEmail}` },
         (payload) => {
           const msg = payload.new;
-          if (msg.recipient_role === 'admin' || msg.sender_email === adminProfile?.email) {
-            setMessages((current) => {
-              if (current.some(m => m.id === msg.id)) return current;
-              return [...current, msg];
-            });
-            setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
-          }
+          setMessages((current) => {
+            if (current.some(m => m.id === msg.id)) return current;
+            return [...current, msg];
+          });
+          
+          // Add to contacts if new sender
+          setContacts(prev => {
+            if (prev.some(c => c.id === msg.tenant_email)) return prev;
+            return [...prev, { id: msg.tenant_email, name: msg.tenant_email, type: 'Support Request', icon: User }];
+          });
+
+          setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
         }
       )
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `admin_email=eq.${superAdminEmail}` },
         (payload) => {
           const updatedMsg = payload.new;
           setMessages((current) => current.map(m => m.id === updatedMsg.id ? updatedMsg : m));
@@ -293,44 +238,14 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
         const { sender, recipient, isTyping } = payload.payload;
-        if (recipient === adminProfile?.email || recipient === 'admin' || recipient === orgData.admin_email) {
+        if (recipient === superAdminEmail) {
           setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
         }
       })
       .subscribe();
 
-    // ✨ NEW: Dedicated Superadmin Presence Channel
-    const superAdminChannel = supabase.channel(`chat-room-superadmin@propertyko.com`, {
-      config: { broadcast: { ack: false, self: false } }
-    });
-    
-    superAdminChannelRef.current = superAdminChannel;
-
-    superAdminChannel
-      .on('broadcast', { event: 'typing' }, (payload) => {
-        const { sender, recipient, isTyping } = payload.payload;
-        if (recipient === orgData.admin_email || recipient === adminProfile?.email) {
-          setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
-        }
-      })
-      .subscribe();
-
-    // Listen to Support messages returning from Superadmin
-    const supportChannel = supabase.channel(`support-${orgData.admin_email}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.superadmin@propertyko.com` }, 
-        (payload) => {
-          if (payload.new.tenant_email === orgData.admin_email) {
-            setMessages((current) => { if (current.some(m => m.id === payload.new.id)) return current; return [...current, payload.new]; });
-          }
-        }
-      ).subscribe();
-
-    return () => { 
-      supabase.removeChannel(channel); 
-      supabase.removeChannel(supportChannel); 
-      supabase.removeChannel(superAdminChannel); 
-    };
-  }, [orgData?.admin_email, adminProfile?.email]);
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -340,27 +255,22 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
 
-    // Handle typing broadcasts correctly routed by channel
-    if (!isTypingRef.current && activeChat && adminProfile?.email) {
+    if (!isTypingRef.current && channelRef.current && activeChat) {
       isTypingRef.current = true;
-      const targetChannel = activeChat === 'superadmin@propertyko.com' ? superAdminChannelRef.current : channelRef.current;
-      if (targetChannel) {
-        targetChannel.send({
-          type: 'broadcast', event: 'typing',
-          payload: { sender: adminProfile.email, recipient: activeChat, isTyping: true }
-        });
-      }
+      channelRef.current.send({
+        type: 'broadcast', event: 'typing',
+        payload: { sender: superAdminEmail, recipient: activeChat, isTyping: true }
+      });
     }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      const targetChannel = activeChat === 'superadmin@propertyko.com' ? superAdminChannelRef.current : channelRef.current;
-      if (targetChannel && activeChat && adminProfile?.email) {
-        targetChannel.send({
+      if (channelRef.current && activeChat) {
+        channelRef.current.send({
           type: 'broadcast', event: 'typing',
-          payload: { sender: adminProfile.email, recipient: activeChat, isTyping: false }
+          payload: { sender: superAdminEmail, recipient: activeChat, isTyping: false }
         });
       }
     }, 2000);
@@ -368,7 +278,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !orgData || !activeChat || isSending) return;
+    if (!newMessage.trim() || !activeChat || isSending) return;
 
     const activeContact = contacts.find(c => c.id === activeChat);
     if (!activeContact) return;
@@ -377,7 +287,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     
     if (replyingTo) {
       const snippet = replyingTo.content.length > 60 ? replyingTo.content.substring(0, 60) + "..." : replyingTo.content;
-      const senderName = replyingTo.sender_email === adminProfile?.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
+      const senderName = replyingTo.sender_email === superAdminEmail ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
       textToSend = `> Replying to ${senderName}:\n> "${snippet}"\n\n${textToSend}`;
     }
 
@@ -386,13 +296,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     setReplyingTo(null);
     setMessageDrafts(prev => ({ ...prev, [activeChat]: "" }));
 
-    // Kill typing indicator instantly on send
     isTypingRef.current = false;
-    const targetChannel = activeChat === 'superadmin@propertyko.com' ? superAdminChannelRef.current : channelRef.current;
-    if (targetChannel && adminProfile?.email) {
-      targetChannel.send({
+    if (channelRef.current) {
+      channelRef.current.send({
         type: 'broadcast', event: 'typing',
-        payload: { sender: adminProfile.email, recipient: activeChat, isTyping: false }
+        payload: { sender: superAdminEmail, recipient: activeChat, isTyping: false }
       });
     }
 
@@ -404,14 +312,13 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       scrollToBottom();
     }, 10);
 
-    const isToSuperAdmin = activeContact.type === 'superadmin';
     const payload = {
-      tenant_email: isToSuperAdmin ? orgData.admin_email : activeChat, 
-      admin_email: isToSuperAdmin ? 'superadmin@propertyko.com' : orgData.admin_email,
-      sender_email: adminProfile?.email || 'admin',
+      tenant_email: activeChat, 
+      admin_email: superAdminEmail,
+      sender_email: superAdminEmail,
       content: textToSend,
-      is_from_tenant: isToSuperAdmin ? true : false, 
-      recipient_role: isToSuperAdmin ? 'superadmin' : (activeContact.type === 'tenant' ? 'admin' : activeContact.type), 
+      is_from_tenant: false, 
+      recipient_role: activeContact.type === 'Workspace Admin' ? 'admin' : 'user', 
       is_read: false,
       is_pinned: false
     };
@@ -469,10 +376,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   };
 
   const sortedContacts = [...contacts].sort((a, b) => {
-    // Keep superadmin pinned at top of the contacts list
-    if (a.type === 'superadmin') return -1;
-    if (b.type === 'superadmin') return 1;
-    
     const lastA = getLastMessage(a.id)?.created_at || '0';
     const lastB = getLastMessage(b.id)?.created_at || '0';
     return new Date(lastB).getTime() - new Date(lastA).getTime();
@@ -488,9 +391,6 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   const currentChatName = activeContactDetails ? (customNames[activeContactDetails.id] || activeContactDetails.name) : "User";
   const isActiveContactOnline = activeContactDetails && onlineUsers.includes(activeContactDetails.id);
   const isRemoteUserTyping = activeChat ? remoteTyping[activeChat] : false;
-  
-  // ✨ Guarantee custom super admin alias is used in the typing indicator
-  const typingUserName = activeChat === 'superadmin@propertyko.com' ? (customNames['superadmin@propertyko.com'] || 'PropertyKo Support') : currentChatName;
 
   const roleMessages = messages.filter(msg => {
     if (!activeContactDetails) return false;
@@ -504,17 +404,25 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
   const renderRoleBadge = (roleId: string | undefined) => {
-    // Custom badge for Superadmin Support
-    if (roleId === 'superadmin') return <span className="shrink-0 text-[9px] text-[#359b46] px-1.5 py-0.5 rounded border border-[#359b46]/30 uppercase font-bold tracking-wider bg-[#359b46]/10">Platform Support</span>;
-    if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
-    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
-    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">Maintenance</span>;
-    if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
+    if (roleId === 'Workspace Admin') return <span className="shrink-0 text-[9px] text-[#1d82f5] px-1.5 py-0.5 rounded border border-[#1d82f5]/30 uppercase font-bold tracking-wider bg-[#1d82f5]/10">Workspace Admin</span>;
+    if (roleId === 'Support Request') return <span className="shrink-0 text-[9px] text-amber-600 px-1.5 py-0.5 rounded border border-amber-600/30 uppercase font-bold tracking-wider bg-amber-600/10">Support Request</span>;
     return null;
   };
 
+  // ✨ UPDATED: Support Form Rendering Style vs Standard Messenger Style
   const renderMessageContent = (content: string) => {
+    if (activeContactDetails?.type === 'Support Request') {
+      const parts = content.split('\n\nMessage:\n');
+      if (parts.length === 2) {
+        return (
+          <div className="flex flex-col gap-3 text-left w-full">
+            <span className="font-extrabold block text-slate-800 border-b border-slate-200 pb-2">{parts[0]}</span>
+            <span className="text-slate-700 whitespace-pre-wrap">{parts[1]}</span>
+          </div>
+        );
+      }
+    }
+
     const replyMatch = content.match(/^> Replying to (.*?):\n> "(.*?)"\n\n([\s\S]*)$/);
     if (replyMatch) {
       const [_, sender, snippet, actualMessage] = replyMatch;
@@ -532,18 +440,18 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
   };
 
   return (
-    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
+    <div className="absolute inset-0 flex bg-slate-50 font-sans overflow-hidden">
       
       {/* SIDEBAR */}
-      <div className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
+      <div className={`w-full md:w-[360px] flex flex-col border-r border-slate-200 bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
 
         {/* SIDEBAR HEADER */}
-        <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-[var(--color-border)] bg-white">
+        <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-slate-200 bg-white">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Chats</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Support Chats</h1>
             <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
-              className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]' : 'bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100'}`}
+              className={`p-2 sm:p-2.5 rounded-xl transition-all border shadow-sm active:scale-95 duration-200 ${isEditingNames ? 'bg-[#1d82f5]/10 border-[#1d82f5]/30 text-[#1d82f5]' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'}`}
             >
               {isEditingNames ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /> : <Edit size={14} className="sm:w-4 sm:h-4" />}
             </button>
@@ -555,7 +463,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               value={contactSearch}
               onChange={(e) => setContactSearch(e.target.value)}
               placeholder="Search by name or role..." 
-              className="w-full bg-slate-50 border border-[var(--color-border)] text-[15px] md:text-sm rounded-[var(--radius-md)] pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] transition-all font-medium text-slate-700 placeholder:text-slate-400"
+              className="w-full bg-slate-50 border border-slate-200 text-[15px] md:text-sm rounded-xl pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/10 focus:border-[#1d82f5] transition-all font-medium text-slate-700 placeholder:text-slate-400"
             />
           </div>
         </div>
@@ -563,7 +471,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         {/* SIDEBAR LIST */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-white custom-scrollbar">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[var(--color-primary)]" size={18} /> Loading...</div>
+            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[#1d82f5]" size={18} /> Loading...</div>
           ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400 text-[10px] sm:text-xs font-semibold">
               No conversations found.
@@ -573,14 +481,14 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               const isActive = activeChat === contact.id;
               const lastMsg = getLastMessage(contact.id);
               const displayTime = lastMsg ? formatSidebarTime(lastMsg.created_at) : '';
-              const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== adminProfile?.email && isMessageForContact(m, contact.id)).length;
+              const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== superAdminEmail && isMessageForContact(m, contact.id)).length;
               const isOnline = onlineUsers.includes(contact.id);
               const isTyping = remoteTyping[contact.id];
               const ContactIcon = contact.icon;
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
-                if (lastMsg.sender_email === adminProfile?.email) return "You:";
+                if (lastMsg.sender_email === superAdminEmail) return "You:";
                 const senderName = customNames[contact.id] || contact.name;
                 const firstName = senderName.split(' ')[0];
                 return `${firstName}:`;
@@ -590,38 +498,38 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 <div 
                   key={contact.id} 
                   onClick={() => { if (!isEditingNames) setActiveChat(contact.id); }} 
-                  className={`flex items-center gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 relative group ${
+                  className={`flex items-center gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-xl cursor-pointer transition-all duration-200 relative group ${
                     isActive && !isEditingNames 
-                      ? 'bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 shadow-sm' 
+                      ? 'bg-[#1d82f5]/10 border border-[#1d82f5]/20 shadow-sm' 
                       : 'border border-transparent hover:bg-slate-50'
                   }`}
                 >
                   <div className="relative shrink-0">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       isActive && !isEditingNames 
-                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent shadow-[var(--shadow-md)] scale-105' 
-                        : (contact.type === 'superadmin' ? 'bg-[#0a1e3f] text-[#359b46] border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105')
+                        ? 'bg-[#1d82f5] text-white border-transparent shadow-md scale-105' 
+                        : (contact.type === 'Workspace Admin' ? 'bg-[#0a1e3f] text-[#359b46] border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border-slate-200 group-hover:scale-105')
                     }`}>
                       <ContactIcon size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
                     </div>
-                    {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>}
+                    {isOnline && contact.type !== 'Support Request' && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>}
                   </div>
 
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
                       <div className="flex-1 min-w-0">
-                        {isEditingNames && contact.type !== 'superadmin' ? (
+                        {isEditingNames ? (
                           <input 
                             type="text" 
                             value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
                             onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
-                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-transparent outline-none w-full py-0.5" 
+                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[#1d82f5] border-b-2 border-[#1d82f5] bg-transparent outline-none w-full py-0.5" 
                             onClick={(e) => e.stopPropagation()} 
                           />
                         ) : (
                           <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
+                              unreadCount > 0 ? 'font-black text-slate-900' : isActive ? 'font-bold text-slate-800' : 'font-semibold text-slate-700'
                             }`}
                             title={`${customNames[contact.id] || contact.name}`}
                           >
@@ -629,24 +537,24 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                           </h3>
                         )}
                       </div>
-                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[var(--color-primary)]' : 'font-medium text-slate-400'}`}>
+                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[#1d82f5]' : 'font-medium text-slate-400'}`}>
                         {displayTime}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center w-full gap-2">
-                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-small text-slate-400'}`}>
-                        {isTyping ? (
-                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-400'}`}>
+                        {isTyping && contact.type !== 'Support Request' ? (
+                          <span className="text-[#1d82f5] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
                           <span>
-                            <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>
-                              {getSidebarMessagePrefix()}
+                            <span className={unreadCount > 0 ? "text-slate-800 mr-1" : "text-slate-500 mr-1"}>
+                              {contact.type === 'Support Request' ? '' : getSidebarMessagePrefix()}
                             </span>
-                            {lastMsg.content}
+                            {contact.type === 'Support Request' ? (lastMsg.content.includes('\n\nMessage:\n') ? lastMsg.content.split('\n\nMessage:\n')[1] : lastMsg.content) : lastMsg.content}
                           </span>
                         ) : (
-                          contact.unit
+                          contact.type
                         )}
                       </p>
 
@@ -669,40 +577,48 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       {/* MAIN CHAT AREA */}
       <div className={`flex-1 min-w-0 flex flex-col bg-slate-50 relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
         {!activeChat ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[var(--color-bg)]">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-[var(--radius-lg)] flex items-center justify-center mb-3 sm:mb-4 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl flex items-center justify-center mb-3 sm:mb-4 shadow-sm border border-slate-200">
               <MessageSquare size={28} className="text-slate-300 sm:w-8 sm:h-8" />
             </div>
-            <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">No Conversation Selected</h2>
+            <h2 className="text-base sm:text-lg font-black text-slate-800 tracking-tight">No Conversation Selected</h2>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium max-w-[200px] sm:max-w-[220px] mx-auto mt-1 leading-relaxed">Choose an active contact from the sidebar list to initialize platform correspondence.</p>
           </div>
         ) : (
           <>
             {/* CHAT HEADER */}
-            <div className="shrink-0 h-[60px] sm:h-[70px] md:h-[75px] bg-[var(--color-bg)]/90 backdrop-blur-md border-b border-[var(--color-border)] flex items-center justify-between px-3 sm:px-4 md:px-6 z-10 shadow-[var(--shadow-sm)]">
+            <div className="shrink-0 h-[60px] sm:h-[70px] md:h-[75px] bg-white/90 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-3 sm:px-4 md:px-6 z-10 shadow-sm">
               <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-                <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[var(--color-primary)] hover:bg-slate-50 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
+                <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[#1d82f5] hover:bg-slate-50 rounded-lg transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
                 <div className="relative shrink-0">
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] flex items-center justify-center shadow-inner ${activeContactDetails?.type === 'superadmin' ? 'bg-[#0a1e3f] text-[#359b46] border border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border border-[var(--color-border)]'}`}><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
-                  {isActiveContactOnline && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shadow-inner ${activeContactDetails?.type === 'Workspace Admin' ? 'bg-[#0a1e3f] text-[#359b46]' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
+                  {isActiveContactOnline && activeContactDetails?.type !== 'Support Request' && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
+                    <h2 className="font-black text-slate-800 text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
                     {renderRoleBadge(activeContactDetails?.type)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                    {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}
-                    <span className="hidden sm:inline text-slate-300 font-black">•</span>
-                    <span className="hidden sm:inline text-slate-400 font-medium">{activeContactDetails?.unit}</span>
+                    {activeContactDetails?.type === 'Support Request' ? (
+                      <span className="text-slate-400 font-medium">{activeChat}</span>
+                    ) : (
+                      <>
+                        {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}
+                        <span className="hidden sm:inline text-slate-300 font-black">•</span>
+                        <span className="hidden sm:inline text-slate-400 font-medium">{activeChat}</span>
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
-              <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border ${isSearchActive ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-primary-text)] shadow-[var(--shadow-md)]' : 'text-[var(--color-primary)] border-[var(--color-border)] hover:bg-[var(--color-primary)]/5 bg-white shadow-[var(--shadow-sm)]'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
+              {activeContactDetails?.type !== 'Support Request' && (
+                <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-xl transition-all active:scale-95 border ${isSearchActive ? 'bg-[#1d82f5] border-transparent text-white shadow-md' : 'text-[#1d82f5] border-slate-200 hover:bg-[#1d82f5]/5 bg-white shadow-sm'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
+              )}
             </div>
 
             {/* PINNED MESSAGES ACCORDION */}
-            {pinnedMessages.length > 0 && !chatSearchQuery && (
+            {pinnedMessages.length > 0 && !chatSearchQuery && activeContactDetails?.type !== 'Support Request' && (
               <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 flex flex-col shadow-sm z-10 transition-all w-full overflow-hidden">
                 {/* Collapsed View / Header */}
                 <div 
@@ -721,7 +637,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                     {pinnedMessages.length === 1 ? (
                       <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 min-w-0">
                         <span className="font-bold mr-1">
-                          {pinnedMessages[0].sender_email === adminProfile?.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}
+                          {pinnedMessages[0].sender_email === superAdminEmail ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}
                         </span>
                         {pinnedMessages[0].content}
                       </p>
@@ -742,7 +658,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                           <X size={12} />
                         </button>
                       ) : (
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-[var(--radius-sm)] shadow-sm shrink-0">
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 px-2 py-0.5 rounded-md shadow-sm shrink-0">
                           {isPinnedExpanded ? 'Hide All' : 'Show All'}
                         </span>
                       )}
@@ -760,7 +676,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                         onClick={() => scrollToMessage(pMsg.id)}
                       >
                         <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 ml-6 min-w-0">
-                          <span className="font-bold mr-1">{pMsg.sender_email === adminProfile?.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}</span>
+                          <span className="font-bold mr-1">{pMsg.sender_email === superAdminEmail ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}</span>
                           {pMsg.content}
                         </p>
                         <button 
@@ -777,33 +693,33 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               </div>
             )}
 
-            {isSearchActive && (
-              <div className="shrink-0 bg-white border-b border-[var(--color-border)] p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-[var(--shadow-sm)] animate-in slide-in-from-top duration-200">
+            {isSearchActive && activeContactDetails?.type !== 'Support Request' && (
+              <div className="shrink-0 bg-white border-b border-slate-200 p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-sm animate-in slide-in-from-top duration-200">
                 <div className="flex-1 relative">
                   <Search size={14} className="absolute left-3 sm:left-3.5 top-2.5 sm:top-3 text-slate-400 sm:w-4 sm:h-4" />
-                  <input type="text" value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} placeholder="Search in conversation..." className="w-full bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-md)] pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-slate-700 font-medium" autoFocus />
+                  <input type="text" value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} placeholder="Search in conversation..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#1d82f5]/10 transition-all text-slate-700 font-medium" autoFocus />
                 </div>
-                <button onClick={() => { setIsSearchActive(false); setChatSearchQuery(""); }} className="text-slate-400 hover:text-[var(--color-text)] text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors">Cancel</button>
+                <button onClick={() => { setIsSearchActive(false); setChatSearchQuery(""); }} className="text-slate-400 hover:text-slate-800 text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors">Cancel</button>
               </div>
             )}
 
             {/* MESSAGES SCROLL AREA WITH FLOATING BUTTON*/}
             <div className="flex-1 min-h-0 relative flex flex-col">
               <div 
-                className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar"
+                className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50/50 space-y-3 sm:space-y-4 custom-scrollbar"
                 onScroll={handleScroll}
                 ref={scrollContainerRef}
               >
                 {isLoading ? (
                   <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
-                    <Clock size={14} className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4" /> Loading...
+                    <Clock size={14} className="animate-spin text-[#1d82f5] sm:w-4 sm:h-4" /> Loading...
                   </div>
                 ) : displayedMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-slate-200 rounded-xl flex items-center justify-center mb-2 sm:mb-3 shadow-sm text-slate-300">
                       <ActiveIcon size={24} className="sm:w-7 sm:h-7" />
                     </div>
-                    <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">
+                    <h3 className="text-sm sm:text-base font-black text-slate-800 tracking-tight">
                       {chatSearchQuery ? "No messages found" : `Say hello to ${currentChatName}`}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
@@ -812,34 +728,38 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                   </div>
                 ) : (
                   displayedMessages.map((msg: any, idx: number) => {
-                    const isMe = msg.sender_email === adminProfile?.email;
+                    const isMe = msg.sender_email === superAdminEmail;
                     const isPending = msg.id.toString().startsWith('temp_');
+                    const isSupportMsg = activeContactDetails?.type === 'Support Request';
+
                     return (
                       <div 
                         key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`}
                         id={`msg-${msg.id}`}
-                        className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
+                        className={`w-full flex flex-col ${isSupportMsg ? 'items-start mb-2' : isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                       >
-                        <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex items-center gap-2 ${isSupportMsg ? 'w-full max-w-[450px]' : 'max-w-[85%] sm:max-w-[80%] md:max-w-[65%]'} ${isMe && !isSupportMsg ? 'flex-row-reverse' : 'flex-row'}`}>
                           
                           {/* Bubble wrapper for touch events */}
                           <div 
-                            className="relative"
-                            onTouchStart={() => !isPending && handleTouchStart(msg.id)}
+                            className="relative w-full"
+                            onTouchStart={() => !isPending && !isSupportMsg && handleTouchStart(msg.id)}
                             onTouchEnd={handleTouchEndOrMove}
                             onTouchMove={handleTouchEndOrMove}
                           >
                             <div 
-                              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
-                                highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
+                              className={`px-3 sm:px-4 py-2 sm:py-3 text-[13px] sm:text-[14px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
+                                highlightedMsgId === msg.id ? 'ring-4 ring-[#1d82f5]/40 shadow-lg z-10' : ''
                               } ${
-                                isMe 
-                                  ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                                  : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                                isSupportMsg 
+                                  ? 'bg-white text-slate-800 border-slate-200 rounded-[1.25rem] w-full p-4' 
+                                  : isMe 
+                                    ? 'bg-[#1d82f5] text-white border-transparent rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                    : 'bg-white text-slate-800 border-slate-200 rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
                               } ${isPending ? 'opacity-60' : 'opacity-100'}`}
                               style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
                             >
-                              {msg.is_pinned && (
+                              {msg.is_pinned && !isSupportMsg && (
                                 <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
                                   <Pin size={10} fill="currentColor" />
                                 </div>
@@ -849,11 +769,11 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                           </div>
                           
                           {/* Message Actions (Hover Visible on Desktop) */}
-                          {!isPending && (
+                          {!isPending && !isSupportMsg && (
                             <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                               <button 
                                 onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
-                                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[var(--color-primary)] transition-colors"
+                                className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-[#1d82f5] transition-colors"
                                 title="Reply"
                               >
                                 <CornerUpLeft size={14} />
@@ -869,9 +789,9 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                           )}
                         </div>
 
-                        <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isSupportMsg ? 'justify-start' : isMe ? 'justify-end' : 'justify-start'}`}>
                           {formatMessageTime(msg.created_at)}
-                          {isMe && (
+                          {isMe && !isSupportMsg && (
                             isPending ? (
                               <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" />
                             ) : msg.is_read ? (
@@ -892,7 +812,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               {showScrollBottom && (
                 <button
                   onClick={scrollToBottom}
-                  className="absolute bottom-4 right-4 sm:right-6 z-20 bg-white text-[var(--color-primary)] p-2 sm:p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-[var(--color-border)] hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center animate-in zoom-in-75 duration-200"
+                  className="absolute bottom-4 right-4 sm:right-6 z-20 bg-white text-[#1d82f5] p-2 sm:p-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.15)] border border-slate-200 hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center animate-in zoom-in-75 duration-200"
                   aria-label="Scroll to bottom"
                 >
                   <ChevronDown size={20} strokeWidth={2.5} className="sm:w-[22px] sm:h-[22px]" />
@@ -900,81 +820,83 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               )}
             </div>
 
-            {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
-            <div className="shrink-0 px-3 py-3 sm:px-4 sm:py-4 bg-white border-t border-[var(--color-border)] z-10 relative flex flex-col items-center">
+            {/* UPGRADED MESSENGER-TYPE INPUT AREA (HIDDEN IF SUPPORT REQUEST) */}
+            {activeContactDetails?.type !== 'Support Request' && (
+              <div className="shrink-0 px-3 py-3 sm:px-4 sm:py-4 bg-white border-t border-slate-200 z-10 relative flex flex-col items-center">
 
-              {/* ✨ TYPING INDICATOR (ABOVE INPUT) */}
-              {isRemoteUserTyping && (
-                <div className="absolute -top-6 left-4 text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
-                  <span className="flex gap-0.5 mt-0.5">
-                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </span>
-                  {typingUserName} is typing...
-                </div>
-              )}
-
-              {/* REPLYING TO BANNER */}
-              {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
-                  <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
-                    <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
-                      Replying to {replyingTo.sender_email === adminProfile?.email ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
+                {/* TYPING INDICATOR (ABOVE INPUT) */}
+                {isRemoteUserTyping && (
+                  <div className="absolute -top-6 left-4 text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                    <span className="flex gap-0.5 mt-0.5">
+                      <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                     </span>
-                    <span className="text-[11px] sm:text-xs text-slate-600 truncate line-clamp-1">{replyingTo.content}</span>
+                    {currentChatName} is typing...
                   </div>
-                  <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0">
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
+                )}
 
-              <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
-                <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
-                  <textarea
-                    ref={inputRef as any}
-                    value={newMessage}
-                    onChange={handleMessageChange}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (newMessage.trim() && !isSending) {
-                          handleSendMessage(e as any);
-                          e.currentTarget.style.height = 'auto';
+                {/* REPLYING TO BANNER */}
+                {replyingTo && (
+                  <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-slate-200 rounded-t-xl px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
+                    <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[#1d82f5] pl-2">
+                      <span className="text-[10px] font-black text-slate-800 uppercase tracking-wider">
+                        Replying to {replyingTo.sender_email === superAdminEmail ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
+                      </span>
+                      <span className="text-[11px] sm:text-xs text-slate-600 truncate line-clamp-1">{replyingTo.content}</span>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
+                  <div className={`flex-1 bg-slate-50 border border-slate-200 px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#1d82f5]/10 focus-within:border-[#1d82f5]/40 transition-all shadow-inner ${replyingTo ? 'rounded-b-xl' : 'rounded-xl'}`}>
+                    <textarea
+                      ref={inputRef as any}
+                      value={newMessage}
+                      onChange={handleMessageChange}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (newMessage.trim() && !isSending) {
+                            handleSendMessage(e as any);
+                            e.currentTarget.style.height = 'auto';
+                          }
                         }
-                      }
-                    }}
-                    placeholder="Type a message..."
-                    className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-[var(--color-text)] font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
-                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
-                    disabled={isSending || isLoading}
-                    rows={1}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim() || isSending}
-                  className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-[var(--shadow-sm)] duration-200 mb-0.5 ${
-                    newMessage.trim() 
-                      ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90' 
-                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
-                  }`}
-                >
-                  {isSending ? (
-                    <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
-                  ) : (
-                    <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
-                  )}
-                </button>
-              </form>
-            </div>
+                      }}
+                      placeholder="Type a message..."
+                      className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-slate-800 font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
+                      style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
+                      disabled={isSending || isLoading}
+                      rows={1}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!newMessage.trim() || isSending}
+                    className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-lg flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-sm duration-200 mb-0.5 ${
+                      newMessage.trim() 
+                        ? 'bg-[#1d82f5] text-white border-transparent hover:opacity-90' 
+                        : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
+                    }`}
+                  >
+                    {isSending ? (
+                      <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
+                    ) : (
+                      <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* Global Mobile Bottom Sheet for Long Press Actions */}
-      {longPressedMsgId && (
+      {/* Global Mobile Bottom Sheet for Long Press Actions (HIDDEN FOR SUPPORT REQUESTS) */}
+      {longPressedMsgId && activeContactDetails?.type !== 'Support Request' && (
         <>
           <div 
             className="fixed md:hidden inset-0 z-[100] bg-transparent" 
@@ -1031,7 +953,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
       `}} />
     </div>
   );

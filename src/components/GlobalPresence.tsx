@@ -17,11 +17,14 @@ export default function GlobalPresence({ children }: { children: React.ReactNode
       if (!user?.email) return;
       
       const email = user.email;
-      const adminEmail = user.user_metadata?.admin_parent || email;
-      const topic = `online-users-${adminEmail}`;
+      
+      // ✨ THE FIX: Unified Global Presence Channel
+      // Instead of isolating by adminEmail, we put everyone in one global presence pool.
+      // This allows Super Admins, Workspace Admins, and regular users to accurately track 
+      // each other's online status across the entire platform.
+      const topic = `propertyko-global-presence`;
 
-      // 🔥 THE FIX: Hanapin at tanggalin ang existing channel bago gumawa ng bago
-      // para iwas "cannot add presence callbacks after subscribe()" error
+      // Prevent "cannot add presence callbacks after subscribe()" error
       const existingChannels = supabase.getChannels();
       existingChannels.forEach((c) => {
         if (c.topic === `realtime:${topic}`) {
@@ -29,7 +32,7 @@ export default function GlobalPresence({ children }: { children: React.ReactNode
         }
       });
 
-      // Safe na gumawa ng bagong channel
+      // Safely create the new channel
       channel = supabase.channel(topic, {
         config: { presence: { key: email } },
       });

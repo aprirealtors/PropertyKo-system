@@ -8,7 +8,7 @@ import {
   X, CreditCard, CheckCircle, Home, AlertTriangle, 
   LogOut, LayoutDashboard, History, User, ChevronRight, Folder,
   ChevronUp, ChevronDown, BarChart3, Users, Building2, Activity,
-  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2, PanelLeft
+  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2, PanelLeft, MessageSquare
 } from "lucide-react";
 
 // Import your tab components
@@ -16,6 +16,7 @@ import PaymentHistory from './paymenthistory';
 import SuperAdminBilling from './billing';
 import OrganizationDirectory from './organization';
 import HistoryLog from './historylog'; 
+import SuperAdminConversation from './conversation'; 
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function SuperAdminDashboard() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
 
-  // ✨ NEW: Collapsible Sidebar State
+  // Collapsible Sidebar State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Database Data State
@@ -296,6 +297,14 @@ export default function SuperAdminDashboard() {
             />
 
             <NavItem 
+              isActive={activeTab === 'messages'} 
+              onClick={() => setActiveTab('messages')} 
+              icon={<MessageSquare size={18} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />} 
+              label="Messages" 
+              collapsed={isSidebarCollapsed}
+            />
+
+            <NavItem 
               isActive={activeTab === 'systemlogs'} 
               onClick={() => setActiveTab('systemlogs')} 
               icon={<Activity size={18} strokeWidth={activeTab === 'systemlogs' ? 2.5 : 2} />} 
@@ -363,8 +372,8 @@ export default function SuperAdminDashboard() {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 relative transition-all overflow-y-auto p-4 md:p-8 pb-[100px] md:pb-8 custom-scrollbar">
-           <div className="mx-auto w-full max-w-7xl transition-all duration-300">
+        <main className={`flex-1 relative transition-all overflow-y-auto custom-scrollbar ${activeTab === 'messages' ? 'p-0' : 'p-4 md:p-8 pb-[100px] md:pb-8'}`}>
+           <div className={`mx-auto w-full transition-all duration-300 ${activeTab === 'messages' ? 'h-full max-w-full' : 'max-w-7xl'}`}>
              {activeTab === 'home' && (
                <HomeView 
                  organizations={organizations}
@@ -378,6 +387,9 @@ export default function SuperAdminDashboard() {
                  isLoadingOrgs={isLoadingOrgs}
                  fetchOrganizations={fetchOrganizations}
                />
+             )}
+             {activeTab === 'messages' && (
+               <SuperAdminConversation />
              )}
              {activeTab === 'systemlogs' && (
                <HistoryLog />
@@ -408,6 +420,12 @@ export default function SuperAdminDashboard() {
             label="Orgs" 
           />
           <MobileNavItem 
+            active={activeTab === 'messages' && !isAccountModalOpen} 
+            onClick={() => {setActiveTab('messages'); setIsAccountModalOpen(false);}} 
+            icon={<MessageSquare size={22} />} 
+            label="Messages" 
+          />
+          <MobileNavItem 
             active={activeTab === 'systemlogs' && !isAccountModalOpen} 
             onClick={() => {setActiveTab('systemlogs'); setIsAccountModalOpen(false);}} 
             icon={<Activity size={22} />} 
@@ -418,12 +436,6 @@ export default function SuperAdminDashboard() {
             onClick={() => {setActiveTab('billing'); setIsAccountModalOpen(false);}} 
             icon={<CreditCard size={22} />} 
             label="Billing" 
-          />
-          <MobileNavItem 
-            active={activeTab === 'paymenthistory' && !isAccountModalOpen} 
-            onClick={() => {setActiveTab('paymenthistory'); setIsAccountModalOpen(false);}} 
-            icon={<History size={22} />} 
-            label="History" 
           />
           <MobileNavItem 
             active={isAccountModalOpen} 
