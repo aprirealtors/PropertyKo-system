@@ -1,4 +1,3 @@
-// src/app/dashboard/superadmin/conversation.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -403,13 +402,7 @@ export default function SuperAdminConversation() {
     ? roleMessages 
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === 'Workspace Admin') return <span className="shrink-0 text-[9px] text-[#1d82f5] px-1.5 py-0.5 rounded border border-[#1d82f5]/30 uppercase font-bold tracking-wider bg-[#1d82f5]/10">Workspace Admin</span>;
-    if (roleId === 'Support Request') return <span className="shrink-0 text-[9px] text-amber-600 px-1.5 py-0.5 rounded border border-amber-600/30 uppercase font-bold tracking-wider bg-amber-600/10">Support Request</span>;
-    return null;
-  };
-
-  // ✨ UPDATED: Support Form Rendering Style vs Standard Messenger Style
+  // ✨ Support Form Rendering Style vs Standard Messenger Style
   const renderMessageContent = (content: string) => {
     if (activeContactDetails?.type === 'Support Request') {
       const parts = content.split('\n\nMessage:\n');
@@ -440,7 +433,7 @@ export default function SuperAdminConversation() {
   };
 
   return (
-    <div className="absolute inset-0 flex bg-slate-50 font-sans overflow-hidden">
+    <div className="absolute inset-0 flex bg-slate-50 font-sans overflow-hidden pb-[80px] md:pb-0">
       
       {/* SIDEBAR */}
       <div className={`w-full md:w-[360px] flex flex-col border-r border-slate-200 bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
@@ -597,7 +590,7 @@ export default function SuperAdminConversation() {
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <h2 className="font-black text-slate-800 text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
-                    {renderRoleBadge(activeContactDetails?.type)}
+                    {/* ✨ Badges dynamically removed to leave just the clean header layout */}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
                     {activeContactDetails?.type === 'Support Request' ? (
@@ -953,7 +946,7 @@ export default function SuperAdminConversation() {
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
       `}} />
     </div>
   );

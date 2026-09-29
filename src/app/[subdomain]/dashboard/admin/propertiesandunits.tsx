@@ -69,6 +69,9 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  
+  // ✨ NEW: Form Validation State
+  const [formErrors, setFormErrors] = useState<{ [key: string]: boolean }>({});
 
   // Confirmation Modal States
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -88,7 +91,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   // Form Fields
   const [propertyName, setPropertyName] = useState("");
   const [unitNumber, setUnitNumber] = useState("");
-  const [unitType, setUnitType] = useState("Studio");
+  const [unitType, setUnitType] = useState(""); // ✨ Defaults to empty to force selection
   const [ownerName, setOwnerName] = useState("");
   const [ownerAbbreviation, setOwnerAbbreviation] = useState("");
   const [tenantName, setTenantName] = useState("");
@@ -150,7 +153,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setEditingUnitId(null);
     setPropertyName("");
     setUnitNumber("");
-    setUnitType("Studio");
+    setUnitType(""); // ✨ Resets to empty 
     setOwnerName("");
     setOwnerAbbreviation("");
     setTenantName("");
@@ -160,6 +163,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setAcceptanceDate("");
     setRemarks("");
     setErrorMsg(null);
+    setFormErrors({}); // ✨ Clear validation errors
   };
 
   const openAddModal = () => {
@@ -172,7 +176,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     setEditingUnitId(unit.id);
     setPropertyName(unit.property_name || "");
     setUnitNumber(unit.unit_number || "");
-    setUnitType(unit.unit_type || "Studio");
+    setUnitType(unit.unit_type || "");
     setUnitArea(unit.unit_area || "");
     setOwnerName(unit.owner_name === '—' ? "" : (unit.owner_name || ""));
     setOwnerAbbreviation(unit.owner_abbreviation || "");
@@ -202,7 +206,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       if (error) throw error;
 
       await fetchUnits();
-      setSelectedUnits(prev => prev.filter(id => id !== unitToDelete.id)); // Remove from selected if exists
+      setSelectedUnits(prev => prev.filter(id => id !== unitToDelete.id));
       setUnitToDelete(null);
       if (isModalOpen && editingUnitId === unitToDelete.id) {
         setIsModalOpen(false);
@@ -216,7 +220,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
-  // Mass Delete Execution
   const executeMassDelete = async () => {
     if (selectedUnits.length === 0) return;
 
@@ -225,14 +228,14 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       const { error } = await supabase
         .from('units')
         .delete()
-        .in('id', selectedUnits); // Mass delete based on IDs
+        .in('id', selectedUnits);
 
       if (error) throw error;
 
       await fetchUnits();
       setSelectedUnits([]);
       setShowMassDeleteModal(false);
-      setIsMassDeleteModalOpen(false); // Close selection modal upon success
+      setIsMassDeleteModalOpen(false); 
     } catch (err: any) {
       console.error("Error mass deleting units:", err);
       alert(`Failed to delete units: ${err.message}`);
@@ -241,10 +244,30 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     }
   };
 
+  // ✨ UPDATED: Form Validation before triggering confirmation modal
   const handleSaveUnit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    
+    // 1. Validation Checks
+    const errors: any = {};
+    if (!propertyName.trim()) errors.propertyName = true;
+    if (!unitNumber.trim()) errors.unitNumber = true;
+    if (!unitType.trim()) errors.unitType = true;
+    if (!unitArea.trim()) errors.unitArea = true;
+    if (!ownerName.trim()) errors.ownerName = true;
 
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      // Optional: scroll to top of modal to show the error banner
+      const modalEl = document.getElementById('unit-modal-content');
+      if(modalEl) modalEl.scrollTop = 0;
+      return;
+    }
+    
+    setFormErrors({}); // Clear if everything is filled
+
+    // 2. Capacity Check
     const maxUnits = Number(orgData?.units_count) || 0;
     if (!editingUnitId && units.length >= maxUnits) {
       setErrorMsg(`Your plan is limited to ${maxUnits} units. Please upgrade your plan to add more.`);
@@ -431,7 +454,6 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     );
   });
 
-  // Filtered Mass Delete Units
   const filteredMassDeleteUnits = units.filter(unit => {
     const searchLower = massDeleteSearchQuery.toLowerCase();
     return (
@@ -442,16 +464,13 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     );
   });
 
-  // Mass select utilities for the modal (Filtered)
   const toggleSelectAll = () => {
     const filteredIds = filteredMassDeleteUnits.map(u => u.id);
     const allFilteredSelected = filteredIds.every(id => selectedUnits.includes(id)) && filteredIds.length > 0;
 
     if (allFilteredSelected) {
-      // Deselect only the currently filtered items
       setSelectedUnits(prev => prev.filter(id => !filteredIds.includes(id)));
     } else {
-      // Select all filtered items without removing previously selected items outside the filter
       setSelectedUnits(prev => Array.from(new Set([...prev, ...filteredIds])));
     }
   };
@@ -468,6 +487,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
   const maxUnits = Number(orgData?.units_count) || 0;
   const activeUnits = units.length;
   const remainingUnits = Math.max(0, maxUnits - activeUnits); 
+
+  // ✨ Helper function for conditional input styling based on error
+  const getInputClass = (isError: boolean) => 
+    `w-full px-4 py-3 rounded-[var(--radius-md)] border ${isError ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:border-[var(--color-primary)] bg-slate-50 focus:bg-white'} focus:outline-none focus:ring-4 ${isError ? 'focus:ring-red-500/10' : 'focus:ring-[var(--color-primary)]/20'} text-sm font-bold text-[var(--color-text)] transition-all`;
 
   return (
     <div className="flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
@@ -834,7 +857,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
         </div>
       )}
 
-      {/* PREMIUM ADD / EDIT UNIT MODAL */}
+      {/* ✨ PREMIUM ADD / EDIT UNIT MODAL WITH REQUIRED FIELD VALIDATION */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all max-h-[92vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-500 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
@@ -849,23 +872,68 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               </button>
             </div>
             
-            <div className="overflow-y-auto p-5 sm:p-8 custom-scrollbar bg-slate-50/50 flex-1">
+            <div id="unit-modal-content" className="overflow-y-auto p-5 sm:p-8 custom-scrollbar bg-slate-50/50 flex-1">
               <form onSubmit={handleSaveUnit} className="space-y-5 sm:space-y-6 pb-6">
-                {errorMsg && <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} /> {errorMsg}</div>}
+                
+                {/* ✨ Global validation error banner */}
+                {Object.keys(formErrors).length > 0 && (
+                  <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 mb-6 flex items-center gap-3 font-bold text-sm shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <AlertTriangle size={18} className="shrink-0" />
+                    Please fill in all required fields before saving.
+                  </div>
+                )}
+                {errorMsg && <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-200/60 shadow-sm flex items-center gap-3"><AlertTriangle size={18} className="shrink-0" /> {errorMsg}</div>}
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)]">
-                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 mb-2"><MapPin size={14} className="text-[var(--color-text)]" /> Property Name</label>
-                  <input type="text" required placeholder="e.g. The Grove, Avida Towers" value={propertyName} onChange={(e) => setPropertyName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
+                  <label className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+                    <MapPin size={14} className="text-[var(--color-text)]" /> Property Name <span className="text-red-500 ml-0.5">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. The Grove, Avida Towers" 
+                    value={propertyName} 
+                    onChange={(e) => {
+                      setPropertyName(e.target.value);
+                      if (formErrors.propertyName && e.target.value.trim() !== '') setFormErrors(prev => ({...prev, propertyName: false}));
+                    }} 
+                    className={getInputClass(!!formErrors.propertyName)} 
+                    disabled={isSubmitting} 
+                  />
+                  {formErrors.propertyName && <p className="text-red-500 text-xs font-bold mt-1.5">Property name is required.</p>}
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Building size={14} className="text-[var(--color-text)]" /> Unit Number</label>
-                    <input type="text" required placeholder="e.g. 12B" value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <Building size={14} className="text-[var(--color-text)]" /> Unit Number <span className="text-red-500 ml-0.5">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 12B" 
+                      value={unitNumber} 
+                      onChange={(e) => {
+                        setUnitNumber(e.target.value);
+                        if (formErrors.unitNumber && e.target.value.trim() !== '') setFormErrors(prev => ({...prev, unitNumber: false}));
+                      }} 
+                      className={getInputClass(!!formErrors.unitNumber)} 
+                      disabled={isSubmitting} 
+                    />
+                    {formErrors.unitNumber && <p className="text-red-500 text-xs font-bold mt-1.5">Unit number is required.</p>}
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Tag size={14} className="text-[var(--color-text)]" /> Unit Type</label>
-                    <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting}>
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <Tag size={14} className="text-[var(--color-text)]" /> Unit Type <span className="text-red-500 ml-0.5">*</span>
+                    </label>
+                    <select 
+                      value={unitType} 
+                      onChange={(e) => {
+                        setUnitType(e.target.value);
+                        if (formErrors.unitType && e.target.value.trim() !== '') setFormErrors(prev => ({...prev, unitType: false}));
+                      }} 
+                      className={getInputClass(!!formErrors.unitType)} 
+                      disabled={isSubmitting}
+                    >
+                      <option value="" disabled>Select type</option>
                       <option value="Studio">Studio</option>
                       <option value="1BR">1BR</option>
                       <option value="2BR">2BR</option>
@@ -873,19 +941,44 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                       <option value="Commercial">Commercial</option>
                       <option value="SOHO">SOHO</option>
                     </select>
+                    {formErrors.unitType && <p className="text-red-500 text-xs font-bold mt-1.5">Unit type is required.</p>}
                   </div>
                   <div>
-                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2"><Maximize size={14} className="text-[var(--color-text)]" /> Unit Area</label>
-                    <input type="text" required placeholder="e.g. 50.06 sqm" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
+                    <label className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <Maximize size={14} className="text-[var(--color-text)]" /> Unit Area <span className="text-red-500 ml-0.5">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 50.06 sqm" 
+                      value={unitArea} 
+                      onChange={(e) => {
+                        setUnitArea(e.target.value);
+                        if (formErrors.unitArea && e.target.value.trim() !== '') setFormErrors(prev => ({...prev, unitArea: false}));
+                      }} 
+                      className={getInputClass(!!formErrors.unitArea)} 
+                      disabled={isSubmitting} 
+                    />
+                    {formErrors.unitArea && <p className="text-red-500 text-xs font-bold mt-1.5">Unit area is required.</p>}
                   </div>
                 </div>
 
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
                     <label className="flex items-center justify-between gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      <span className="flex items-center gap-2"><User size={14} className="text-[var(--color-text)]" /> Owner Name(s)</span>
+                      <span className="flex items-center gap-2"><User size={14} className="text-[var(--color-text)]" /> Owner Name(s) <span className="text-red-500 ml-0.5">*</span></span>
                     </label>
-                    <input type="text" placeholder="e.g. John Doe, Maria Reyes" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] transition-all bg-slate-50 focus:bg-white" disabled={isSubmitting} />
+                    <input 
+                      type="text" 
+                      placeholder="e.g. John Doe, Maria Reyes" 
+                      value={ownerName} 
+                      onChange={(e) => {
+                        setOwnerName(e.target.value);
+                        if (formErrors.ownerName && e.target.value.trim() !== '') setFormErrors(prev => ({...prev, ownerName: false}));
+                      }} 
+                      className={getInputClass(!!formErrors.ownerName)} 
+                      disabled={isSubmitting} 
+                    />
+                    {formErrors.ownerName && <p className="text-red-500 text-xs font-bold mt-1.5">Owner name is required.</p>}
                     <p className="text-[10px] font-semibold text-slate-400 mt-2 px-1">Separate multiple names with a comma.</p>
                   </div>
                   <div>
