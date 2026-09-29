@@ -883,20 +883,20 @@ export default function TenantDashboard() {
         </main>
       </div>
 
-      {/* UPGRADED PREMIUM MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/95 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)]">
-        <div className="flex justify-around items-center px-1 py-2">
-          <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
-          <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={22} />} label="Repairs" />
+      {/* MOBILE BOTTOM NAVIGATION - TENANT */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/95 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)] border-t border-[var(--color-border)]/50">
+        <div className="flex justify-around items-center px-1 py-1.5 max-w-md mx-auto">
+          <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Home size={20} strokeWidth={2.5} />} label="Home" />
+          <MobileNavItem active={activeTab === 'repair' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('repair'); setIsWorkspaceModalOpen(false);}} icon={<Wrench size={20} strokeWidth={2.5} />} label="Repairs" />
           <MobileNavItem 
             active={activeTab === 'conversation' && !isWorkspaceModalOpen} 
             onClick={handleConversationClick} 
-            icon={<MessageSquare size={22} />} 
+            icon={<MessageSquare size={20} strokeWidth={2.5} />} 
             label="Chat" 
-            badge={unreadMessages}
+            badgeCount={unreadMessages}
           />
-          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={22} />} label="Finance" />
-          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileCheck size={22} />} label="Lease" />
+          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={20} strokeWidth={2.5} />} label="Finance" />
+          <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileText size={20} strokeWidth={2.5} />} label="Lease" />
           <MobileNavItem 
             active={isWorkspaceModalOpen} 
             onClick={() => {
@@ -908,7 +908,7 @@ export default function TenantDashboard() {
               setShowConfirmPassword(false);
               setIsEditingName(false);
             }} 
-            icon={<User size={22} />} 
+            icon={<User size={20} strokeWidth={2.5} />} 
             label="Profile" 
           />
         </div>
@@ -1788,11 +1788,12 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
   );
 }
 
+// 🌟 UNIFIED MOBILE NAV ITEM COMPONENT
 function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`relative flex flex-col items-center justify-center flex-1 h-14 transition-colors group ${active ? '' : 'text-slate-500 hover:text-[var(--color-primary)]'}`}
+      className={`relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group ${active ? '' : 'text-slate-500 hover:text-[var(--color-primary)]'}`}
       style={{ color: active ? 'var(--color-text)' : '' }}
     >
       {/* Active Background Highlight */}
@@ -1807,13 +1808,13 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
         <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
           {icon}
           {badgeCount > 0 && (
-            <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] animate-pulse z-20">
+            <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-black h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] animate-pulse z-20">
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
         </div>
 
-        {/* Text Label */}
+        {/* Text Label - ✨ FIXED: Now strictly uses font-black for 1:1 platform parity */}
         <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">
           {label}
         </span>

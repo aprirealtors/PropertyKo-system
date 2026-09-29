@@ -138,42 +138,51 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
   return (
     // LOCKED LAYOUT WINDOW SHELL
-    <div className="flex flex-col w-full h-[calc(100vh-40px)] md:h-[calc(100vh-50px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
-      {/* PREMIUM HEADER - Fixed Header Zone */}
-      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+      {/* ✨ PREMIUM HEADER SECTION - Themified & Responsive */}
+      <div className="shrink-0 mb-4 px-1 sm:px-0 mt-2">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
-              <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
-                <BarChart3 className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
+          <div className="w-full md:w-auto flex items-center justify-between sm:justify-start min-w-0">
+            <div className="flex flex-col min-w-0 pr-2">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2 sm:gap-3 truncate">
+                <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                  <BarChart3 className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
+                </div>
+                <span className="truncate">KPI Reports</span>
+              </h2>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap truncate">
+                Live Operational Scoreboard & Automated Metrics
+              </p>
+            </div>
+            
+            {/* Mobile-only avatar */}
+            <div className="flex flex-col items-end gap-2 sm:hidden shrink-0">
+              <div className="w-10 h-10 p-2 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                {initials}
               </div>
-              KPI Reports
-            </h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2">
-              Live Operational Scoreboard & Automated Metrics
-            </p>
+            </div>
           </div>
           
-          <div className="flex items-center w-full sm:w-auto gap-3 border-t sm:border-t-0 border-[var(--color-border)] pt-4 sm:pt-0 mt-2 sm:mt-0">
+          <div className="flex flex-col sm:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 shrink-0">
             
             {/* Search Bar */}
-            <div className="relative flex-1 sm:w-64 group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
+            <div className="relative w-full sm:w-64 lg:w-72 group shrink-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
                 placeholder="Search metrics..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-bold text-[var(--color-text)] placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-medium text-[var(--color-text)] placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all hover:bg-white"
               />
             </div>
 
-            {/* Premium Admin Profile Badge */}
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">
+            {/* Desktop/Tablet admin badge */}
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Admin</span>
+              <div className="w-10 h-10 md:w-12 md:h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -182,39 +191,39 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       </div>
 
       {/* KANBAN LAYOUT: Main Wrapper for Table */}
-      <div className="flex-1 w-full max-w-6xl mx-auto min-h-0 flex flex-col lg:pr-2 pb-2 lg:pb-4">
-        <div className="flex-1 min-h-0 bg-white rounded-lg shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
+      <div className="flex-1 w-full max-w-[1700px] mx-auto min-h-0 flex flex-col px-1 sm:px-0 lg:pr-2 pb-2 lg:pb-4">
+        <div className="flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-10 sm:-translate-y-20 translate-x-10 sm:translate-x-20 pointer-events-none z-0"></div>
 
           {/* Table Header Section */}
-          <div className="px-6 sm:px-8 py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-[var(--color-primary)]/10 text-[var(--color-text)] rounded-[var(--radius-md)] border border-[var(--color-primary)]/20">
-                <Activity size={18} strokeWidth={2.5} />
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-b border-[var(--color-border)] flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white/80 backdrop-blur-sm shrink-0 z-10 gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
+              <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 text-[var(--color-text)] rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shrink-0">
+                <Activity size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
               </div>
-              <h3 className="font-black text-lg text-[var(--color-text)] tracking-tight">KPI Scoreboard: On-demand vs. Monthly Manual</h3>
+              <h3 className="font-black text-sm sm:text-base md:text-lg text-[var(--color-text)] tracking-tight truncate pr-2">KPI Scoreboard: On-demand vs. Monthly</h3>
             </div>
             
             <button 
               onClick={handleExportCSV}
               disabled={filteredKPIs.length === 0}
-              className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-4 py-2 rounded-[var(--radius-md)] transition-all border border-[var(--color-primary)]/30 shadow-sm active:scale-95 w-full sm:w-auto"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-text)] disabled:opacity-50 disabled:pointer-events-none px-3 sm:px-4 py-2.5 sm:py-2 rounded-[var(--radius-md)] transition-all border border-transparent shadow-[var(--shadow-sm)] active:scale-95 w-full sm:w-auto shrink-0"
             >
-              <Download size={14} strokeWidth={2.5} /> Export Report
+              <Download size={14} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Export Report
             </button>
           </div>
           
           {/* Scrollable Table Area */}
-          <div className="flex-1 min-h-0 overflow-auto relative z-10 custom-scrollbar">
-            <table className="w-full text-left text-sm relative">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[10px] shadow-md">
+          <div className="flex-1 min-h-0 overflow-auto relative z-10">
+            <table className="w-full text-left text-xs sm:text-sm relative min-w-[700px] sm:min-w-[800px]">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[9px] sm:text-[10px] shadow-sm">
                 <tr>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Indicator</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Current Value</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap border-r border-white/20 font-extrabold">Priority Use</th>
-                  <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Traditional Was</th>
-                  <th className="px-6 py-4 whitespace-nowrap font-extrabold">With App</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Indicator</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Current Value</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 text-center whitespace-nowrap border-r border-white/20 font-extrabold">Priority Use</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Traditional Was</th>
+                  <th className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap font-extrabold">With App</th>
                 </tr>
               </thead>
               
@@ -223,30 +232,30 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
                   /* SKELETON LOADING ROWS */
                   Array.from({ length: 9 }).map((_, idx) => (
                     <tr key={`skeleton-${idx}`} className="animate-pulse">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="h-5 w-48 bg-slate-200 rounded-md"></div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="h-4 sm:h-5 w-32 sm:w-48 bg-slate-200 rounded-md"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="h-5 w-24 bg-slate-200 rounded-md"></div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="h-4 sm:h-5 w-16 sm:w-24 bg-slate-200 rounded-md"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap flex justify-center">
-                        <div className="h-5 w-12 bg-slate-200 rounded-full"></div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap flex justify-center">
+                        <div className="h-4 sm:h-5 w-10 sm:w-12 bg-slate-200 rounded-full"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="h-5 w-20 bg-slate-100 rounded-md"></div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="h-4 sm:h-5 w-16 sm:w-20 bg-slate-100 rounded-md"></div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="h-6 w-24 bg-slate-200 rounded-full"></div>
+                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="h-5 sm:h-6 w-20 sm:w-24 bg-slate-200 rounded-full"></div>
                       </td>
                     </tr>
                   ))
                 ) : filteredKPIs.length === 0 ? (
                   /* NO RESULTS FOUND */
                   <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center">
-                      <Search className="mx-auto text-slate-300 mb-3" size={32} />
-                      <p className="text-slate-500 font-bold text-sm">No metrics found</p>
-                      <p className="text-slate-400 text-xs mt-1">Try a different search term.</p>
+                    <td colSpan={5} className="px-4 sm:px-6 py-12 sm:py-16 text-center">
+                      <Search className="mx-auto text-slate-300 mb-3 sm:w-8 sm:h-8" size={32} />
+                      <p className="text-slate-500 font-bold text-xs sm:text-sm">No metrics found</p>
+                      <p className="text-slate-400 text-[10px] sm:text-xs mt-1">Try a different search term.</p>
                     </td>
                   </tr>
                 ) : (
@@ -277,22 +286,22 @@ function KPIRow({ label, current, use, was }: any) {
     
   return (
     <tr className="hover:bg-[var(--color-primary)]/5 transition-colors group">
-      <td className="px-6 py-4 font-black text-[var(--color-text)] tracking-tight whitespace-nowrap border-r border-[var(--color-border)]">
+      <td className="px-4 sm:px-6 py-3 sm:py-4 font-black text-[var(--color-text)] tracking-tight whitespace-nowrap border-r border-[var(--color-border)] text-xs sm:text-sm">
         {label}
       </td>
-      <td className="px-6 py-4 font-bold text-[var(--color-text)] whitespace-nowrap border-r border-[var(--color-border)] text-base">
+      <td className="px-4 sm:px-6 py-3 sm:py-4 font-bold text-[var(--color-text)] whitespace-nowrap border-r border-[var(--color-border)] text-[13px] sm:text-base">
         {current}
       </td>
-      <td className="px-6 py-4 text-center whitespace-nowrap border-r border-[var(--color-border)]">
-        <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-sm ${useColor}`}>
+      <td className="px-4 sm:px-6 py-3 sm:py-4 text-center whitespace-nowrap border-r border-[var(--color-border)]">
+        <span className={`px-2.5 sm:px-3 py-1 rounded-[var(--radius-sm)] text-[8px] sm:text-[9px] font-black uppercase tracking-widest border shadow-sm ${useColor}`}>
           {use}
         </span>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-500 font-semibold text-xs">
+      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap border-r border-[var(--color-border)] text-slate-500 font-semibold text-[11px] sm:text-xs">
         {was}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/10 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm group-hover:opacity-90 transition-colors">
+      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+        <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-widest shadow-sm group-hover:opacity-90 transition-colors">
           On-demand
         </span>
       </td>

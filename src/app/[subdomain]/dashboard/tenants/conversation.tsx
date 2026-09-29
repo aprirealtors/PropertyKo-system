@@ -611,7 +611,7 @@ export default function ConversationTab({
   });
 
   return (
-    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[70px] md:pb-0">
+    <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[80px] md:pb-0">
       
       {/* Global Overlay for Mobile Long Press Dismissal */}
       {longPressedMsgId && (

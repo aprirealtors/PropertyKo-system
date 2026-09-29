@@ -480,11 +480,11 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-sm">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
                   Task Details
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
-                  <Inbox size={16} className="text-[var(--color-primary)] shrink-0" /> {reviewActiveTask.title}
+                  <Inbox size={16} className="text-blue-700 shrink-0" /> {reviewActiveTask.title}
                 </div>
               </div>
               <button onClick={() => setReviewActiveTask(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
@@ -571,7 +571,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
                   Hold Details
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
@@ -666,11 +666,11 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
-                <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] flex items-center gap-2 truncate tracking-tight">
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
                   Resolution Details
                 </h2>
                 <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-500 mt-1.5 truncate">
-                  <CheckCircle2 size={16} className="text-[var(--color-primary)] shrink-0" /> {reviewResolvedTask.title}
+                  <CheckCircle2 size={16} className="text-green-700 shrink-0" /> {reviewResolvedTask.title}
                 </div>
               </div>
               <button onClick={() => setReviewResolvedTask(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">

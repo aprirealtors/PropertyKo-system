@@ -447,10 +447,10 @@ export default function LeaseTab({ userData, units }: any) {
             <div className="flex-1 bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-6 sm:p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
               <div className="absolute top-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 -translate-x-20 pointer-events-none z-0 opacity-60"></div>
               
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-inner border border-[var(--color-primary)]/20 relative z-10">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-text)]/10 text-[var(--color-text)] rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-inner border border-[var(--color-text)]/20 relative z-10">
                 <User size={32} strokeWidth={1.5} className="sm:w-9 sm:h-9" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-3 tracking-tight relative z-10">Unit is Vacant</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight relative z-10">Unit is Vacant</h2>
               <p className="text-slate-500 text-[13px] sm:text-sm max-w-md mx-auto leading-relaxed mb-6 sm:mb-8 relative z-10">
                 There is currently no active lease record for <span className="font-bold text-[var(--color-text)]">{propertyName} {unitNumber}</span>. Once a tenant moves in, declare the lease below.
               </p>
@@ -610,7 +610,7 @@ export default function LeaseTab({ userData, units }: any) {
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               
               <div className="relative z-10 min-w-0">
-                <h2 className="text-lg sm:text-xl font-black text-[var(--color-secondary)] tracking-tight truncate">
+                <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">
                   {activeLease ? "Declare Renewal" : "Declare Lease"}
                 </h2>
                 <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[var(--color-text)] opacity-70 mt-0.5 sm:mt-1 truncate">{propertyName} / {unitNumber}</p>

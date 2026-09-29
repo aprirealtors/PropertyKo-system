@@ -503,11 +503,17 @@ export default function MaintenanceDashboard() {
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-[var(--color-border)] pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
-        <div className="flex justify-around items-center px-1 py-1">
-          <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setIsWorkspaceModalOpen(false);}} icon={<Home size={22} />} label="Home" />
-          <MobileNavItem active={activeTab === 'tasks' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('tasks'); setIsWorkspaceModalOpen(false);}} badgeCount={metrics.assigned} icon={<Wrench size={22} />} label="Tasks" />
-          <MobileNavItem active={activeTab === 'messages' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('messages'); setIsWorkspaceModalOpen(false);}} badgeCount={unreadMessageCount} icon={<MessageSquare size={22} />} label="Messages" />
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[var(--color-bg)]/95 backdrop-blur-xl pb-safe z-50 shadow-[var(--shadow-md)] border-t border-[var(--color-border)]/50">
+        <div className="flex justify-around items-center px-1 py-1.5 max-w-md mx-auto">
+          <MobileNavItem active={activeTab === 'home' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('home'); setIsWorkspaceModalOpen(false);}} icon={<Home size={20} strokeWidth={2.5} />} label="Home" />
+          <MobileNavItem active={activeTab === 'tasks' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('tasks'); setIsWorkspaceModalOpen(false);}} badgeCount={metrics.assigned} icon={<Wrench size={20} strokeWidth={2.5} />} label="Tasks" />
+          <MobileNavItem 
+            active={activeTab === 'messages' && !isWorkspaceModalOpen} 
+            onClick={() => {setActiveTab('messages'); setIsWorkspaceModalOpen(false);}} 
+            badgeCount={unreadMessageCount} 
+            icon={<MessageSquare size={20} strokeWidth={2.5} />} 
+            label="Messages" 
+          />
           <MobileNavItem 
             active={isWorkspaceModalOpen} 
             onClick={() => {
@@ -516,7 +522,7 @@ export default function MaintenanceDashboard() {
               setPasswordError(null);
               setIsEditingName(false);
             }} 
-            icon={<User size={22} />} 
+            icon={<User size={20} strokeWidth={2.5} />} 
             label="Account" 
           />
         </div>
@@ -987,36 +993,37 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
   );
 }
 
-// Premium Mobile Nav Button w/ Badge
+// 🌟 UNIFIED MOBILE NAV ITEM COMPONENT (STAFF)
 function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
   return (
     <button 
       onClick={onClick} 
-      className={`relative flex flex-col items-center justify-center flex-1 py-4 transition-all duration-300 group ${active ? '' : 'text-slate-600 hover:text-slate-600'}`}
+      className={`relative flex flex-col items-center justify-center flex-1 h-16 transition-colors group ${active ? '' : 'text-slate-500 hover:text-[var(--color-primary)]'}`}
       style={{ color: active ? 'var(--color-text)' : '' }}
     >
+      {/* Active Background Highlight */}
       {active && (
-        <span 
-          className="absolute inset-1 rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" 
-          style={{ backgroundColor: 'var(--color-primary)' }} 
-        />
+        <span className="absolute inset-1 bg-[var(--color-primary)] rounded-[var(--radius-md)] animate-in zoom-in duration-200 shadow-[var(--shadow-sm)]" />
       )}
-      
-      <div className={`relative z-10 transition-transform duration-300 ${active ? 'scale-110 -translate-y-0.5' : ''}`}>
-        <span className="relative leading-none flex items-center justify-center w-5 h-5 shrink-0 block">
+
+      {/* Icon & Label Wrapper with Floating Animation */}
+      <div className={`relative z-10 flex flex-col items-center justify-center transition-all duration-300 ease-out w-full ${active ? '-translate-y-1 scale-[1.05]' : ''}`}>
+
+        {/* Icon & Badge */}
+        <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
           {icon}
-          
           {badgeCount > 0 && (
-            <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[9px] font-black h-[16px] min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-md border-2 border-[var(--color-bg)] animate-pulse z-20">
+            <span className="absolute -top-1.5 -right-2.5 bg-red-500 text-white text-[9px] font-black h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full border-2 border-[var(--color-bg)] shadow-[var(--shadow-sm)] animate-pulse z-20">
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
+        </div>
+
+        {/* Text Label */}
+        <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">
+          {label}
         </span>
       </div>
-      
-      <span className="text-[8.5px] sm:text-[9px] font-black mt-1 relative z-10 uppercase tracking-tight">
-        {label}
-      </span>
     </button>
   );
 }

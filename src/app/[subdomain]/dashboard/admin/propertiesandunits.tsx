@@ -473,39 +473,39 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     <div className="flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* HEADER SECTION - Themified */}
-      <div className="shrink-0 mb-4 px-2 sm:px-0 mt-2">
+      <div className="shrink-0 mb-4 px-1 sm:px-0 mt-2">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
-          <div className="w-full md:w-auto">
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
-              <div className="p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm">
+          <div className="w-full md:w-auto flex flex-col">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                 <FolderOpen className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
               </div>
               Properties & Units
             </h2>
-            <p className="text-slate-500 text-sm mt-1.5 font-medium flex items-center gap-2">
-              Vacancy Board & Inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span> 
-              <span className="font-bold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-[var(--color-border)] shadow-inner">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              Vacancy Board & Inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300 hidden sm:block"></span> 
+              <span className="font-bold text-slate-700 bg-slate-100 px-2 sm:px-2.5 py-0.5 rounded-md border border-[var(--color-border)] shadow-inner whitespace-nowrap mt-1 sm:mt-0">
                 {isOrgLoading ? "..." : maxUnits} Units Limit
               </span>
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
-            <div className="relative w-full sm:w-72 group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
+            <div className="relative w-full sm:w-64 lg:w-72 group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
                 placeholder="Search unit, tenant, owner..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all"
               />
             </div>
 
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
+            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
               <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+              <div className="w-10 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>
             </div>
@@ -514,14 +514,15 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       </div>
 
       {/* ACTION CONTROLS ROW */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 shrink-0 px-2 sm:px-0">
-        <div className="flex items-center gap-3">
-          <h3 className="font-black text-[var(--color-text)] text-base tracking-tight">Property Summary Board</h3>
-          <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20 text-xs font-black px-2.5 py-1 rounded-lg shadow-sm">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 sm:mb-4 gap-3 sm:gap-4 shrink-0 px-1 sm:px-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <h3 className="font-black text-[var(--color-text)] text-sm sm:text-base tracking-tight">Property Summary Board</h3>
+          <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20 text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-1 rounded-lg shadow-sm whitespace-nowrap">
             {isLoadingUnits || isOrgLoading ? "..." : remainingUnits} Remaining Seats
           </span>
         </div>
-        <div className="flex flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+        
+        <div className="flex flex-col min-[480px]:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
           
           <button 
             onClick={() => {
@@ -529,10 +530,11 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               setMassDeleteSearchQuery("");
               setIsMassDeleteModalOpen(true);
             }}
-            className="flex-none justify-center bg-white border border-[var(--color-border)] hover:border-red-300 hover:bg-red-50 text-slate-500 hover:text-red-600 px-3 py-2.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex items-center active:scale-95"
+            className="w-full min-[480px]:w-auto min-[480px]:flex-none justify-center bg-white border border-[var(--color-border)] hover:border-red-300 hover:bg-red-50 text-slate-500 hover:text-red-600 px-3 py-2.5 sm:py-2.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
             title="Mass Delete Units"
           >
-            <Trash2 size={18} strokeWidth={2.5} />
+            <Trash2 size={16} strokeWidth={2.5} className="sm:w-[18px] sm:h-[18px]" />
+            <span className="min-[480px]:hidden text-sm font-bold">Mass Delete</span>
           </button>
 
           <input 
@@ -544,7 +546,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 sm:flex-none justify-center bg-[var(--color-primary)] border border-[var(--color-border)] hover:opacity-90 text-[var(--color-text)] px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
+            className="flex-1 min-[480px]:flex-none justify-center bg-white sm:bg-[var(--color-primary)] border border-[var(--color-border)] sm:border-transparent sm:hover:opacity-90 text-[var(--color-text)] sm:text-[var(--color-primary-text)] px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-sm)] flex items-center gap-2 active:scale-95"
           >
             <ArrowUp size={16} strokeWidth={2.5} className="hidden sm:block" /> 
             <span>Import CSV</span>
@@ -553,10 +555,10 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
           <button 
             onClick={openAddModal}
             disabled={remainingUnits === 0 && !isLoadingUnits}
-            className={`flex-1 sm:flex-none justify-center px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all active:scale-95 flex items-center gap-2 ${
+            className={`flex-1 min-[480px]:flex-none justify-center px-4 sm:px-5 py-2.5 rounded-[var(--radius-md)] text-sm font-black transition-all active:scale-95 flex items-center gap-2 ${
               remainingUnits === 0 && !isLoadingUnits 
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none" 
-                : "bg-slate-100 hover:opacity-90 text-[var(--color-text)] shadow-[var(--shadow-md)] border border-transparent"
+                : "bg-[var(--color-primary)] sm:bg-white text-[var(--color-primary-text)] sm:text-[var(--color-text)] hover:opacity-90 sm:hover:bg-slate-50 border border-transparent sm:border-[var(--color-border)] shadow-[var(--shadow-sm)]"
             }`}
           >
             <Building size={16} strokeWidth={2.5} /> Add Unit
