@@ -102,7 +102,7 @@ export default function LandingPage() {
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
         <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
           <Image
-            src="/Final-PropertyKo-Logo.png"
+            src="/PropertyKo-Logo-Loading-Revamp.png"
             fill
             alt="PropertyKo Loading"
             className="object-contain"
@@ -130,7 +130,7 @@ export default function LandingPage() {
             className="relative w-32 h-8 sm:w-40 sm:h-9 shrink-0"
           >
             <Image
-              src="/heading.png"
+              src="/PropertyKo-Logo-heading-Revamp.png"
               alt="PropertyKo Logo"
               fill
               className="object-contain object-left"
