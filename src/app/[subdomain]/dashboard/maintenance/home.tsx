@@ -83,9 +83,16 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
     return <HomeSkeleton />;
   }
 
+  // ✨ ENTERPRISE SLA SORTING FOR UP NEXT SECTION (Top 3 tasks)
   const upNextTasks = tasks
     .filter((t: any) => t.status === 'pending' || t.status === 'in_progress')
-    .sort((a: any, b: any) => (a.priority === 'Urgent' ? -1 : 1))
+    .sort((a: any, b: any) => {
+      // 1. Priority: Urgent First
+      if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+      if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+      // 2. Date: Oldest First
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    })
     .slice(0, 3);
 
   return (

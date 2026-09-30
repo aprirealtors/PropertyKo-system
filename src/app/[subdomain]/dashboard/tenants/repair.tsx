@@ -322,19 +322,35 @@ export default function RepairTab({ highlightTicketId }: any) {
     }
   }, [highlightTicketId, isLoading, enrichedTickets]);
 
+  // ✨ ENTERPRISE SLA SORTING LOGIC FOR TENANT PORTAL
   const openInProgressTasks = enrichedTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
-  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+  }).sort((a, b) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First (Para mapansin agad yung pinakamatagal nang request)
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
 
   const onHoldTasks = enrichedTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'on_hold' || s === 'on hold';
-  }).sort((a, b) => (a.priority === 'Urgent' ? -1 : 1));
+  }).sort((a, b) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
 
   const resolvedTasks = enrichedTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success'; 
+  }).sort((a, b) => {
+    // Resolved is strictly Newest First (recent activity sa itaas)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
@@ -1033,7 +1049,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[var(--shadow-sm)] border-4 border-[var(--color-primary)]/20">
               <CheckCircle2 size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] mb-3">Request Submitted!</h2>
+            <h2 className="text-2xl font-black text-[var(--color-text)] mb-3">Request Submitted!</h2>
             <p className="text-slate-500 text-sm mb-10 leading-relaxed font-medium px-2">
               Your repair request is now with the property manager. Check your Active Requests to track its progress.
             </p>
@@ -1098,7 +1114,7 @@ function KanbanSkeleton() {
 function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 rounded-[var(--radius-xl)] border border-dashed border-[var(--color-border)] h-[200px] animate-in fade-in duration-300">
-      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-primary)]/50 border border-[var(--color-border)]">
+      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-text)]/50 border border-[var(--color-border)]">
         <Icon size={26} strokeWidth={1.5} />
       </div>
       <h4 className="font-extrabold text-[var(--color-text)] mb-1.5">{title}</h4>

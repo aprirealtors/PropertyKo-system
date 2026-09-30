@@ -125,12 +125,30 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
     }
   };
 
-  const openTasks = tasks.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').sort((a: any, b: any) => (a.priority === 'Urgent' ? -1 : 1));
-  const onHoldTasks = tasks.filter((t: any) => t.status === 'on_hold').sort((a: any, b: any) => (a.priority === 'Urgent' ? -1 : 1));
-  const resolvedTasks = tasks.filter((t: any) => t.status === 'completed');
+  // ✨ ENTERPRISE SLA SORTING LOGIC FOR STAFF PORTAL
+  const openTasks = tasks.filter((t: any) => t.status === 'pending' || t.status === 'in_progress').sort((a: any, b: any) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First (Para mapansin agad yung mga matagal nang nakatengga)
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
+
+  const onHoldTasks = tasks.filter((t: any) => t.status === 'on_hold').sort((a: any, b: any) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
+
+  const resolvedTasks = tasks.filter((t: any) => t.status === 'completed').sort((a: any, b: any) => {
+    // Resolved is strictly Newest First (recent activity sa itaas)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-130px)] md:h-[calc(100vh-130px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10">
+    <div className="flex flex-col h-[calc(100vh-130px)] md:h-[calc(100vh-130px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10">
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .custom-scrollbar::-webkit-scrollbar { display: none; }
@@ -340,7 +358,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
             <div className="px-5 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-lg font-black text-[var(--color-secondary)] tracking-tight">Update Task</h2>
+              <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Update Task</h2>
               <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-[var(--color-primary)] bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-colors active:scale-90" disabled={isCompleting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
@@ -462,8 +480,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 )}
 
                 <div className="pt-2 flex gap-3">
-                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150">Cancel</button>
-                  <button type="submit" disabled={isCompleting || !completionStatus || !completionImage} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:text-[var(--color-primary-text)] border border-transparent text-[var(--color-primary-text)] py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
+                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150 border border-transparent">Cancel</button>
+                  <button type="submit" disabled={isCompleting || !completionStatus || !completionImage} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
                     {isCompleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Submit Update"}
                   </button>
                 </div>
@@ -476,9 +494,9 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       {/* ✨ 2. ACTIVE TASK REVIEW MODAL (NEW: Before starting work) */}
       {reviewActiveTask && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
-            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-sm">
+            <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
                   Task Details
@@ -492,17 +510,17 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
                 {/* BEFORE (Tenant's Report) */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex items-center gap-3">
-                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-sm">Report</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Tenant Evidence</span>
+                    <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Report</span>
+                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Issue Evidence</span>
                   </div>
 
-                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-slate-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
+                  <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
                     {reviewActiveTask.photo_url ? (
                       <img src={reviewActiveTask.photo_url} alt="Reported issue" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-700" />
                     ) : (
@@ -515,7 +533,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-sm">Info</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-sm">Info</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Task Overview</span>
                     </div>
                     {reviewActiveTask.status === 'in_progress' ? (
@@ -525,7 +543,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     )}
                   </div>
 
-                  <div className="flex-1 bg-slate-50 rounded-2xl p-5 border border-[var(--color-border)] flex flex-col justify-between">
+                  <div className="flex-1 bg-slate-50 rounded-[1.5rem] p-5 border border-[var(--color-border)] flex flex-col justify-between">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Issue Description:</span>
                     <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewActiveTask.description}</p>
                     
@@ -557,8 +575,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </div>
             </div>
 
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
-              <button onClick={() => setReviewActiveTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
+              <button onClick={() => setReviewActiveTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>
@@ -568,7 +586,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       {reviewOnHoldTask && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-60 flex items-center justify-center p-0 sm:p-4 transition-all duration-500">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
-            
+
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
                 <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] flex items-center gap-2 truncate tracking-tight">
@@ -583,14 +601,14 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
                 {/* BEFORE COLUMN */}
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3">
                     <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Before</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Reported Issue</span>
+                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Initial Report</span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-[var(--shadow-inner)] group p-1">
@@ -604,11 +622,14 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     )}
                   </div>
 
-                  <div className="flex-1 bg-slate-50 rounded-2xl p-5 border border-[var(--color-border)] flex flex-col justify-between">
+                  <div className="flex-1 bg-slate-50 rounded-[1.5rem] p-5 border border-[var(--color-border)] flex flex-col justify-between">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Description:</span>
                     <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">
                       {reviewOnHoldTask.description}
                     </p>
+                    <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-[var(--color-border)] pt-5 mt-5 shrink-0">
+                      Reported: {new Date(reviewOnHoldTask.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
                   </div>
                 </div>
 
@@ -616,18 +637,18 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 <div className="bg-white rounded-[2rem] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">After</span>
-                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Report</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Update</span>
+                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">My Hold Report</span>
                     </div>
-                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]">
+                    <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
                       On Hold
                     </span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-amber-200/60 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
-                    {reviewOnHoldTask.resolution_photo_url ? (
+                    {(reviewOnHoldTask.on_hold_photo_url || reviewOnHoldTask.resolution_photo_url) ? (
                       <img 
-                        src={reviewOnHoldTask.resolution_photo_url} 
+                        src={reviewOnHoldTask.on_hold_photo_url || reviewOnHoldTask.resolution_photo_url} 
                         alt="On hold status" 
                         className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105" 
                       />
@@ -643,7 +664,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     <div>
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-amber-100 pb-2 mb-2">Reason for delay:</span>
                       <p className="text-sm text-amber-800 leading-relaxed font-bold">
-                        {reviewOnHoldTask.on_hold_reason || "Task is currently on hold."}
+                        {reviewOnHoldTask.on_hold_reason || reviewOnHoldTask.remarks || "Task is currently on hold. We will update you soon as possible."}
                       </p>
                     </div>
                   </div>
@@ -678,7 +699,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
                 {/* BEFORE */}
@@ -711,17 +732,17 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">After</span>
-                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Resolution</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">After</span>
+                      <span className="text-sm sm:text-base font-black text-[var(--color-text)]">My Resolution</span>
                     </div>
-                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-green-100 text-green-700 border-green-200/60 shadow-[var(--shadow-sm)]"><Check size={12} className="inline mr-1"/> Success</span>
+                    <span className="px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border bg-green-100 text-green-700 border-green-200/60 shadow-sm"><Check size={12} className="inline mr-1"/> Success</span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[1.5rem] border border-[var(--color-primary)]/20 overflow-hidden flex items-center justify-center shrink-0 shadow-inner group relative z-10 p-1">
                     {reviewResolvedTask.resolution_photo_url ? (
                       <img src={reviewResolvedTask.resolution_photo_url} alt="Resolution proof" className="w-full h-full object-contain transition-transform group-hover:scale-105 duration-700" />
                     ) : (
-                      <div className="text-center text-[var(--color-primary)]/70 p-4"><CheckCircle2 size={32} className="mx-auto mb-2 opacity-60" /><span className="text-xs font-bold block uppercase tracking-widest text-[var(--color-primary)]/60">No evidence photo</span></div>
+                      <div className="text-center text-[var(--color-primary)]/60 p-4"><CheckCircle2 size={32} className="mx-auto mb-2 opacity-60" /><span className="text-xs font-bold block uppercase tracking-widest text-[var(--color-primary)]/70">No evidence photo</span></div>
                     )}
                   </div>
 
@@ -748,7 +769,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             </div>
 
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewResolvedTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+              <button onClick={() => setReviewResolvedTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-primary-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>

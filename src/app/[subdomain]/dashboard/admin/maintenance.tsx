@@ -5,7 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, 
   Inbox, PauseCircle, Trash2, CheckCircle, 
-  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight
+  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight, AlertTriangle
 } from "lucide-react";
 
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
@@ -16,14 +16,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [isLoadingTickets, setIsLoadingTickets] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
+  // ✨ UNIVERSAL ALERT STATE
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+
   // Reject Ticket States
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
   
-  // ✨ UNIVERSAL MODAL STATE
+  // UNIVERSAL MODAL STATE
   const [selectedTicketForModal, setSelectedTicketForModal] = useState<any | null>(null);
   
   const [selectedInboxId, setSelectedInboxId] = useState(""); 
@@ -36,17 +38,25 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [ticketImage, setTicketImage] = useState<File | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
-  // ✨ NEW: Searchable Dropdown States for Modal
+  // ✨ INLINE ERROR STATES
+  const [photoError, setPhotoError] = useState("");
+
+  // Searchable Dropdown States for Modal
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [isReporterOpen, setIsReporterOpen] = useState(false);
   
   // VIEW MODE & SORT STATES
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('sla');
 
-  // ✨ MOBILE & TABLET TAB SWITCHER STATE
+  // MOBILE & TABLET TAB SWITCHER STATE
   const [activeView, setActiveView] = useState<'open' | 'in_progress' | 'on_hold' | 'resolved'>('open');
+
+  // HELPER: Show Alert
+  const showAlert = (type: 'success' | 'error' | 'warning', title: string, message: string) => {
+    setAlertConfig({ isOpen: true, type, title, message });
+  };
 
   // Base Filter
   const filteredTickets = tickets.filter(t => {
@@ -59,10 +69,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     );
   });
 
-  // SORTING FUNCTION LOGIC
-  const applySort = (ticketsArray: any[]) => {
+  // ENTERPRISE SLA SORTING FUNCTION LOGIC
+  const applySort = (ticketsArray: any[], isResolvedColumn: boolean = false) => {
     return [...ticketsArray].sort((a, b) => {
-      if (sortBy === 'priority') {
+      if (sortBy === 'sla') {
+        if (isResolvedColumn) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+        if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+      } else if (sortBy === 'priority') {
         if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
         if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); 
@@ -125,14 +142,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   const fetchTickets = async () => {
     setIsLoadingTickets(true);
-    
-    // 1. Fetch Maintenance Tasks (Active & Resolved)
     const { data: tasksData } = await supabase.from('maintenance_tasks').select('*').eq('admin_email', orgData.admin_email);
-    
-    // 2. Fetch Open Inbox Tickets
     const { data: inboxData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Open');
-    
-    // 3. Fetch Rejected Inbox Tickets
     const { data: rejectedData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Rejected');
 
     if (inboxData) setInboxTickets(inboxData.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
@@ -164,11 +175,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   const handleRejectTicket = async () => {
     if (!selectedInboxId || !rejectReason.trim()) {
-      setErrorMsg("Please provide a reason for rejecting the request.");
+      showAlert('warning', 'Missing Information', "Please provide a reason for rejecting the request.");
       return;
     }
     setIsRejecting(true);
-    setErrorMsg(null);
 
     try {
       const ticketToReject = inboxTickets.find(t => String(t.id) === selectedInboxId);
@@ -198,12 +208,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       setRejectReason("");
       setSelectedInboxId("");
       setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+      setPhotoError("");
       
+      showAlert('success', 'Ticket Rejected', 'The ticket has been successfully rejected and the user has been notified.');
       await fetchTickets(); 
 
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(err.message || "Failed to reject ticket.");
+      showAlert('error', 'Rejection Failed', err.message || "Failed to reject ticket.");
     } finally {
       setIsRejecting(false);
     }
@@ -212,16 +224,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setErrorMsg(null);
+    setPhotoError(""); // Reset error on submit
 
     if (!assignedTo) {
-      setErrorMsg("Please assign this ticket to a maintenance staff member.");
+      showAlert('warning', 'Missing Assignment', "Please assign this ticket to a maintenance staff member.");
       setIsSubmitting(false);
       return;
     }
 
+    // ✨ INLINE PHOTO ERROR TRIGGER
     if (!ticketImage && !selectedInboxId) {
-      setErrorMsg("Please upload or take a photo of the issue.");
+      setPhotoError("A photo evidence is required to process this ticket.");
       setIsSubmitting(false);
       return;
     }
@@ -267,6 +280,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
       await fetchTickets(); 
       setIsModalOpen(false);
+      showAlert('success', 'Ticket Created', 'The maintenance task has been successfully assigned.');
       
       setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
 
@@ -287,7 +301,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
     } catch (error: any) {
       console.error(error);
-      setErrorMsg(error.message);
+      showAlert('error', 'Creation Failed', error.message || 'An unexpected error occurred while creating the ticket.');
     } finally {
       setIsSubmitting(false);
     }
@@ -296,22 +310,22 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const openTickets = applySort(filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'pending' || s === 'open';
-  }));
+  }), false);
   
   const inProgressTickets = applySort(filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'in_progress' || s === 'in progress' || s === 'working';
-  }));
+  }), false);
 
   const onHoldTickets = applySort(filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'on_hold' || s === 'on hold';
-  }));
+  }), false);
   
   const resolvedTickets = applySort(filteredTickets.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed';
-  }));
+  }), true);
 
   const initials = orgData?.org_name 
   ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
@@ -362,7 +376,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             setViewMode('board');
             setSelectedTicketForModal(existingTask); 
 
-            // Auto-switch mobile view tab based on status
             const s = String(existingTask.status || '').toLowerCase();
             if (s === 'pending' || s === 'open') setActiveView('open');
             else if (s === 'in_progress' || s === 'in progress' || s === 'working') setActiveView('in_progress');
@@ -382,6 +395,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             setIsModalOpen(true);
             setSelectedInboxId(actualId);
             setTicketImage(null);
+            setPhotoError(""); // Clear any error
             
             setTitle(pendingInbox.title ? capitalizeWords(pendingInbox.title) : ""); 
             setLocation(pendingInbox.location || ""); 
@@ -482,9 +496,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   }}
                   className="w-full appearance-none bg-white border border-[var(--color-border)] text-slate-600 text-xs font-bold py-2 sm:py-2.5 pl-3 pr-8 rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 shadow-sm cursor-pointer"
                >
+                  <option value="sla">Sort: Priority First</option>
                   <option value="newest">Sort: Newest First</option>
                   <option value="oldest">Sort: Oldest First</option>
-                  <option value="priority">Sort: Priority (Urgent)</option>
                   <option value="rejected">Show: Rejected Only</option>
                </select>
                <ArrowUpDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -510,7 +524,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             </div>
 
             <button 
-              onClick={() => { setIsModalOpen(true); setTicketImage(null); }}
+              onClick={() => { setIsModalOpen(true); setTicketImage(null); setPhotoError(""); }}
               className="w-full min-[480px]:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2.5 sm:py-2.5 rounded-[var(--radius-md)] text-xs font-extrabold transition-all shadow-[var(--shadow-sm)] active:scale-95 duration-150 shrink-0 border border-transparent flex justify-center items-center gap-1.5"
             >
               + New ticket
@@ -551,7 +565,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ DYNAMIC CONTENT AREA */}
         {viewMode === 'board' ? (
           
-          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-16 custom-scrollbar animate-in fade-in duration-300">
+          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 items-start w-full h-full min-h-[400px]">
               
               {/* Column 1: Open */}
@@ -643,9 +657,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
         ) : (
 
-          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative border border-[var(--color-border)]">
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative">
             {/* ✨ STRICT HORIZONTAL & VERTICAL SCROLL WRAPPER */}
-            <div className="w-full h-full overflow-auto custom-scrollbar rounded-[var(--radius-xl)]">
+            <div className="w-full h-full overflow-auto rounded-[var(--radius-xl)]">
               <table className="w-full text-left text-sm min-w-[900px] sm:min-w-[1000px] border-collapse relative">
                 <thead className="bg-slate-50/95 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-xl shadow-sm">
                   <tr>
@@ -874,14 +888,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
             <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
-                <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
-                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
+                <h2 className="text-lg font-black text-[var(--color-text)] tracking-wider">Create New Ticket</h2>
+                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
                   <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
               <div className="p-4 sm:p-5 overflow-y-auto max-h-full sm:max-h-[75vh] custom-scrollbar bg-slate-50/50">
                 <form onSubmit={handleAddTicket} className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
-                  {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-semibold rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
                   
                   {inboxTickets.length > 0 && (
                     <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm">
@@ -892,6 +905,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           const id = e.target.value;
                           setSelectedInboxId(id);
                           setTicketImage(null); 
+                          setPhotoError(""); // ✨ Clear inline error
                           if (id) {
                             const t = inboxTickets.find(x => String(x.id) === id);
                             if (t) {
@@ -921,7 +935,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                      Photo Evidence
+                      Photo Evidence <span className="text-red-500">*</span>
                     </label>
                     <div>
                       {ticketImage ? (
@@ -973,7 +987,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         </div>
                       ) : (
                         <div className="flex gap-2 sm:gap-3 w-full">
-                          <label className="flex md:hidden flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <label className={`flex md:hidden flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
                             <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <Camera size={20} strokeWidth={2.5} />
                             </div>
@@ -986,12 +1000,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               type="file" 
                               accept="image/*"
                               capture="environment"
-                              onChange={(e) => e.target.files && setTicketImage(e.target.files[0])}
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  setTicketImage(e.target.files[0]);
+                                  setPhotoError(""); // ✨ Clear inline error
+                                }
+                              }}
                               className="hidden"
                               disabled={isSubmitting}
                             />
                           </label>
-                          <label className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer transition-all group text-center shadow-sm bg-white">
+                          <label className={`flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
                             <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
@@ -1003,7 +1022,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             <input 
                               type="file" 
                               accept="image/*"
-                              onChange={(e) => e.target.files && setTicketImage(e.target.files[0])}
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  setTicketImage(e.target.files[0]);
+                                  setPhotoError(""); // ✨ Clear inline error
+                                }
+                              }}
                               className="hidden"
                               disabled={isSubmitting}
                             />
@@ -1011,6 +1035,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         </div>
                       )}
                     </div>
+                    {/* ✨ INLINE PHOTO ERROR MESSAGE */}
+                    {photoError && (
+                      <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
+                        <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {selectedInboxId && (
@@ -1023,7 +1054,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   )}
 
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       required 
@@ -1040,11 +1071,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
 
                   <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit <span className="text-red-500">*</span></label>
                     <input 
                       type="text"
                       required 
-                      placeholder="Search or choose area..." 
+                      placeholder="Search or enter location..." 
                       value={location} 
                       onChange={(e) => {
                         setLocation(e.target.value);
@@ -1106,7 +1137,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
                     <input 
                       type="text" 
-                      placeholder="Search or enter reported issue..." 
+                      placeholder="Search owner or tenant..." 
                       value={reporter} 
                       onChange={(e) => {
                         setReporter(capitalizeWords(e.target.value));
@@ -1152,14 +1183,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To</label>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To <span className="text-red-500">*</span></label>
                       <select required value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" disabled={isSubmitting}>
                         <option value="" disabled>Select staff...</option>
                         {teamMembers.filter(m => { const r = String(m.role || "").toLowerCase(); return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager'); }).map((member) => ( <option key={member.email} value={member.email}>{member.name}</option> ))}
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Priority Level</label>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Priority Level <span className="text-red-500">*</span></label>
                       <select required value={priority} onChange={(e) => setPriority(e.target.value)} className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm ${selectedInboxId ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : "focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]"}`} disabled={isSubmitting || !!selectedInboxId}>
                         <option value="Normal">Normal (Flexible)</option>
                         <option value="Urgent">🚨 Urgent (Due Today)</option>
@@ -1169,20 +1200,20 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
                   
                   <div className="mt-6 sm:mt-8 flex gap-2 sm:gap-3 justify-end pt-4 border-t border-[var(--color-border)] shrink-0">
-                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
                     
                     {selectedInboxId && (
                       <button 
                         type="button" 
                         onClick={() => setIsRejectModalOpen(true)} 
                         disabled={isSubmitting} 
-                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98]"
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider transition-all active:scale-[0.98]"
                       >
-                        Reject
+                        Reject Request
                       </button>
                     )}
 
-                    <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-4 sm:px-5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-4 sm:px-5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
                   </div>
                 </form>
               </div>
@@ -1228,6 +1259,23 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             </div>
           </div>
         )}
+
+        {/* ✨ UNIVERSAL ALERT MODAL (NEW) */}
+        {alertConfig.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--color-secondary)]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
+              <div className={`w-16 h-16 rounded-[1.2rem] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' : alertConfig.type === 'error' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-amber-50 text-amber-500 border-amber-100'}`}>
+                {alertConfig.type === 'success' && <CheckCircle size={28} strokeWidth={2.5} />}
+                {alertConfig.type === 'error' && <AlertCircle size={28} strokeWidth={2.5} />}
+                {alertConfig.type === 'warning' && <AlertTriangle size={28} strokeWidth={2.5} />}
+              </div>
+              <h2 className="text-lg font-black text-[var(--color-secondary)] mb-2 tracking-tight">{alertConfig.title}</h2>
+              <p className="text-slate-500 text-xs mb-6 leading-relaxed whitespace-pre-wrap font-medium">{alertConfig.message}</p>
+              <button onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} className={`w-full text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] duration-150 border border-transparent ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)]' : alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}>Got it</button>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }

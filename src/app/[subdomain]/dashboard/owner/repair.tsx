@@ -346,21 +346,36 @@ export default function RepairTab({ highlightTicketId }: any) {
   };
 
   // ---------------------------------------------------------------------------
-  // FILTERED GROUPS
+  // FILTERED GROUPS (✨ ENTERPRISE SLA SORTING LOGIC FOR OWNER PORTAL)
   // ---------------------------------------------------------------------------
   const openInProgressTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
-  }).sort((a: any, b: any) => (a.priority === 'Urgent' ? -1 : 1));
+  }).sort((a: any, b: any) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First (Para mapansin agad yung pinakamatagal nang request)
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
 
   const onHoldTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'on_hold' || s === 'on hold';
-  }).sort((a: any, b: any) => (a.priority === 'Urgent' ? -1 : 1));
+  }).sort((a: any, b: any) => {
+    // 1. Priority: Urgent First
+    if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+    if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+    // 2. Date: Oldest First
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+  });
 
   const resolvedTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success';
+  }).sort((a: any, b: any) => {
+    // Resolved is strictly Newest First (recent activity sa itaas)
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
   return (
@@ -1067,7 +1082,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-[var(--color-primary)]/20">
               <CheckCircle2 size={40} strokeWidth={2.5} />
             </div>
-            <h2 className="text-2xl font-black text-[var(--color-secondary)] mb-3 tracking-tight">Request Submitted!</h2>
+            <h2 className="text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight">Request Submitted!</h2>
             <p className="text-slate-500 text-sm mb-10 leading-relaxed font-medium px-2">
               Your repair request has been successfully submitted to the management. We will notify you once a maintenance staff is assigned.
             </p>
@@ -1132,7 +1147,7 @@ function KanbanSkeleton() {
 function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, message: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] border border-dashed border-[var(--color-border)] h-[200px] animate-in fade-in duration-300">
-      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-primary)]/50 border border-[var(--color-border)]">
+      <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center mb-4 shadow-[var(--shadow-sm)] text-[var(--color-text)]/50 border border-[var(--color-border)]">
         <Icon size={26} strokeWidth={1.5} />
       </div>
       <h4 className="font-extrabold text-[var(--color-text)] mb-1.5">{title}</h4>
