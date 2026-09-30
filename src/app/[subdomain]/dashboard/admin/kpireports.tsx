@@ -2,18 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, BarChart3, Download, Activity } from "lucide-react";
+import { Search, BarChart3, Download, Activity, Calendar, ChevronDown } from "lucide-react";
 
 export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any) {
   
   // Database States
   const [units, setUnits] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
-  const [leases, setLeases] = useState<any[]>([]); // ✨ Added state for leases
+  const [leases, setLeases] = useState<any[]>([]); 
   const [isLoadingData, setIsLoadingData] = useState(true);
   
-  // Search State
+  // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Year Filter Logic (Starts at 2026, dynamically scales up, includes "All" option)
+  const currentSystemYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState<number | string>(Math.max(2026, currentSystemYear));
+  
+  const startYear = 2026;
+  const availableYears = [];
+  for (let y = Math.max(startYear, currentSystemYear); y >= startYear; y--) {
+    availableYears.push(y);
+  }
 
   // Fetch all units and tasks for KPI calculations
   useEffect(() => {
@@ -25,7 +35,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   const fetchKPIData = async () => {
     setIsLoadingData(true);
     
-    // Fetch Units
+    // Fetch Units (Snapshot of current revenue/vacancy)
     const { data: unitsData } = await supabase
       .from('units')
       .select('*')
@@ -37,7 +47,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       .select('*')
       .eq('admin_email', orgData.admin_email);
 
-    // ✨ Fetch Leases (For accurate Renewal Rate tracking)
+    // Fetch Leases (For accurate Renewal Rate tracking)
     const { data: leasesData } = await supabase
       .from('leases')
       .select('*')
@@ -50,6 +60,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   };
 
   // --- KPI CALCULATIONS ---
+  // Note: Total Units and Vacancy reflect the CURRENT snapshot of your property.
   const totalUnits = units.length;
   const vacantUnits = units.filter(u => u.status === 'Vacant').length;
   
@@ -60,19 +71,35 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   const totalRentPotential = units.reduce((acc, curr) => acc + (curr.monthly_rent || 0), 0);
   const revpau = totalUnits > 0 ? `₱${(totalRentPotential / totalUnits).toLocaleString(undefined, {minimumFractionDigits: 2})}` : "₱0.00";
 
-  // 3. Maintenance Cost per Unit (Summing costs from maintenance_tasks)
-  const totalTaskCost = tasks.reduce((acc, curr) => acc + Number(curr.cost || 0), 0);
-  const maintenanceCostPerUnit = totalUnits > 0 ? `₱${Math.round(totalTaskCost / totalUnits).toLocaleString()}/unit/yr` : "₱0/unit/yr";
-
-  // 4. Closed Tickets
-  const closedTicketsCount = tasks.filter(t => {
+  // 3 & 4. Closed Tickets & Maintenance Cost per Unit (Filtered by Selected Year or All)
+  const closedTickets = tasks.filter(t => {
     const s = String(t.status || '').toLowerCase();
     return s === 'completed' || s === 'resolved' || s === 'closed';
-  }).length;
+  });
 
-  // 5. ✨ ACCURATE: Lease Renewal Rate
-  // Formula: (Renewed Leases) / (Total Ended Leases [Renewed + Expired + Terminated])
-  const endedLeases = leases.filter(l => ['Renewed', 'Expired', 'Terminated'].includes(l.status));
+  const selectedYearClosedTickets = closedTickets.filter(t => {
+    if (selectedYear === "All") return true;
+    const taskYear = new Date(t.updated_at || t.created_at).getFullYear();
+    return taskYear === Number(selectedYear);
+  });
+
+  const selectedYearTaskCost = selectedYearClosedTickets.reduce((acc, curr) => acc + Number(curr.cost || 0), 0);
+  
+  const maintenanceCostPerUnit = totalUnits > 0 
+    ? `₱${Math.round(selectedYearTaskCost / totalUnits).toLocaleString()}/unit${selectedYear === "All" ? " (Total)" : "/yr"}` 
+    : `₱0/unit${selectedYear === "All" ? " (Total)" : "/yr"}`;
+
+  // 4. Closed Tickets (Filtered by Selected Year or All)
+  const closedTicketsCount = selectedYearClosedTickets.length;
+
+  // 5. ACCURATE: Lease Renewal Rate (Filtered by Selected Year or All)
+  const selectedYearLeases = leases.filter(l => {
+    if (selectedYear === "All") return true;
+    const leaseYear = new Date(l.updated_at || l.created_at).getFullYear();
+    return leaseYear === Number(selectedYear);
+  });
+
+  const endedLeases = selectedYearLeases.filter(l => ['Renewed', 'Expired', 'Terminated'].includes(l.status));
   const renewedCount = endedLeases.filter(l => l.status === 'Renewed').length;
   const leaseRenewalRate = endedLeases.length > 0 
     ? ((renewedCount / endedLeases.length) * 100).toFixed(2) + '%' 
@@ -93,7 +120,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
     { id: 6, label: "Lease Renewal Rate", current: leaseRenewalRate, use: "High", was: "Monthly" },
     { id: 7, label: "Avg Time To Lease", current: "0 Days", use: "High", was: "Monthly" },
     { id: 8, label: "Lease Conversion", current: "0.00%", use: "High", was: "Monthly" },
-    { id: 9, label: "Marketing Cost / Lease", current: "₱0/unit/yr", use: "High", was: "Monthly" }
+    { id: 9, label: "Marketing Cost / Lease", current: "₱0/unit", use: "High", was: "Monthly" }
   ];
 
   const filteredKPIs = allKPIs.filter(kpi => 
@@ -105,8 +132,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
   const handleExportCSV = () => {
     if (filteredKPIs.length === 0) return;
 
-    // Build the CSV headers
-    const headers = ["Indicator", "Current Value", "Priority Use", "Traditional Was", "With App"];
+    // Build the CSV headers dynamically based on "All" or Specific Year
+    const headers = ["Indicator", `Current Value (${selectedYear === "All" ? "All Time" : selectedYear})`, "Priority Use", "Traditional Was", "With App"];
     
     // Build the CSV rows based on the filtered KPI list
     const rows = filteredKPIs.map(kpi => {
@@ -126,19 +153,19 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().toLocaleString('default', { month: 'short' });
+    const currentMonthExport = new Date().toLocaleString('default', { month: 'short' });
     
+    const fileSuffix = selectedYear === "All" ? "All_Years" : selectedYear;
     link.setAttribute("href", url);
-    link.setAttribute("download", `KPI_Scoreboard_${currentMonth}_${currentYear}.csv`);
+    link.setAttribute("download", `KPI_Scoreboard_${currentMonthExport}_${fileSuffix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    // LOCKED LAYOUT WINDOW SHELL
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+    // ✨ REMOVED strict height (h-[calc...]) and overflow-hidden to allow full natural view
+    <div className="flex flex-col w-full relative pb-2 font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* ✨ PREMIUM HEADER SECTION - Themified & Responsive */}
       <div className="shrink-0 mb-4 px-1 sm:px-0">
@@ -167,8 +194,24 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           
           <div className="flex flex-col sm:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 shrink-0">
             
+            {/* Year Filter Dropdown */}
+            <div className="relative shrink-0 w-full sm:w-auto">
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value === "All" ? "All" : Number(e.target.value))}
+                className="w-full sm:w-40 pl-9 pr-8 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-primary)]/30 text-xs sm:text-sm font-black text-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-[var(--shadow-sm)] transition-all cursor-pointer appearance-none"
+              >
+                <option value="All">All Years</option>
+                {availableYears.map(y => (
+                  <option key={y} value={y}>{y} Data</option>
+                ))}
+              </select>
+              <Calendar size={14} strokeWidth={2.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)] pointer-events-none" />
+              <ChevronDown size={14} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)] pointer-events-none" />
+            </div>
+
             {/* Search Bar */}
-            <div className="relative w-full sm:w-64 lg:w-72 group shrink-0">
+            <div className="relative w-full sm:w-56 lg:w-64 group shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
@@ -190,9 +233,9 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
         </div>
       </div>
 
-      {/* KANBAN LAYOUT: Main Wrapper for Table */}
-      <div className="flex-1 w-full max-w-[1700px] mx-auto min-h-0 flex flex-col px-1 sm:px-0 lg:pr-2 pb-2 lg:pb-4">
-        <div className="flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
+      {/* ✨ MAIN TABLE WRAPPER - Removed flex-1 and min-h-0 to let it stretch naturally */}
+      <div className="w-full max-w-[1700px] mx-auto flex flex-col px-1 sm:px-0 lg:pr-2 pb-2 lg:pb-4">
+        <div className="w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-10 sm:-translate-y-20 translate-x-10 sm:translate-x-20 pointer-events-none z-0"></div>
 
@@ -202,7 +245,9 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
               <div className="p-1.5 sm:p-2 bg-[var(--color-primary)]/10 text-[var(--color-text)] rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shrink-0">
                 <Activity size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
               </div>
-              <h3 className="font-black text-sm sm:text-base md:text-lg text-[var(--color-text)] tracking-tight truncate pr-2">KPI Scoreboard: On-demand vs. Monthly</h3>
+              <h3 className="font-black text-sm sm:text-base md:text-lg text-[var(--color-text)] tracking-tight truncate pr-2">
+                {selectedYear === "All" ? "All Time" : selectedYear} KPI Scoreboard: On-demand vs. Monthly
+              </h3>
             </div>
             
             <button 
@@ -214,8 +259,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
             </button>
           </div>
           
-          {/* Scrollable Table Area */}
-          <div className="flex-1 min-h-0 overflow-auto relative z-10">
+          {/* ✨ FULL VIEW TABLE - Removed vertical scrolling constraint, kept horizontal scrolling for mobile safety */}
+          <div className="w-full overflow-x-auto relative z-10">
             <table className="w-full text-left text-xs sm:text-sm relative min-w-[700px] sm:min-w-[800px]">
               <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[9px] sm:text-[10px] shadow-sm">
                 <tr>

@@ -132,8 +132,9 @@ export default function LandingPage() {
             <Image
               src="/PropertyKo-Logo-heading-Revamp.svg"
               alt="PropertyKo Logo"
-              fill
-              className="object-contain object-left"
+              width={220}
+              height={60}
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-[140px] sm:w-[160px] h-auto max-w-none object-contain object-left"
               priority
             />
           </Link>

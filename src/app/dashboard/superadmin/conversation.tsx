@@ -1,3 +1,4 @@
+// src/app/dashboard/superadmin/conversation.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -113,9 +114,10 @@ export default function SuperAdminConversation() {
     if (inputRef.current) inputRef.current.style.height = '24px';
   }, [activeChat]);
 
+  // Decoupled scroll so highlighted pins stay in view without jumping to bottom
   useEffect(() => {
-    if (!chatSearchQuery && !highlightedMsgId) scrollToBottom();
-  }, [messages.length, activeChat, chatSearchQuery]); 
+    if (!isSearchActive && !highlightedMsgId) scrollToBottom();
+  }, [messages.length, activeChat, isSearchActive]); 
 
   const isMessageForContact = (msg: any, contactId: string) => {
     return msg.tenant_email === contactId;
@@ -398,11 +400,13 @@ export default function SuperAdminConversation() {
 
   const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
 
-  const displayedMessages = chatSearchQuery.trim() === "" 
-    ? roleMessages 
+  // Always show all messages in the background; generate search results dynamically for the overlay
+  const displayedMessages = roleMessages;
+  const searchResults = chatSearchQuery.trim() === "" 
+    ? [] 
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  // ✨ Support Form Rendering Style vs Standard Messenger Style
+  // Support Form Rendering Style vs Standard Messenger Style
   const renderMessageContent = (content: string) => {
     if (activeContactDetails?.type === 'Support Request') {
       const parts = content.split('\n\nMessage:\n');
@@ -435,6 +439,11 @@ export default function SuperAdminConversation() {
   return (
     <div className="absolute inset-0 flex bg-slate-50 font-sans overflow-hidden pb-[80px] md:pb-0">
       
+      {/* Global Overlay for Mobile Long Press Dismissal */}
+      {longPressedMsgId && (
+        <div className="absolute inset-0 z-40 bg-transparent" onClick={() => setLongPressedMsgId(null)} />
+      )}
+
       {/* SIDEBAR */}
       <div className={`w-full md:w-[360px] flex flex-col border-r border-slate-200 bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
 
@@ -590,7 +599,6 @@ export default function SuperAdminConversation() {
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <h2 className="font-black text-slate-800 text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
-                    {/* ✨ Badges dynamically removed to leave just the clean header layout */}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
                     {activeContactDetails?.type === 'Support Request' ? (
@@ -611,7 +619,7 @@ export default function SuperAdminConversation() {
             </div>
 
             {/* PINNED MESSAGES ACCORDION */}
-            {pinnedMessages.length > 0 && !chatSearchQuery && activeContactDetails?.type !== 'Support Request' && (
+            {pinnedMessages.length > 0 && !isSearchActive && activeContactDetails?.type !== 'Support Request' && (
               <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 flex flex-col shadow-sm z-10 transition-all w-full overflow-hidden">
                 {/* Collapsed View / Header */}
                 <div 
@@ -698,6 +706,47 @@ export default function SuperAdminConversation() {
 
             {/* MESSAGES SCROLL AREA WITH FLOATING BUTTON*/}
             <div className="flex-1 min-h-0 relative flex flex-col">
+
+              {/* SEARCH RESULTS OVERLAY */}
+              {isSearchActive && chatSearchQuery.trim() !== "" && activeContactDetails?.type !== 'Support Request' && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
+                  <div className="p-3 sm:p-4 text-[11px] font-black text-slate-500 uppercase tracking-wider bg-slate-50/95 sticky top-0 border-b border-[var(--color-border)] shadow-sm z-10 flex justify-between items-center">
+                    <span>Search Results ({searchResults.length})</span>
+                  </div>
+                  {searchResults.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-slate-500 font-medium flex flex-col items-center gap-3">
+                      <Search size={32} className="text-slate-300" />
+                      No messages found for "{chatSearchQuery}"
+                    </div>
+                  ) : (
+                    searchResults.map(msg => (
+                      <div 
+                        key={`search-${msg.id}`}
+                        onClick={() => {
+                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setIsSearchActive(false);
+                          setChatSearchQuery("");
+                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                        }}
+                        className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[13px] font-bold text-[var(--color-text)]">
+                            {msg.sender_email === superAdminEmail ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User')}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-semibold">
+                            {formatMessageTime(msg.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                          {msg.content}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               <div 
                 className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50/50 space-y-3 sm:space-y-4 custom-scrollbar"
                 onScroll={handleScroll}

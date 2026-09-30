@@ -185,7 +185,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     fetchActualNames();
   }, [userData, units]);
 
-  // FIX: Clear the text box and load drafts when switching chats
+  // Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setSearchQuery("");
@@ -203,10 +203,10 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     if (userData?.email) fetchMessages();
   }, [userData]);
 
-  // FIX: Decoupled scroll so highlighted pins stay in view without jumping to bottom
+  // Decoupled scroll so highlighted pins stay in view without jumping to bottom
   useEffect(() => {
-    if (!searchQuery && !highlightedMsgId) scrollToBottom();
-  }, [messages.length, activeChat, searchQuery]);
+    if (!isSearchActive && !highlightedMsgId) scrollToBottom();
+  }, [messages.length, activeChat, isSearchActive]);
 
   const isMessageForRole = (msg: any, roleId: string) => {
     if (msg.sender_email === userData.email) {
@@ -444,7 +444,11 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   const roleMessages = messages.filter((msg) => isMessageForRole(msg, activeChat));
   const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
   
-  const displayedMessages = searchQuery.trim() === "" ? roleMessages : roleMessages.filter(msg => msg.content.toLowerCase().includes(searchQuery.toLowerCase()));
+  // Always show all messages in the background; generate search results dynamically for the overlay
+  const displayedMessages = roleMessages;
+  const searchResults = searchQuery.trim() === "" 
+    ? [] 
+    : roleMessages.filter(msg => msg.content.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const activeRoleDetails = CHAT_ROLES.find(r => r.id === activeChat);
   const ActiveIcon = activeRoleDetails?.icon || User;
@@ -677,7 +681,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
             </div>
 
             {/* PINNED MESSAGES ACCORDION */}
-            {pinnedMessages.length > 0 && !searchQuery && (
+            {pinnedMessages.length > 0 && !isSearchActive && (
               <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 flex flex-col shadow-sm z-10 transition-all w-full overflow-hidden">
                 {/* Collapsed View / Header */}
                 <div 
@@ -764,6 +768,47 @@ export default function ConversationTab({ userData, units }: { userData: any, un
 
             {/* MESSAGES SCROLL AREA WITH FLOATING BUTTON*/}
             <div className="flex-1 min-h-0 relative flex flex-col">
+
+              {/* SEARCH RESULTS OVERLAY */}
+              {isSearchActive && searchQuery.trim() !== "" && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
+                  <div className="p-3 sm:p-4 text-[11px] font-black text-slate-500 uppercase tracking-wider bg-slate-50/95 sticky top-0 border-b border-[var(--color-border)] shadow-sm z-10 flex justify-between items-center">
+                    <span>Search Results ({searchResults.length})</span>
+                  </div>
+                  {searchResults.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-slate-500 font-medium flex flex-col items-center gap-3">
+                      <Search size={32} className="text-slate-300" />
+                      No messages found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    searchResults.map(msg => (
+                      <div 
+                        key={`search-${msg.id}`}
+                        onClick={() => {
+                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setIsSearchActive(false);
+                          setSearchQuery("");
+                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                        }}
+                        className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[13px] font-bold text-[var(--color-text)]">
+                            {msg.sender_email === userData?.email ? 'You' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-semibold">
+                            {formatMessageTime(msg.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                          {msg.content}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               <div 
                 className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar"
                 onScroll={handleScroll}
@@ -780,8 +825,8 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                 ) : displayedMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] flex items-center justify-center mb-2 sm:mb-3 shadow-[var(--shadow-sm)] text-slate-300"><ActiveIcon size={24} className="sm:w-7 sm:h-7" /></div>
-                    <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">{searchQuery ? "No messages found" : `Say hello to ${currentChatName}`}</h3>
-                    <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">{searchQuery ? `We couldn't find "${searchQuery}" in this conversation.` : "Start a conversation to request information or coordinate operations."}</p>
+                    <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">Say hello to {currentChatName}</h3>
+                    <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">Start a conversation to request information or coordinate operations.</p>
                   </div>
                 ) : (
                   displayedMessages.map((msg, idx) => {
@@ -937,10 +982,6 @@ export default function ConversationTab({ userData, units }: { userData: any, un
       {/* Global Mobile Bottom Sheet for Long Press Actions */}
       {longPressedMsgId && (
         <>
-          <div 
-            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
-            onClick={() => setLongPressedMsgId(null)} 
-          />
           <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
             

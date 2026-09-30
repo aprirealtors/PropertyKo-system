@@ -146,9 +146,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   }, [activeChat]);
 
+  // Updated to depend on isSearchActive instead of chatSearchQuery
   useEffect(() => {
-    if (!chatSearchQuery && !highlightedMsgId) scrollToBottom();
-  }, [messages.length, activeChat, chatSearchQuery]);
+    if (!isSearchActive && !highlightedMsgId) scrollToBottom();
+  }, [messages.length, activeChat, isSearchActive]);
 
   const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
     if (contactType === 'admin') {
@@ -470,8 +471,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   
   const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
 
-  const displayedMessages = chatSearchQuery.trim() === "" 
-    ? roleMessages 
+  // Always show all messages in the background; generate search results dynamically for the overlay
+  const displayedMessages = roleMessages;
+  const searchResults = chatSearchQuery.trim() === "" 
+    ? [] 
     : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
   const renderRoleBadge = (roleId: string | undefined) => {
@@ -671,7 +674,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
             </div>
 
             {/* PINNED MESSAGES ACCORDION */}
-            {pinnedMessages.length > 0 && !chatSearchQuery && (
+            {pinnedMessages.length > 0 && !isSearchActive && (
               <div className="shrink-0 bg-amber-50 border-b border-amber-200/50 flex flex-col shadow-sm z-10 transition-all w-full overflow-hidden">
                 {/* Collapsed View / Header */}
                 <div 
@@ -758,6 +761,47 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
             {/* MESSAGES SCROLL AREA WITH FLOATING BUTTON*/}
             <div className="flex-1 min-h-0 relative flex flex-col">
+              
+              {/* SEARCH RESULTS OVERLAY */}
+              {isSearchActive && chatSearchQuery.trim() !== "" && (
+                <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-30 overflow-y-auto custom-scrollbar animate-in fade-in duration-200">
+                  <div className="p-3 sm:p-4 text-[11px] font-black text-slate-500 uppercase tracking-wider bg-slate-50/95 sticky top-0 border-b border-[var(--color-border)] shadow-sm z-10 flex justify-between items-center">
+                    <span>Search Results ({searchResults.length})</span>
+                  </div>
+                  {searchResults.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-slate-500 font-medium flex flex-col items-center gap-3">
+                      <Search size={32} className="text-slate-300" />
+                      No messages found for "{chatSearchQuery}"
+                    </div>
+                  ) : (
+                    searchResults.map(msg => (
+                      <div 
+                        key={`search-${msg.id}`}
+                        onClick={() => {
+                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setIsSearchActive(false);
+                          setChatSearchQuery("");
+                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                        }}
+                        className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[13px] font-bold text-[var(--color-text)]">
+                            {msg.sender_email === managerProfile?.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User')}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-semibold">
+                            {formatMessageTime(msg.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                          {msg.content}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               <div 
                 className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6 bg-[var(--color-bg)]/50 space-y-3 sm:space-y-4 custom-scrollbar"
                 onScroll={handleScroll}
@@ -773,10 +817,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       <ActiveIcon size={24} className="sm:w-7 sm:h-7" />
                     </div>
                     <h3 className="text-sm sm:text-base font-black text-[var(--color-text)] tracking-tight">
-                      {chatSearchQuery ? "No messages found" : `Say hello to ${currentChatName}`}
+                      Say hello to {currentChatName}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-slate-400 font-medium leading-relaxed mt-1">
-                      {chatSearchQuery ? `We couldn't find "${chatSearchQuery}" in this conversation.` : "Start a conversation to request information or coordinate operations."}
+                      Start a conversation to request information or coordinate operations.
                     </p>
                   </div>
                 ) : (
