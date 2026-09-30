@@ -549,10 +549,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
               
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
-                if (lastMsg.sender_email === managerProfile.email) return "You: ";
+                if (lastMsg.sender_email === managerProfile.email) return "You:";
                 const senderName = customNames[contact.id] || contact.name;
                 const firstName = senderName.split(' ')[0];
-                return `${firstName}: `;
+                return `${firstName}:`;
               };
 
               return (

@@ -688,10 +688,10 @@ export default function ConversationTab({
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "";
-                if (lastMsg.sender_email === userData.email) return "You: ";
+                if (lastMsg.sender_email === userData.email) return "You:";
                 const senderName = customNames[role.id] || role.label;
                 const firstName = senderName.split(" ")[0];
-                return `${firstName}: `;
+                return `${firstName}:`;
               };
 
               return (

@@ -141,7 +141,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
     <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* ✨ PREMIUM HEADER SECTION - Themified & Responsive */}
-      <div className="shrink-0 mb-4 px-1 sm:px-0 mt-2">
+      <div className="shrink-0 mb-4 px-1 sm:px-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           
           <div className="w-full md:w-auto flex items-center justify-between sm:justify-start min-w-0">

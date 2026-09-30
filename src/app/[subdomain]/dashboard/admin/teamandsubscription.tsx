@@ -365,7 +365,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       {/* 🌟 SCROLL WORKSPACE */}
       {/* ✨ FIXED: Naka overflow-y-auto na ang outer container para mag-scroll sa mobile */}
       <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar">
-        <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-6 pb-12 lg:pb-16">
+        <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
           
           {/* TEAM TABLE - Left Column */}
           <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
@@ -492,8 +492,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
           <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 pb-6 lg:pr-2 shrink-0">
             
             {/* Subscription Box */}
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0 overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--color-primary)]/10 rounded-bl-full -mr-16 -mt-16 opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0">
               
               <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">

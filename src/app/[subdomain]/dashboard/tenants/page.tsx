@@ -670,15 +670,15 @@ export default function TenantDashboard() {
               <div className="fixed inset-0 z-40" onClick={() => setIsNotifOpen(false)} />
               <div className="absolute top-14 right-0 w-[340px] sm:w-[380px] bg-white rounded-[var(--radius-lg)] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] border border-[var(--color-border)] z-50 overflow-hidden flex flex-col text-[var(--color-text)] animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-5 py-4 flex justify-between items-center bg-[var(--color-bg)] border-b border-[var(--color-border)]">
-                  <h3 className="font-extrabold text-[var(--color-secondary)] text-base flex items-center gap-2">
+                  <h3 className="font-extrabold text-[var(--color-text)] text-base flex items-center gap-2">
                     Notifications
                     {unreadCount > 0 && (
-                      <span className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-[10px] px-2 py-0.5 rounded-full">{unreadCount} new</span>
+                      <span className="bg-slate-300 text-[var(--color-text)] text-[10px] px-2 py-0.5 rounded-full">{unreadCount} new</span>
                     )}
                   </h3>
                   <div className="flex gap-3 relative z-10">
                     {unreadCount > 0 && (
-                      <button onClick={markAllAsRead} className="text-[11px] font-bold text-[var(--color-primary)] hover:opacity-80 transition-colors" title="Mark all as read">
+                      <button onClick={markAllAsRead} className="text-[11px] font-bold text-[var(--color-text)] hover:opacity-80 transition-colors" title="Mark all as read">
                         Read All
                       </button>
                     )}
@@ -718,14 +718,14 @@ export default function TenantDashboard() {
                         <div 
                           key={notif.id} 
                           onClick={() => handleNotificationClick(notif)}
-                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/10' : 'opacity-80'}`}
+                          className={`p-4 border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-all flex gap-3 relative group ${!notif.is_read ? '' : 'opacity-80'}`}
                         >
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${iconBg} ${iconColor} border border-white shadow-[var(--shadow-sm)]`}>
                             <Icon size={18} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start mb-0.5 gap-2">
-                              <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[var(--color-secondary)]' : 'font-semibold text-slate-700'}`}>
+                              <span className={`text-sm truncate pr-2 ${!notif.is_read ? 'font-bold text-[var(--color-text)]' : 'font-semibold text-slate-700'}`}>
                                 {notif.title}
                               </span>
                               

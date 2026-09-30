@@ -498,13 +498,13 @@ export default function AdminDashboard() {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    safeText = safeText.replace(/\b(COMPLETED|ON HOLD|RESOLVED|PENDING|IN PROGRESS|SUCCESS|FAILED)\b/g, '<span class="font-black text-[var(--color-secondary)] bg-slate-200/70 border border-slate-300 px-1.5 py-0.5 rounded text-[9px] tracking-wider ml-0.5 mr-0.5">$1</span>');
+    safeText = safeText.replace(/\b(COMPLETED|ON HOLD|RESOLVED|PENDING|IN PROGRESS|SUCCESS|FAILED)\b/g, '<span class="font-black text-[var(--color-text)] bg-slate-200/70 border border-slate-300 px-1.5 py-0.5 rounded text-[9px] tracking-wider ml-0.5 mr-0.5">$1</span>');
 
-    safeText = safeText.replace(/^([a-zA-Z0-9\s]+?)\s(marked|put|requested|created|updated|resolved|submitted|assigned)\b/i, '<strong class="font-extrabold text-[var(--color-secondary)]">$1</strong> $2');
+    safeText = safeText.replace(/^([a-zA-Z0-9\s]+?)\s(marked|put|requested|created|updated|resolved|submitted|assigned)\b/i, '<strong class="font-extrabold text-[var(--color-text)]">$1</strong> $2');
 
     safeText = safeText.replace(/(Remarks|Reason|Note|Notes):\s*(.*)/gi, function(match, label, content) {
       return `<div class="mt-2.5 bg-white border border-slate-200/80 rounded-xl p-2.5 shadow-[var(--shadow-sm)]">
-                <span class="block text-[9px] font-black uppercase tracking-widest text-[var(--color-primary)] mb-0.5">${label}</span>
+                <span class="block text-[9px] font-black uppercase tracking-widest text-[var(--color-text)] mb-0.5">${label}</span>
                 <span class="block text-xs font-bold text-slate-700 leading-snug break-words">${content}</span>
               </div>`;
     });
@@ -565,7 +565,7 @@ export default function AdminDashboard() {
 
                 <div className="fixed top-[70px] left-4 right-4 sm:absolute sm:top-14 sm:left-auto sm:-right-2 sm:w-96 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 z-[100] overflow-hidden flex flex-col text-[var(--color-text)] animate-in slide-in-from-top-2 duration-200">
                   <div className="p-4 flex justify-between items-center bg-slate-50 border-b border-slate-100">
-                    <h3 className="font-extrabold text-[var(--color-secondary)] text-sm">Notifications</h3>
+                    <h3 className="font-extrabold text-[var(--color-text)] text-sm">Notifications</h3>
                     <div className="flex gap-3 relative z-10">
                       <button onClick={markAllAsRead} className="text-xs font-bold text-slate-500 hover:text-[var(--color-primary)] flex items-center gap-1 transition-colors"><CheckCheck size={14} /> Read All</button>
                       <button onClick={clearAllNotifications} className="text-xs font-bold text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"><Trash2 size={14} /> Clear</button>
@@ -582,7 +582,7 @@ export default function AdminDashboard() {
                       notifications.map((notif) => (
                         <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-blue-50/40' : 'opacity-80'}`}>
                           <div className="flex justify-between items-start mb-1.5 gap-2">
-                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-secondary)]' : 'text-slate-600'}`}>{notif.title}</span>
+                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
                             
                             {/* Updated delete button to trigger modal */}
                             <div className="flex items-center gap-2 shrink-0 mt-0.5">
@@ -604,7 +604,7 @@ export default function AdminDashboard() {
                           />
 
                           <div className="flex justify-between items-center mt-3.5 pt-3 border-t border-slate-100/60">
-                            <span className={`text-[9px] font-extrabold px-2 py-1 rounded-md uppercase tracking-wider ${notif.type === 'TICKET' || notif.type === 'MAINTENANCE' ? 'bg-blue-100/80 text-[var(--color-primary)] border border-[var(--color-primary)]/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{notif.type}</span>
+                            <span className={`text-[9px] font-extrabold px-2 py-1 rounded-md uppercase tracking-wider ${notif.type === 'TICKET' || notif.type === 'MAINTENANCE' ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{notif.type}</span>
                             <span className="text-[10px] font-semibold text-slate-400">{new Date(notif.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>

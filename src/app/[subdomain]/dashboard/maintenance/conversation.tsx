@@ -564,10 +564,10 @@ export default function ConversationTab() {
 
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
-                if (lastMsg.sender_email === profileEmail) return "You: ";
+                if (lastMsg.sender_email === profileEmail) return "You:";
                 const senderName = customNames[contact.id] || contact.name;
                 const firstName = senderName.split(' ')[0];
-                return `${firstName}: `;
+                return `${firstName}:`;
               };
 
               return (

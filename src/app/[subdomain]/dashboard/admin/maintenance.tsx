@@ -35,6 +35,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [priority, setPriority] = useState("Normal"); 
   const [ticketImage, setTicketImage] = useState<File | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
+  // ✨ NEW: Searchable Dropdown States for Modal
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isReporterOpen, setIsReporterOpen] = useState(false);
   
   // VIEW MODE & SORT STATES
   const [searchQuery, setSearchQuery] = useState("");
@@ -639,9 +643,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
         ) : (
 
-          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative">
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative border border-[var(--color-border)]">
             {/* ✨ STRICT HORIZONTAL & VERTICAL SCROLL WRAPPER */}
-            <div className="w-full h-full overflow-auto rounded-[var(--radius-xl)]">
+            <div className="w-full h-full overflow-auto custom-scrollbar rounded-[var(--radius-xl)]">
               <table className="w-full text-left text-sm min-w-[900px] sm:min-w-[1000px] border-collapse relative">
                 <thead className="bg-slate-50/95 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-xl shadow-sm">
                   <tr>
@@ -1035,24 +1039,51 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     />
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit</label>
-                    <select 
+                    <input 
+                      type="text"
                       required 
+                      placeholder="Search or choose area..." 
                       value={location} 
-                      onChange={(e) => setLocation(e.target.value)} 
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        setIsLocationOpen(true);
+                      }} 
+                      onFocus={() => setIsLocationOpen(true)}
+                      onBlur={() => setTimeout(() => setIsLocationOpen(false), 200)}
                       className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
                         selectedInboxId 
-                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed appearance-none" 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
                           : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
                       }`}
                       disabled={isSubmitting || !!selectedInboxId}
-                    >
-                      <option value="" disabled>Select unit...</option>
-                      <option value="Common Area">Common Area (Lobby, Hallway, etc.)</option>
-                      {units.map((u) => <option key={u.id} value={`${u.property_name} - ${u.unit_number}`}>{u.property_name} {u.unit_number}</option>)}
-                      {location && !units.find(u => `${u.property_name} - ${u.unit_number}` === location) && location !== "Common Area" && <option value={location}>{location} (Custom)</option>}
-                    </select>
+                    />
+                    {isLocationOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = location.toLowerCase();
+                          const defaultOpts = ["Common Area"];
+                          const unitOpts = units.map(u => `${u.property_name} - ${u.unit_number}`);
+                          const allOpts = [...defaultOpts, ...unitOpts];
+                          const filtered = allOpts.filter(opt => opt.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom location</div>;
+                          }
+
+                          return filtered.map((opt, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setLocation(opt); setIsLocationOpen(false); }}
+                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
+                            >
+                              {opt}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1071,13 +1102,18 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     />
                   </div>
 
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. Deivid Valderama (Owner)" 
+                      placeholder="Search or enter reported issue..." 
                       value={reporter} 
-                      onChange={(e) => setReporter(capitalizeWords(e.target.value))} 
+                      onChange={(e) => {
+                        setReporter(capitalizeWords(e.target.value));
+                        setIsReporterOpen(true);
+                      }} 
+                      onFocus={() => setIsReporterOpen(true)}
+                      onBlur={() => setTimeout(() => setIsReporterOpen(false), 200)}
                       className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
                         selectedInboxId 
                           ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
@@ -1085,6 +1121,33 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       }`}
                       disabled={isSubmitting || !!selectedInboxId} 
                     />
+                    {isReporterOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = reporter.toLowerCase();
+                          const eligibleMembers = teamMembers.filter(m => {
+                            const role = String(m.role || "").toLowerCase();
+                            return role.includes('owner') || role.includes('tenant');
+                          });
+                          const filtered = eligibleMembers.filter(m => m.name.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom name</div>;
+                          }
+
+                          return filtered.map((m, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setReporter(m.name); setIsReporterOpen(false); }}
+                              className="px-4 py-2.5 flex items-center justify-between hover:bg-[var(--color-primary)]/10 cursor-pointer border-b border-slate-50 last:border-0 group transition-colors"
+                            >
+                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-primary)]">{m.name}</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-primary)]/70">{m.role}</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1115,7 +1178,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         disabled={isSubmitting} 
                         className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98]"
                       >
-                        Reject Request
+                        Reject
                       </button>
                     )}
 
