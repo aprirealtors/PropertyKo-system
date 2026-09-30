@@ -71,7 +71,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     }
   }, [actionIntent]);
 
-  // ✨ NEW: Theme Action Confirmation Modal States
+  // Theme Action Confirmation Modal States
   const [themeConfirmModal, setThemeConfirmModal] = useState<{
     isOpen: boolean;
     type: 'load' | 'reset' | 'apply' | null;
@@ -89,7 +89,6 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   });
 
   // Payment UI States (Digital Wallet Only)
-  const PAYMENT_METHODS = ['Digital Wallet'];
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('Digital Wallet');
   const [referenceNumber, setReferenceNumber] = useState("");
@@ -193,7 +192,6 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
   const handleResetDefault = () => updateDatabaseTheme(defaultTheme, 'default');
 
-  // ✨ NEW: Action execution dispatcher for the Modal
   const executeThemeAction = () => {
     if (themeConfirmModal.type === 'load') handleLoadStrictSpec();
     if (themeConfirmModal.type === 'reset') handleResetDefault();
@@ -320,48 +318,57 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   });
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
+    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
-      {/* 🌟 PREMIUM HEADER */}
-      <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2.5 sm:gap-3">
-              {/* ✨ ADDED PREMIUM ICON WRAPPER */}
-              <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
-                <Settings className="text-[var(--color-text)]" size={22} strokeWidth={2.5} />
+      {/* 🌟 PREMIUM HEADER - Responsive up to xl */}
+      <div className="shrink-0 mb-6 px-4 sm:px-0">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white/80 p-4 sm:p-5 lg:px-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+
+          <div className="w-full xl:w-auto min-w-0 flex-1">
+            <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
+              <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                <Settings className="text-[var(--color-text)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-              Team & Settings
+              <span className="truncate" title="Team & Settings">Team & Settings</span>
             </h2>
-            <p className="text-slate-500 text-xs sm:text-sm mt-1 font-medium truncate">Manage workspace access, billing, and branding</p>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex flex-wrap items-center gap-2">
+              <span className="truncate" title="Manage workspace access, billing, and branding">Manage workspace access, billing, and branding</span>
+            </p>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto mt-1 sm:mt-0">
-            <div className="relative w-full sm:w-64 shrink-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+
+          <div className="flex flex-col sm:flex-row items-center justify-start xl:justify-end w-full xl:w-auto gap-3 sm:gap-4 border-t xl:border-t-0 border-slate-100 pt-4 xl:pt-0 mt-2 xl:mt-0">
+            
+            <div className="relative w-full sm:w-64 lg:w-72 group shrink-0">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
               <input 
                 type="text" 
+                placeholder="Search members..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search members..." 
-                className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[13px] sm:text-sm font-medium focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] bg-slate-50 transition-all shadow-[var(--shadow-inner)] text-[var(--color-text)]" 
+                className="w-full pl-10 sm:pl-11 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white/60 focus:bg-white transition-all shadow-sm"
               />
             </div>
-            <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm">
-              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
-              <div className="w-12 h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
-                {initials}
+
+            <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0">
+              <div className="hidden sm:flex items-center justify-center gap-2 sm:gap-3 bg-white px-3 sm:px-3.5 py-1.5 rounded-xl shadow-sm border border-slate-100 flex-1 sm:flex-none">
+                <span className="text-[10px] sm:text-xs font-black text-[var(--color-text)] uppercase tracking-wider truncate" title="Admin">Admin</span>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs sm:text-sm shadow-sm shrink-0">
+                  {initials}
+                </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
 
-      {/* 🌟 LOCKED SCROLL WORKSPACE */}
-      <div className="flex-1 overflow-hidden p-4 sm:p-6 md:p-8 flex flex-col">
-        <div className="max-w-[1600px] mx-auto w-full h-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 🌟 SCROLL WORKSPACE */}
+      {/* ✨ FIXED: Naka overflow-y-auto na ang outer container para mag-scroll sa mobile */}
+      <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar">
+        <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-6 pb-12 lg:pb-16">
           
-          {/* TEAM TABLE */}
-          <div className="lg:col-span-2 flex flex-col h-full overflow-hidden">
+          {/* TEAM TABLE - Left Column */}
+          <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
             <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
               
               <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
@@ -369,49 +376,77 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                   <div className="w-8 h-8 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                     <Users size={16} strokeWidth={2.5} />
                   </div>
-                  <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight">Access Control</h3>
+                  <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate" title="Access Control">Access Control</h3>
                 </div>
                 <button 
                   onClick={() => setIsInviteModalOpen(true)}
-                  className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent"
+                  className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent shrink-0"
+                  title="Add User"
                 >
-                  <UserPlus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline">Add User</span>
+                  <UserPlus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline truncate">Add User</span>
                 </button>
               </div>
               
-              <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar relative bg-white">
-                <table className="w-full text-left text-sm min-w-[600px] border-collapse">
-                  <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md">
+              <div className="flex-1 overflow-y-auto overflow-x-auto relative bg-white">
+                <table className="w-full text-left text-sm min-w-[500px] sm:min-w-[600px] border-collapse">
+                  <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md z-10">
                     <tr>
-                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
-                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
-                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
-                      <th className="px-5 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
+                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
+                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
+                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
+                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
                     <tr className="bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 transition-colors">
-                      <td className="px-5 sm:px-6 py-4 font-black text-[var(--color-text)] whitespace-nowrap flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[12px] font-black shadow-sm">
+                      <td className="px-4 sm:px-6 py-4 font-black text-[var(--color-text)] flex items-center gap-3">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] sm:text-[12px] font-black shadow-sm shrink-0">
                           {initials}
                         </div>
-                        You
+                        <span className="truncate max-w-[120px] sm:max-w-[200px]" title="You">You</span>
                       </td>
-                      <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
-                        <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm">Admin</span>
+                      <td className="px-4 sm:px-6 py-4">
+                        <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm truncate block w-fit" title="Admin">Admin</span>
                       </td>
-                      <td className="px-5 sm:px-6 py-4 text-slate-800 font-semibold whitespace-nowrap">Full Platform Access</td>
-                      <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
-                        <span className="bg-emerald-100 text-emerald-700 font-black text-[10px] sm:text-[11px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">Active</span>
+                      <td className="px-4 sm:px-6 py-4 text-slate-800 font-semibold truncate max-w-[120px] sm:max-w-[180px]" title="Full Platform Access">Full Platform Access</td>
+                      <td className="px-4 sm:px-6 py-4 text-right">
+                        <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title="Active">Active</span>
                       </td>
                     </tr>
                     
                     {isLoadingTeam ? (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 animate-pulse">Loading workspace members...</td></tr>
+                      // ✨ PREMIUM LOADING SKELETON
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="px-4 sm:px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 shrink-0"></div>
+                              <div className="w-24 sm:w-32 h-3 bg-slate-100 rounded"></div>
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4">
+                            <div className="w-16 h-5 bg-slate-100 rounded-[var(--radius-sm)]"></div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4">
+                            <div className="w-20 sm:w-28 h-3 bg-slate-100 rounded"></div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 flex justify-end">
+                            <div className="w-12 h-5 bg-slate-100 rounded-[var(--radius-sm)]"></div>
+                          </td>
+                        </tr>
+                      ))
                     ) : team.length === 0 ? (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">No additional team members added.</td></tr>
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          No additional team members added.
+                        </td>
+                      </tr>
                     ) : filteredTeam.length === 0 ? (
-                      <tr><td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">No members match your search.</td></tr>
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          No members match your search.
+                        </td>
+                      </tr>
                     ) : (
                       filteredTeam.map(member => {
                         const memberInitials = member.name 
@@ -420,20 +455,20 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
                         return (
                           <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
-                            <td className="px-5 sm:px-6 py-4 font-bold text-[var(--color-text)] whitespace-nowrap flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors">
+                            <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-text)] flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] sm:text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors shrink-0">
                                 {memberInitials}
                               </div>
-                              {member.name}
+                              <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
                             </td>
-                            <td className="px-5 sm:px-6 py-4 whitespace-nowrap">
-                              <span className="bg-slate-50 text-slate-600 font-bold text-[10px] sm:text-xs px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm">
+                            <td className="px-4 sm:px-6 py-4">
+                              <span className="bg-slate-50 text-slate-600 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm truncate block w-fit" title={member.role}>
                                 {member.role}
                               </span>
                             </td>
-                            <td className="px-5 sm:px-6 py-4 text-slate-500 font-medium whitespace-nowrap">{member.access_level}</td>
-                            <td className="px-5 sm:px-6 py-4 text-right whitespace-nowrap">
-                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">
+                            <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[180px]" title={member.access_level}>{member.access_level}</td>
+                            <td className="px-4 sm:px-6 py-4 text-right">
+                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[8px] sm:text-[9px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title={member.status}>
                                 {member.status}
                               </span>
                             </td>
@@ -445,158 +480,159 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                 </table>
               </div>
 
-              <div className="shrink-0 p-4 sm:p-5 bg-[var(--color-primary)]/5 border-t border-[var(--color-border)] text-[11px] sm:text-xs text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
+              <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-primary)]/5 border-t border-[var(--color-border)] text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
                 <Shield size={14} className="text-[var(--color-text)] shrink-0" strokeWidth={2.5} />
-                Strict Role-Based Access Control (RBAC) enforced at the system layer.
+                <span className="truncate" title="Strict Role-Based Access Control (RBAC) enforced at the system layer.">Strict Role-Based Access Control (RBAC) enforced at the system layer.</span>
               </div>
-
             </div>
           </div>
 
-          {/* SUBSCRIPTION PANEL */}
-          <div className="lg:col-span-1 flex flex-col h-full overflow-y-auto custom-scrollbar gap-6 pb-6 pr-1">
+          {/* SUBSCRIPTION & THEME PANEL - Right Column */}
+          {/* ✨ FIXED: This column will naturally flow below the Left column on mobile, and scroll gracefully */}
+          <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 pb-6 lg:pr-2 shrink-0">
             
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-6 sm:p-8 flex flex-col relative group shrink-0 overflow-hidden">
+            {/* Subscription Box */}
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0 overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-[var(--color-primary)]/10 rounded-bl-full -mr-16 -mt-16 opacity-60 pointer-events-none group-hover:scale-110 transition-transform duration-700"></div>
               
-              <div className="flex items-center gap-3 mb-6 sm:mb-8 relative z-10 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+              <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
                   <CreditCard size={18} strokeWidth={2.5} />
                 </div>
-                <h3 className="font-extrabold text-[var(--color-text)] text-lg sm:text-xl tracking-tight">Subscription</h3>
+                <h3 className="font-extrabold text-[var(--color-text)] text-lg sm:text-xl tracking-tight truncate" title="Subscription">Subscription</h3>
               </div>
               
-              <div className="mb-8 sm:mb-10 relative z-10 bg-slate-50 rounded-[var(--radius-lg)] p-5 border border-[var(--color-border)] shadow-[var(--shadow-inner)] shrink-0">
-                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-1">Current Plan</span>
-                <h4 className="text-3xl sm:text-4xl font-black text-[var(--color-text)] tracking-tight mb-1">Dynamic Rate</h4>
-                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-2">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
+              <div className="mb-6 sm:mb-8 relative z-10 bg-slate-50 rounded-[var(--radius-lg)] p-4 sm:p-5 border border-[var(--color-border)] shadow-[var(--shadow-inner)] shrink-0">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1 truncate" title="Current Plan">Current Plan</span>
+                <h4 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight mb-1 truncate" title="Dynamic Rate">Dynamic Rate</h4>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold mt-2 truncate" title="₱99 Owner | ₱198 Tenanted · Updates dynamically">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
               </div>
               
-              <div className="space-y-6 mb-8 relative z-10">
+              <div className="space-y-5 sm:space-y-6 mb-6 sm:mb-8 relative z-10">
                 <div>
-                  <div className="flex justify-between text-xs sm:text-sm mb-2.5 font-bold">
-                    <span className="text-slate-500">Team Seats Used</span>
-                    <span className="text-[var(--color-secondary)]">{seatsUsed} / {seatLimit}</span>
+                  <div className="flex justify-between text-[11px] sm:text-xs mb-2 font-bold">
+                    <span className="text-slate-500 truncate" title="Team Seats Used">Team Seats Used</span>
+                    <span className="text-[var(--color-secondary)] shrink-0 pl-2">{seatsUsed} / {seatLimit}</span>
                   </div>
-                  <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-[var(--shadow-inner)]">
+                  <div className="h-2.5 sm:h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-[var(--shadow-inner)]">
                     <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[var(--color-secondary)]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-dashed border-[var(--color-border)]">
-                  <span className="text-xs sm:text-sm text-slate-500 font-bold">Units Capacity</span>
-                  <span className="font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-xs sm:text-sm">
+                <div className="flex justify-between items-center py-3 sm:py-4 border-b border-dashed border-[var(--color-border)]">
+                  <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Units Capacity">Units Capacity</span>
+                  <span className="font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-[11px] sm:text-xs shrink-0 whitespace-nowrap" title={`${unitLimit} units`}>
                     {unitLimit} units
                   </span>
                 </div>
                 
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-xs sm:text-sm text-slate-500 font-bold">Next Invoice</span>
-                  <div className="flex flex-col items-end gap-1.5">
-                    <span className="font-black text-[var(--color-text)] text-sm sm:text-base">{nextBillingDateFormatted}</span>
-                    <span className={`px-2.5 py-0.5 rounded-[var(--radius-sm)] border text-[9px] font-black uppercase tracking-widest shadow-sm ${getStatusColor(billingStatus)}`}>
+                  <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Next Invoice">Next Invoice</span>
+                  <div className="flex flex-col items-end gap-1 shrink-0 pl-2">
+                    <span className="font-black text-[var(--color-text)] text-xs sm:text-sm" title={nextBillingDateFormatted}>{nextBillingDateFormatted}</span>
+                    <span className={`px-2 py-0.5 rounded-[var(--radius-sm)] border text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-sm truncate ${getStatusColor(billingStatus)}`} title={billingStatus}>
                       {billingStatus}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-auto pt-5 relative z-10 shrink-0">
+              <div className="mt-auto pt-4 relative z-10 shrink-0">
                 <button 
                   onClick={() => setIsBillingModalOpen(true)}
-                  className="w-full bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2 border border-transparent"
+                  className="w-full bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[10px] sm:text-[11px] py-3.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2 border border-transparent"
                 >
-                  <Receipt size={16} strokeWidth={2.5} /> View Billing Details
+                  <Receipt size={16} strokeWidth={2.5} className="shrink-0" /> <span className="truncate">View Billing Details</span>
                 </button>
               </div>
             </div>
 
             {/* THEME BUILDER PANEL */}
-            <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-6 sm:p-8 flex flex-col relative shrink-0">
-              <div className="flex items-center gap-3 mb-6 relative z-10 shrink-0">
-                <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100 shadow-sm shrink-0">
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative shrink-0">
+              <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100 shadow-sm shrink-0">
                   <Palette size={18} strokeWidth={2.5} />
                 </div>
-                <div>
-                  <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight">Theme Builder</h3>
-                  <p className="text-xs text-slate-500 font-medium">Customize workspace branding</p>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight truncate" title="Theme Builder">Theme Builder</h3>
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate" title="Customize workspace branding">Customize workspace branding</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                      <input type="color" value={customTheme.primaryColor} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm group">
+                      <input type="color" value={customTheme.primaryColor} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Primary Color" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Primary Color (Buttons & Active States)</label>
-                      <input type="text" value={customTheme.primaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-[var(--radius-md)] text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
+                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Primary Color (Buttons & Active States)">Primary Color (Buttons & Active States)</label>
+                      <input type="text" value={customTheme.primaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                      <input type="color" value={customTheme.secondaryColor} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                      <input type="color" value={customTheme.secondaryColor} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Secondary Color" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Secondary Color (Sidebar & Headers)</label>
-                      <input type="text" value={customTheme.secondaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-[var(--radius-md)] text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
+                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Secondary Color (Sidebar & Headers)">Secondary Color (Sidebar & Headers)</label>
+                      <input type="text" value={customTheme.secondaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                      <input type="color" value={customTheme.backgroundColor} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" />
+                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                      <input type="color" value={customTheme.backgroundColor} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Background Color" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">App Canvas Color (Background)</label>
-                      <input type="text" value={customTheme.backgroundColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-[var(--radius-md)] text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
+                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="App Canvas Color (Background)">App Canvas Color (Background)</label>
+                      <input type="text" value={customTheme.backgroundColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-2">
                       <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                        <input type="color" value={customTheme.textColor} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" />
+                        <input type="color" value={customTheme.textColor} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Text Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight">Text Color</label>
-                        <input type="text" value={customTheme.textColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Text Color">Text Color</label>
+                        <input type="text" value={customTheme.textColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                        <input type="color" value={customTheme.borderColor} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" />
+                        <input type="color" value={customTheme.borderColor} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Border Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight">Border Color</label>
-                        <input type="text" value={customTheme.borderColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Border Color">Border Color</label>
+                        <input type="text" value={customTheme.borderColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5">Interactive Corner Style</label>
-                  <p className="text-[9px] text-slate-400 font-medium mb-3">Applies only to buttons/badges to preserve structural layout.</p>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0px" })} className={`py-2 text-[10px] sm:text-xs font-bold border transition-all ${customTheme.borderRadius === "0px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Sharp</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "2px" })} className={`py-2 text-[10px] sm:text-xs font-bold border rounded-[2px] transition-all ${customTheme.borderRadius === "2px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Strict</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0.5rem" })} className={`py-2 text-[10px] sm:text-xs font-bold border rounded-lg transition-all ${customTheme.borderRadius === "0.5rem" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Modern</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "9999px" })} className={`py-2 text-[10px] sm:text-xs font-bold border rounded-full transition-all ${customTheme.borderRadius === "9999px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Pill</button>
+                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Interactive Corner Style">Interactive Corner Style</label>
+                  <p className="text-[8px] sm:text-[9px] text-slate-400 font-medium mb-3 truncate" title="Applies only to buttons/badges to preserve structural layout.">Applies only to buttons/badges to preserve structural layout.</p>
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border transition-all ${customTheme.borderRadius === "0px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Sharp</button>
+                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "2px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-[2px] transition-all ${customTheme.borderRadius === "2px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Strict</button>
+                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0.5rem" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-lg transition-all ${customTheme.borderRadius === "0.5rem" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Modern</button>
+                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "9999px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-full transition-all ${customTheme.borderRadius === "9999px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Pill</button>
                   </div>
                 </div>
 
-                {/* ✨ UNLOCKED TYPOGRAPHY */}
                 <div className="pt-2">
-                  <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5">Workspace Typography</label>
+                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Workspace Typography">Workspace Typography</label>
                   <div className="relative">
                     <select 
                       value={customTheme.fontFamily}
                       onChange={(e) => setCustomTheme({ ...customTheme, fontFamily: e.target.value })}
-                      className="w-full p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] bg-white text-sm font-bold text-[var(--color-text)] shadow-sm cursor-pointer transition-colors"
+                      className="w-full p-2.5 sm:p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] bg-white text-[11px] sm:text-sm font-bold text-[var(--color-text)] shadow-sm cursor-pointer transition-colors"
+                      title="Select Font Family"
                     >
                       <option value="Inter">Inter (Clean Default)</option>
                       <option value="Archivo">Archivo (Corporate Geometric)</option>
@@ -606,7 +642,6 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                   </div>
                 </div>
 
-                {/* ✨ ACTIONS WITH MODAL CONFIRMATION */}
                 <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-border)]">
                   {orgData?.master_theme && (
                     <button 
@@ -619,9 +654,9 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
                       })}
                       disabled={isSavingTheme}
-                      className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-orange-200 flex justify-center items-center gap-2"
+                      className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-transparent flex justify-center items-center gap-2"
                     >
-                      <DownloadCloud size={14} strokeWidth={2.5}/> Load Corporate Spec
+                      <DownloadCloud size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Load Corporate Spec</span>
                     </button>
                   )}
                   <div className="flex gap-2">
@@ -635,9 +670,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
                       })}
                       disabled={isSavingTheme}
-                      className="w-1/3 bg-white hover:bg-slate-100 font-extrabold uppercase tracking-wider text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-red-500 text-red-600 flex justify-center items-center gap-1.5"
+                      className="w-1/3 bg-white hover:bg-slate-100 font-extrabold uppercase tracking-wider text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-red-500 text-red-600 flex justify-center items-center gap-1.5"
+                      title="Reset Default Theme"
                     >
-                      <RotateCcw size={12} strokeWidth={2.5}/> Reset
+                      <RotateCcw size={12} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Reset</span>
                     </button>
                     <button 
                       onClick={() => setThemeConfirmModal({
@@ -649,7 +685,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         confirmStyle: 'bg-[var(--color-primary)] hover:opacity-90 shadow-[var(--shadow-md)]'
                       })}
                       disabled={isSavingTheme}
-                      className="w-2/3 bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[10px] py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent"
+                      className="w-2/3 bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent truncate px-2"
+                      title="Apply Custom Colors"
                     >
                       {isSavingTheme ? "Applying..." : "Apply Custom Colors"}
                     </button>
@@ -666,66 +703,67 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
       {/* 🌟 TOAST NOTIFICATION */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-5 py-4 rounded-[var(--radius-xl)] shadow-2xl font-bold text-xs sm:text-sm bg-white border border-[var(--color-border)] animate-in slide-in-from-bottom-5 fade-in duration-300 ${toast.type === "success" ? "border-l-4 border-l-[var(--color-primary)] text-[var(--color-text)]" : "border-l-4 border-l-red-500 text-[var(--color-text)]"}`}>
+        <div className={`fixed bottom-6 right-6 z-[200] flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 rounded-[var(--radius-xl)] shadow-2xl font-bold text-[11px] sm:text-xs bg-white border border-[var(--color-border)] animate-in slide-in-from-bottom-5 fade-in duration-300 ${toast.type === "success" ? "border-l-4 border-l-[var(--color-primary)] text-[var(--color-text)]" : "border-l-4 border-l-red-500 text-[var(--color-text)]"}`}>
           {toast.type === "success" ? (
-            <div className="w-7 h-7 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20"><CheckCircle className="text-[var(--color-primary)] w-4 h-4" strokeWidth={2.5} /></div>
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20"><CheckCircle className="text-[var(--color-primary)] w-3 h-3 sm:w-4 sm:h-4" strokeWidth={2.5} /></div>
           ) : (
-            <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center shrink-0 border border-red-100"><AlertCircle className="text-red-500 w-4 h-4" strokeWidth={2.5} /></div>
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-50 flex items-center justify-center shrink-0 border border-red-100"><AlertCircle className="text-red-500 w-3 h-3 sm:w-4 sm:h-4" strokeWidth={2.5} /></div>
           )}
-          <span>{toast.message}</span>
+          <span className="truncate max-w-[200px] sm:max-w-none" title={toast.message}>{toast.message}</span>
         </div>
       )}
 
       {/* ADD USER MODAL */}
       {isInviteModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-xl font-bold text-[var(--color-text)] tracking-tight">Add Workspace User</h2>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title="Add Workspace User">Add Workspace User</h2>
               <button onClick={() => !isSubmitting && setIsInviteModalOpen(false)} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
               <form onSubmit={handleAddUserSubmit} className="space-y-4">
-                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
+                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs sm:text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><UserPlus size={16} className="text-[var(--color-text)]" /> Full Name</label>
-                  <input type="text" required placeholder="e.g. Maria Lopez" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><UserPlus size={16} className="text-[var(--color-text)]" /> Full Name</label>
+                  <input type="text" required placeholder="e.g. Maria Lopez" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
-                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
+                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
-                  <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
+                  <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5"><Shield size={16} className="text-[var(--color-text)]" /> System Role</label>
-                  <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
+                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Shield size={16} className="text-[var(--color-text)]" /> System Role</label>
+                  <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
                     <option value="Property manager">Property Manager</option>
                     <option value="Maintenance staff">Maintenance Staff</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[var(--color-text)] mb-1.5">Property Scope Access</label>
-                  <input type="text" required placeholder="e.g. All properties, Future Point Only" value={memberAccess} onChange={(e) => setMemberAccess(e.target.value)} className="w-full px-4 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5">Property Scope Access</label>
+                  <input type="text" required placeholder="e.g. All properties, Future Point Only" value={memberAccess} onChange={(e) => setMemberAccess(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
                 </div>
 
-                <div className="mt-6 flex gap-3 justify-end pt-4 border-t border-[var(--color-border)]">
-                  <button type="button" onClick={() => setIsInviteModalOpen(false)} disabled={isSubmitting} className="px-5 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)]">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2 rounded-[var(--radius-md)] text-sm font-semibold shadow-[var(--shadow-md)]">
-                    {isSubmitting ? "Creating Account..." : "Add User"}
-                  </button>
-                </div>
               </form>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex gap-3 justify-end flex-wrap sm:flex-nowrap">
+              <button type="button" onClick={() => setIsInviteModalOpen(false)} disabled={isSubmitting} className="w-full sm:w-auto px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)] active:scale-95 transition-all order-2 sm:order-1">Cancel</button>
+              <button onClick={handleAddUserSubmit} disabled={isSubmitting} className="w-full sm:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold shadow-[var(--shadow-md)] active:scale-95 transition-all order-1 sm:order-2 flex justify-center items-center">
+                {isSubmitting ? "Creating Account..." : "Add User"}
+              </button>
             </div>
           </div>
         </div>
@@ -733,79 +771,79 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
       {/* VIEW DETAILS MODAL */}
       {isBillingModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight">Subscription Details</h2>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 sm:px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
+              <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate" title="Subscription Details">Subscription Details</h2>
               <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-[var(--color-text)] transition-colors p-1">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6">
-              <div className="space-y-5">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="bg-white p-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-2 flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-slate-600 mb-1">Current Billing: <span className="font-bold text-[var(--color-text)]">Dynamic Rate</span></p>
-                    <p className="text-xs text-slate-500">For limit increases, contact admin.</p>
+                  <div className="min-w-0 pr-2">
+                    <p className="text-[11px] sm:text-sm text-slate-600 mb-1 truncate" title="Current Billing: Dynamic Rate">Current Billing: <span className="font-bold text-[var(--color-text)]">Dynamic Rate</span></p>
+                    <p className="text-[10px] sm:text-xs text-slate-500 truncate" title="For limit increases, contact admin.">For limit increases, contact admin.</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] border text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusColor(billingStatus)}`}>
+                  <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] border text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusColor(billingStatus)}`}>
                     {billingStatus}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
-                    <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5">
-                      <Home size={16} className="text-[var(--color-text)]" />
-                      Units Capacity
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5 truncate" title="Units Capacity">
+                      <Home size={16} className="text-[var(--color-text)] shrink-0" />
+                      <span className="truncate">Units Capacity</span>
                     </label>
-                    <p className="text-2xl font-extrabold text-[var(--color-text)] mt-1">{unitLimit}</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-[var(--color-text)] mt-1">{unitLimit}</p>
                   </div>
                   <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
-                    <label className="flex items-center gap-2 text-sm font-bold text-[var(--color-text)] mb-1.5">
-                      <Users size={16} className="text-[var(--color-text)]" />
-                      Team Limit
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5 truncate" title="Team Limit">
+                      <Users size={16} className="text-[var(--color-text)] shrink-0" />
+                      <span className="truncate">Team Limit</span>
                     </label>
-                    <p className="text-2xl font-extrabold text-[var(--color-text)] mt-1">{seatLimit}</p>
+                    <p className="text-xl sm:text-2xl font-extrabold text-[var(--color-text)] mt-1">{seatLimit}</p>
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <label className="flex items-center justify-between text-sm font-bold text-[var(--color-text)] mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-[var(--color-text)]" />
-                      Estimated Monthly Total
+                  <label className="flex items-center justify-between text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5">
+                    <div className="flex items-center gap-2 truncate" title="Estimated Monthly Total">
+                      <CreditCard size={16} className="text-[var(--color-text)] shrink-0" />
+                      <span className="truncate">Estimated Monthly Total</span>
                     </div>
                   </label>
                   <div className="w-full px-4 py-3 rounded-[var(--radius-lg)] border border-[var(--color-text)]/20 bg-[var(--color-text)]/10 flex items-center justify-between shadow-[var(--shadow-sm)]">
-                    <div>
-                      <p className="text-xs font-bold text-[var(--color-text)] opacity-80 uppercase tracking-wider">Due on {nextBillingDateFormatted}</p>
-                      <p className="text-xs text-[var(--color-text)] font-medium">₱99 Owner | ₱198 Tenanted</p>
+                    <div className="min-w-0 pr-2">
+                      <p className="text-[10px] sm:text-xs font-bold text-[var(--color-text)] opacity-80 uppercase tracking-wider truncate" title={`Due on ${nextBillingDateFormatted}`}>Due on {nextBillingDateFormatted}</p>
+                      <p className="text-[10px] sm:text-xs text-[var(--color-text)] font-medium truncate" title="₱99 Owner | ₱198 Tenanted">₱99 Owner | ₱198 Tenanted</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-extrabold text-[var(--color-text)]">
+                    <div className="text-right shrink-0 pl-2">
+                      <p className="text-base sm:text-lg font-extrabold text-[var(--color-text)]" title={`₱${monthlyCost.toLocaleString()}`}>
                         ₱{monthlyCost.toLocaleString()}
                       </p>
                     </div>
                   </div>
                 </div>
-
-                <div className="mt-8 flex justify-end pt-4 border-t border-[var(--color-border)]">
-                  <button 
-                    type="button" 
-                    onClick={handlePaymentClick} 
-                    disabled={billingStatus.toLowerCase() === 'paid'}
-                    className="w-full sm:w-auto bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent px-8 py-3 rounded-[var(--radius-md)] text-sm font-semibold transition-colors shadow-[var(--shadow-md)] flex items-center justify-center gap-2"
-                  >
-                    {billingStatus.toLowerCase() === 'paid' ? (
-                       <><CheckCircle size={18} /> Settled</>
-                    ) : (
-                       <><CreditCard size={18} /> Pay ₱{monthlyCost.toLocaleString()}</>
-                    )}
-                  </button>
-                </div>
               </div>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex justify-end">
+              <button 
+                type="button" 
+                onClick={handlePaymentClick} 
+                disabled={billingStatus.toLowerCase() === 'paid'}
+                className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 sm:py-3 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold transition-colors shadow-[var(--shadow-md)] flex items-center justify-center gap-2 active:scale-95"
+              >
+                {billingStatus.toLowerCase() === 'paid' ? (
+                   <><CheckCircle size={18} /> Settled</>
+                ) : (
+                   <><CreditCard size={18} /> Pay ₱{monthlyCost.toLocaleString()}</>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -814,75 +852,77 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       {/* DIGITAL WALLET PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[90vh] sm:h-auto overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
             
             {paymentSuccess ? (
               <div className="px-6 py-12 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
                 <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-50">
                   <CheckCircle className="text-[#d97706]" size={40} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight">Payment Submitted!</h3>
-                <p className="text-slate-500 text-sm mb-10 leading-relaxed px-4">
+                <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight truncate" title="Payment Submitted!">Payment Submitted!</h3>
+                <p className="text-slate-500 text-xs sm:text-sm mb-10 leading-relaxed px-4">
                   Your payment receipt has been submitted successfully and is currently <strong className="text-amber-600">Pending Verification</strong>. Your account status will update once confirmed by the system admin.
                 </p>
                 <button
                   onClick={() => window.location.reload()}
-                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-xs py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95"
+                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] sm:text-xs py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95"
                 >
                   Return to Dashboard
                 </button>
               </div>
             ) : (
               <>
-                <div className="px-6 py-6 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] border-b border-[var(--color-border)]">
+                <div className="px-5 sm:px-6 py-5 sm:py-6 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] border-b border-[var(--color-border)] shrink-0">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--color-secondary)] to-[var(--color-primary)]"></div>
-                  <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
-                    <CreditCard className="text-[var(--color-primary)]" size={20} strokeWidth={2.5} />
-                    Submit Payment
+                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2 truncate" title="Submit Payment">
+                    <CreditCard className="text-[var(--color-primary)] shrink-0" size={20} strokeWidth={2.5} />
+                    <span className="truncate">Submit Payment</span>
                   </h2>
                   <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-text)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                     <X size={16} strokeWidth={2.5} />
                   </button>
                 </div>
                 
-                <div className="px-6 py-8 bg-[var(--color-bg)] overflow-y-auto max-h-[80vh] custom-scrollbar">
-                  <p className="text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
+                <div className="px-5 sm:px-6 py-6 sm:py-8 bg-[var(--color-bg)] overflow-y-auto custom-scrollbar flex-1 min-h-0">
+                  <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
                     {orgData?.org_name || 'Organization'} · System Subscription - total <span className="font-black text-[var(--color-text)]">₱{monthlyCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </p>
                   
                   <div className="mb-6">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Payment Method</label>
+                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 truncate" title="Payment Method">Payment Method</label>
                     <div className="flex flex-wrap gap-2">
-                      <span className="px-4 py-2.5 rounded-[var(--radius-sm)] text-[11px] font-black uppercase tracking-wider bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]">
+                      <span className="px-4 py-2.5 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]">
                         Digital Wallet
                       </span>
                     </div>
                   </div>
 
-                  <div className="mb-6 p-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)] text-sm text-[var(--color-text)]">
+                  <div className="mb-6 p-4 sm:p-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)] text-sm text-[var(--color-text)]">
                     <div className="flex flex-col items-center">
-                      <p className="mb-4 font-bold text-xs uppercase tracking-wider text-[var(--color-text)]">Scan QR code using GCash or QR Ph</p>
-                      <div className="w-40 h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-inner)] p-3">
+                      <p className="mb-4 font-bold text-[10px] sm:text-xs uppercase tracking-wider text-[var(--color-text)] text-center">Scan QR code using GCash or QR Ph</p>
+                      <div className="w-36 h-36 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-inner)] p-3">
                         <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
                       </div>
                     </div>
                   </div>
 
                   <div className="mb-6">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Reference / Transaction Number</label>
+                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 truncate" title="Reference / Transaction Number">Reference / Transaction Number</label>
                     <input 
                       type="text" 
                       value={referenceNumber}
                       onChange={(e) => setReferenceNumber(e.target.value)}
                       placeholder="e.g. 1002934823"
-                      className="w-full bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-4 py-3.5 text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] transition-all shadow-[var(--shadow-sm)]"
+                      className="w-full bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-4 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] transition-all shadow-[var(--shadow-sm)]"
                     />
                   </div>
-
+                </div>
+                
+                <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] shrink-0">
                   <button 
                     onClick={handleSimulatePayment} 
                     disabled={isSimulating || referenceNumber.length < 3} 
-                    className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] font-black uppercase tracking-widest text-xs py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex justify-center items-center gap-2"
+                    className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex justify-center items-center gap-2"
                   >
                     {isSimulating ? <span className="animate-pulse">Processing...</span> : "I've paid, submit receipt"} <ArrowRight size={16} strokeWidth={2.5} className={isSimulating ? "hidden" : "block"} />
                   </button>
@@ -908,23 +948,24 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
               {themeConfirmModal.type === 'apply' && <CheckCircle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
             </div>
             
-            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">
+            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate" title={themeConfirmModal.title}>
               {themeConfirmModal.title}
             </h3>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               {themeConfirmModal.message}
             </p>
             
-            <div className="flex gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button 
                 onClick={() => setThemeConfirmModal(prev => ({ ...prev, isOpen: false }))} 
-                className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-xs sm:text-sm duration-200"
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-[11px] sm:text-xs uppercase tracking-wider duration-200 order-2 sm:order-1"
               >
                 Cancel
               </button>
               <button 
                 onClick={executeThemeAction} 
-                className={`flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[var(--color-primary-text)] font-black transition-all shadow-lg active:scale-[0.96] text-xs sm:text-sm duration-200 border border-transparent ${themeConfirmModal.confirmStyle}`}
+                className={`w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[var(--color-primary-text)] font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2 ${themeConfirmModal.confirmStyle}`}
+                title={themeConfirmModal.confirmText}
               >
                 {themeConfirmModal.confirmText}
               </button>

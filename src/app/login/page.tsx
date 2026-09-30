@@ -277,7 +277,7 @@ export default function Home() {
   if (isPageLoading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white font-sans fixed inset-0 z-[100] animate-in fade-in duration-300">
-        <div className="relative w-48 sm:w-56 h-20 sm:h-24 mb-8 animate-in zoom-in-95 duration-700 ease-out">
+        <div className="relative w-48 sm:w-56 h-30 sm:h-34 mb-8 animate-in zoom-in-95 duration-700 ease-out">
           <Image
             src="/PropertyKo-Logo-Loading-Revamp.png"
             fill
@@ -396,7 +396,7 @@ export default function Home() {
             <div className="flex justify-center mb-6">
               <div className="relative w-90 sm:w-94 h-36 sm:h-37">
                 <Image
-                  src="/PropertyKo-Logo-Loading-Revamp.png"
+                  src="/PropertyKo-Logo-Loading-Revamp.svg"
                   fill
                   alt="PropertyKo-logo"
                   className="object-contain"
