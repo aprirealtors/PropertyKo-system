@@ -13,6 +13,25 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
     const normalizedRole = (role || "").toLowerCase().trim();
     const normalizedEmail = (userEmail || "").toLowerCase().trim();
 
+    // ✨ MOBILE FIX: Helper function to route notifications through the Service Worker
+    const triggerNotification = async (title: string, options: any) => {
+      if (typeof window !== "undefined" && Notification.permission === "granted") {
+        try {
+          if ('serviceWorker' in navigator) {
+            // Mobile browsers require this to show the popup
+            const registration = await navigator.serviceWorker.ready;
+            await registration.showNotification(title, options);
+          } else {
+            // Fallback for older desktop browsers
+            new Notification(title, options);
+          }
+        } catch (error) {
+          console.error("Error triggering notification:", error);
+          new Notification(title, options);
+        }
+      }
+    };
+
     // 1. SYSTEM NOTIFICATIONS LISTENER
     const notifChannel = supabase.channel(`global-notifs-${normalizedEmail}`)
       .on('postgres_changes', 
@@ -26,11 +45,13 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
             msgRecipient === normalizedRole ||
             (msgAdminEmail === normalizedEmail && ['admin', 'manager'].includes(msgRecipient));
 
-          if (isForMe && typeof window !== "undefined" && Notification.permission === "granted") {
+          if (isForMe) {
             const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
-            new Notification(payload.new.title || "PropertyKo Update", {
+            // ✨ Use the new mobile-friendly trigger
+            triggerNotification(payload.new.title || "PropertyKo Update", {
               body: cleanMessage,
-              icon: "/icon-192.png"
+              icon: "/icon-192.png",
+              badge: "/icon-192.png", // Helps with Android status bar icons
             });
           }
         }
@@ -53,20 +74,18 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
             msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
             (adminEmail === normalizedEmail && ['admin', 'manager'].includes(recipientRole));
 
-          if (isChatForMe && senderEmail !== normalizedEmail && typeof window !== "undefined" && Notification.permission === "granted") {
+          if (isChatForMe && senderEmail !== normalizedEmail) {
             
-            // ✨ DYNAMIC SENDER NAME LOGIC
+            // DYNAMIC SENDER NAME LOGIC
             let displayName = msg.sender_email; 
             
             try {
               if (msg.sender_email === "superadmin@propertyko.com") {
                 displayName = "PropertyKo Support";
               } 
-              // ✨ IF SENDER IS THE ADMIN (Admin is NOT in team_members)
               else if (msg.sender_email === msg.admin_email) {
-                displayName = "Property Admin"; // Fallback name
+                displayName = "Property Admin"; 
                 
-                // Fetch the Organization Name to look highly professional to the tenant
                 const { data: org } = await supabase
                   .from('organizations')
                   .select('org_name')
@@ -77,14 +96,13 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
                   displayName = org.org_name;
                 }
               } 
-              // ✨ IF SENDER IS A TENANT/MANAGER/STAFF (They ARE in team_members)
               else {
                 const { data: member } = await supabase
                   .from('team_members')
                   .select('name')
                   .eq('email', msg.sender_email)
                   .limit(1)
-                  .maybeSingle(); // maybeSingle guarantees this won't crash if duplicate emails exist
+                  .maybeSingle(); 
                   
                 if (member?.name) {
                   displayName = member.name;
@@ -94,10 +112,11 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
               console.error("Could not fetch sender name for notification", error);
             }
 
-            // TRIGGER THE NOTIFICATION WITH THE PROPER NAME
-            new Notification("New Message", {
+            // ✨ Use the new mobile-friendly trigger
+            triggerNotification("New Message", {
               body: `${displayName}: ${msg.content ? msg.content.substring(0, 60) : "Sent a message"}`,
-              icon: "/icon-192.png"
+              icon: "/icon-192.png",
+              badge: "/icon-192.png"
             });
           }
         }
