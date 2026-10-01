@@ -8,6 +8,13 @@ import {
   LayoutGrid, List, ArrowUpDown, Clock, ArrowRight, AlertTriangle
 } from "lucide-react";
 
+// ✨ ENTERPRISE HELPER: Format Date and Time
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
   const [tickets, setTickets] = useState<any[]>([]); // Combined tasks & rejected requests
   const [inboxTickets, setInboxTickets] = useState<any[]>([]); 
@@ -38,7 +45,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [ticketImage, setTicketImage] = useState<File | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
-  // ✨ INLINE ERROR STATES
+  // INLINE ERROR STATES
   const [photoError, setPhotoError] = useState("");
 
   // Searchable Dropdown States for Modal
@@ -146,7 +153,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     const { data: inboxData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Open');
     const { data: rejectedData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Rejected');
 
-    if (inboxData) setInboxTickets(inboxData.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    // ✨ FIX: Apply Enterprise SLA Sorting to the Inbox Dropdown
+    if (inboxData) {
+      setInboxTickets(inboxData.sort((a, b) => {
+        // 1. Urgent Priority first
+        if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+        if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+        // 2. Oldest date first (normal tickets na matagal na, aakyat)
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+      }));
+    }
     
     let combined: any[] = [];
     if (tasksData) combined = [...combined, ...tasksData];
@@ -186,7 +202,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
       const { error: updateError } = await supabase
         .from('tickets')
-        .update({ status: 'Rejected', remarks: rejectReason })
+        .update({ status: 'Rejected', remarks: rejectReason, updated_at: new Date().toISOString() })
         .eq('id', selectedInboxId);
 
       if (updateError) throw updateError;
@@ -224,7 +240,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setPhotoError(""); // Reset error on submit
+    setPhotoError(""); 
 
     if (!assignedTo) {
       showAlert('warning', 'Missing Assignment', "Please assign this ticket to a maintenance staff member.");
@@ -232,7 +248,6 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       return;
     }
 
-    // ✨ INLINE PHOTO ERROR TRIGGER
     if (!ticketImage && !selectedInboxId) {
       setPhotoError("A photo evidence is required to process this ticket.");
       setIsSubmitting(false);
@@ -271,12 +286,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         assigned_to: assignedTo, 
         cost: 0, 
         photo_url: photoUrlToSave, 
-        priority: priority 
+        priority: priority,
+        updated_at: new Date().toISOString()
       }]).select().single();
 
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance' }).eq('id', selectedInboxId);
+      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance', updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
 
       await fetchTickets(); 
       setIsModalOpen(false);
@@ -395,7 +411,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             setIsModalOpen(true);
             setSelectedInboxId(actualId);
             setTicketImage(null);
-            setPhotoError(""); // Clear any error
+            setPhotoError(""); 
             
             setTitle(pendingInbox.title ? capitalizeWords(pendingInbox.title) : ""); 
             setLocation(pendingInbox.location || ""); 
@@ -565,7 +581,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ DYNAMIC CONTENT AREA */}
         {viewMode === 'board' ? (
           
-          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 animate-in fade-in duration-300">
+          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-16 custom-scrollbar animate-in fade-in duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 items-start w-full h-full min-h-[400px]">
               
               {/* Column 1: Open */}
@@ -657,9 +673,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
         ) : (
 
-          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative">
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative border border-[var(--color-border)]">
             {/* ✨ STRICT HORIZONTAL & VERTICAL SCROLL WRAPPER */}
-            <div className="w-full h-full overflow-auto rounded-[var(--radius-xl)]">
+            <div className="w-full h-full overflow-auto custom-scrollbar rounded-[var(--radius-xl)]">
               <table className="w-full text-left text-sm min-w-[900px] sm:min-w-[1000px] border-collapse relative">
                 <thead className="bg-slate-50/95 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-xl shadow-sm">
                   <tr>
@@ -718,9 +734,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           </td>
                           
                           <td className="px-6 py-4 whitespace-nowrap text-right relative">
-                            <span className="text-xs font-bold text-slate-500 transition-opacity duration-200 group-hover:opacity-0">
-                              {new Date(ticket.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </span>
+                            <div className="flex flex-col items-end gap-1 transition-opacity duration-200 group-hover:opacity-0">
+                              <span className="text-[11px] font-bold text-slate-500 block">
+                                {formatDateTime(ticket.created_at)}
+                              </span>
+                              {ticket.updated_at && ticket.updated_at !== ticket.created_at && (
+                                <span className="text-[9px] font-semibold text-slate-400">
+                                  Updated: {formatDateTime(ticket.updated_at)}
+                                </span>
+                              )}
+                            </div>
                             <div className="absolute inset-y-0 right-6 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)] px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm backdrop-blur-sm">
                                 View Details <ArrowRight size={12} strokeWidth={3} />
@@ -766,20 +789,37 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   <h3 className="font-black text-xl sm:text-2xl text-[var(--color-text)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
                   <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                     <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-slate-500"/> {selectedTicketForModal.location}</span>
-                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><Clock size={12} className="text-slate-500"/> {new Date(selectedTicketForModal.created_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                      <Clock size={12} className="text-slate-500"/> Reported: {formatDateTime(selectedTicketForModal.created_at)}
+                    </span>
                   </div>
                 </div>
 
-                {['rejected', 'on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) && selectedTicketForModal.remarks && (
-                  <div className={`mb-5 sm:mb-6 p-4 rounded-xl border shadow-[var(--shadow-sm)] ${String(selectedTicketForModal.status).toLowerCase() === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                    <h4 className={`text-[10px] font-black uppercase tracking-widest mb-1.5 ${String(selectedTicketForModal.status).toLowerCase() === 'rejected' ? 'text-red-800' : 'text-amber-800'}`}>
-                      {String(selectedTicketForModal.status).toLowerCase() === 'rejected' ? 'Reason for Rejection' : 'Hold Remarks'}
-                    </h4>
-                    <p className={`text-sm font-semibold italic ${String(selectedTicketForModal.status).toLowerCase() === 'rejected' ? 'text-red-700' : 'text-amber-700'}`}>
-                      "{selectedTicketForModal.remarks}"
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  const statusLabel = String(selectedTicketForModal.status).toLowerCase();
+                  const isRejected = statusLabel === 'rejected';
+                  const isOnHold = ['on_hold', 'on hold'].includes(statusLabel);
+                  const holdOrRejectRemarks = isRejected ? selectedTicketForModal.remarks : (selectedTicketForModal.on_hold_reason || selectedTicketForModal.remarks);
+
+                  if ((isRejected || isOnHold) && holdOrRejectRemarks) {
+                    return (
+                      <div className={`mb-5 sm:mb-6 p-4 rounded-xl border shadow-[var(--shadow-sm)] ${isRejected ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                        <div className="flex justify-between items-start mb-1.5">
+                          <h4 className={`text-[10px] font-black uppercase tracking-widest ${isRejected ? 'text-red-800' : 'text-amber-800'}`}>
+                            {isRejected ? 'Reason for Rejection' : 'Reason for Delay'}
+                          </h4>
+                          <span className={`text-[9px] font-bold flex items-center gap-1 ${isRejected ? 'text-red-600' : 'text-amber-600'}`}>
+                            <Clock size={10}/> Updated: {formatDateTime(selectedTicketForModal.updated_at || selectedTicketForModal.created_at)}
+                          </span>
+                        </div>
+                        <p className={`text-sm font-semibold italic ${isRejected ? 'text-red-700' : 'text-amber-700'}`}>
+                          "{holdOrRejectRemarks}"
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div className="mb-5 sm:mb-6 bg-white p-4 sm:p-5 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Request Description</h4>
@@ -867,7 +907,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
                 {['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) && selectedTicketForModal.remarks && (
                   <div className="mt-6 bg-emerald-50/50 p-4 rounded-[1.5rem] border border-emerald-100 shadow-sm">
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block mb-1">Staff Final Remarks</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">Staff Final Remarks</span>
+                      <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1"><Clock size={10}/> Resolved: {formatDateTime(selectedTicketForModal.updated_at || selectedTicketForModal.created_at)}</span>
+                    </div>
                     <p className="text-sm font-medium text-emerald-800 leading-relaxed">"{selectedTicketForModal.remarks}"</p>
                   </div>
                 )}
@@ -888,7 +931,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
             <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
-                <h2 className="text-lg font-black text-[var(--color-text)] tracking-wider">Create New Ticket</h2>
+                <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
                 <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
                   <X size={16} strokeWidth={2.5} />
                 </button>
@@ -905,7 +948,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           const id = e.target.value;
                           setSelectedInboxId(id);
                           setTicketImage(null); 
-                          setPhotoError(""); // ✨ Clear inline error
+                          setPhotoError(""); 
                           if (id) {
                             const t = inboxTickets.find(x => String(x.id) === id);
                             if (t) {
@@ -1003,7 +1046,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               onChange={(e) => {
                                 if (e.target.files) {
                                   setTicketImage(e.target.files[0]);
-                                  setPhotoError(""); // ✨ Clear inline error
+                                  setPhotoError(""); 
                                 }
                               }}
                               className="hidden"
@@ -1025,7 +1068,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               onChange={(e) => {
                                 if (e.target.files) {
                                   setTicketImage(e.target.files[0]);
-                                  setPhotoError(""); // ✨ Clear inline error
+                                  setPhotoError(""); 
                                 }
                               }}
                               className="hidden"
@@ -1200,20 +1243,20 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
                   
                   <div className="mt-6 sm:mt-8 flex gap-2 sm:gap-3 justify-end pt-4 border-t border-[var(--color-border)] shrink-0">
-                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
                     
                     {selectedInboxId && (
                       <button 
                         type="button" 
                         onClick={() => setIsRejectModalOpen(true)} 
                         disabled={isSubmitting} 
-                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider transition-all active:scale-[0.98]"
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98]"
                       >
                         Reject Request
                       </button>
                     )}
 
-                    <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-4 sm:px-5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-4 sm:px-5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
                   </div>
                 </form>
               </div>
@@ -1224,7 +1267,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ REJECT TICKET MODAL */}
         {isRejectModalOpen && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-red-50 shrink-0">
                 <div className="flex items-center gap-2 text-red-600">
                   <AlertCircle size={18} strokeWidth={2.5} />
@@ -1262,14 +1305,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
         {/* ✨ UNIVERSAL ALERT MODAL (NEW) */}
         {alertConfig.isOpen && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--color-secondary)]/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-[2rem] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
-              <div className={`w-16 h-16 rounded-[1.2rem] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' : alertConfig.type === 'error' ? 'bg-red-50 text-red-500 border-red-100' : 'bg-amber-50 text-amber-500 border-amber-100'}`}>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-md)] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
+              <div className={`w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-emerald-100 text-emerald-600 border-emerald-200/20' : alertConfig.type === 'error' ? 'bg-red-100 text-red-600 border-red-200/20' : 'bg-amber-100 text-amber-600 border-amber-200/20'}`}>
                 {alertConfig.type === 'success' && <CheckCircle size={28} strokeWidth={2.5} />}
                 {alertConfig.type === 'error' && <AlertCircle size={28} strokeWidth={2.5} />}
                 {alertConfig.type === 'warning' && <AlertTriangle size={28} strokeWidth={2.5} />}
               </div>
-              <h2 className="text-lg font-black text-[var(--color-secondary)] mb-2 tracking-tight">{alertConfig.title}</h2>
+              <h2 className="text-lg font-black text-[var(--color-text)] mb-2 tracking-tight">{alertConfig.title}</h2>
               <p className="text-slate-500 text-xs mb-6 leading-relaxed whitespace-pre-wrap font-medium">{alertConfig.message}</p>
               <button onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} className={`w-full text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] duration-150 border border-transparent ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)]' : alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}>Got it</button>
             </div>
@@ -1319,12 +1362,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         </div>
         
         <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
-          <p className="text-[var(--color-text)] font-bold text-[10px] sm:text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate">
-            <MapPin size={12} className="text-[var(--color-slate)] shrink-0" />
-            <span className="truncate">{ticket.location}</span>
-          </p>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[var(--color-text)] font-bold text-[10px] sm:text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate w-fit">
+              <MapPin size={12} className="text-[var(--color-slate)] shrink-0" />
+              <span className="truncate">{ticket.location}</span>
+            </p>
+            <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 ml-1">
+              <Clock size={10} /> {['completed', 'resolved', 'closed', 'rejected', 'on hold', 'on_hold'].includes(String(ticket.status).toLowerCase()) ? 'Updated' : 'Reported'}: {formatDateTime(ticket.updated_at || ticket.created_at)}
+            </p>
+          </div>
           {ticket.priority === 'Urgent' && statusColor !== 'green' && (
-            <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider animate-pulse shrink-0" title="Urgent">
+            <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider animate-pulse shrink-0 self-start" title="Urgent">
               🚨
             </span>
           )}

@@ -192,7 +192,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                 <LayoutDashboard className="text-[var(--color-text)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-              <span className="truncate" title="Dashboard">Dashboard</span>
+              <span>Dashboard</span>
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex flex-wrap items-center gap-2">
               <span className="whitespace-nowrap">Portfolio Overview</span> <span className="w-1 h-1 rounded-full bg-slate-300 hidden sm:block"></span> 
@@ -212,7 +212,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
             </div>
 
             <div className="flex items-center justify-center gap-2 sm:gap-3 bg-white px-3 sm:px-3.5 py-1.5 rounded-xl shadow-sm border border-slate-100 flex-1 sm:flex-none">
-              <span className="text-[10px] sm:text-xs font-black text-[var(--color-text)] uppercase tracking-wider truncate" title="Admin">Admin</span>
+              <span className="text-[10px] sm:text-xs font-black text-[var(--color-text)] uppercase tracking-wider">Admin</span>
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs sm:text-sm shadow-sm shrink-0">
                 {initials}
               </div>
@@ -234,25 +234,25 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               <StatCard 
                 title="VACANCY RATE" 
                 value={`${vacancyRate}%`} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium truncate" title={`${totalVacantCount} Vacant`}><Home size={12} className="shrink-0"/> <span className="truncate" title={`${totalVacantCount} Vacant`}>{totalVacantCount} Vacant</span></span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Home size={12} className="shrink-0"/> <span>{totalVacantCount} Vacant</span></span>} 
                 icon={Building}
               />
               <StatCard 
                 title="COLLECTIONS" 
                 value={`${collectionPct.toFixed(1)}%`} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium truncate" title={totalExpectedBilling > 0 ? 'Live SOA Data' : 'Awaiting Data'}><Clock size={12} className="shrink-0"/> <span className="truncate" title={totalExpectedBilling > 0 ? 'Live SOA Data' : 'Awaiting Data'}>{totalExpectedBilling > 0 ? 'Live SOA Data' : 'Awaiting Data'}</span></span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Clock size={12} className="shrink-0"/> <span>{totalExpectedBilling > 0 ? 'Live SOA Data' : 'Awaiting Data'}</span></span>} 
                 icon={CreditCard}
               />
               <StatCard 
                 title="REVPAU" 
                 value={`₱${revpau.toLocaleString()}`} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium truncate" title="Per Avail. Unit"><BarChart3 size={12} className="shrink-0"/> <span className="truncate" title="Per Avail. Unit">Per Avail. Unit</span></span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><BarChart3 size={12} className="shrink-0"/> <span>Per Avail. Unit</span></span>} 
                 icon={BarChart3}
               />
               <StatCard 
                 title="ACTIVE LEASES" 
                 value={activeLeases.toString()} 
-                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium truncate" title="Tenants"><Users size={12} className="shrink-0"/> <span className="truncate" title="Tenants">Tenants</span></span>} 
+                subtext={<span className="flex items-center text-slate-400 gap-1 font-medium"><Users size={12} className="shrink-0"/> <span>Tenants</span></span>} 
                 icon={Users}
               />
             </div>
@@ -262,8 +262,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-0 mb-4">
                   <h3 className="font-black text-[var(--color-text)] text-base sm:text-lg tracking-tight">Billing Collected This Month</h3>
                   <span className="bg-slate-50 text-slate-500 font-bold text-[11px] sm:text-xs px-3 py-1.5 rounded-[var(--radius-md)] border border-slate-200 shadow-sm flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start">
-                    <CreditCard size={14} className="shrink-0"/> <span className="truncate" title={`₱${totalCollectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}`}>₱{totalCollectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    <span className="font-medium text-slate-400 truncate" title={`of ₱${totalExpectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}`}>of ₱{totalExpectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    <CreditCard size={14} className="shrink-0"/> <span>₱{totalCollectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    <span className="font-medium text-slate-400 whitespace-nowrap">of ₱{totalExpectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </span>
                 </div>
                 <div className="h-3 sm:h-4 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
@@ -279,8 +279,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                     <PieChart size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] uppercase tracking-tight truncate" title="Unit Distribution Overview">Unit Distribution Overview</h2>
-                    <p className="text-slate-400 text-[11px] sm:text-xs font-medium mt-0.5 truncate" title="Current Portfolio Occupancy Overview">Current Portfolio Occupancy Overview</p>
+                    <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] uppercase tracking-tight">Unit Distribution Overview</h2>
+                    <p className="text-slate-400 text-[11px] sm:text-xs font-medium mt-0.5">Current Portfolio Occupancy Overview</p>
                   </div>
                 </div>
 
@@ -305,7 +305,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   <div className="flex-1 w-full max-w-md bg-white rounded-[var(--radius-xl)] lg:rounded-[1.5rem] shadow-lg border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-shadow shrink-0">
                     <div className="bg-[var(--color-secondary)] px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-5 text-white shrink-0">
                       <PieChart size={20} className="text-white shrink-0 sm:w-6 sm:h-6" strokeWidth={2.5}/>
-                      <span className="font-black text-[14px] sm:text-[16px] lg:text-[18px] tracking-[0.15em] uppercase truncate" title="Summary Unit">Summary Unit</span>
+                      <span className="font-black text-[14px] sm:text-[16px] lg:text-[18px] tracking-[0.15em] uppercase">Summary Unit</span>
                     </div>
                     <div className="flex flex-col px-2 sm:px-3 py-2 sm:py-3 flex-1">
                       <SummaryRow icon={<Users size={18} className="sm:w-5 sm:h-5 text-[var(--color-text)]" strokeWidth={2.5}/>} title="Owners of Units" sub="Total Occupied" count={ownersCount} pct={Math.round(ownersPct)} color="text-[var(--color-text)]" bg="bg-[var(--color-secondary)]/10" />
@@ -320,8 +320,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                           <Box size={16} className="text-white/70 sm:w-[18px] sm:h-[18px]"/>
                         </div>
                         <div className="flex flex-col min-w-0">
-                          <div className="text-[9px] sm:text-[11px] uppercase font-black text-white/70 tracking-widest truncate" title="Total Inventory">Total Inventory</div>
-                          <div className="text-[11px] sm:text-xs font-extrabold text-white truncate" title={`${totalUnits} Recorded Units`}>{totalUnits} Recorded Units</div>
+                          <div className="text-[9px] sm:text-[11px] uppercase font-black text-white/70 tracking-widest">Total Inventory</div>
+                          <div className="text-[11px] sm:text-xs font-extrabold text-white">{totalUnits} Recorded Units</div>
                         </div>
                       </div>
                       <div className="text-xl sm:text-2xl font-black text-white shrink-0 pl-2">100%</div>
@@ -333,8 +333,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               <div className="pt-2">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-3 sm:gap-0">
                   <h3 className="font-black text-[var(--color-text)] text-base sm:text-lg tracking-tight">Occupancy Level</h3>
-                  <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-[var(--radius-md)] border border-slate-100 flex items-center justify-center w-full sm:w-auto">
-                    <span className="text-[var(--color-text)] truncate" title={`${ownersCount} occupied`}>{ownersCount} occupied</span> <span className="text-slate-300 mx-1.5 shrink-0">|</span> <span className="truncate" title={`${totalVacantCount} vacant`}>{totalVacantCount} vacant</span>
+                  <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-[var(--radius-md)] border border-slate-100 flex items-center justify-center w-full sm:w-auto whitespace-nowrap">
+                    <span className="text-[var(--color-text)]">{ownersCount} occupied</span> <span className="text-slate-300 mx-1.5 shrink-0">|</span> <span>{totalVacantCount} vacant</span>
                   </span>
                 </div>
                 <div className="h-3 sm:h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
@@ -366,13 +366,13 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                         ) : (
                           units.slice(0, 3).map(unit => (
                             <tr key={unit.id} className="hover:bg-slate-50 transition-colors group">
-                              <td className="py-3 sm:py-4 px-2 font-extrabold text-[var(--color-text)] group-hover:text-[var(--color-secondary)] transition-colors flex items-center gap-2 sm:gap-3 truncate max-w-[150px] sm:max-w-none" title={`${unit.property_name} ${unit.unit_number}`}>
+                              <td className="py-3 sm:py-4 px-2 font-extrabold text-[var(--color-text)] group-hover:text-[var(--color-secondary)] transition-colors flex items-center gap-2 sm:gap-3 whitespace-nowrap">
                                 <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[var(--radius-sm)] sm:rounded-lg bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-400 shrink-0">
                                   <Home size={14} className="sm:w-3.5 sm:h-3.5"/>
                                 </div>
-                                <span className="truncate" title={`${unit.property_name} ${unit.unit_number}`}>{unit.property_name} {unit.unit_number}</span>
+                                <span>{unit.property_name} {unit.unit_number}</span>
                               </td>
-                              <td className="py-3 sm:py-4 px-2 text-slate-500 font-semibold truncate max-w-[120px] sm:max-w-none" title={unit.tenant_name || "Unassigned"}>{unit.tenant_name || <span className="italic text-slate-300">Unassigned</span>}</td>
+                              <td className="py-3 sm:py-4 px-2 text-slate-500 font-semibold whitespace-nowrap">{unit.tenant_name || <span className="italic text-slate-300">Unassigned</span>}</td>
                               <td className="py-3 sm:py-4 px-2 text-right">
                                 <span className={`inline-flex items-center justify-center px-2 sm:px-3 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] whitespace-nowrap ${unit.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'}`}>
                                   {unit.status}
@@ -441,7 +441,7 @@ function StatCard({ title, value, subtext, icon: Icon }: { title: string, value?
       <div className="absolute -top-6 -right-6 w-24 h-24 bg-slate-50 rounded-full blur-2xl group-hover:bg-[var(--color-primary)]/10 transition-colors pointer-events-none"></div>
 
       <div className="flex justify-between items-start mb-2 sm:mb-3 relative shrink-0 gap-2">
-        <div className="text-[10px] sm:text-xs font-black text-slate-400 tracking-widest uppercase line-clamp-1 flex-1" title={title}>{title}</div>
+        <div className="text-[8px] sm:text-xs font-black text-slate-400 tracking-widest uppercase flex-1">{title}</div>
         {Icon && (
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[var(--radius-sm)] sm:rounded-[var(--radius-md)] lg:rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-secondary)] group-hover:scale-110 transition-all shadow-sm shrink-0">
             <Icon size={14} strokeWidth={2.5} className="sm:w-4 sm:h-4" />
@@ -449,8 +449,8 @@ function StatCard({ title, value, subtext, icon: Icon }: { title: string, value?
         )}
       </div>
       <div className="relative flex flex-col justify-end w-full h-full min-w-0">
-        {value && <div className="text-2xl sm:text-3xl font-black text-[var(--color-text)] mt-1 mb-1 sm:mb-1.5 tracking-tight group-hover:text-[var(--color-secondary)] transition-colors truncate" title={typeof value === 'string' ? value : undefined}>{value}</div>}
-        <div className="text-[10px] sm:text-xs text-slate-500 w-full truncate" title={typeof subtext === 'string' ? subtext : undefined}>{subtext}</div>
+        {value && <div className="text-2xl sm:text-3xl font-black text-[var(--color-text)] mt-1 mb-1 sm:mb-1.5 tracking-tight group-hover:text-[var(--color-secondary)] transition-colors">{value}</div>}
+        <div className="text-[8px] sm:text-xs text-slate-500 w-full">{subtext}</div>
       </div>
     </div>
   );
@@ -461,7 +461,7 @@ function AttentionItem({ label, value, isUrgent, color }: { label: string, value
     <div className="flex justify-between items-center py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-[var(--radius-sm)] sm:rounded-[var(--radius-md)] hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 gap-2">
       <span className="text-[11px] sm:text-[13px] font-semibold text-slate-600 flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
         {isUrgent && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${color ? color.replace('text-', 'bg-') : 'bg-[var(--color-secondary)]'} animate-pulse`}></span>}
-        <span className="truncate" title={label}>{label}</span>
+        <span>{label}</span>
       </span>
 
       <span className={`shrink-0 text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-[var(--radius-sm)] sm:rounded-[var(--radius-md)] ${
@@ -483,8 +483,8 @@ function SummaryRow({ icon, title, sub, count, pct, color, bg }: any) {
           {icon}
         </div>
         <div className="flex flex-col min-w-0">
-          <div className="text-[12px] sm:text-[14px] font-black text-[var(--color-text)] tracking-tight truncate" title={title}>{title}</div>
-          <div className="text-[10px] sm:text-[12px] font-medium text-slate-500 truncate" title={`${sub} (${count})`}>{sub} <span className="font-bold text-slate-400 ml-1">({count})</span></div>
+          <div className="text-[12px] sm:text-[14px] font-black text-[var(--color-text)] tracking-tight">{title}</div>
+          <div className="text-[10px] sm:text-[12px] font-medium text-slate-500">{sub} <span className="font-bold text-slate-400 ml-1">({count})</span></div>
         </div>
       </div>
       <div className={`text-xl sm:text-2xl font-black ${color} tracking-tighter drop-shadow-sm shrink-0`}>

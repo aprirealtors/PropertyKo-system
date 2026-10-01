@@ -27,6 +27,13 @@ const CATEGORIES = [
   { id: "General", label: "General Repair", icon: Wrench, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200" },
 ];
 
+// ✨ ENTERPRISE HELPER: Format Date and Time
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
 export default function TenantDashboard() {
   const router = useRouter();
   
@@ -1333,6 +1340,8 @@ export default function TenantDashboard() {
                 <p className="text-sm font-semibold leading-relaxed">
                   {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
                 </p>
+                {/* reported issue date and time  */}
+                <p className="text-[10px] font-bold text-red-200 uppercase tracking-widest mt-3">Reported on: {formatDateTime(rejectedTicketModalData.created_at)}</p>
               </div>
 
               {/* Original Report Details */}
@@ -1356,8 +1365,8 @@ export default function TenantDashboard() {
                     <p className="font-bold text-[var(--color-text)]/80 text-xs">{rejectedTicketModalData.location}</p>
                   </div>
                   <div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Reported On</span>
-                    <p className="font-bold text-[var(--color-text)]/80 text-xs">{new Date(rejectedTicketModalData.created_at).toLocaleDateString()}</p>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Rejected Date:</span>
+                    <p className="font-bold text-[var(--color-text)] text-xs">{formatDateTime(rejectedTicketModalData.updated_at || rejectedTicketModalData.created_at)}</p>
                   </div>
                 </div>
 

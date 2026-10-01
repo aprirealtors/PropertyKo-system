@@ -197,10 +197,10 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         <div>
           {upNextTasks.length === 0 ? (
             <div className="py-14 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-[var(--color-primary)]/30">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 rounded-[var(--radius-md)] flex items-center justify-center mb-5 shadow-inner text-[var(--color-primary)] border border-[var(--color-primary)]/20">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 rounded-[var(--radius-md)] flex items-center justify-center mb-5 shadow-inner text-emerald-500 border border-emerald-200/20">
                 <CheckCircle size={36} className="sm:w-10 sm:h-10" />
               </div>
-              <h4 className="text-lg md:text-xl text-[var(--color-secondary)] font-black tracking-tight">You're all caught up!</h4>
+              <h4 className="text-lg md:text-xl text-[var(--color-text)] font-black tracking-tight">You're all caught up!</h4>
               <p className="text-xs md:text-sm text-slate-500 mt-2 font-medium max-w-sm mx-auto leading-relaxed">Awesome work. You have no pending maintenance tasks on your plate right now.</p>
             </div>
           ) : (

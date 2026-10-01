@@ -1085,7 +1085,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 {/* ✨ HERO FINANCIAL BANNER */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-6 bg-[var(--color-secondary)] p-5 sm:p-6 md:p-7 rounded-[1.5rem] shadow-[var(--shadow-md)] w-full overflow-hidden tabular-nums relative">
                   <div className="min-w-0 flex-1">
-                    <span className="font-black text-white/90 text-xs uppercase tracking-widest truncate block">Total Amount Due</span>
+                    <span className="font-black text-white/90 text-xs uppercase tracking-widest block">Total Amount Due</span>
                     {!isTenantVacant && <div className="text-[10px] font-medium text-white/70 mt-1 truncate block">Combined Property Balance</div>}
                   </div>
 
