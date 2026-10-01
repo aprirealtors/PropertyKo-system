@@ -1,4 +1,3 @@
-// src/app/login/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -41,6 +40,9 @@ export default function Home() {
   const [supportMessage, setSupportMessage] = useState("");
   const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
+  // ✨ LEGAL MODAL STATE
+  const [legalModal, setLegalModal] = useState<"privacy" | "terms" | null>(null);
 
   // Detect Subdomain on mount
   useEffect(() => {
@@ -363,10 +365,18 @@ export default function Home() {
         <div className="relative z-10 flex items-center justify-between text-xs font-medium text-slate-500">
           <p>© {new Date().getFullYear()} PropertyKo </p>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-white transition-colors">
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setLegalModal("privacy"); }}
+              className="hover:text-white transition-colors"
+            >
               Privacy Policy
             </a>
-            <a href="#" className="hover:text-white transition-colors">
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); setLegalModal("terms"); }}
+              className="hover:text-white transition-colors"
+            >
               Terms of Service
             </a>
           </div>
@@ -418,13 +428,6 @@ export default function Home() {
             </p>
           </div>
 
-          {errorMsg && (
-            <div className="absolute top-6 sm:top-10 left-1/2 -translate-x-1/2 w-[90%] max-w-[380px] z-50 p-4 bg-red-50 text-red-700 text-sm font-bold rounded-2xl border border-red-200 shadow-[0_8px_30px_rgba(239,68,68,0.15)] flex items-start gap-3 animate-in fade-in slide-in-from-top-4">
-              <ShieldCheck className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-              <span className="leading-tight">{errorMsg}</span>
-            </div>
-          )}
-
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
               <label className="text-sm font-semibold opacity-90 block" style={{ color: "var(--color-text)" }}>
@@ -472,6 +475,13 @@ export default function Home() {
                   {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                 </button>
               </div>
+
+              {errorMsg && (
+                <div className="mt-2 p-3 bg-red-50 text-red-700 text-xs sm:text-sm font-semibold rounded-xl border border-red-200 flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2">
+                  <ShieldCheck className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{errorMsg}</span>
+                </div>
+              )}
             </div>
 
             <button
@@ -522,10 +532,18 @@ export default function Home() {
 
           <div className="lg:hidden pt-4 flex flex-col items-center gap-4 text-xs opacity-60" style={{ color: "var(--color-text)" }}>
             <div className="flex gap-4">
-              <a href="#" className="hover:opacity-100 transition-opacity">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); setLegalModal("privacy"); }}
+                className="hover:opacity-100 transition-opacity"
+              >
                 Privacy Policy
               </a>
-              <a href="#" className="hover:opacity-100 transition-opacity">
+              <a
+                href="#"
+                onClick={(e) => { e.preventDefault(); setLegalModal("terms"); }}
+                className="hover:opacity-100 transition-opacity"
+              >
                 Terms of Service
               </a>
             </div>
@@ -625,6 +643,143 @@ export default function Home() {
           {isSupportOpen ? <X size={24} strokeWidth={2.5} /> : <MessageSquare size={24} strokeWidth={2.5} />}
         </button>
       </div>
+
+      {/* ✨ LEGAL MODAL (Privacy Policy / Terms of Service) */}
+      {legalModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setLegalModal(null)}
+        >
+          <div
+            className="relative w-full max-w-4xl h-[92vh] sm:h-[88vh] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: logo, title, close button */}
+            <div className="relative shrink-0 flex flex-col items-center px-6 pt-6 pb-4 sm:px-10 sm:pt-8 sm:pb-6 border-b border-slate-200">
+              <button
+                onClick={() => setLegalModal(null)}
+                aria-label="Close"
+                className="absolute top-3 right-3 sm:top-5 sm:right-5 w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all active:scale-95"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="relative w-36 h-14 sm:w-48 sm:h-20 mb-3 sm:mb-4">
+                <Image
+                  src="/PropertyKo-Logo-Loading-Revamp.svg"
+                  fill
+                  alt="PropertyKo-logo"
+                  className="object-contain"
+                />
+              </div>
+
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-[#0a1e3f] text-center">
+                {legalModal === "privacy" ? "Privacy Policy" : "Terms of Service"}
+              </h2>
+            </div>
+
+            {/* Scrollable content area: put your content here */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-10 sm:py-8 custom-scrollbar text-sm sm:text-base text-slate-700 leading-relaxed">
+              {legalModal === "privacy" ? (
+                <div className="space-y-6">
+                  <p className="text-xs text-slate-400 font-medium">Last updated: January 1, 2025</p>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">1. Information We Collect</h3>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. We collect information you provide directly, such as your name, email address, and contact details when you create an account or contact support.</p>
+                    <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. We may also collect usage data, device information, and log data to help us improve the platform.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. How We Use Your Information</h3>
+                    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Your information is used to:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Provide, maintain, and improve our services</li>
+                      <li>Process payments and manage property records</li>
+                      <li>Send important notices and support responses</li>
+                      <li>Protect against fraud and unauthorized access</li>
+                    </ul>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. Sharing of Information</h3>
+                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. We do not sell your personal information. We may share data with trusted service providers who help us operate the platform.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Data Security</h3>
+                    <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. We use role-based access control and industry-standard safeguards to protect your data.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Data Retention</h3>
+                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. We keep your information only as long as needed for the purposes described in this policy or as required by law.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Your Rights</h3>
+                    <p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet. You may request access, correction, or deletion of your personal data at any time by contacting our support team.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Contact Us</h3>
+                    <p>If you have questions about this Privacy Policy, please reach out through the Contact Support widget on this page.</p>
+                  </section>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <p className="text-xs text-slate-400 font-medium">Last updated: January 1, 2025</p>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">1. Acceptance of Terms</h3>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. By accessing or using PropertyKo, you agree to be bound by these Terms of Service and all applicable laws and regulations.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. User Accounts</h3>
+                    <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. You are responsible for keeping your credentials confidential and for all activity under your account.</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Provide accurate and up-to-date information</li>
+                      <li>Do not share your login credentials</li>
+                      <li>Notify us immediately of any unauthorized use</li>
+                    </ul>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. Acceptable Use</h3>
+                    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. You agree not to misuse the platform, attempt to access other workspaces, or interfere with its normal operation.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Billing and Subscriptions</h3>
+                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Workspaces with unpaid balances may be suspended until the account is settled.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Intellectual Property</h3>
+                    <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. All content, branding, and software remain the property of PropertyKo.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Limitation of Liability</h3>
+                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. To the fullest extent permitted by law, PropertyKo shall not be liable for any indirect or consequential damages.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Termination</h3>
+                    <p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet. We reserve the right to suspend or terminate access for violations of these terms.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">8. Changes to These Terms</h3>
+                    <p>Ut labore et dolore magnam aliquam quaerat voluptatem. We may update these terms from time to time. Continued use of the platform means you accept the revised terms.</p>
+                  </section>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

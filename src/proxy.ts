@@ -6,6 +6,11 @@ export function proxy(req: NextRequest) {
   const hostname = req.headers.get("host") || "";
   const mainDomain = process.env.NODE_ENV === "production" ? "propertyko.com" : "localhost:3000";
 
+  // ✨ NEW BYPASS RULE: Let the Firebase Service Worker load directly from the public folder
+  if (url.pathname === '/firebase-messaging-sw.js') {
+    return NextResponse.next();
+  }
+
   // BYPASS RULE: Let the global login and superadmin pages load normally (Works on subdomains too)
   if (url.pathname.startsWith('/login') || url.pathname.startsWith('/dashboard/superadmin')) {
     return NextResponse.next();
@@ -34,7 +39,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // ✨ KEEP THIS FIX: Ensures PWA manifest and images work on subdomains
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // ✨ KEEP THIS FIX: Ensures PWA manifest, images, AND Service Worker work on subdomains
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|manifest.json|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

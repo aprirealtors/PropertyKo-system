@@ -10,6 +10,7 @@ import {
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client"; 
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 
 // Import your tab components
 import PayTab from './pay';
@@ -28,6 +29,10 @@ const CATEGORIES = [
 
 export default function TenantDashboard() {
   const router = useRouter();
+  
+  // ✨ INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
+
   const [activeTab, setActiveTab] = useState('home');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -1050,6 +1055,31 @@ export default function TenantDashboard() {
                 </div>
               </div>
 
+              {/* ✨ NEW: Desktop Notifications Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and updates even when the app is minimized.</p>}
+                </div>
+              </div>
+
               <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
   
                 {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
@@ -1198,7 +1228,7 @@ export default function TenantDashboard() {
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
-                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-50 hover:opacity-75 rounded-[var(--radius-md)] transition-all border border-[var(--color-border)] active:scale-[0.96] shadow-sm"
                 disabled={isSavingName}
               >
                 Cancel
@@ -1353,7 +1383,7 @@ export default function TenantDashboard() {
           >
             <button
               onClick={() => setIsLogoModalOpen(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-full text-slate-500 hover:text-slate-800 transition-all active:scale-95 shadow-sm z-10"
             >
               <X size={20} strokeWidth={2.5} />
             </button>

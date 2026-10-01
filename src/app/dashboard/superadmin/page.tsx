@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 import { 
   X, CreditCard, CheckCircle, Home, AlertTriangle, 
   LogOut, LayoutDashboard, History, User, ChevronRight, Folder,
   ChevronUp, ChevronDown, BarChart3, Users, Building2, Activity,
-  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2, PanelLeft, MessageSquare
+  Lock, Key, Eye, EyeOff, Edit2, CheckCircle2, PanelLeft, MessageSquare, Bell // Added Bell
 } from "lucide-react";
 
 // Import your tab components
@@ -20,6 +21,9 @@ import SuperAdminConversation from './conversation';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
+
+  // ✨ INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
   
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
@@ -566,6 +570,31 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
 
+              {/* ✨ NEW: Desktop Notifications Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 transition-all duration-300">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-xl text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-blue-600 text-white border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for incoming messages and updates.</p>}
+                </div>
+              </div>
+
               {/* --- Change Password Box --- */}
               <div className="bg-white rounded-[1.5rem] sm:rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
                 <div className="flex justify-between items-center mb-4">
@@ -601,6 +630,7 @@ export default function SuperAdminDashboard() {
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           className="w-full px-4 pr-11 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all shadow-sm" 
                           disabled={isSubmittingPassword} 
+                          autoFocus
                         />
                         <button 
                           type="button" 
@@ -783,7 +813,7 @@ export default function SuperAdminDashboard() {
           {toast.message}
         </div>
       )}
-
+      
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .custom-scrollbar::-webkit-scrollbar { display: none; }

@@ -1,9 +1,9 @@
-// src/app/dashboard/superadmin/layout.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import GlobalPushListener from "@/components/GlobalPushListener";
 
 export default function SuperAdminLayout({
   children,
@@ -36,5 +36,10 @@ export default function SuperAdminLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <GlobalPushListener userEmail="superadmin@propertyko.com" role="superadmin" />
+      {children}
+    </>
+  );
 }

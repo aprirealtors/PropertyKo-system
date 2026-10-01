@@ -1,9 +1,9 @@
-// src/app/[subdomain]/dashboard/layout.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import GlobalPushListener from "@/components/GlobalPushListener";
 
 export default function DashboardLayout({
   children,
@@ -12,6 +12,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [userContext, setUserContext] = useState<{ email: string; role: string } | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -19,9 +20,31 @@ export default function DashboardLayout({
 
       if (!session) {
         router.push("/login");
-      } else {
-        setIsAuthorized(true);
+        return;
       }
+
+      const email = session.user.email || "";
+      let role = session.user.user_metadata?.role;
+
+      // SAFETY FALLBACK: If role is missing from auth metadata, grab it directly from the database
+      if (!role) {
+        const { data: teamMember } = await supabase
+          .from('team_members')
+          .select('role')
+          .eq('email', email)
+          .single();
+
+        if (teamMember?.role) {
+          // Normalize names like "Property manager" to "manager"
+          role = teamMember.role.toLowerCase().includes("manager") ? "manager" : teamMember.role.toLowerCase();
+        } else {
+          // Default to tenant if totally unknown
+          role = "tenant";
+        }
+      }
+
+      setUserContext({ email, role: role.toLowerCase() });
+      setIsAuthorized(true);
     };
 
     checkAuth();
@@ -35,5 +58,12 @@ export default function DashboardLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {/* This invisible component runs the push notifications in the background */}
+      {userContext && <GlobalPushListener userEmail={userContext.email} role={userContext.role} />}
+      
+      {children}
+    </>
+  );
 }

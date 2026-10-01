@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
@@ -24,6 +25,9 @@ import UsersTab from "./user";
 export default function ManagerDashboard() {
   const router = useRouter();
   
+  // ✨ INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
+
   // Navigation & Modal States
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -951,6 +955,31 @@ export default function ManagerDashboard() {
                 </div>
               </div>
 
+              {/* ✨ NEW: Desktop Notifications Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and tickets even when the app is minimized.</p>}
+                </div>
+              </div>
+
              {/* --- Change Password Box --- */}
             <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
               
@@ -1133,7 +1162,7 @@ export default function ManagerDashboard() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="text-center sm:text-left text-white flex-1 min-w-0 z-10 w-full">
                   <h3 className="text-xl sm:text-2xl font-black mb-1 truncate tracking-tight" title={orgData?.org_name}>
                     {orgData?.org_name || "Organization Name"}

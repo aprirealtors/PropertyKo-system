@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 import { 
   Bell, CheckCircle2, AlertTriangle, LogOut, 
   Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight, Lock, Key,
@@ -36,6 +37,9 @@ export interface MaintenanceTask {
 export default function MaintenanceDashboard() {
   const router = useRouter();
   
+  // ✨ INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -112,20 +116,6 @@ export default function MaintenanceDashboard() {
         .eq('email', user.email)
         .single();
 
-      // if (userData) {
-      //   const nameParts = userData.name.split(" ");
-      //   const initials = nameParts.length > 1 
-      //     ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
-      //     : userData.name.substring(0, 2).toUpperCase();
-      //   setProfile({ name: userData.name, initials });
-      // } else if (user.user_metadata?.name || user.user_metadata?.full_name) {
-      //   const metaName = user.user_metadata.name || user.user_metadata.full_name;
-      //   const nameParts = metaName.split(" ");
-      //   const initials = nameParts.length > 1 
-      //     ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase() 
-      //     : metaName.substring(0, 2).toUpperCase();
-      //   setProfile({ name: metaName, initials });
-      // }
       if (userData) {
         // ✨ UPDATED: Grab only the first letter
         const initials = userData.name.charAt(0).toUpperCase();
@@ -645,6 +635,31 @@ export default function MaintenanceDashboard() {
                 </div>
               </div>
 
+              {/* ✨ NEW: Desktop Notifications Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and updates even when the app is minimized.</p>}
+                </div>
+              </div>
+
               {/* --- Change Password Box --- */}
               <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
   
@@ -759,7 +774,7 @@ export default function MaintenanceDashboard() {
                       <button 
                         type="submit" 
                         disabled={isSubmittingPassword}
-                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-xl)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-[0.98] border border-transparent"
+                        className="flex-1 py-3 sm:py-3.5 rounded-[var(--radius-xl)] font-black text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 transition-all shadow-[var(--shadow-md)] text-xs flex items-center justify-center gap-2 active:scale-95 border border-transparent"
                       >
                         {isSubmittingPassword ? (
                           <span className="animate-pulse">Updating...</span>

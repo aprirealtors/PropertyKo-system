@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, Mail, PauseCircle, MessageSquare, FileCheck, AlertCircle,
@@ -16,6 +17,9 @@ import RepairTab from "./repair"; // ✨ IMPORTED THE REPAIR TAB
 
 export default function OwnerDashboard() {
   const router = useRouter();
+
+  // ✨ INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
 
   // TABS STATE
   const [activeTab, setActiveTab] = useState('home');
@@ -655,14 +659,10 @@ export default function OwnerDashboard() {
   const fullName = userData?.name || "Owner";
 
   const getInitials = (name: string) => {
-    // Return "O" for Owner or missing names
     if (!name || name === "Owner") return "O"; 
-
-    // Get the first character, remove leading spaces, and capitalize it
     return name.trim().charAt(0).toUpperCase();
   };
 
-  // Pass fullName instead of userData?.name to utilize your fallback
   const initials = getInitials(fullName);
 
   const fullUnitsDisplay = useMemo(() => {
@@ -839,7 +839,7 @@ export default function OwnerDashboard() {
       {/* LAYOUT WRAPPER: Sidebar & Main Content */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR (Edge-to-Edge Profile) */}
+        {/* ✨ MODERN COLLAPSIBLE DESKTOP SIDEBAR */}
         <aside className={`${isSidebarCollapsed ? 'md:w-[84px]' : 'md:w-[260px]'} bg-[var(--color-secondary)] pt-6 hidden md:flex flex-col transition-all duration-300 relative shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)]`}>
 
           {/* Collapse Toggle Button */}
@@ -853,7 +853,7 @@ export default function OwnerDashboard() {
             </span>
           </button>
 
-          {/* Navigation Links - Padding moved here */}
+          {/* Navigation Links */}
           <nav className={`flex-1 space-y-1 ${isSidebarCollapsed ? "px-2 overflow-visible" : "px-4 overflow-y-auto custom-scrollbar"}`}>
             <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
             <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Home" isActive={activeTab === "home"} onClick={() => {setActiveTab('home'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
@@ -867,7 +867,7 @@ export default function OwnerDashboard() {
             <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="Lease Documents" isActive={activeTab === "leases"} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
-          {/* ✨ MATCHED UI: Premium Bottom User Tag (Edge-to-Edge Layout) */}
+          {/* ✨ MATCHED UI: Premium Bottom User Tag */}
           <div className="shrink-0 mt-auto border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
             <button 
               onClick={() => {
@@ -1404,8 +1404,33 @@ export default function OwnerDashboard() {
                 </div>
               </div>
 
+              {/* ✨ NEW: Desktop Notifications Box */}
               <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
-  
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and updates even when the app is minimized.</p>}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                
                 {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
                 <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : ''}`}>
                   <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
@@ -1785,7 +1810,7 @@ function MobileNavItem({ active, onClick, icon, label, badgeCount }: any) {
           )}
         </div>
 
-        {/* Text Label - ✨ FIXED: Now strictly uses font-black for 1:1 platform parity */}
+        {/* Text Label */}
         <span className="text-[8.5px] sm:text-[9px] font-black mt-1 uppercase tracking-tight">
           {label}
         </span>
