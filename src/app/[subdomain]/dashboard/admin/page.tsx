@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
@@ -64,7 +64,9 @@ export default function AdminDashboard() {
   const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
 
+  // ✨ ACTION INTENT STATES (Used for routing Modals from Notifications)
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  const intentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -261,13 +263,27 @@ export default function AdminDashboard() {
     router.push("/login");
   };
 
+  // ✨ GLOBAL TAB CHANGE LOGIC WITH DELAYED INTENT RENDERING
   const handleTabChange = (tabName: string, highlightId: string | null = null) => {
     setActiveTab(tabName);
     setIsMobileMenuOpen(false); 
+
+    // 1-CLICK 1-APPEAR: Clear any existing timeouts to prevent rapid-fire bugs
+    if (intentTimeoutRef.current) {
+      clearTimeout(intentTimeoutRef.current);
+    }
+
+    // Reset intent first. This forcibly closes any open modals in child tabs, 
+    // ensuring the next intent triggers cleanly as a "new" action.
+    setHighlightTicketId(null);
+
     if (highlightId) {
-      setHighlightTicketId(highlightId);
-    } else if (tabName !== "Tickets" && tabName !== "Maintenance") {
-      setHighlightTicketId(null);
+      // SKELETON FIRST LOGIC: Wait 800ms before passing the intent down.
+      // This allows the child tab to mount and show its skeleton loading state
+      // BEFORE the modal pops up, making the UX perfectly smooth.
+      intentTimeoutRef.current = setTimeout(() => {
+        setHighlightTicketId(highlightId);
+      }, 800);
     }
   };
 
@@ -478,8 +494,9 @@ export default function AdminDashboard() {
       handleTabChange("Billing");
     } 
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
-      if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
-      handleTabChange("Maintenance"); 
+      // Create a unique intent ID using Date.now() to ensure the child tab sees it as a fresh state change
+      const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Maintenance", intent); 
     } 
     else {
       handleTabChange("Dashboard");
@@ -1289,13 +1306,9 @@ export default function AdminDashboard() {
           }`}
         >
           {toast.type === "success" ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="text-[var(--color-primary)] w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20"><CheckCircle2 className="text-[var(--color-primary)] w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} /></div>
           ) : (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="text-red-500 w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 border border-red-100"><AlertTriangle className="text-red-500 w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} /></div>
           )}
           <span className="truncate flex-1">{toast.message}</span>
         </div>

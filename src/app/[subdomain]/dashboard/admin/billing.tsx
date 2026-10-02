@@ -936,8 +936,75 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       {/* ✨ MAIN WORKSPACE (Extended Single-Column Toggle up to 1450px) */}
       <div className="flex-1 flex flex-col min-[1451px]:flex-row overflow-hidden max-w-[1700px] mx-auto w-full relative px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 gap-3 sm:gap-4 md:gap-5">
         {isLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 font-bold text-xs uppercase tracking-wider gap-3">
-            <Clock size={28} className="animate-spin text-[var(--color-text)]" /> Loading billing data...
+          <div className="flex-1 flex flex-col min-[1451px]:flex-row gap-3 sm:gap-4 md:gap-5">
+            {/* Sidebar Skeleton */}
+            <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white border border-[var(--color-border)] rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden animate-pulse ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
+              <div className="p-4 sm:p-5 border-b border-[var(--color-border)] bg-slate-50 flex justify-between items-center h-[52px] sm:h-[60px]">
+                <div className="w-24 h-4 bg-slate-200 rounded"></div>
+                <div className="w-12 h-4 bg-slate-200 rounded"></div>
+              </div>
+              <div className="flex-1 p-3 space-y-2">
+                {[1,2,3,4,5,6,7].map(i => (
+                  <BillingSkeletonCard key={i} />
+                ))}
+              </div>
+            </div>
+
+            {/* Main Content Skeleton */}
+            <div className={`flex-1 flex-col bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm animate-pulse ${!isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
+              <div className="h-[72px] sm:h-[84px] bg-slate-50 border-b border-[var(--color-border)] p-4 sm:p-6 flex items-center justify-between">
+                <div className="w-1/3 h-6 bg-slate-200 rounded-lg"></div>
+                <div className="w-20 h-8 bg-slate-200 rounded-md"></div>
+              </div>
+              <div className="p-4 sm:p-6 flex-1 space-y-4 sm:space-y-6">
+                
+                {/* ✨ FIXED: Detailed Skeleton for Dual Statement Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl bg-white overflow-hidden">
+                  {/* Owner Column Skeleton */}
+                  <div className="p-4 sm:p-6 md:p-7 flex flex-col h-[280px]">
+                    <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-100 flex justify-between items-start">
+                      <div className="space-y-2 w-1/2">
+                        <div className="w-1/2 h-3 bg-slate-200 rounded"></div>
+                        <div className="w-3/4 h-5 bg-slate-200 rounded"></div>
+                      </div>
+                      <div className="w-16 h-6 bg-slate-100 rounded-full"></div>
+                    </div>
+                    <div className="space-y-4 flex-1">
+                      <div className="flex justify-between items-center"><div className="w-1/3 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                      <div className="flex justify-between items-center"><div className="w-1/4 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                      <div className="flex justify-between items-center"><div className="w-1/3 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                    </div>
+                    <div className="mt-auto pt-3.5 sm:pt-4 border-t border-slate-100 flex justify-between items-center">
+                      <div className="w-1/3 h-3 bg-slate-200 rounded"></div>
+                      <div className="w-1/4 h-5 bg-slate-200 rounded"></div>
+                    </div>
+                  </div>
+                  
+                  {/* Tenant Column Skeleton */}
+                  <div className="p-4 sm:p-6 md:p-7 flex-col h-[280px] hidden md:flex">
+                    <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-100 flex justify-between items-start">
+                      <div className="space-y-2 w-1/2">
+                        <div className="w-1/2 h-3 bg-slate-200 rounded"></div>
+                        <div className="w-3/4 h-5 bg-slate-200 rounded"></div>
+                      </div>
+                      <div className="w-16 h-6 bg-slate-100 rounded-full"></div>
+                    </div>
+                    <div className="space-y-4 flex-1">
+                      <div className="flex justify-between items-center"><div className="w-1/3 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                      <div className="flex justify-between items-center"><div className="w-1/4 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                      <div className="flex justify-between items-center"><div className="w-1/3 h-3 bg-slate-100 rounded"></div><div className="w-1/4 h-3 bg-slate-200 rounded"></div></div>
+                    </div>
+                    <div className="mt-auto pt-3.5 sm:pt-4 border-t border-slate-100 flex justify-between items-center">
+                      <div className="w-1/3 h-3 bg-slate-200 rounded"></div>
+                      <div className="w-1/4 h-5 bg-slate-200 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="h-[120px] bg-slate-100 rounded-[1.5rem]"></div>
+                <div className="h-[200px] bg-slate-50 border border-[var(--color-border)] rounded-[1.5rem]"></div>
+              </div>
+            </div>
           </div>
         ) : allUnits.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
@@ -952,7 +1019,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         ) : (
           <>
             {/* ✨ SIDEBAR (Takes 100% width up to 1450px) */}
-            <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white border border-[var(--color-border)] rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden transition-all ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
+            <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden transition-all ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center z-10 shadow-sm">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-[var(--color-text)] text-xs sm:text-[13px] md:text-sm uppercase tracking-wider">Property Units</h3>
@@ -1077,7 +1144,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </div>
 
                   {/* DUAL STATEMENT CARDS (Side-by-side on md: / 768px+) */}
-                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-[var(--color-border)]' : ''}`}>
+                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-slate-200' : ''}`}>
                     
                     {/* OWNER STATEMENT COLUMN */}
                     <div className="p-4 sm:p-6 md:p-7 relative flex flex-col">
@@ -1119,7 +1186,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                        </div>
                        
                        <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-bl-[1.5rem] tabular-nums">
-                           <span className="text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest shrink-0">Owner Subtotal:</span>
+                           <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Owner Subtotal:</span>
                            <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                              {isAssigned ? `₱${ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                            </span>
@@ -1166,9 +1233,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               )}
                            </div>
 
-                           <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
-                               <span className="text-[9px] sm:text-[10px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
-                               <span className="font-black text-[var(--color-text)] text-sm sm:text-base shrink-0">
+                           <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
+                               <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
+                               <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                                  {isAssigned ? `₱${tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                                </span>
                            </div>
@@ -2008,7 +2075,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
-              <h2 className="text-base sm:text-lg font-black text-[var(--color-secondary)] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment</h2>
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment</h2>
               <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
@@ -2016,13 +2083,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
             
             <div className="px-5 sm:px-6 py-6 sm:py-8 bg-slate-50/50">
               <p className="text-xs sm:text-sm text-slate-500 mb-5 sm:mb-6 font-medium leading-relaxed">
-                Please verify the payment details submitted by the <span className="font-black text-[var(--color-primary)] uppercase tracking-wide">{paymentModalParty}</span> for {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}.
+                Please verify the payment details submitted by the <span className="font-black text-[var(--color-text)] uppercase tracking-wide">{paymentModalParty}</span> for {selectedUnit?.property_name} · Unit {selectedUnit?.unit_number}.
               </p>
 
               <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[var(--color-border)] mb-6 sm:mb-8 shadow-sm">
                 <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-[var(--color-border)] gap-3">
-                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Amount Due</span>
-                  <span className="font-black text-[var(--color-secondary)] text-xl sm:text-2xl tracking-tight shrink-0">
+                  <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Amount Due</span>
+                  <span className="font-black text-[var(--color-text)] text-xl sm:text-2xl tracking-tight shrink-0">
                     ₱{(paymentModalParty === 'owner' ? ownerTotalDue : tenantTotalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </span>
                 </div>
@@ -2261,5 +2328,26 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       document.body
     )}
     </>
+  );
+}
+
+// ✨ REUSABLE BILLING SKELETON CARD FOR ACCURATE LOADING STATE
+function BillingSkeletonCard() {
+  return (
+    <div className="bg-white border-slate-200 rounded-[var(--radius-md)] p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-sm border animate-pulse group cursor-pointer h-[72px] shrink-0">
+      <div className="flex-1 min-w-0 space-y-2">
+        <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div className="flex items-center gap-2">
+          <div className="h-3 bg-slate-100 rounded w-8"></div>
+          <div className="h-3 bg-slate-100 rounded w-16"></div>
+          <div className="h-3 bg-slate-100 rounded w-8 ml-1"></div>
+          <div className="h-3 bg-slate-100 rounded w-16"></div>
+        </div>
+      </div>
+      <div className="flex flex-col items-end shrink-0 gap-1.5">
+        <div className="h-4 bg-slate-200 rounded w-16"></div>
+        <div className="h-4 bg-slate-200 rounded w-16"></div>
+      </div>
+    </div>
   );
 }

@@ -199,15 +199,15 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
               <select 
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value === "All" ? "All" : Number(e.target.value))}
-                className="w-full sm:w-40 pl-9 pr-8 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-primary)]/30 text-xs sm:text-sm font-black text-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-[var(--shadow-sm)] transition-all cursor-pointer appearance-none"
+                className="w-full sm:w-40 pl-9 pr-8 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-text)]/30 text-xs sm:text-sm font-black text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-text)]/15 focus:border-[var(--color-text)] bg-[var(--color-text)]/5 shadow-[var(--shadow-sm)] transition-all cursor-pointer appearance-none"
               >
                 <option value="All">All Years</option>
                 {availableYears.map(y => (
                   <option key={y} value={y}>{y} Data</option>
                 ))}
               </select>
-              <Calendar size={14} strokeWidth={2.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)] pointer-events-none" />
-              <ChevronDown size={14} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--color-primary)] pointer-events-none" />
+              <Calendar size={14} strokeWidth={2.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text)] pointer-events-none" />
+              <ChevronDown size={14} strokeWidth={3} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text)] pointer-events-none" />
             </div>
 
             {/* Search Bar */}
@@ -224,7 +224,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Desktop/Tablet admin badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
-              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Manager</span>
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Admin</span>
               <div className="w-10 h-10 md:w-12 md:h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>

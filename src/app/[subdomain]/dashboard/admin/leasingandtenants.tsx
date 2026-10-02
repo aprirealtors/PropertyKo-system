@@ -290,12 +290,9 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* 🌟 FOLDER GRID SYSTEM */}
       <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pb-24 px-1 sm:px-0">
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-5 gap-y-6 sm:gap-x-6 sm:gap-y-8 mt-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex flex-col h-full animate-pulse mt-4">
-                <div className="w-1/2 h-8 bg-slate-200 rounded-t-xl z-10 translate-y-[1px]"></div>
-                <div className="flex-1 bg-slate-100 border border-[var(--color-border)] rounded-b-2xl rounded-tr-2xl p-5 h-56"></div>
-              </div>
+              <LeaseSkeletonCard key={i} />
             ))}
           </div>
         ) : leasesList.length === 0 ? (
@@ -754,6 +751,47 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ✨ LEASE SKELETON CARD (Perfect Replica)
+function LeaseSkeletonCard() {
+  return (
+    <div className="flex flex-col h-full animate-pulse group">
+      <div className="flex items-end">
+        <div className="px-4 py-2 w-24 h-6 rounded-t-xl bg-slate-200 border-t border-l border-r border-slate-200 relative translate-y-[1px]"></div>
+      </div>
+
+      <div className="flex-1 bg-white border border-slate-200 rounded-b-[var(--radius-xl)] rounded-tr-[var(--radius-xl)] p-5 sm:p-6 shadow-sm flex flex-col relative overflow-hidden">
+        
+        <div className="mb-5 relative space-y-2">
+          <div className="w-3/4 h-6 bg-slate-200 rounded-md"></div>
+          <div className="w-1/2 h-4 bg-slate-100 rounded-md"></div>
+        </div>
+
+        <div className="space-y-4 mb-6 flex-1 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+          <div className="flex flex-col gap-2 pb-3 border-b border-slate-100">
+            <div className="w-24 h-2 bg-slate-200 rounded"></div>
+            <div className="w-32 h-4 bg-slate-200 rounded"></div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="w-16 h-2 bg-slate-200 rounded"></div>
+              <div className="w-20 h-4 bg-slate-200 rounded"></div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="w-16 h-2 bg-slate-200 rounded"></div>
+              <div className="w-20 h-4 bg-slate-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto">
+          <div className="w-full h-11 bg-slate-200 rounded-[var(--radius-xl)]"></div>
+        </div>
+      </div>
     </div>
   );
 }

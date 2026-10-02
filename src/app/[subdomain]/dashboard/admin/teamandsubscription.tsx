@@ -362,343 +362,324 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       </div>
 
-      {/* 🌟 SCROLL WORKSPACE */}
-      {/* ✨ FIXED: Naka overflow-y-auto na ang outer container para mag-scroll sa mobile */}
-      <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar">
-        <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
-          
-          {/* TEAM TABLE - Left Column */}
-          <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
-              
-              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
-                    <Users size={16} strokeWidth={2.5} />
-                  </div>
-                  <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate" title="Access Control">Access Control</h3>
-                </div>
-                <button 
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent shrink-0"
-                  title="Add User"
-                >
-                  <UserPlus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline truncate">Add User</span>
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto overflow-x-auto relative bg-white">
-                <table className="w-full text-left text-sm min-w-[500px] sm:min-w-[600px] border-collapse">
-                  <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md z-10">
-                    <tr>
-                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
-                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
-                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
-                      <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
-                    <tr className="bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 transition-colors">
-                      <td className="px-4 sm:px-6 py-4 font-black text-[var(--color-text)] flex items-center gap-3">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] sm:text-[12px] font-black shadow-sm shrink-0">
-                          {initials}
-                        </div>
-                        <span className="truncate max-w-[120px] sm:max-w-[200px]" title="You">You</span>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4">
-                        <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm truncate block w-fit" title="Admin">Admin</span>
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-800 font-semibold truncate max-w-[120px] sm:max-w-[180px]" title="Full Platform Access">Full Platform Access</td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
-                        <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title="Active">Active</span>
-                      </td>
-                    </tr>
-                    
-                    {isLoadingTeam ? (
-                      // ✨ PREMIUM LOADING SKELETON
-                      Array.from({ length: 3 }).map((_, i) => (
-                        <tr key={i} className="animate-pulse">
-                          <td className="px-4 sm:px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 shrink-0"></div>
-                              <div className="w-24 sm:w-32 h-3 bg-slate-100 rounded"></div>
-                            </div>
-                          </td>
-                          <td className="px-4 sm:px-6 py-4">
-                            <div className="w-16 h-5 bg-slate-100 rounded-[var(--radius-sm)]"></div>
-                          </td>
-                          <td className="px-4 sm:px-6 py-4">
-                            <div className="w-20 sm:w-28 h-3 bg-slate-100 rounded"></div>
-                          </td>
-                          <td className="px-4 sm:px-6 py-4 flex justify-end">
-                            <div className="w-12 h-5 bg-slate-100 rounded-[var(--radius-sm)]"></div>
-                          </td>
-                        </tr>
-                      ))
-                    ) : team.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
-                          No additional team members added.
-                        </td>
-                      </tr>
-                    ) : filteredTeam.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
-                          No members match your search.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredTeam.map(member => {
-                        const memberInitials = member.name 
-                          ? member.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
-                          : "US";
-
-                        return (
-                          <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
-                            <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-text)] flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] sm:text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors shrink-0">
-                                {memberInitials}
-                              </div>
-                              <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
-                            </td>
-                            <td className="px-4 sm:px-6 py-4">
-                              <span className="bg-slate-50 text-slate-600 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm truncate block w-fit" title={member.role}>
-                                {member.role}
-                              </span>
-                            </td>
-                            <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[180px]" title={member.access_level}>{member.access_level}</td>
-                            <td className="px-4 sm:px-6 py-4 text-right">
-                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[8px] sm:text-[9px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title={member.status}>
-                                {member.status}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-primary)]/5 border-t border-[var(--color-border)] text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
-                <Shield size={14} className="text-[var(--color-text)] shrink-0" strokeWidth={2.5} />
-                <span className="truncate" title="Strict Role-Based Access Control (RBAC) enforced at the system layer.">Strict Role-Based Access Control (RBAC) enforced at the system layer.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SUBSCRIPTION & THEME PANEL - Right Column */}
-          {/* ✨ FIXED: This column will naturally flow below the Left column on mobile, and scroll gracefully */}
-          <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 pb-6 lg:pr-2 shrink-0">
+      {/* 🌟 FULL WORKSPACE (SKELETON OR ACTUAL) */}
+      {isLoadingTeam || isOrgLoading ? (
+        <TeamTabSkeleton />
+      ) : (
+        <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar">
+          <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
             
-            {/* Subscription Box */}
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0">
-              
-              <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
-                  <CreditCard size={18} strokeWidth={2.5} />
-                </div>
-                <h3 className="font-extrabold text-[var(--color-text)] text-lg sm:text-xl tracking-tight truncate" title="Subscription">Subscription</h3>
-              </div>
-              
-              <div className="mb-6 sm:mb-8 relative z-10 bg-slate-50 rounded-[var(--radius-lg)] p-4 sm:p-5 border border-[var(--color-border)] shadow-[var(--shadow-inner)] shrink-0">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1 truncate" title="Current Plan">Current Plan</span>
-                <h4 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight mb-1 truncate" title="Dynamic Rate">Dynamic Rate</h4>
-                <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold mt-2 truncate" title="₱99 Owner | ₱198 Tenanted · Updates dynamically">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
-              </div>
-              
-              <div className="space-y-5 sm:space-y-6 mb-6 sm:mb-8 relative z-10">
-                <div>
-                  <div className="flex justify-between text-[11px] sm:text-xs mb-2 font-bold">
-                    <span className="text-slate-500 truncate" title="Team Seats Used">Team Seats Used</span>
-                    <span className="text-[var(--color-secondary)] shrink-0 pl-2">{seatsUsed} / {seatLimit}</span>
+            {/* TEAM TABLE - Left Column */}
+            <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
+                
+                <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                      <Users size={16} strokeWidth={2.5} />
+                    </div>
+                    <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate" title="Access Control">Access Control</h3>
                   </div>
-                  <div className="h-2.5 sm:h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-[var(--shadow-inner)]">
-                    <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[var(--color-secondary)]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center py-3 sm:py-4 border-b border-dashed border-[var(--color-border)]">
-                  <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Units Capacity">Units Capacity</span>
-                  <span className="font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-[11px] sm:text-xs shrink-0 whitespace-nowrap" title={`${unitLimit} units`}>
-                    {unitLimit} units
-                  </span>
+                  <button 
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent shrink-0"
+                    title="Add User"
+                  >
+                    <UserPlus size={16} strokeWidth={2.5} /> <span className="hidden sm:inline truncate">Add User</span>
+                  </button>
                 </div>
                 
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Next Invoice">Next Invoice</span>
-                  <div className="flex flex-col items-end gap-1 shrink-0 pl-2">
-                    <span className="font-black text-[var(--color-text)] text-xs sm:text-sm" title={nextBillingDateFormatted}>{nextBillingDateFormatted}</span>
-                    <span className={`px-2 py-0.5 rounded-[var(--radius-sm)] border text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-sm truncate ${getStatusColor(billingStatus)}`} title={billingStatus}>
-                      {billingStatus}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                <div className="flex-1 overflow-y-auto overflow-x-auto relative bg-white">
+                  <table className="w-full text-left text-sm min-w-[500px] sm:min-w-[600px] border-collapse">
+                    <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md z-10">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
+                      <tr className="bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10 transition-colors">
+                        <td className="px-4 sm:px-6 py-4 font-black text-[var(--color-text)] flex items-center gap-3">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] sm:text-[12px] font-black shadow-sm shrink-0">
+                            {initials}
+                          </div>
+                          <span className="truncate max-w-[120px] sm:max-w-[200px]" title="You">You</span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4">
+                          <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm truncate block w-fit" title="Admin">Admin</span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-slate-800 font-semibold truncate max-w-[120px] sm:max-w-[180px]" title="Full Platform Access">Full Platform Access</td>
+                        <td className="px-4 sm:px-6 py-4 text-right">
+                          <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title="Active">Active</span>
+                        </td>
+                      </tr>
+                      
+                      {team.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                            No additional team members added.
+                          </td>
+                        </tr>
+                      ) : filteredTeam.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                            No members match your search.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredTeam.map(member => {
+                          const memberInitials = member.name 
+                            ? member.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2).toUpperCase() 
+                            : "US";
 
-              <div className="mt-auto pt-4 relative z-10 shrink-0">
-                <button 
-                  onClick={() => setIsBillingModalOpen(true)}
-                  className="w-full bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[10px] sm:text-[11px] py-3.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2 border border-transparent"
-                >
-                  <Receipt size={16} strokeWidth={2.5} className="shrink-0" /> <span className="truncate">View Billing Details</span>
-                </button>
+                          return (
+                            <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
+                              <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-text)] flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] sm:text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors shrink-0">
+                                  {memberInitials}
+                                </div>
+                                <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
+                              </td>
+                              <td className="px-4 sm:px-6 py-4">
+                                <span className="bg-slate-50 text-slate-600 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm block w-fit">
+                                  {member.role}
+                                </span>
+                              </td>
+                              <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[180px]" title={member.access_level}>{member.access_level}</td>
+                              <td className="px-4 sm:px-6 py-4 text-right">
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[8px] sm:text-[9px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">
+                                  {member.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="shrink-0 p-3 sm:p-4 bg-[var(--color-primary)]/5 border-t border-[var(--color-border)] text-[10px] sm:text-[11px] text-slate-500 font-semibold leading-relaxed flex items-center gap-2 z-10">
+                  <Shield size={14} className="text-[var(--color-text)] shrink-0" strokeWidth={2.5} />
+                  <span className="truncate" title="Strict Role-Based Access Control (RBAC) enforced at the system layer.">Strict Role-Based Access Control (RBAC) enforced at the system layer.</span>
+                </div>
               </div>
             </div>
 
-            {/* THEME BUILDER PANEL */}
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative shrink-0">
-              <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100 shadow-sm shrink-0">
-                  <Palette size={18} strokeWidth={2.5} />
+            {/* SUBSCRIPTION & THEME PANEL - Right Column */}
+            <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 pb-6 lg:pr-2 shrink-0">
+              
+              {/* Subscription Box */}
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0">
+                
+                <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+                    <CreditCard size={18} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="font-extrabold text-[var(--color-text)] text-lg sm:text-xl tracking-tight truncate" title="Subscription">Subscription</h3>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight truncate" title="Theme Builder">Theme Builder</h3>
-                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate" title="Customize workspace branding">Customize workspace branding</p>
+                
+                <div className="mb-6 sm:mb-8 relative z-10 bg-slate-50 rounded-[var(--radius-lg)] p-4 sm:p-5 border border-[var(--color-border)] shadow-[var(--shadow-inner)] shrink-0">
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1 truncate" title="Current Plan">Current Plan</span>
+                  <h4 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight mb-1 truncate" title="Dynamic Rate">Dynamic Rate</h4>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold mt-2 truncate" title="₱99 Owner | ₱198 Tenanted · Updates dynamically">₱99 Owner | ₱198 Tenanted · Updates dynamically</p>
+                </div>
+                
+                <div className="space-y-5 sm:space-y-6 mb-6 sm:mb-8 relative z-10">
+                  <div>
+                    <div className="flex justify-between text-[11px] sm:text-xs mb-2 font-bold">
+                      <span className="text-slate-500 truncate" title="Team Seats Used">Team Seats Used</span>
+                      <span className="text-[var(--color-secondary)] shrink-0 pl-2">{seatsUsed} / {seatLimit}</span>
+                    </div>
+                    <div className="h-2.5 sm:h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-[var(--shadow-inner)]">
+                      <div className={`h-full transition-all duration-1000 ${seatPercentage >= 100 ? 'bg-red-500' : 'bg-[var(--color-secondary)]'}`} style={{ width: `${Math.min(seatPercentage, 100)}%` }}></div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center py-3 sm:py-4 border-b border-dashed border-[var(--color-border)]">
+                    <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Units Capacity">Units Capacity</span>
+                    <span className="font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 rounded-lg border border-[var(--color-primary)]/20 shadow-sm text-[11px] sm:text-xs shrink-0 whitespace-nowrap" title={`${unitLimit} units`}>
+                      {unitLimit} units
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-[11px] sm:text-xs text-slate-500 font-bold truncate" title="Next Invoice">Next Invoice</span>
+                    <div className="flex flex-col items-end gap-1 shrink-0 pl-2">
+                      <span className="font-black text-[var(--color-text)] text-xs sm:text-sm" title={nextBillingDateFormatted}>{nextBillingDateFormatted}</span>
+                      <span className={`px-2 py-0.5 rounded-[var(--radius-sm)] border text-[8px] sm:text-[9px] font-black uppercase tracking-widest shadow-sm truncate ${getStatusColor(billingStatus)}`} title={billingStatus}>
+                        {billingStatus}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-auto pt-4 relative z-10 shrink-0">
+                  <button 
+                    onClick={() => setIsBillingModalOpen(true)}
+                    className="w-full bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[10px] sm:text-[11px] py-3.5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2 border border-transparent"
+                  >
+                    <Receipt size={16} strokeWidth={2.5} className="shrink-0" /> <span className="truncate">View Billing Details</span>
+                  </button>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm group">
-                      <input type="color" value={customTheme.primaryColor} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Primary Color" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Primary Color (Buttons & Active States)">Primary Color (Buttons & Active States)</label>
-                      <input type="text" value={customTheme.primaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
-                    </div>
+              {/* THEME BUILDER PANEL */}
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative shrink-0">
+                <div className="flex items-center gap-3 mb-5 sm:mb-6 relative z-10 shrink-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center border border-orange-100 shadow-sm shrink-0">
+                    <Palette size={18} strokeWidth={2.5} />
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                      <input type="color" value={customTheme.secondaryColor} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Secondary Color" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Secondary Color (Sidebar & Headers)">Secondary Color (Sidebar & Headers)</label>
-                      <input type="text" value={customTheme.secondaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
-                    </div>
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-[var(--color-text)] text-lg tracking-tight truncate" title="Theme Builder">Theme Builder</h3>
+                    <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate" title="Customize workspace branding">Customize workspace branding</p>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                      <input type="color" value={customTheme.backgroundColor} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Background Color" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="App Canvas Color (Background)">App Canvas Color (Background)</label>
-                      <input type="text" value={customTheme.backgroundColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
-                    </div>
-                  </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                        <input type="color" value={customTheme.textColor} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Text Color" />
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm group">
+                        <input type="color" value={customTheme.primaryColor} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Primary Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Text Color">Text Color</label>
-                        <input type="text" value={customTheme.textColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Primary Color (Buttons & Active States)">Primary Color (Buttons & Active States)</label>
+                        <input type="text" value={customTheme.primaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
-                        <input type="color" value={customTheme.borderColor} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Border Color" />
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                        <input type="color" value={customTheme.secondaryColor} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Secondary Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Border Color">Border Color</label>
-                        <input type="text" value={customTheme.borderColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Secondary Color (Sidebar & Headers)">Secondary Color (Sidebar & Headers)</label>
+                        <input type="text" value={customTheme.secondaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-[var(--radius-md)] border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                        <input type="color" value={customTheme.backgroundColor} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Background Color" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="App Canvas Color (Background)">App Canvas Color (Background)</label>
+                        <input type="text" value={customTheme.backgroundColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, backgroundColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                          <input type="color" value={customTheme.textColor} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Text Color" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Text Color">Text Color</label>
+                          <input type="text" value={customTheme.textColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, textColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-8 h-8 rounded-lg border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                          <input type="color" value={customTheme.borderColor} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="absolute -top-4 -left-4 w-16 h-16 cursor-pointer" title="Select Border Color" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5 leading-tight truncate" title="Border Color">Border Color</label>
+                          <input type="text" value={customTheme.borderColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, borderColor: e.target.value })} className="w-full px-2 py-1.5 border border-slate-200 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none uppercase" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="pt-2 border-t border-slate-100">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Interactive Corner Style">Interactive Corner Style</label>
-                  <p className="text-[8px] sm:text-[9px] text-slate-400 font-medium mb-3 truncate" title="Applies only to buttons/badges to preserve structural layout.">Applies only to buttons/badges to preserve structural layout.</p>
-                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border transition-all ${customTheme.borderRadius === "0px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Sharp</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "2px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-[2px] transition-all ${customTheme.borderRadius === "2px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Strict</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0.5rem" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-lg transition-all ${customTheme.borderRadius === "0.5rem" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Modern</button>
-                    <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "9999px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-full transition-all ${customTheme.borderRadius === "9999px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Pill</button>
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Interactive Corner Style">Interactive Corner Style</label>
+                    <p className="text-[8px] sm:text-[9px] text-slate-400 font-medium mb-3 truncate" title="Applies only to buttons/badges to preserve structural layout.">Applies only to buttons/badges to preserve structural layout.</p>
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                      <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border transition-all ${customTheme.borderRadius === "0px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Sharp</button>
+                      <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "2px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-[2px] transition-all ${customTheme.borderRadius === "2px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Strict</button>
+                      <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "0.5rem" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-lg transition-all ${customTheme.borderRadius === "0.5rem" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Modern</button>
+                      <button onClick={() => setCustomTheme({ ...customTheme, borderRadius: "9999px" })} className={`py-1.5 sm:py-2 text-[9px] sm:text-[10px] font-bold border rounded-full transition-all ${customTheme.borderRadius === "9999px" ? "bg-[var(--color-secondary)] text-white border-[var(--color-secondary)] shadow-md" : "bg-white text-slate-600 border-[var(--color-border)] hover:bg-slate-50"}`}>Pill</button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="pt-2">
-                  <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Workspace Typography">Workspace Typography</label>
-                  <div className="relative">
-                    <select 
-                      value={customTheme.fontFamily}
-                      onChange={(e) => setCustomTheme({ ...customTheme, fontFamily: e.target.value })}
-                      className="w-full p-2.5 sm:p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] bg-white text-[11px] sm:text-sm font-bold text-[var(--color-text)] shadow-sm cursor-pointer transition-colors"
-                      title="Select Font Family"
-                    >
-                      <option value="Inter">Inter (Clean Default)</option>
-                      <option value="Archivo">Archivo (Corporate Geometric)</option>
-                      <option value="Roboto">Roboto (Modern Sans)</option>
-                      <option value="Poppins">Poppins (Friendly Round)</option>
-                    </select>
+                  <div className="pt-2">
+                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] mb-1.5 truncate" title="Workspace Typography">Workspace Typography</label>
+                    <div className="relative">
+                      <select 
+                        value={customTheme.fontFamily}
+                        onChange={(e) => setCustomTheme({ ...customTheme, fontFamily: e.target.value })}
+                        className="w-full p-2.5 sm:p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50 focus:border-[var(--color-primary)] bg-white text-[11px] sm:text-sm font-bold text-[var(--color-text)] shadow-sm cursor-pointer transition-colors"
+                        title="Select Font Family"
+                      >
+                        <option value="Inter">Inter (Clean Default)</option>
+                        <option value="Archivo">Archivo (Corporate Geometric)</option>
+                        <option value="Roboto">Roboto (Modern Sans)</option>
+                        <option value="Poppins">Poppins (Friendly Round)</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-border)]">
-                  {orgData?.master_theme && (
-                    <button 
-                      onClick={() => setThemeConfirmModal({
-                        isOpen: true,
-                        type: 'load',
-                        title: 'Load Corporate Spec',
-                        message: 'This will replace your current unsaved colors with the official corporate theme. Do you want to proceed?',
-                        confirmText: 'Load Spec',
-                        confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
-                      })}
-                      disabled={isSavingTheme}
-                      className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-transparent flex justify-center items-center gap-2"
-                    >
-                      <DownloadCloud size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Load Corporate Spec</span>
-                    </button>
-                  )}
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setThemeConfirmModal({
-                        isOpen: true,
-                        type: 'reset',
-                        title: 'Reset to Defaults',
-                        message: 'Are you sure you want to revert to the default system theme? All unsaved customizations will be lost.',
-                        confirmText: 'Reset Theme',
-                        confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
-                      })}
-                      disabled={isSavingTheme}
-                      className="w-1/3 bg-white hover:bg-slate-100 font-extrabold uppercase tracking-wider text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-red-500 text-red-600 flex justify-center items-center gap-1.5"
-                      title="Reset Default Theme"
-                    >
-                      <RotateCcw size={12} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Reset</span>
-                    </button>
-                    <button 
-                      onClick={() => setThemeConfirmModal({
-                        isOpen: true,
-                        type: 'apply',
-                        title: 'Apply Custom Colors',
-                        message: 'This will officially save and apply your customized theme globally across your workspace. Continue?',
-                        confirmText: 'Apply Theme',
-                        confirmStyle: 'bg-[var(--color-primary)] hover:opacity-90 shadow-[var(--shadow-md)]'
-                      })}
-                      disabled={isSavingTheme}
-                      className="w-2/3 bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent truncate px-2"
-                      title="Apply Custom Colors"
-                    >
-                      {isSavingTheme ? "Applying..." : "Apply Custom Colors"}
-                    </button>
+                  <div className="flex flex-col gap-2 pt-4 border-t border-[var(--color-border)]">
+                    {orgData?.master_theme && (
+                      <button 
+                        onClick={() => setThemeConfirmModal({
+                          isOpen: true,
+                          type: 'load',
+                          title: 'Load Corporate Spec',
+                          message: 'This will replace your current unsaved colors with the official corporate theme. Do you want to proceed?',
+                          confirmText: 'Load Spec',
+                          confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
+                        })}
+                        disabled={isSavingTheme}
+                        className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] border border-transparent flex justify-center items-center gap-2"
+                      >
+                        <DownloadCloud size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Load Corporate Spec</span>
+                      </button>
+                    )}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setThemeConfirmModal({
+                          isOpen: true,
+                          type: 'reset',
+                          title: 'Reset to Defaults',
+                          message: 'Are you sure you want to revert to the default system theme? All unsaved customizations will be lost.',
+                          confirmText: 'Reset Theme',
+                          confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
+                        })}
+                        disabled={isSavingTheme}
+                        className="w-1/3 bg-white hover:bg-slate-100 font-extrabold uppercase tracking-wider text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] active:scale-95 border border-red-500 text-red-600 flex justify-center items-center gap-1.5"
+                        title="Reset Default Theme"
+                      >
+                        <RotateCcw size={12} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">Reset</span>
+                      </button>
+                      <button 
+                        onClick={() => setThemeConfirmModal({
+                          isOpen: true,
+                          type: 'apply',
+                          title: 'Apply Custom Colors',
+                          message: 'This will officially save and apply your customized theme globally across your workspace. Continue?',
+                          confirmText: 'Apply Theme',
+                          confirmStyle: 'bg-[var(--color-secondary)] hover:opacity-90 shadow-[var(--shadow-md)]'
+                        })}
+                        disabled={isSavingTheme}
+                        className="w-2/3 bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent truncate px-2"
+                        title="Apply Custom Colors"
+                      >
+                        {isSavingTheme ? "Applying..." : "Apply Custom Colors"}
+                      </button>
+                    </div>
                   </div>
-                </div>
 
+                </div>
               </div>
+
             </div>
 
           </div>
-
         </div>
-      </div>
+      )}
 
       {/* 🌟 TOAST NOTIFICATION */}
       {toast && (
@@ -973,6 +954,88 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ✨ TEAM TAB FULL WORKSPACE SKELETON
+function TeamTabSkeleton() {
+  return (
+    <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar animate-pulse">
+      <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
+        
+        {/* Left Col (Access Control) Skeleton */}
+        <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm overflow-hidden">
+          <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] bg-[var(--color-bg)]/50 flex justify-between items-center h-[68px] sm:h-[76px]">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+              <div className="w-32 h-5 bg-slate-200 rounded"></div>
+            </div>
+            <div className="w-24 h-9 bg-slate-200 rounded-[var(--radius-md)]"></div>
+          </div>
+          <div className="flex-1 p-3 space-y-2 bg-white">
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+              <div key={i} className="h-[72px] bg-[var(--color-bg)]/80 rounded-[var(--radius-md)] border border-[var(--color-border)] flex items-center px-4 sm:px-6 gap-4">
+                <div className="w-8 h-8 rounded-full bg-slate-200 shrink-0"></div>
+                <div className="w-32 sm:w-48 h-4 bg-slate-200 rounded shrink-0"></div>
+                <div className="w-16 sm:w-20 h-5 bg-slate-200 rounded-[var(--radius-sm)] ml-auto shrink-0"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Col (Subscription & Theme Builder) Skeleton */}
+        <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col gap-6 pb-6 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
+          
+          {/* Subscription Skeleton Box */}
+          <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col gap-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
+              <div className="w-32 h-6 bg-slate-200 rounded"></div>
+            </div>
+            <div className="h-[100px] bg-[var(--color-bg)]/80 rounded-[var(--radius-lg)] border border-[var(--color-border)]"></div>
+            <div className="h-12 bg-slate-100 rounded-full"></div>
+            <div className="h-12 bg-slate-100 rounded-lg"></div>
+            <div className="h-12 bg-slate-200 rounded-[var(--radius-md)] mt-2"></div>
+          </div>
+          
+          {/* Theme Builder Skeleton Box */}
+          <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col gap-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
+              <div className="w-40 h-6 bg-slate-200 rounded"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-200 rounded-[var(--radius-md)] shrink-0"></div>
+              <div className="flex-1 h-10 bg-slate-100 rounded-[var(--radius-md)]"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-200 rounded-[var(--radius-md)] shrink-0"></div>
+              <div className="flex-1 h-10 bg-slate-100 rounded-[var(--radius-md)]"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-200 rounded-[var(--radius-md)] shrink-0"></div>
+              <div className="flex-1 h-10 bg-slate-100 rounded-[var(--radius-md)]"></div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg shrink-0"></div>
+                <div className="flex-1 h-8 bg-slate-100 rounded-[var(--radius-sm)]"></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg shrink-0"></div>
+                <div className="flex-1 h-8 bg-slate-100 rounded-[var(--radius-sm)]"></div>
+              </div>
+            </div>
+
+            <div className="h-12 bg-slate-100 rounded-lg mt-4"></div>
+            <div className="h-12 bg-slate-200 rounded-[var(--radius-md)] mt-2"></div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
   );
 }

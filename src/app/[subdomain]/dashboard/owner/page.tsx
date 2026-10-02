@@ -766,7 +766,7 @@ export default function OwnerDashboard() {
                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300">
                         <Bell size={28} />
                       </div>
-                      <h4 className="font-bold text-[var(--color-secondary)] mb-1">All caught up!</h4>
+                      <h4 className="font-bold text-[var(--color-text)] mb-1">All caught up!</h4>
                       <p className="text-xs text-slate-500">You have no new notifications right now.</p>
                     </div>
                   ) : (
