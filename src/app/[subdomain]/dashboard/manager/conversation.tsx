@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, User, Clock, ChevronLeft, MessageSquare, Search, 
   X, Briefcase, Wrench, Key, Edit, Check, Shield, CheckCheck,
-  Pin, PinOff, CornerUpLeft, Copy, ChevronDown
+  Pin, PinOff, CornerUpLeft, Copy, ChevronDown, Trash2
 } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
@@ -31,9 +31,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   const [isPinnedExpanded, setIsPinnedExpanded] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
 
-  // Reply & Mobile Long-Press States
+  // Reply, Unsend, & Mobile Long-Press States
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [longPressedMsgId, setLongPressedMsgId] = useState<string | null>(null);
+  const [messageToUnsend, setMessageToUnsend] = useState<string | null>(null); // ✨ NEW: Confirmation State
 
   // Real-time & Scroll states
   const [remoteTyping, setRemoteTyping] = useState<{ [key: string]: boolean }>({});
@@ -55,23 +56,20 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Show button if scrolled up more than 100px from the bottom
     setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 100);
   };
 
   const scrollToMessage = (msgId: string) => {
-    // Automatically hide the pinned messages list when a pin is clicked
     setIsPinnedExpanded(false); 
     
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setHighlightedMsgId(msgId);
-      setTimeout(() => setHighlightedMsgId(null), 3000); // Remove highlight after 3 seconds
+      setTimeout(() => setHighlightedMsgId(null), 3000); 
     }
   };
 
-  // Helper for dynamic message date/time display
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -88,13 +86,11 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   };
 
-  // Helper for Messenger-style sidebar time display
   const formatSidebarTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
 
-    // Set to midnight to calculate day differences accurately
     const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -102,13 +98,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / msInDay);
 
     if (diffDays === 0) {
-      // Today: Show Time
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays > 0 && diffDays < 7) {
-      // Within a week: Show Mon, Tue, Wed, etc.
       return date.toLocaleDateString([], { weekday: 'short' });
     } else {
-      // More than a week: Show Date (e.g. Oct 12)
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
@@ -132,7 +125,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   }, [customNames, managerProfile?.email]);
 
-  // Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setChatSearchQuery("");
@@ -146,7 +138,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     }
   }, [activeChat]);
 
-  // Updated to depend on isSearchActive instead of chatSearchQuery
   useEffect(() => {
     if (!isSearchActive && !highlightedMsgId) scrollToBottom();
   }, [messages.length, activeChat, isSearchActive]);
@@ -256,7 +247,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   useEffect(() => {
     if (!orgData?.admin_email || !managerProfile?.email) return;
 
-    // Connect to the shared broadcast room for typing indicators
     const channel = supabase.channel(`chat-room-${orgData.admin_email}`, {
       config: { broadcast: { ack: false, self: false } }
     });
@@ -276,7 +266,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
               if (current.some(m => m.id === msg.id)) return current;
               return [...current, msg];
             });
-            // Auto-clear typing indicator when a message is received from them
             setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
           }
         }
@@ -306,7 +295,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
 
-    // Handle typing indicator broadcast
     if (!isTypingRef.current && channelRef.current && activeChat) {
       isTypingRef.current = true;
       channelRef.current.send({
@@ -337,7 +325,6 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
     let textToSend = newMessage.trim();
 
-    // Append reply quote if replying to a message
     if (replyingTo) {
       const snippet = replyingTo.content.length > 60 ? replyingTo.content.substring(0, 60) + "..." : replyingTo.content;
       const senderName = replyingTo.sender_email === managerProfile.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
@@ -347,9 +334,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     setIsSending(true);
     setNewMessage(""); 
     setReplyingTo(null);
-    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); 
 
-    // Clear typing status immediately upon sending
     isTypingRef.current = false;
     if (channelRef.current) {
       channelRef.current.send({
@@ -376,7 +362,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       is_from_tenant: activeContact.type === 'admin' || activeContact.type === 'maintenance', 
       recipient_role: activeContact.type === 'admin' || activeContact.type === 'maintenance' ? activeContact.type : 'manager',
       is_read: false,
-      is_pinned: false
+      is_pinned: false,
+      is_deleted: false
     };
 
     const tempId = `temp_${Date.now()}`;
@@ -405,20 +392,28 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   };
 
   const handleTogglePin = async (msgId: string, currentPinStatus: boolean) => {
-    // Optimistic UI Update
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !currentPinStatus } : m));
-    
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_pinned: !currentPinStatus })
-        .eq('id', msgId);
-        
+      const { error } = await supabase.from('messages').update({ is_pinned: !currentPinStatus }).eq('id', msgId);
       if (error) throw error;
     } catch (err) {
       console.error("Failed to toggle pin status:", err);
-      // Revert on failure
       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: currentPinStatus } : m));
+    }
+  };
+
+  // ✨ UNSEND MESSAGE LOGIC (Soft Delete with Confirmation)
+  const handleUnsendMessage = async (msgId: string) => {
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_deleted: true, is_pinned: false } : m));
+    setMessageToUnsend(null); 
+    setLongPressedMsgId(null); 
+    
+    try {
+      const { error } = await supabase.from('messages').update({ is_deleted: true, is_pinned: false }).eq('id', msgId);
+      if (error) throw error;
+    } catch (err) {
+      console.error("Failed to unsend message:", err);
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_deleted: false } : m));
     }
   };
 
@@ -434,7 +429,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   };
 
   const getLastMessage = (contactId: string, type: string) => {
-    const roleMsgs = messages.filter(m => isMessageForContact(m, contactId, type));
+    const roleMsgs = messages.filter(m => isMessageForContact(m, contactId, type) && !m.is_deleted);
     return roleMsgs.length > 0 ? roleMsgs[roleMsgs.length - 1] : null;
   };
 
@@ -469,13 +464,13 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     return isMessageForContact(msg, activeContactDetails.id, activeContactDetails.type);
   });
   
-  const pinnedMessages = roleMessages.filter(msg => msg.is_pinned);
+  // Hide deleted messages from pinned section
+  const pinnedMessages = roleMessages.filter(msg => msg.is_pinned && !msg.is_deleted);
 
-  // Always show all messages in the background; generate search results dynamically for the overlay
   const displayedMessages = roleMessages;
   const searchResults = chatSearchQuery.trim() === "" 
     ? [] 
-    : roleMessages.filter(msg => msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
+    : roleMessages.filter(msg => !msg.is_deleted && msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
   const renderRoleBadge = (roleId: string | undefined) => {
     if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
@@ -486,8 +481,16 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     return null;
   };
 
-  const renderMessageContent = (content: string) => {
-    const replyMatch = content.match(/^> Replying to (.*?):\n> "(.*?)"\n\n([\s\S]*)$/);
+  const renderMessageContent = (msg: any) => {
+    if (msg.is_deleted) {
+      return (
+        <span className="italic text-slate-500/80 flex items-center gap-1.5 text-[11px] sm:text-[12px]">
+          <Trash2 size={12} className="shrink-0"/> You unsent a message
+        </span>
+      );
+    }
+
+    const replyMatch = msg.content.match(/^> Replying to (.*?):\n> "(.*?)"\n\n([\s\S]*)$/);
     if (replyMatch) {
       const [_, sender, snippet, actualMessage] = replyMatch;
       return (
@@ -500,7 +503,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
         </div>
       );
     }
-    return <span>{content}</span>;
+    return <span>{msg.content}</span>;
   };
 
   return (
@@ -552,6 +555,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
               
               const getSidebarMessagePrefix = () => {
                 if (!lastMsg) return "No messages";
+                if (lastMsg.is_deleted) return ""; 
                 if (lastMsg.sender_email === managerProfile.email) return "You:";
                 const senderName = customNames[contact.id] || contact.name;
                 const firstName = senderName.split(' ')[0];
@@ -572,7 +576,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                     <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
                       isActive && !isEditingNames 
                         ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent shadow-[var(--shadow-md)] scale-105' 
-                        : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105'
+                        : (contact.type === 'superadmin' ? 'bg-[#0a1e3f] text-[#359b46] border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105')
                     }`}>
                       <ContactIcon size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
                     </div>
@@ -582,7 +586,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
                       <div className="flex-1 min-w-0">
-                        {isEditingNames ? (
+                        {isEditingNames && contact.type !== 'superadmin' ? (
                           <input 
                             type="text" 
                             value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
@@ -607,7 +611,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                     </div>
 
                     <div className="flex justify-between items-center w-full gap-2">
-                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-small text-slate-400'}`}>
+                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-small text-slate-400'} ${lastMsg?.is_deleted ? 'italic' : ''}`}>
                         {isTyping ? (
                           <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
@@ -615,13 +619,13 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                             <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>
                               {getSidebarMessagePrefix()}
                             </span>
-                            {lastMsg.content}
+                            {lastMsg.is_deleted ? "You unsent a message" : lastMsg.content}
                           </span>
                         ) : (
                           contact.unit
                         )}
                       </p>
-                      
+
                       <div className="shrink-0 flex items-center justify-end min-w-[16px]">
                         {unreadCount > 0 && !isEditingNames && (
                           <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-red-500/20 animate-in zoom-in-50">
@@ -778,10 +782,10 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       <div 
                         key={`search-${msg.id}`}
                         onClick={() => {
-                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setHighlightedMsgId(msg.id); 
                           setIsSearchActive(false);
                           setChatSearchQuery("");
-                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                          setTimeout(() => scrollToMessage(msg.id), 50); 
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
                       >
@@ -827,6 +831,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                   displayedMessages.map((msg: any, idx: number) => {
                     const isMe = msg.sender_email === managerProfile.email;
                     const isPending = msg.id.toString().startsWith('temp_');
+                    const isDeleted = msg.is_deleted;
+                    
                     return (
                       <div 
                         key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`}
@@ -846,23 +852,25 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                               className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
                                 highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
                               } ${
-                                isMe 
-                                  ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
-                                  : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
+                                isDeleted
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200 rounded-[16px] sm:rounded-[20px]' 
+                                  : isMe 
+                                    ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
+                                    : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
                               } ${isPending ? 'opacity-60' : 'opacity-100'}`}
                               style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
                             >
-                              {msg.is_pinned && (
+                              {msg.is_pinned && !isDeleted && (
                                 <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
                                   <Pin size={10} fill="currentColor" />
                                 </div>
                               )}
-                              {renderMessageContent(msg.content)}
+                              {renderMessageContent(msg)}
                             </div>
                           </div>
                           
-                          {/* Message Actions (Hover Visible on Desktop) */}
-                          {!isPending && (
+                          {/* ✨ Message Actions (Hover Visible on Desktop) */}
+                          {!isPending && !isDeleted && (
                             <div className={`hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                               <button 
                                 onClick={() => { setReplyingTo(msg); inputRef.current?.focus(); }}
@@ -871,6 +879,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                               >
                                 <CornerUpLeft size={14} />
                               </button>
+                              
                               <button 
                                 onClick={() => handleTogglePin(msg.id, msg.is_pinned)}
                                 className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-amber-600 transition-colors"
@@ -878,13 +887,24 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                               >
                                 {msg.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
                               </button>
+
+                              {/* ✨ Unsend Action (Only visible for sender) triggers confirmation */}
+                              {isMe && (
+                                <button 
+                                  onClick={() => setMessageToUnsend(msg.id)}
+                                  className="p-1.5 rounded-full hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors"
+                                  title="Unsend for everyone"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
 
                         <div className={`text-[9px] sm:text-[10px] font-bold text-slate-400 mt-1 sm:mt-1.5 px-1 flex items-center gap-1 sm:gap-1.5 uppercase tracking-wide ${isMe ? 'justify-end' : 'justify-start'}`}>
                           {formatMessageTime(msg.created_at)}
-                          {isMe && (
+                          {isMe && !isDeleted && (
                             isPending ? (
                               <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" />
                             ) : msg.is_read ? (
@@ -915,7 +935,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
             {/* UPGRADED MESSENGER-TYPE INPUT AREA */}
             <div className="shrink-0 px-3 py-3 sm:px-4 sm:py-4 bg-white border-t border-[var(--color-border)] z-10 relative flex flex-col items-center">
-              
+
               {/* TYPING INDICATOR (ABOVE INPUT) */}
               {isRemoteUserTyping && (
                 <div className="absolute -top-6 left-4 text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
@@ -930,7 +950,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center pb-2 mb-4 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === managerProfile.email ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
@@ -948,7 +968,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange} 
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -998,7 +1018,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
             
             {(() => {
               const msg = messages.find(m => m.id === longPressedMsgId);
-              if (!msg) return null;
+              if (!msg || msg.is_deleted) return null; // No actions for deleted msgs
+              const isMe = msg.sender_email === managerProfile.email;
               
               return (
                 <div className="flex justify-around items-center max-w-sm mx-auto">
@@ -1033,11 +1054,41 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                       {msg.is_pinned ? 'Unpin' : 'Pin'}
                     </span>
                   </button>
+
+                  {/* ✨ Unsend button on mobile sheet (triggers confirmation) */}
+                  {isMe && (
+                    <button 
+                      onClick={() => { setMessageToUnsend(msg.id); setLongPressedMsgId(null); }} 
+                      className="flex flex-col items-center gap-3 text-red-500 active:scale-95 transition-transform"
+                    >
+                      <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center text-red-500 shadow-sm border border-red-100">
+                        <Trash2 size={22} strokeWidth={2.5} />
+                      </div>
+                      <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Unsend</span>
+                    </button>
+                  )}
                 </div>
               );
             })()}
           </div>
         </>
+      )}
+
+      {/* ✨ UNSEND CONFIRMATION MODAL */}
+      {messageToUnsend && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-[1.2rem] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner bg-red-50 text-red-500 border-red-100">
+              <Trash2 size={28} strokeWidth={2.5} />
+            </div>
+            <h2 className="text-lg font-black text-[var(--color-text)] mb-2 tracking-tight">Unsend Message?</h2>
+            <p className="text-slate-500 text-xs mb-6 leading-relaxed font-medium">This message will be unsent for everyone in the chat. This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setMessageToUnsend(null)} className="flex-1 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 transition-all border border-transparent">Cancel</button>
+              <button onClick={() => handleUnsendMessage(messageToUnsend)} className="flex-1 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider bg-red-500 text-white hover:bg-red-600 active:scale-95 transition-all shadow-[var(--shadow-md)] shadow-red-500/20 border border-transparent">Unsend</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style dangerouslySetInnerHTML={{__html: `

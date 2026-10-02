@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
+import { usePushNotifications } from "@/utils/usePushNotifications";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
@@ -434,35 +434,28 @@ export default function AdminDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
   };
 
-  // --- NEW: Initiate Single Delete Modal ---
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
-    e.stopPropagation(); // Prevents clicking the background notification body
+    e.stopPropagation(); 
     setNotificationToDelete(notif);
     setIsDeleteNotifModalOpen(true);
   };
 
-  // --- NEW: Actual Function Called by the Delete Modal ---
   const confirmDeleteNotification = async () => {
     if (!orgData?.admin_email || !notificationToDelete) return;
 
-    // 1. Update local state immediately for snappy UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    // 2. Adjust unread count if the deleted notification was unread
     if (!notificationToDelete.is_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. Update database
     await supabase
       .from('notifications')
       .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
-    // Clear the tracked notification
     setNotificationToDelete(null);
   };
 
@@ -475,14 +468,20 @@ export default function AdminDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    if (type === 'BILLING' || type === 'SOA') {
-      // Pass the specific payload to automatically pop open the billing modal in TeamTab
+    const title = notif.title?.toUpperCase() || '';
+
+    // Route SaaS Subscriptions to Team Tab, Unit Billings to Billing Tab
+    if (title.includes('PAYMENT REMINDER') || type === 'SUBSCRIPTION') {
       handleTabChange("Team", "open_billing");
-    }
+    } 
+    else if (type === 'BILLING' || type === 'SOA' || title.includes('PAYMENT VERIFICATION')) {
+      handleTabChange("Billing");
+    } 
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
       if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
       handleTabChange("Maintenance"); 
-    } else {
+    } 
+    else {
       handleTabChange("Dashboard");
     }
   };
@@ -588,7 +587,6 @@ export default function AdminDashboard() {
                           <div className="flex justify-between items-start mb-1.5 gap-2">
                             <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
                             
-                            {/* Updated delete button to trigger modal */}
                             <div className="flex items-center gap-2 shrink-0 mt-0.5">
                               {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
                               
@@ -724,7 +722,6 @@ export default function AdminDashboard() {
             <div className="pt-3 pb-2">
               <div className="h-px bg-white/10 mx-2"></div>
             </div>
-            {/* Added highlight payload delivery property to TeamTab */}
             <NavItem icon={<Settings size={18} strokeWidth={2.5} />} label="Team & Settings" isActive={activeTab === "Team"} onClick={() => handleTabChange("Team")} collapsed={isSidebarCollapsed} />
           </nav>
 

@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings, Printer } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   
+  // App Mount State for Portal
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+
   // Database & UI States
   const [allUnits, setAllUnits] = useState<any[]>([]);
   const [allSoaConfigs, setAllSoaConfigs] = useState<Record<string, any>>({});
@@ -25,6 +30,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   
+  // Print SOA States
+  const currentYearNum = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth();
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printMonth, setPrintMonth] = useState<number | 'all'>(currentMonthNum);
+  const [printYear, setPrintYear] = useState<number>(Math.max(2026, currentYearNum));
+
+  // Year logic (Starts at 2026, adds up to current year)
+  const availableYears = Array.from({length: Math.max(1, currentYearNum - 2026 + 1)}, (_, i) => 2026 + i);
+
   // Overdue Confirmation Modal States
   const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
   const [overdueConfig, setOverdueConfig] = useState({ owner: false, tenant: false });
@@ -63,11 +78,29 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
 
+  const monthsList = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  // Derive available months for the dropdown (hiding upcoming months)
+  const availableMonths = monthsList.map((m, i) => ({ name: m, index: i })).filter(m => {
+    if (printYear === currentYearNum && m.index > currentMonthNum) return false;
+    return true;
+  });
+
   useEffect(() => {
     if (orgData?.admin_email) {
       fetchAllUnits();
     }
   }, [orgData?.admin_email]);
+
+  useEffect(() => {
+    // If year changes and printMonth is an upcoming month, reset it
+    if (printYear === currentYearNum && printMonth !== 'all' && printMonth > currentMonthNum) {
+      setPrintMonth(currentMonthNum);
+    }
+  }, [printYear, currentMonthNum, currentYearNum, printMonth]);
 
   useEffect(() => {
     if (isPaymentModalOpen && paymentModalParty && selectedUnit) {
@@ -232,7 +265,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
-  // Define hypothetical penalties used in the Overdue Modal
   const hypotheticalOwnerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
   const hypotheticalTenantPenalty = pType === 'percent' ? tenantBase * (pVal / 100) : pVal;
 
@@ -249,6 +281,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const ownerTotalDue = ownerBase + ownerPenalty;
   const tenantTotalDue = tenantBase + tenantPenalty;
   const totalDue = ownerTotalDue + tenantTotalDue;
+  
+  // Used in print rendering
+  const baseTotalForPrint = ownerBase + tenantBase;
+  const penaltyTotalForPrint = ownerPenalty + tenantPenalty;
+  const combinedTotalForPrint = baseTotalForPrint + penaltyTotalForPrint;
 
   const openUnitConfigModal = () => {
     if (!selectedUnit) return;
@@ -348,7 +385,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // Regular SEND without penalty logic overrides
   const handleSendSOA = async () => {
     setIsSendingSOA(true);
     try {
@@ -419,7 +455,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
-  // Dedicated Confirmed Overdue Submission based on Overdue Checkboxes
   const handleConfirmOverdue = async () => {
     setIsSendingSOA(true);
     try {
@@ -428,7 +463,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       const existing = allSoaConfigs[selectedUnit.id];
 
-      // Maintain existing penalties and ONLY append new ones checked in the modal
       const effectiveOwnerPenalty = soaConfig.owner.penalty || overdueConfig.owner;
       const effectiveTenantPenalty = soaConfig.tenant.penalty || overdueConfig.tenant;
 
@@ -448,7 +482,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       if (existing?.id) payload.id = existing.id;
 
-      // Ensure statuses update securely
       payload.owner_status = (effectiveOwnerPenalty && ownerHasBill && !isOwnerVacant) ? 'Overdue' : (existing?.owner_status || 'Pending');
       payload.tenant_status = (effectiveTenantPenalty && tenantHasBill && !isTenantVacant) ? 'Overdue' : (existing?.tenant_status || 'Pending');
 
@@ -459,14 +492,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         throw error;
       }
 
-      // Update local state and UI immediately
       setAllSoaConfigs(prev => ({ ...prev, [selectedUnit.id]: { ...existing, ...payload } }));
       setSoaConfig(prev => ({
         owner: { ...prev.owner, penalty: effectiveOwnerPenalty },
         tenant: { ...prev.tenant, penalty: effectiveTenantPenalty }
       }));
 
-      // Find emails and send notifications
       const notificationsToInsert = [];
       let ownerEmail = null;
       let tenantEmail = null;
@@ -487,7 +518,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       const finalOwnerTotal = ownerBase + (effectiveOwnerPenalty ? hypotheticalOwnerPenalty : 0);
       const finalTenantTotal = tenantBase + (effectiveTenantPenalty ? hypotheticalTenantPenalty : 0);
 
-      // ✨ CRITICAL FIX: Only send email to the party if their box was *just now* checked (overdueConfig is true)
       if (ownerHasBill && ownerEmail && overdueConfig.owner) {
         notificationsToInsert.push({
           admin_email: orgData.admin_email,
@@ -500,7 +530,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         });
       }
 
-      // ✨ CRITICAL FIX: Only send email to the party if their box was *just now* checked (overdueConfig is true)
       if (tenantHasBill && tenantEmail && overdueConfig.tenant) {
         notificationsToInsert.push({
           admin_email: orgData.admin_email,
@@ -623,7 +652,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       if (error) throw error;
 
-      // Update Local State
       setAllUnits(prev => prev.map(u => u.id === selectedUnit.id ? { ...u, ...payload } : u));
       setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
       
@@ -636,13 +664,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   };
 
+  // Generate Ledger for generic view (Current Year)
   const generateLedgerMonths = () => {
     const months = [];
-    const currentYear = new Date().getFullYear();
+    const localCurrentYear = new Date().getFullYear();
     const currentMonthIndex = new Date().getMonth(); 
     
     for (let i = 0; i < 12; i++) {
-      const date = new Date(currentYear, i, 1);
+      const date = new Date(localCurrentYear, i, 1);
       const monthName = date.toLocaleString('default', { month: 'long' });
       
       let stat = "Upcoming";
@@ -656,11 +685,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         else stat = 'Paid';
       }
       
-      const dueDate = `${monthName} ${colDay}, ${currentYear}`;
+      const dueDate = `${monthName} ${colDay}, ${localCurrentYear}`;
       
       months.push({
         monthName: monthName,
-        year: currentYear,
+        year: localCurrentYear,
         dueDate: dueDate,
         status: stat,
         isCurrentMonth: i === currentMonthIndex
@@ -669,7 +698,43 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     return months;
   };
 
+  // Generate Ledger specifically for the Print Selection (using printYear)
+  const generatePrintLedgerMonths = () => {
+    const months = [];
+    const localCurrentYear = new Date().getFullYear();
+    const currentMonthIndex = new Date().getMonth(); 
+
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(printYear, i, 1);
+      const monthName = date.toLocaleString('default', { month: 'long' });
+      
+      let stat = "Upcoming";
+      if (printYear < localCurrentYear || (printYear === localCurrentYear && i < currentMonthIndex)) {
+        stat = "Paid"; 
+      } else if (printYear === localCurrentYear && i === currentMonthIndex) {
+        if ((hasOwnerAssign && ownerStatus === 'Overdue') || (hasTenantAssign && tenantStatus === 'Overdue')) stat = 'Overdue';
+        else if ((hasOwnerAssign && ownerStatus === 'Pending') || (hasTenantAssign && tenantStatus === 'Pending')) stat = 'Pending';
+        else if ((hasOwnerAssign && ownerStatus === 'Sent') || (hasTenantAssign && tenantStatus === 'Sent')) stat = 'Sent';
+        else if (!hasOwnerAssign && !hasTenantAssign) stat = 'Unassigned';
+        else stat = 'Paid';
+      }
+      
+      const dueDate = `${monthName} ${colDay}, ${printYear}`;
+      
+      months.push({
+        monthIndex: i,
+        monthName: monthName,
+        year: printYear,
+        dueDate: dueDate,
+        status: stat,
+        isCurrentMonth: printYear === localCurrentYear && i === currentMonthIndex,
+      });
+    }
+    return months;
+  };
+
   const ledgerData = generateLedgerMonths();
+  const printLedgerData = generatePrintLedgerMonths();
 
   const handleExportCSV = () => {
     if (!selectedUnit || ledgerData.length === 0) return;
@@ -788,7 +853,37 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
+    <>
+    {/* Global CSS for Print Mode to override and hide parent elements completely */}
+    <style dangerouslySetInnerHTML={{__html: `
+      @media print {
+        @page {
+          size: A4 portrait;
+          margin: 10mm;
+        }
+        body {
+          background: white !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        /* Aggressively hide everything from the app root EXCEPT our print portal container */
+        body > :not(#printable-soa) {
+          display: none !important;
+        }
+        
+        #printable-soa {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      }
+    `}} />
+
+    {/* MAIN APP CONTAINER (Hidden on Print) */}
+    <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden print:hidden">
       
       {/* ✨ TOP HEADER SECTION (Optimized for 768px+ & Mobile) */}
       <div className="shrink-0 px-3 sm:px-4 md:px-6 pt-3 sm:pt-5 pb-2 sm:pb-3 mt-1 sm:mt-0">
@@ -1132,6 +1227,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   >
                     <Send className="shrink-0 w-4 h-4 text-[var(--color-text)]" /> <span className="truncate">Assign SOA</span>
                   </button>
+
+                  <button 
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="w-full md:w-auto md:flex-none justify-center bg-white border border-slate-300 hover:border-slate-800 text-slate-800 px-4 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                  >
+                    <Printer className="shrink-0 w-4 h-4" /> <span className="truncate">Print / Save PDF</span>
+                  </button>
                 </div>
 
                 {/* ✨ COMBINED LEDGER TABLE */}
@@ -1230,12 +1332,81 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
           </>
         )}
       </div>
+      
+      {/* ✨ PRINT SOA DATE SELECTOR MODAL */}
+      {isPrintModalOpen && selectedUnit && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate pr-2">Print Settings</h2>
+              <button onClick={() => setIsPrintModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+                <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+            
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4 bg-slate-50/50">
+              <p className="text-xs sm:text-sm text-slate-500 mb-4 font-medium leading-relaxed">
+                Select the billing period you want to generate the PDF for:
+              </p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Month</label>
+                  <select 
+                    value={printMonth} 
+                    onChange={(e) => setPrintMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))} 
+                    className="w-full px-3.5 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] shadow-sm bg-white cursor-pointer"
+                  >
+                    <option value="all">Whole Year</option>
+                    {availableMonths.map(m => (
+                      <option key={m.index} value={m.index}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Dynamically hidden/shown year dropdown based on available years */}
+                {availableYears.length > 1 && (
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Year</label>
+                    <select 
+                      value={printYear} 
+                      onChange={(e) => setPrintYear(Number(e.target.value))} 
+                      className="w-full px-3.5 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] shadow-sm bg-white cursor-pointer"
+                    >
+                      {availableYears.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
 
-      {/* ✨ UNIT-SPECIFIC CONFIGURATION MODAL (Spacious Desktop Two-Column Layout) */}
+              <div className="flex gap-3 pt-6 border-t border-[var(--color-border)] mt-6">
+                <button 
+                  onClick={() => setIsPrintModalOpen(false)}
+                  className="flex-1 py-3 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-[var(--radius-md)] transition-colors active:scale-95 shadow-sm"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsPrintModalOpen(false);
+                    setTimeout(() => window.print(), 100);
+                  }}
+                  className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent font-black uppercase tracking-widest py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-95 text-xs"
+                >
+                  <Printer size={16} /> Generate PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UNIT-SPECIFIC CONFIGURATION MODAL */}
       {isUnitConfigModalOpen && selectedUnit && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg md:max-w-xl lg:max-w-2xl overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-            
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-[var(--color-border)]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
@@ -1417,7 +1588,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* PENALTY MODAL (Manage Penalties) */}
+      {/* PENALTY MODAL */}
       {isPenaltyModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
@@ -1480,7 +1651,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
 
-      {/* ✨ SOA MODAL (Expanded Desktop Side-By-Side Design) */}
+      {/* SOA MODAL */}
       {isSOAModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl md:max-w-3xl lg:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col transform transition-all border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
@@ -1923,5 +2094,172 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         </div>
       )}
     </div>
+
+    {/* ✨ HIDDEN PDF / PRINTABLE SOA TEMPLATE (Takes over screen during Print via Portal) */}
+    {isMounted && typeof document !== 'undefined' && createPortal(
+      <div 
+        id="printable-soa"
+        className="hidden print:block font-serif bg-white text-black text-sm"
+      >
+        {selectedUnit && (
+          <div className="w-full mx-auto p-4 sm:p-8">
+            
+            {/* Print Header */}
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-wide">STATEMENT OF ACCOUNT</h1>
+                <p className="text-sm mt-1">For the Month of <span className="underline ml-1 font-bold">
+                  {printMonth === 'all' ? `Entire Year ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}
+                </span></p>
+              </div>
+              <div className="text-right text-xs">
+                <h2 className="text-lg font-black uppercase">{orgData?.org_name || "Admin"}</h2>
+                <p className="italic mb-1">Property Management & Billing Services</p>
+              </div>
+            </div>
+
+            {/* Details & Summary Blocks */}
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              {/* Bill To */}
+              <div>
+                <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
+                  BILL TO:
+                </div>
+                <div className="text-xs space-y-1">
+                  <p><strong>Name:</strong> {selectedUnit?.owner_name || selectedUnit?.tenant_name || 'Occupant'}</p>
+                  <p><strong>Trade Name:</strong> {selectedUnit?.property_name}</p>
+                  <p><strong>Address:</strong> Unit {selectedUnit?.unit_number}</p>
+                </div>
+              </div>
+
+              {/* Account Summary */}
+              <div>
+                <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
+                  ACCOUNT SUMMARY
+                </div>
+                <div className="grid grid-cols-[140px_1fr] text-xs gap-y-1">
+                  <span>Previous Balance</span><span></span>
+                  <span>Credits</span><span></span>
+                  <span>Addtl Charges</span><span>{printMonth === 'all' || printMonth === currentMonthNum ? (penaltyTotalForPrint > 0 ? penaltyTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
+                  <span>New Charges</span><span>{printMonth === 'all' || printMonth === currentMonthNum ? (baseTotalForPrint > 0 ? baseTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
+                  
+                  <span className="font-bold underline mt-1">Total Balance</span>
+                  <span className="font-bold underline mt-1">{printMonth === 'all' || printMonth === currentMonthNum ? combinedTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
+                  
+                  <span className="italic mt-1">Payment Due Date</span>
+                  <span className="italic mt-1">{printMonth === 'all' ? `—` : `${monthsList[printMonth as number]} ${colDay}, ${printYear}`}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ledger Table (Filtered Based on Print Setting) */}
+            <div className="mb-6">
+              <table className="w-full text-center tabular-nums border-collapse border border-black table-fixed text-[10px]">
+                <thead>
+                  <tr className="border-b-2 border-black bg-slate-100">
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[18%]">PERIOD</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[18%]">DUE DATE</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">DUES</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">PARKING</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">UTILITIES</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">PENALTY</th>
+                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[9%]">STATUS</th>
+                    <th className="p-1.5 font-black uppercase tracking-wider text-black w-[11%]">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black text-black">
+                  {(printMonth === 'all' ? printLedgerData : printLedgerData.filter(row => row.monthIndex === printMonth)).map((row, idx) => {
+                    const isPopulatedRow = printMonth === 'all' ? row.status !== "Upcoming" : row.monthIndex === printMonth;
+                    
+                    // Logic to show amounts without penalties for past paid months
+                    const isPastPaid = printMonth === 'all' && row.status === 'Paid' && !row.isCurrentMonth;
+                    const rowDues = rawDues;
+                    const rowParking = rawParking;
+                    const rowUtilities = (!isTenantVacant && (rawWater + rawElectricity) > 0) ? (rawWater + rawElectricity) : 0;
+                    const rowPenalty = isPastPaid ? 0 : (ownerPenalty + tenantPenalty);
+                    const rowTotal = rowDues + rowParking + rowUtilities + rowPenalty;
+
+                    return (
+                      <tr key={idx} className={isPopulatedRow ? "font-bold" : ""}>
+                        <td className="p-1.5 whitespace-nowrap border-r border-black uppercase">
+                          {row.monthName} {row.year}
+                        </td>
+                        <td className="p-1.5 whitespace-nowrap border-r border-black">{row.dueDate}</td>
+                        
+                        {isPopulatedRow ? (
+                          <>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowDues > 0 ? `₱${rowDues.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowParking > 0 ? `₱${rowParking.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowUtilities > 0 ? `₱${rowUtilities.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black font-bold uppercase">{row.status}</td>
+                            <td className="p-1.5 text-right whitespace-nowrap font-black">₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
+                            <td className="p-1.5 whitespace-nowrap border-r border-black font-bold uppercase">—</td>
+                            <td className="p-1.5 whitespace-nowrap"></td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer / Summary Totals */}
+            <div className="flex justify-end mb-10">
+              <div className="grid grid-cols-[200px_120px] text-xs gap-y-1">
+                <span className="font-bold">Ending Balance Statement Date:</span>
+                <span className="text-right font-medium">{printMonth === 'all' || printMonth === currentMonthNum ? baseTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
+                
+                <span className="italic text-slate-600">Less: Adjustments</span>
+                <span className="text-right"></span>
+                
+                <span className="italic text-slate-600">Add: Charges/ Penalty</span>
+                <span className="text-right font-medium">{printMonth === 'all' || printMonth === currentMonthNum ? (penaltyTotalForPrint > 0 ? penaltyTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
+                
+                <span className="font-bold underline mt-1">TOTAL AMOUNT DUE</span>
+                <span className="font-bold underline text-right mt-1">{printMonth === 'all' || printMonth === currentMonthNum ? combinedTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
+                
+                <span className="italic mt-1">Payment Due Date</span>
+                <span className="italic text-right mt-1">{printMonth === 'all' ? `—` : `${monthsList[printMonth as number]} ${colDay}, ${printYear}`}</span>
+              </div>
+            </div>
+
+            {/* Signatures */}
+            <div className="flex justify-between items-end text-xs mt-8 pr-8">
+               
+               {/* Signatures Left (Prepared by) */}
+               <div className="w-[200px]">
+                 <div className="flex items-end gap-3">
+                   <span className="mb-0.5">Prepared by:</span>
+                   <p className="font-bold border-b border-black flex-1 text-center uppercase pb-0.5 text-sm">Admin</p>
+                 </div>
+               </div>
+               
+               {/* Signatures Right (Approved by) */}
+               <div className="w-[250px]">
+                 <div className="flex items-end gap-3">
+                   <span className="mb-0.5">Approved by:</span>
+                   <p className="font-bold border-b border-black flex-1 text-center uppercase pb-0.5 text-sm">{orgData?.org_name || "Management"}</p>
+                 </div>
+               </div>
+            </div>
+
+            <div className="text-[9px] text-slate-400 mt-16 italic text-center uppercase tracking-widest">
+              Generated via Property Management System
+            </div>
+          </div>
+        )}
+      </div>,
+      document.body
+    )}
+    </>
   );
 }

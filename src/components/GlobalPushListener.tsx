@@ -47,11 +47,12 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
 
           if (isForMe) {
             const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
+            
             // ✨ Use the new mobile-friendly trigger
             triggerNotification(payload.new.title || "PropertyKo Update", {
               body: cleanMessage,
-              icon: "/icon-192.png",
-              badge: "/icon-192.png", // Helps with Android status bar icons
+              icon: "/icon-192.png", // Keeps your full colored logo on the right side
+              badge: "/badge.png",   // ✨ FIX: Points to the transparent silhouette for the left side
             });
           }
         }
@@ -115,8 +116,8 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
             // ✨ Use the new mobile-friendly trigger
             triggerNotification("New Message", {
               body: `${displayName}: ${msg.content ? msg.content.substring(0, 60) : "Sent a message"}`,
-              icon: "/icon-192.png",
-              badge: "/icon-192.png"
+              icon: "/icon-192.png", // Keeps your full colored logo on the right side
+              badge: "/badge.png"    // ✨ FIX: Points to the transparent silhouette for the left side
             });
           }
         }
