@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Zap, PenTool, FileText, Receipt, Mail, Home, Wrench, LogOut, 
   ChevronRight, Bell, CheckCheck, Trash2, User, X, MessageSquare, FileCheck,
   Lock, Key, Eye, EyeOff, AlertTriangle, CheckCircle2, Edit2, PanelLeft, MapPin,
-  Droplets, Wind, Sparkles // <-- Added missing icon imports
+  Droplets, Wind, Sparkles 
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -77,6 +77,9 @@ export default function TenantDashboard() {
   // NEW: Delete Notification Modal States
   const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
+
+  // ✨ NEW: Delete ALL Notifications Modal State
+  const [isDeleteAllNotifModalOpen, setIsDeleteAllNotifModalOpen] = useState(false);
 
   // UNREAD MESSAGES STATE
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
@@ -422,12 +425,21 @@ export default function TenantDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  const clearAllNotifications = async () => {
+  // ✨ FIX: Delete ALL function instead of just updating UI
+  const confirmDeleteAllNotifications = async () => {
     if (!userEmail) return;
+    
+    // Optimistic UI updates
     setNotifications([]);
     setUnreadCount(0);
+    setIsDeleteAllNotifModalOpen(false);
     setIsNotifOpen(false);
-    await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
+    
+    // Complete wipe from the table for this tenant
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('recipient', userEmail); 
   };
 
   // --- NEW: Initiate Single Delete Modal ---
@@ -452,10 +464,10 @@ export default function TenantDashboard() {
     // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. Update database
+    // 3. ✨ FIX: Changed from .update({ is_hidden: true }) to .delete()
     await supabase
       .from('notifications')
-      .update({ is_hidden: true })
+      .delete()
       .eq('id', notificationToDelete.id);
 
     // Clear the tracked notification
@@ -705,8 +717,14 @@ export default function TenantDashboard() {
                       </button>
                     )}
                     {notifications.length > 0 && (
-                      <button onClick={clearAllNotifications} className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors" title="Clear all">
-                        Clear
+                      <button 
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          setIsDeleteAllNotifModalOpen(true);
+                        }} 
+                        className="text-[11px] font-bold text-slate-400 hover:text-red-500 transition-colors" title="Delete all"
+                      >
+                        Delete all
                       </button>
                     )}
                   </div>
@@ -1315,6 +1333,35 @@ export default function TenantDashboard() {
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: PREMIUM DELETE ALL NOTIFICATIONS MODAL */}
+      {isDeleteAllNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete All</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete all notifications? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsDeleteAllNotifModalOpen(false)} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteAllNotifications} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete All
               </button>
             </div>
           </div>

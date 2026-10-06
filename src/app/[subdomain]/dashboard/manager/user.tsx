@@ -23,6 +23,9 @@ export default function UsersTab({ orgData }: any) {
   const [role, setRole] = useState("Tenant");
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // State for Unit Allocation Search
+  const [unitSearchQuery, setUnitSearchQuery] = useState("");
 
   const filteredUsers = usersList.filter(user => {
     const searchLower = searchQuery.toLowerCase();
@@ -139,30 +142,34 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const handleUnitToggle = (unitString: string, unitData: any) => {
-    setSelectedUnits(prev => {
-      const isCurrentlySelected = prev.includes(unitString);
+    const isCurrentlySelected = selectedUnits.includes(unitString);
+    
+    if (!isCurrentlySelected) {
+      let occupantName = "";
       
-      if (!isCurrentlySelected) {
-        let occupantName = "";
-        
-        if (role === "Tenant") {
-          occupantName = unitData.tenant_name || "";
-        } else {
-          if (unitData.owner_name) {
-            occupantName = unitData.owner_name.split(',')[0].trim();
-          }
+      if (role === "Tenant") {
+        occupantName = unitData.tenant_name || "";
+      } else {
+        if (unitData.owner_name) {
+          occupantName = unitData.owner_name.split(',')[0].trim();
         }
-        
-        const occupantEmail = role === "Tenant" ? unitData.tenant_email : unitData.owner_email;
-        
-        if (occupantName) setName(occupantName);
-        if (occupantEmail) setEmail(occupantEmail);
-        
-        return [...prev, unitString];
       }
       
-      return prev.filter(u => u !== unitString);
-    });
+      const occupantEmail = role === "Tenant" ? unitData.tenant_email : unitData.owner_email;
+      
+      if (occupantName) setName(occupantName);
+      if (occupantEmail) setEmail(occupantEmail);
+      
+      setSelectedUnits([...selectedUnits, unitString]);
+    } else {
+      const newSelected = selectedUnits.filter(u => u !== unitString);
+      setSelectedUnits(newSelected);
+      
+      if (newSelected.length === 0) {
+        setName("");
+        setEmail("");
+      }
+    }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -236,6 +243,7 @@ export default function UsersTab({ orgData }: any) {
       setShowPassword(false);
       setRole("Tenant");
       setSelectedUnits([]);
+      setUnitSearchQuery("");
 
     } catch (error: any) {
       console.error(error);
@@ -254,8 +262,16 @@ export default function UsersTab({ orgData }: any) {
     return accessLevelStr.split(", ").map(u => u.split(" - ")[1] || u).join(", ");
   };
 
+  const filteredAvailableUnits = availableUnits.filter(unit => {
+    const q = unitSearchQuery.toLowerCase();
+    const propName = (unit.property_name || "").toLowerCase();
+    const unitNum = (unit.unit_number || "").toLowerCase();
+    const occupantName = role === "Tenant" ? (unit.tenant_name || "").toLowerCase() : (unit.owner_name || "").toLowerCase();
+    
+    return propName.includes(q) || unitNum.includes(q) || occupantName.includes(q);
+  });
+
   return (
-    // ✨ LOCKED LAYOUT WINDOW SHELL
     <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
       
       {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
@@ -297,7 +313,6 @@ export default function UsersTab({ orgData }: any) {
         </div>
       </div>
 
-      {/* ✨ FULL WIDTH KANBAN DATA TABLE CONTAINER */}
       <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
         <div className="flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
@@ -310,6 +325,10 @@ export default function UsersTab({ orgData }: any) {
               onClick={() => {
                 setErrorMsg(null);
                 setIsModalOpen(true);
+                setUnitSearchQuery("");
+                setName(""); 
+                setEmail("");
+                setSelectedUnits([]);
               }}
               className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-5 py-2.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
             >
@@ -331,7 +350,6 @@ export default function UsersTab({ orgData }: any) {
               
               <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] bg-white">
                 {isLoading ? (
-                  /* ✨ SKELETON LOADING ROWS */
                   Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={`skeleton-${idx}`} className="animate-pulse">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -350,7 +368,6 @@ export default function UsersTab({ orgData }: any) {
                     </tr>
                   ))
                 ) : filteredUsers.length === 0 ? (
-                  /* EMPTY STATE */
                   <tr>
                     <td colSpan={4} className="px-6 py-20 text-center">
                       <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 mx-auto mb-4">
@@ -365,7 +382,6 @@ export default function UsersTab({ orgData }: any) {
                     </td>
                   </tr>
                 ) : (
-                  /* ACTUAL DATA ROWS */
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-[var(--color-primary)]/5 transition-colors group">
                       <td className="px-6 py-4 border-r border-[var(--color-border)]/50">
@@ -402,6 +418,8 @@ export default function UsersTab({ orgData }: any) {
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Modal Header */}
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <h2 className="text-xl font-black text-[var(--color-text)] tracking-tight relative z-10 flex items-center gap-2">
@@ -413,129 +431,160 @@ export default function UsersTab({ orgData }: any) {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40">
-              {/* TABS FOR OWNER / TENANT */}
-              <div className="flex p-1.5 bg-white border border-[var(--color-border)] rounded-[var(--radius-lg)] mb-6 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => { setRole("Tenant"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Tenant" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
-                  disabled={isSubmitting}
-                >
-                  Tenant Account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setRole("Owner"); setSelectedUnits([]); setName(""); setEmail(""); }}
-                  className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Owner" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
-                  disabled={isSubmitting}
-                >
-                  Owner Account
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateUser} className="space-y-5">
-                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200">{errorMsg}</div>}
-
-                {/* DYNAMIC UNIT SELECTION */}
-                <div>
-                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                    <Home size={14} className="text-slate-500" /> Select Unit Allocation
-                  </label>
-                  
-                  <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
-                    {availableUnits.length === 0 ? (
-                      <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
-                        {role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners."}
-                      </p>
-                    ) : (
-                      availableUnits.map(unit => {
-                        const unitString = `${unit.property_name} - ${unit.unit_number}`;
-                        const isSelected = selectedUnits.includes(unitString);
-                        const occupantName = role === "Tenant" ? unit.tenant_name : (unit.owner_name ? unit.owner_name.split(',')[0].trim() : "");
-                        
-                        return (
-                          <div 
-                            key={unit.id} 
-                            onClick={() => !isSubmitting && handleUnitToggle(unitString, unit)}
-                            className={`flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all border ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 shadow-sm' : 'hover:bg-slate-50 border-transparent'}`}
-                          >
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected}
-                              readOnly
-                              className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
-                              disabled={isSubmitting}
-                            />
-                            <div className="flex flex-col">
-                              <span className={`text-sm font-black tracking-tight ${isSelected ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text)]'}`}>
-                                {unit.property_name} <span className="font-bold text-slate-400 ml-1">/ {unit.unit_number}</span>
-                              </span>
-                              {occupantName && (
-                                <span className="text-[11px] text-slate-500 font-bold mt-0.5">
-                                  {occupantName}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* FORM FIELDS */}
-                <div className="space-y-4 pt-2">
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
-                    <div className="relative">
-                      <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input 
-                        type={showPassword ? "text" : "password"} 
-                        required 
-                        minLength={6} 
-                        placeholder="Minimum 6 characters" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                        className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
-                        disabled={isSubmitting} 
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] focus:outline-none transition-colors"
-                        disabled={isSubmitting}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex gap-3 justify-end pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-4 sm:pb-0 z-20">
-                  <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-white border border-slate-200 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
-                  <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
-                    {isSubmitting ? "Creating..." : "Create Account"}
+            {/* ✨ FIX: The form now wraps both the scrollable content AND the fixed footer */}
+            <form onSubmit={handleCreateUser} className="flex flex-col min-h-0 flex-1">
+              
+              {/* Scrollable Content Area */}
+              <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
+                {/* TABS FOR OWNER / TENANT */}
+                <div className="flex p-1.5 bg-white border border-[var(--color-border)] rounded-[var(--radius-lg)] mb-6 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => { 
+                      setRole("Tenant"); 
+                      setSelectedUnits([]); 
+                      setName(""); 
+                      setEmail(""); 
+                      setUnitSearchQuery("");
+                    }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Tenant" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
+                    disabled={isSubmitting}
+                  >
+                    Tenant Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { 
+                      setRole("Owner"); 
+                      setSelectedUnits([]); 
+                      setName(""); 
+                      setEmail(""); 
+                      setUnitSearchQuery(""); 
+                    }}
+                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[var(--radius-md)] transition-all ${role === "Owner" ? "bg-[var(--color-primary)] text-[var(--color-text)] border border-[var(--color-primary)]/30 shadow-sm" : "bg-transparent text-slate-500 hover:text-slate-700 border border-transparent"}`}
+                    disabled={isSubmitting}
+                  >
+                    Owner Account
                   </button>
                 </div>
-              </form>
-            </div>
+
+                <div className="space-y-5">
+                  {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs font-bold rounded-xl border border-red-200">{errorMsg}</div>}
+
+                  {/* DYNAMIC UNIT SELECTION */}
+                  <div>
+                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                      <Home size={14} className="text-slate-500" /> Select Unit Allocation
+                    </label>
+                    
+                    <div className="relative mb-3 group">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors" size={14} />
+                      <input 
+                        type="text"
+                        placeholder="Search property, unit, or name..."
+                        value={unitSearchQuery}
+                        onChange={(e) => setUnitSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs font-bold text-[var(--color-text)] placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 bg-white transition-all shadow-sm"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
+                      {filteredAvailableUnits.length === 0 ? (
+                        <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
+                          {unitSearchQuery ? "No matching units found." : (role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners.")}
+                        </p>
+                      ) : (
+                        filteredAvailableUnits.map(unit => {
+                          const unitString = `${unit.property_name} - ${unit.unit_number}`;
+                          const isSelected = selectedUnits.includes(unitString);
+                          const occupantName = role === "Tenant" ? unit.tenant_name : (unit.owner_name ? unit.owner_name.split(',')[0].trim() : "");
+                          
+                          return (
+                            <div 
+                              key={unit.id} 
+                              onClick={() => !isSubmitting && handleUnitToggle(unitString, unit)}
+                              className={`flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all border ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 shadow-sm' : 'hover:bg-slate-50 border-transparent'}`}
+                            >
+                              <input 
+                                type="checkbox" 
+                                checked={isSelected}
+                                readOnly
+                                className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                                disabled={isSubmitting}
+                              />
+                              <div className="flex flex-col">
+                                <span className={`text-sm font-black tracking-tight ${isSelected ? 'text-[var(--color-secondary)]' : 'text-[var(--color-text)]'}`}>
+                                  {unit.property_name} <span className="font-bold text-slate-400 ml-1">/ {unit.unit_number}</span>
+                                </span>
+                                {occupantName && (
+                                  <span className="text-[11px] text-slate-500 font-bold mt-0.5">
+                                    {occupantName}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* FORM FIELDS */}
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
+                      <div className="relative">
+                        <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          required 
+                          minLength={6} 
+                          placeholder="Minimum 6 characters" 
+                          value={password} 
+                          onChange={(e) => setPassword(e.target.value)} 
+                          className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          disabled={isSubmitting} 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] focus:outline-none transition-colors"
+                          disabled={isSubmitting}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ✨ FIX: Fixed Footer sits natively at the bottom outside the overflow-y-auto block */}
+              <div className="px-6 py-4 flex gap-3 justify-end border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 z-20">
+                <button type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting} className="flex-1 sm:flex-none px-6 py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-white border border-slate-200 hover:opacity-90 rounded-[var(--radius-md)] transition-all active:scale-95">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center sm:min-w-[150px]">
+                  {isSubmitting ? "Creating..." : "Create Account"}
+                </button>
+              </div>
+              
+            </form>
           </div>
         </div>
       )}
