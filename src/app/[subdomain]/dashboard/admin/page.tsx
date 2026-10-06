@@ -70,9 +70,12 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   
-  // NEW: Delete Notification Modal States
+  // Delete Notification Modal States
   const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
+  
+  // ✨ NEW: Delete ALL Notifications Modal State
+  const [isDeleteAllNotifModalOpen, setIsDeleteAllNotifModalOpen] = useState(false);
 
   // ✨ ACTION INTENT STATES (Used for routing Modals from Notifications)
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
@@ -452,12 +455,21 @@ export default function AdminDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]).eq('is_read', false);
   };
 
-  const clearAllNotifications = async () => {
+  // ✨ FIX: Delete ALL function instead of just updating UI
+  const confirmDeleteAllNotifications = async () => {
     if (!orgData?.admin_email) return;
+    
+    // Optimistic UI updates
     setNotifications([]);
     setUnreadCount(0);
-    setIsNotifOpen(false);
-    await supabase.from('notifications').update({ is_hidden: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
+    setIsDeleteAllNotifModalOpen(false);
+    
+    // Complete wipe from the table for this admin
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('admin_email', orgData.admin_email)
+      .in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
   };
 
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
@@ -479,7 +491,7 @@ export default function AdminDashboard() {
 
     await supabase
       .from('notifications')
-      .update({ is_hidden: true })
+      .delete()
       .eq('id', notificationToDelete.id);
 
     setNotificationToDelete(null);
@@ -609,7 +621,15 @@ export default function AdminDashboard() {
                     <h3 className="font-extrabold text-[var(--color-text)] text-sm">Notifications</h3>
                     <div className="flex gap-3 relative z-10">
                       <button onClick={markAllAsRead} className="text-xs font-bold text-slate-500 hover:text-[var(--color-primary)] flex items-center gap-1 transition-colors"><CheckCheck size={14} /> Read All</button>
-                      <button onClick={clearAllNotifications} className="text-xs font-bold text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"><Trash2 size={14} /> Clear</button>
+                      <button 
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          setIsDeleteAllNotifModalOpen(true);
+                        }} 
+                        className="text-xs font-bold text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"
+                      >
+                        <Trash2 size={14} /> Delete all
+                      </button>
                     </div>
                   </div>
 
@@ -1286,6 +1306,35 @@ export default function AdminDashboard() {
                 className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: PREMIUM DELETE ALL NOTIFICATIONS MODAL */}
+      {isDeleteAllNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete All</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete all notifications? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsDeleteAllNotifModalOpen(false)} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteAllNotifications} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete All
               </button>
             </div>
           </div>
