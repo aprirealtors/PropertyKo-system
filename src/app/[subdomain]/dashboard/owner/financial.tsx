@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { CalendarClock, Download, X, Receipt, ShieldCheck, AlertCircle, CheckCircle, CreditCard, ArrowRight, Home, ChevronLeft, Clock, History } from "lucide-react";
 
-export default function FinancialTab({ userData, units }: any) {
+export default function FinancialTab({ userData, units, actionIntent }: any) {
   
   // Sort the units alphanumerically
   const sortedUnits = useMemo(() => {
@@ -56,13 +56,44 @@ export default function FinancialTab({ userData, units }: any) {
   const [isSimulating, setIsSimulating] = useState(false);
   const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
 
+  // ✨ DIRECT SNAP TO DETAILS CARD ON INTENT
+  useEffect(() => {
+    if (actionIntent) {
+      setIsMobileListVisible(false);
+      setIsMobileHistoryVisible(false);
+    }
+  }, [actionIntent]);
+
+  // ✨ CATCH DEEP LINK INTENT
+  const processedIntentRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!actionIntent || sortedUnits.length === 0) return;
+    
+    // Prevent duplicate firing for the exact same intent
+    if (processedIntentRef.current === actionIntent) return;
+
+    if (actionIntent.startsWith("select_unit_")) {
+      const parts = actionIntent.split('_'); // format: select_unit_[unitId]_[timestamp]
+      const unitId = parts[2];
+
+      const targetUnit = sortedUnits.find((u: any) => String(u.id) === String(unitId));
+      if (targetUnit) {
+        processedIntentRef.current = actionIntent;
+        setSelectedUnit(targetUnit);
+        setIsMobileListVisible(false);
+        setIsMobileHistoryVisible(false);
+      }
+    }
+  }, [actionIntent, sortedUnits]);
+
   useEffect(() => {
     if (userData?.admin_email) {
       fetchBillingConfig();
     }
     
     if (sortedUnits && sortedUnits.length > 0) {
-      if (!selectedUnit) {
+      if (!selectedUnit && !actionIntent) {
         if (typeof window !== 'undefined' && window.innerWidth >= 768) {
           setSelectedUnit(sortedUnits[0]); 
         } else {
@@ -188,10 +219,8 @@ export default function FinancialTab({ userData, units }: any) {
 
   const ownerTotalDue = ownerBase + ownerPenalty;
 
-  // ✨ NEW: Check if payment is already submitted but not yet verified
   const isOwnerProcessing = !!existingSoa?.owner_payment_method && ownerStatus !== 'Paid';
   
-  // ✨ LEDGER SPECIFIC COMPUTATION
   let ledgerOwnerPenalty = 0;
   if ((ownerStatus === 'Overdue' || soaConfig.owner.penalty) && !isVacant) {
     ledgerOwnerPenalty = pType === 'percent' ? ownerBase * (pVal / 100) : pVal;
@@ -288,7 +317,7 @@ export default function FinancialTab({ userData, units }: any) {
       await supabase.from('notifications').insert([{
         admin_email: userData.admin_email,
         recipient: 'MANAGER', 
-        type: 'BILLING',
+        type: 'PAYMENT_OWNER',
         title: 'Payment Verification Required',
         message: `${userData.name || 'An Owner'} submitted a ${paymentMethod} payment of ₱${ownerTotalDue.toLocaleString()} for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number}.`,
         reference_id: selectedUnit.id,
@@ -369,8 +398,8 @@ export default function FinancialTab({ userData, units }: any) {
         
         {isLoading ? (
           <>
-            {/* SKELETON SIDEBAR */}
-            <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex flex-col h-full z-10 shadow-[var(--shadow-sm)]">
+            {/* ✨ SKELETON SIDEBAR NOW RESPECTS MOBILE VISIBILITY */}
+            <div className={`w-full md:w-[320px] lg:w-[360px] shrink-0 bg-white border-r border-[var(--color-border)] flex-col h-full z-10 shadow-[var(--shadow-sm)] ${isMobileListVisible ? 'flex' : 'hidden md:flex'}`}>
               <div className="flex flex-col flex-1 md:min-h-[50%] md:max-h-[50%] border-b border-[var(--color-border)] p-5">
                 <div className="flex justify-between items-center mb-4">
                   <div className="h-4 w-32 bg-slate-200 rounded-md animate-pulse"></div>
@@ -395,8 +424,8 @@ export default function FinancialTab({ userData, units }: any) {
               </div>
             </div>
             
-            {/* SKELETON MAIN DETAILS */}
-            <div className="hidden md:flex flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] p-6 lg:p-8 space-y-6">
+            {/* ✨ SKELETON MAIN DETAILS NOW RESPECTS MOBILE VISIBILITY */}
+            <div className={`flex-1 flex-col overflow-y-auto bg-[var(--color-bg)] p-6 lg:p-8 space-y-6 ${(!isMobileListVisible && !isMobileHistoryVisible) ? 'flex' : 'hidden md:flex'}`}>
               <div className="h-[300px] w-full bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] animate-pulse shadow-[var(--shadow-sm)]"></div>
               <div className="h-[100px] w-full bg-[var(--color-primary)]/10 rounded-[var(--radius-lg)] animate-pulse"></div>
               <div className="h-[56px] w-full bg-slate-200 rounded-[var(--radius-md)] animate-pulse"></div>
@@ -432,9 +461,9 @@ export default function FinancialTab({ userData, units }: any) {
                           setIsMobileListVisible(false);
                           setIsMobileHistoryVisible(false);
                         }}
-                        className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-[var(--color-primary)] border-transparent shadow-[var(--shadow-sm)] text-[var(--color-primary-text)]' : 'bg-white border-transparent hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-sm)] text-[var(--color-text)]'}`}
+                        className={`flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 group border ${isSelected ? 'bg-[var(--color-primary)] border-transparent shadow-[var(--shadow-sm)] text-[var(--color-primary-text)]' : 'bg-white border-transparent hover:border-[var(--color-primary)]/50 hover:shadow-[var(--shadow-sm)] text-[var(--color-text)]'}`}
                       >
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 pr-1">
                           <h4 className={`text-[13px] sm:text-[14px] truncate tracking-tight font-black ${isSelected ? 'text-[var(--color-primary-text)]' : 'text-[var(--color-text)]'}`}>
                             {unit.property_name} {unit.unit_number}
                           </h4>
@@ -606,10 +635,10 @@ export default function FinancialTab({ userData, units }: any) {
                                     <span className="font-black text-red-500 shrink-0">₱{tenantPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                   </div>
                                 )}
-                                {tenantBase === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>}
+                                {tenantBase === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">No assigned balances for this period.</p>}
                               </>
                             ) : (
-                              <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">Pending SOA assignment.</p>
+                              <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">Pending SOA assignment from administration.</p>
                             )}
                          </div>
                       </div>
@@ -645,6 +674,9 @@ export default function FinancialTab({ userData, units }: any) {
                         <><CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" /> Pay Now</>
                       )}
                     </button>
+                    <p className="flex items-center justify-center gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] font-bold text-slate-400 mt-3 sm:mt-4 uppercase tracking-widest whitespace-normal break-words">
+                      <ShieldCheck size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--color-primary)]/50" /> Secure Payment Processing
+                    </p>
                   </div>
 
                   {/* COMBINED LEDGER TABLE */}
@@ -693,7 +725,7 @@ export default function FinancialTab({ userData, units }: any) {
                             const rowTotal = activeRow ? ledgerOwnerTotalDue : ownerBase;
                             
                             return (
-                              <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20" : "hover:bg-slate-50"}`}>
+                              <tr key={idx} className={`transition-colors group ${activeRow ? "bg-[var(--color-secondary)]/10 hover:bg-[var(--color-secondary)]/20" : "hover:bg-slate-50"}`}>
                                 <td className={`relative px-4 sm:px-5 py-3 sm:py-4 whitespace-nowrap font-black uppercase text-[10px] sm:text-[11px] tracking-wide border-r border-[var(--color-border)] ${activeRow ? 'text-[var(--color-text)]' : 'text-[var(--color-text)]'}`}>
                                 {activeRow && <div className="absolute inset-y-0 left-0 w-1 bg-[var(--color-secondary)] rounded-r-sm pointer-events-none"></div>}
                                 {row.monthName} {row.year} {activeRow && <span className="ml-1 text-[9px] leading-none align-middle text-emerald-600">(NOW)</span>}
@@ -713,7 +745,7 @@ export default function FinancialTab({ userData, units }: any) {
                                   {row.status === 'Pending' && <span className="text-amber-600 bg-amber-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-amber-100 shadow-[var(--shadow-sm)]">Pending</span>}
                                   {row.status === 'Sent' && <span className="text-blue-600 bg-blue-50 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] border border-blue-100 shadow-[var(--shadow-sm)]">Sent</span>}
                                   {row.status === 'Unassigned' && <span className="text-slate-500 bg-slate-100 border border-[var(--color-border)] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-[var(--radius-sm)] shadow-[var(--shadow-sm)]">Unassigned</span>}
-                                  {row.status === 'Upcoming' && <span className="text-slate-400 font-medium">Upcoming</span>}
+                                  {row.status === 'Upcoming' && <span className="text-slate-400 font-medium px-2 sm:px-3">Upcoming</span>}
                                 </td>
 
                                 <td className={`px-4 sm:px-5 py-3 sm:py-4 text-right whitespace-nowrap font-black text-[12px] sm:text-sm ${isRowPaid ? 'text-[var(--color-text)]' : 'text-slate-400'}`}>
@@ -861,7 +893,7 @@ export default function FinancialTab({ userData, units }: any) {
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Submit Payment</h2>
               </div>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] hover:bg-slate-100 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-[var(--color-border)] rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-bg)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -985,12 +1017,12 @@ export default function FinancialTab({ userData, units }: any) {
 
       {/* 🌟 UNIFIED SUCCESS MODAL */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">Request Submitted</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">Request Submitted</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               Payment details for <strong className="text-[var(--color-text)]">{paymentMethod}</strong> submitted successfully. 
               {paymentMethod === 'Cash' || paymentMethod === 'Check'

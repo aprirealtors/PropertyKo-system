@@ -268,7 +268,7 @@ export default function PayTab() {
       await supabase.from('notifications').insert([{
         admin_email: unit.admin_email,
         recipient: 'MANAGER', 
-        type: 'BILLING',
+        type: 'PAYMENT_TENANT',
         title: 'Payment Verification Required',
         message: `${unit.tenant_name || 'A Tenant'} submitted a ${paymentMethod} payment of ₱${totalDue.toLocaleString()} for ${unit.property_name} Unit ${unit.unit_number}.`,
         reference_id: unit.id,
@@ -780,10 +780,10 @@ export default function PayTab() {
       {showSuccessModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/20">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight whitespace-normal break-words">Request Submitted</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight whitespace-normal break-words">Request Submitted</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2 whitespace-normal break-words">
               Payment details for <strong className="text-[var(--color-text)]">{paymentMethod}</strong> submitted successfully. 
               {paymentMethod === 'Cash' || paymentMethod === 'Check'

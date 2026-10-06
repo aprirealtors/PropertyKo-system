@@ -28,6 +28,16 @@ export default function AdminDashboard() {
   // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
 
+  // ✨ FIX: Add this auto-restore block right here!
+  // This forces the UI button to immediately say "Notifications Enabled" upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
+
   // Navigation & Modal States
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -486,15 +496,26 @@ export default function AdminDashboard() {
     const type = notif.type?.toUpperCase() || '';
     const title = notif.title?.toUpperCase() || '';
 
-    // Route SaaS Subscriptions to Team Tab, Unit Billings to Billing Tab
+    // Route SaaS Subscriptions to Team Tab
     if (title.includes('PAYMENT REMINDER') || type === 'SUBSCRIPTION') {
       handleTabChange("Team", "open_billing");
     } 
+    // ✨ SPECIFIC INTENT ROUTING FOR OWNER PAYMENTS
+    else if (type === 'PAYMENT_OWNER') {
+      const intent = notif.reference_id ? `verify_payment_owner_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
+    }
+    // ✨ SPECIFIC INTENT ROUTING FOR TENANT PAYMENTS
+    else if (type === 'PAYMENT_TENANT') {
+      const intent = notif.reference_id ? `verify_payment_tenant_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
+    }
+    // Fallback for older billing notifications
     else if (type === 'BILLING' || type === 'SOA' || title.includes('PAYMENT VERIFICATION')) {
-      handleTabChange("Billing");
+      const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
     } 
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
-      // Create a unique intent ID using Date.now() to ensure the child tab sees it as a fresh state change
       const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Maintenance", intent); 
     } 
@@ -733,7 +754,7 @@ export default function AdminDashboard() {
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} collapsed={isSidebarCollapsed} />
 
             <NavSectionLabel collapsed={isSidebarCollapsed}>Finance</NavSectionLabel>
-            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Finance" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI Reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} collapsed={isSidebarCollapsed} />
 
             <div className="pt-3 pb-2">
@@ -777,7 +798,7 @@ export default function AdminDashboard() {
             {activeTab === "Leasing" && <LeasingAndTenantsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Messages" && <ConversationTab orgData={orgData} adminProfile={adminProfile} />}
             {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
-            {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
+            {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} actionIntent={highlightTicketId} />}
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
             
             {/* Passes the action intent explicitly down to the Team settings tab */}

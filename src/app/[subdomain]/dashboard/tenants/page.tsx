@@ -40,6 +40,16 @@ export default function TenantDashboard() {
   // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
 
+  // ✨ FIX: Add this auto-restore block right here!
+  // This forces the UI button to immediately say "Notifications Enabled" upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
+
   const [activeTab, setActiveTab] = useState('home');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -813,7 +823,7 @@ export default function TenantDashboard() {
             <div className="pt-4">
               <NavSectionLabel collapsed={isSidebarCollapsed}>Finance & Lease</NavSectionLabel>
             </div>
-            <NavItem icon={<Receipt size={18} strokeWidth={2.5} />} label="Financials" isActive={activeTab === "pay"} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<Receipt size={18} strokeWidth={2.5} />} label="Billing & Payments" isActive={activeTab === "pay"} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
             <NavItem icon={<FileText size={18} strokeWidth={2.5} />} label="My Lease" isActive={activeTab === "lease"} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null);}} collapsed={isSidebarCollapsed} />
           </nav>
 
@@ -907,7 +917,7 @@ export default function TenantDashboard() {
             label="Chat" 
             badgeCount={unreadMessages}
           />
-          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={20} strokeWidth={2.5} />} label="Finance" />
+          <MobileNavItem active={activeTab === 'pay' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('pay'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={20} strokeWidth={2.5} />} label="Billing" />
           <MobileNavItem active={activeTab === 'lease' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('lease'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileText size={20} strokeWidth={2.5} />} label="Lease" />
           <MobileNavItem 
             active={isWorkspaceModalOpen} 
@@ -1643,7 +1653,7 @@ function HomeView({
             <Receipt size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
           </div>
           <div className="relative z-10 flex flex-col flex-1 min-w-0">
-            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Financials</h3>
+            <h3 className="font-extrabold text-[10px] sm:text-sm text-slate-500 uppercase tracking-wider line-clamp-1">Billing</h3>
             <p className="text-sm sm:text-base font-black text-[var(--color-text)] mt-0.5 sm:mt-1 leading-tight">Account Billing</p>
             <p className="text-[10px] sm:text-xs text-slate-400 mt-1 font-medium leading-snug hidden sm:block">View & pay balances</p>
           </div>

@@ -20,6 +20,15 @@ const defaultTheme = {
   enableShadows: true
 };
 
+// Helper to make the day look nice (1st, 2nd, 3rd, 15th, etc.)
+const getOrdinalSuffix = (i: number) => {
+  const j = i % 10, k = i % 100;
+  if (j === 1 && k !== 11) return i + "st";
+  if (j === 2 && k !== 12) return i + "nd";
+  if (j === 3 && k !== 13) return i + "rd";
+  return i + "th";
+};
+
 export default function OrganizationDirectory({ organizations, isLoadingOrgs, fetchOrganizations }: any) {
   // Modal & UI States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -502,7 +511,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                           <div className="pt-2.5 border-t border-emerald-100/80 flex justify-center items-center">
                             <p className="text-[10px] text-emerald-800 font-bold uppercase tracking-wider flex items-center gap-1.5">
                               <Calendar size={12} className="text-emerald-600" />
-                              Every {org.billing_day || 1} of the month
+                              Every {getOrdinalSuffix(org.billing_day || 1)} of the month
                             </p>
                           </div>
 
@@ -632,7 +641,9 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   <div className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-[#359b46]/50 focus-within:border-[#359b46] text-sm shadow-sm bg-white">
                     <span className="text-slate-500 font-medium">Every</span>
                     <input type="number" min="1" max="31" required value={billingDay} onChange={(e) => setBillingDay(e.target.value)} className="w-12 text-center outline-none font-bold text-[#0a1e3f] bg-slate-50 p-1 rounded-md" disabled={isSubmitting} />
-                    <span className="text-slate-500 font-medium">of the month</span>
+                    <span className="text-slate-500 font-medium">
+                      {getOrdinalSuffix(parseInt(billingDay) || 1).replace(/^\d+/, "")} of the month
+                    </span>
                   </div>
                 </div>
                 
@@ -711,7 +722,9 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                   <div className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-[#1d82f5]/50 focus-within:border-[#1d82f5] text-sm shadow-sm bg-white">
                     <span className="text-slate-500 font-medium">Every</span>
                     <input type="number" min="1" max="31" required value={billingDay} onChange={(e) => setBillingDay(e.target.value)} className="w-12 text-center outline-none font-bold text-[#0a1e3f] bg-slate-50 p-1 rounded-md" disabled={isSubmitting} />
-                    <span className="text-slate-500 font-medium">of the month</span>
+                    <span className="text-slate-500 font-medium">
+                      {getOrdinalSuffix(parseInt(billingDay) || 1).replace(/^\d+/, "")} of the month
+                    </span>
                   </div>
                 </div>
                 

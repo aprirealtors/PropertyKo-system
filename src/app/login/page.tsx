@@ -678,101 +678,127 @@ export default function Home() {
               </h2>
             </div>
 
-            {/* Scrollable content area: put your content here */}
+            {/* Scrollable content area */}
             <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-10 sm:py-8 custom-scrollbar text-sm sm:text-base text-slate-700 leading-relaxed">
               {legalModal === "privacy" ? (
                 <div className="space-y-6">
-                  <p className="text-xs text-slate-400 font-medium">Last updated: January 1, 2025</p>
+                  <p className="text-xs text-slate-400 font-medium">Last updated: October 5, 2026</p>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">1. Information We Collect</h3>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. We collect information you provide directly, such as your name, email address, and contact details when you create an account or contact support.</p>
-                    <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. We may also collect usage data, device information, and log data to help us improve the platform.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">1. Who We Are</h3>
+                    <p>PropertyKo provides a property management platform at propertyko.com. It is used by organizations (&ldquo;workspaces&rdquo;) and their managers, staff, owners, and tenants.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. How We Use Your Information</h3>
-                    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Your information is used to:</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. Information We Collect</h3>
                     <ul className="list-disc pl-5 space-y-1">
-                      <li>Provide, maintain, and improve our services</li>
-                      <li>Process payments and manage property records</li>
-                      <li>Send important notices and support responses</li>
-                      <li>Protect against fraud and unauthorized access</li>
+                      <li><strong>Account:</strong> your name, email address, password (handled by our authentication provider), and role.</li>
+                      <li><strong>Property and lease records:</strong> units, property assignments, lease parties, rent, dates, and status.</li>
+                      <li><strong>Billing:</strong> statements of account, payments, ledger history, and owner remittance records.</li>
+                      <li><strong>Maintenance:</strong> repair requests, including descriptions and photos you upload.</li>
+                      <li><strong>Messages:</strong> in-platform chats and Contact Support submissions (name, email, and message).</li>
+                      <li><strong>Technical:</strong> session cookies that keep you signed in.</li>
                     </ul>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. Sharing of Information</h3>
-                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. We do not sell your personal information. We may share data with trusted service providers who help us operate the platform.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. How We Use Your Information</h3>
+                    <p>We use your information to:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Operate and maintain the platform</li>
+                      <li>Process statements and payments</li>
+                      <li>Handle repair requests</li>
+                      <li>Provide support</li>
+                      <li>Secure accounts</li>
+                      <li>Manage subscription billing</li>
+                    </ul>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Data Security</h3>
-                    <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. We use role-based access control and industry-standard safeguards to protect your data.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Who Can See Your Information</h3>
+                    <p>Access depends on your role:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li><strong>Admins</strong> see their entire workspace.</li>
+                      <li><strong>Managers</strong> see operations for their assigned properties.</li>
+                      <li><strong>Maintenance staff</strong> see only the tickets assigned to them.</li>
+                      <li><strong>Owners</strong> see only their own units, leases, and statements.</li>
+                      <li><strong>Tenants</strong> see only their own lease, invoices, payments, and repairs.</li>
+                    </ul>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Data Retention</h3>
-                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. We keep your information only as long as needed for the purposes described in this policy or as required by law.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Service Providers</h3>
+                    <p>We do not sell personal information. We share it only with providers that help run the platform: database and authentication (Supabase), hosting, the payment gateway for GCash / QR Ph payments, and email.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Your Rights</h3>
-                    <p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet. You may request access, correction, or deletion of your personal data at any time by contacting our support team.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Security</h3>
+                    <p>We use role-based access control, authenticated sign-in, and HTTPS. No system is completely secure, so please keep your credentials private and log out on shared devices.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Contact Us</h3>
-                    <p>If you have questions about this Privacy Policy, please reach out through the Contact Support widget on this page.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Your Rights</h3>
+                    <p>You may request access to, correction of, or deletion of your personal data by contacting us through the Contact Support widget on this page.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">8. Changes to This Policy</h3>
+                    <p>We will update the &ldquo;Last updated&rdquo; date whenever this policy changes.</p>
                   </section>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <p className="text-xs text-slate-400 font-medium">Last updated: January 1, 2025</p>
+                  <p className="text-xs text-slate-400 font-medium">Last updated: October 5, 2026</p>
 
                   <section className="space-y-2">
                     <h3 className="text-base sm:text-lg font-bold text-slate-800">1. Acceptance of Terms</h3>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. By accessing or using PropertyKo, you agree to be bound by these Terms of Service and all applicable laws and regulations.</p>
+                    <p>By using PropertyKo, you agree to these Terms of Service.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. User Accounts</h3>
-                    <p>Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. You are responsible for keeping your credentials confidential and for all activity under your account.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">2. The Service</h3>
+                    <p>PropertyKo is a platform for managing leasing, tenants, maintenance, billing, and reporting. There is no public sign-up. Accounts are created by a workspace Admin or Manager.</p>
+                  </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. Your Account</h3>
+                    <p>You are responsible for all activity under your account. You agree to:</p>
                     <ul className="list-disc pl-5 space-y-1">
-                      <li>Provide accurate and up-to-date information</li>
-                      <li>Do not share your login credentials</li>
-                      <li>Notify us immediately of any unauthorized use</li>
+                      <li>Provide accurate information</li>
+                      <li>Keep your credentials private and not share your login</li>
+                      <li>Notify us of any unauthorized use</li>
+                      <li>Log out on shared devices</li>
                     </ul>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">3. Acceptable Use</h3>
-                    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. You agree not to misuse the platform, attempt to access other workspaces, or interfere with its normal operation.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Acceptable Use</h3>
+                    <p>You agree not to access other workspaces or other roles&rsquo; data, bypass role restrictions, interfere with the platform, or use it unlawfully. Upload only content (such as photos and CSV files) that you have the right to share.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">4. Billing and Subscriptions</h3>
-                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Workspaces with unpaid balances may be suspended until the account is settled.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Subscription and Billing</h3>
+                    <p>Workspaces are billed per asset (per unit, per month). A workspace with unpaid billing may be suspended until the balance is settled.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">5. Intellectual Property</h3>
-                    <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. All content, branding, and software remain the property of PropertyKo.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Rent and Payments</h3>
+                    <p>PropertyKo provides tools for statements, payments, and owner remittance. Leases and rent obligations are between owners, tenants, and the managing organization. Each workspace is responsible for the accuracy of the data it enters.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">6. Limitation of Liability</h3>
-                    <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. To the fullest extent permitted by law, PropertyKo shall not be liable for any indirect or consequential damages.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Workspace Data</h3>
+                    <p>Each workspace&rsquo;s data belongs to that workspace. We process it only to provide the service.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">7. Termination</h3>
-                    <p>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet. We reserve the right to suspend or terminate access for violations of these terms.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">8. Suspension and Termination</h3>
+                    <p>We may suspend or end access for breach of these Terms or unpaid billing. A deleted workspace can no longer be accessed.</p>
                   </section>
 
                   <section className="space-y-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800">8. Changes to These Terms</h3>
-                    <p>Ut labore et dolore magnam aliquam quaerat voluptatem. We may update these terms from time to time. Continued use of the platform means you accept the revised terms.</p>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800">9. Changes to These Terms</h3>
+                    <p>We may update these Terms from time to time. Continued use of the platform means you accept the updated Terms.</p>
                   </section>
                 </div>
               )}

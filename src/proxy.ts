@@ -6,8 +6,12 @@ export function proxy(req: NextRequest) {
   const hostname = req.headers.get("host") || "";
   const mainDomain = process.env.NODE_ENV === "production" ? "propertyko.com" : "localhost:3000";
 
-  // ✨ NEW BYPASS RULE: Let the Firebase Service Worker load directly from the public folder
-  if (url.pathname === '/firebase-messaging-sw.js') {
+  // ✨ NEW BYPASS RULE: Let the Firebase Service Worker AND Audio files load directly
+  if (
+    url.pathname === '/firebase-messaging-sw.js' || 
+    url.pathname.endsWith('.wav') || 
+    url.pathname.endsWith('.mp3')
+  ) {
     return NextResponse.next();
   }
 
@@ -39,7 +43,7 @@ export function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // ✨ KEEP THIS FIX: Ensures PWA manifest, images, AND Service Worker work on subdomains
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|manifest.json|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // ✨ FIXED: Added wav and mp3 to the exclusion list!
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|manifest.json|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|wav|mp3)$).*)",
   ],
 };

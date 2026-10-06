@@ -40,6 +40,16 @@ export default function MaintenanceDashboard() {
   // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
 
+  // ✨ FIX: Add this auto-restore block right here!
+  // This forces the UI button to immediately say "Notifications Enabled" upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

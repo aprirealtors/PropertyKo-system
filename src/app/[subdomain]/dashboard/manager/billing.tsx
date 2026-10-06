@@ -6,7 +6,7 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings, Printer } from "lucide-react";
 
-export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
+export default function BillingTab({ orgData, isLoading: isOrgLoading, actionIntent }: any) {
   
   // App Mount State for Portal
   const [isMounted, setIsMounted] = useState(false);
@@ -54,6 +54,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
 
+  // ✨ NOTIFICATION CLEANUP STATE
+  const [sourceNotificationId, setSourceNotificationId] = useState<string | null>(null);
+
   // SOA Assignment States
   const [soaConfig, setSoaConfig] = useState({
     owner: { dues: false, parking: false, water: false, electricity: false, penalty: false },
@@ -95,8 +98,55 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     }
   }, [orgData?.admin_email]);
 
+  // ✨ CATCH DEEP LINK INTENT FROM NOTIFICATIONS (SMART ROUTING & CLEANUP)
+  const processedIntentRef = useRef<string | null>(null);
+
   useEffect(() => {
-    // If year changes and printMonth is an upcoming month, reset it
+    // Wait until units are loaded before processing the intent
+    if (!actionIntent || allUnits.length === 0) return;
+    
+    // Prevent duplicate firing for the exact same intent
+    if (processedIntentRef.current === actionIntent) return;
+
+    // Direct Verify Payment Flow based on explicit party type from notification
+    if (actionIntent.startsWith("verify_payment_")) {
+      // Format: verify_payment_[party]_[unitId]_[notifId]
+      const parts = actionIntent.split('_'); 
+      const party = parts[2] as 'owner' | 'tenant';
+      const unitId = parts[3];
+      const notifId = parts[4] || null; // Capture the notification ID that triggered this
+
+      const targetUnit = allUnits.find(u => String(u.id) === String(unitId));
+      
+      if (targetUnit) {
+        processedIntentRef.current = actionIntent; // Mark processed
+        
+        setSelectedUnit(targetUnit);
+        setIsMobileListVisible(false);
+        if (notifId) setSourceNotificationId(notifId); // Store it for cleanup later
+        
+        // Delay to allow UI to render the selected unit first, then pop the exact modal
+        setTimeout(() => {
+          setPaymentModalParty(party);
+          setIsPaymentModalOpen(true);
+        }, 500);
+      }
+    } 
+    // Fallback/Legacy select unit flow
+    else if (actionIntent.startsWith("select_unit_")) {
+      const parts = actionIntent.split('_'); 
+      const unitId = parts[2];
+
+      const targetUnit = allUnits.find(u => String(u.id) === String(unitId));
+      if (targetUnit) {
+        processedIntentRef.current = actionIntent;
+        setSelectedUnit(targetUnit);
+        setIsMobileListVisible(false);
+      }
+    }
+  }, [actionIntent, allUnits]);
+
+  useEffect(() => {
     if (printYear === currentYearNum && printMonth !== 'all' && printMonth > currentMonthNum) {
       setPrintMonth(currentMonthNum);
     }
@@ -108,18 +158,20 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         setIsFetchingPayment(true);
         const { data, error } = await supabase
           .from('soa')
-          .select('owner_payment_method, owner_reference_number, tenant_payment_method, tenant_reference_number')
+          .select('owner_payment_method, owner_reference_number, owner_status, tenant_payment_method, tenant_reference_number, tenant_status')
           .eq('unit_id', selectedUnit.id)
           .single();
         
         if (data && !error) {
           const method = paymentModalParty === 'owner' ? data.owner_payment_method : data.tenant_payment_method;
           const ref = paymentModalParty === 'owner' ? data.owner_reference_number : data.tenant_reference_number;
+          const status = paymentModalParty === 'owner' ? data.owner_status : data.tenant_status;
           
           if (method) {
             setFetchedPayment({
               payment_method: method,
               reference_number: ref,
+              status: status, // ✨ Inject the real-time status here to act as a guard
             });
           } else {
             setFetchedPayment(null);
@@ -170,9 +222,10 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
       setAllUnits(sortedData);
       
-      if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      // Auto-select unit unless an actionIntent is routing us somewhere specific
+      if (typeof window !== 'undefined' && window.innerWidth >= 768 && !actionIntent) {
         setSelectedUnit(sortedData[0]); 
-      } else {
+      } else if (!actionIntent) {
         setSelectedUnit(null);
       }
       
@@ -777,6 +830,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
     URL.revokeObjectURL(url);
   };
 
+  // ✨ CONFIRM PAYMENT HANDLER (UPDATED TO DELETE NOTIFICATION IF EXISTS)
   const handleConfirmPayment = async () => {
     if (!paymentModalParty || !selectedUnit) return;
     setIsSimulating(true);
@@ -798,6 +852,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         .eq('unit_id', selectedUnit.id);
         
       if (error) throw error;
+
+      // ✨ NEW: Cleanup the specific notification that triggered this modal so it doesn't show up again.
+      if (sourceNotificationId) {
+        await supabase
+          .from('notifications')
+          .update({ is_hidden: true, is_read: true })
+          .eq('id', sourceNotificationId);
+      }
 
       const { data: members } = await supabase
         .from('team_members')
@@ -838,6 +900,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
       setPaymentModalParty(null);
       setIsPaymentModalOpen(false); 
       setFetchedPayment(null);
+      setSourceNotificationId(null);
     }
   };
 
@@ -895,7 +958,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 <div className="p-2 bg-white rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                   <CreditCard className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
                 </div>
-                <span className="truncate">Billing &amp; Payments</span>
+                <span className="truncate">Billing &amp; Finance</span>
               </h2>
               <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-2 flex-wrap truncate">
                 SOA, Collection &amp; Owner Remittance
@@ -958,7 +1021,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
               </div>
               <div className="p-4 sm:p-6 flex-1 space-y-4 sm:space-y-6">
                 
-                {/* ✨ FIXED: Detailed Skeleton for Dual Statement Cards */}
+                {/* ✨ Detailed Skeleton for Dual Statement Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl bg-white overflow-hidden">
                   {/* Owner Column Skeleton */}
                   <div className="p-4 sm:p-6 md:p-7 flex flex-col h-[280px]">
@@ -1019,7 +1082,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         ) : (
           <>
             {/* ✨ SIDEBAR (Takes 100% width up to 1450px) */}
-            <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden transition-all ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
+            <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white border border-[var(--color-border)] rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden transition-all ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center z-10 shadow-sm">
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-[var(--color-text)] text-xs sm:text-[13px] md:text-sm uppercase tracking-wider">Property Units</h3>
@@ -1144,7 +1207,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   </div>
 
                   {/* DUAL STATEMENT CARDS (Side-by-side on md: / 768px+) */}
-                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-slate-200' : ''}`}>
+                  <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-[var(--color-border)]' : ''}`}>
                     
                     {/* OWNER STATEMENT COLUMN */}
                     <div className="p-4 sm:p-6 md:p-7 relative flex flex-col">
@@ -1186,7 +1249,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                        </div>
                        
                        <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-bl-[1.5rem] tabular-nums">
-                           <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Owner Subtotal:</span>
+                           <span className="text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest shrink-0">Owner Subtotal:</span>
                            <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                              {isAssigned ? `₱${ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                            </span>
@@ -1233,8 +1296,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                               )}
                            </div>
 
-                           <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
-                               <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
+                           <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
+                               <span className="text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
                                <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                                  {isAssigned ? `₱${tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                                </span>
@@ -1810,7 +1873,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <div className="p-4 sm:p-5 md:p-6 relative bg-white flex flex-col border-t md:border-t-0 border-slate-100">
                     <div className="mb-4 sm:mb-5 pb-3 border-b border-slate-100">
                       <h3 className="font-black text-[var(--color-text)] text-[10px] sm:text-[11px] uppercase tracking-widest truncate">Tenant</h3>
-                      <p className="text-xs sm:text-sm text-[var(--color-text)] truncate mt-1 font-bold">{selectedUnit?.tenant_name}</p>
+                      <p className="text-xs sm:text-sm text-slate-600 truncate mt-1 font-bold">{selectedUnit?.tenant_name}</p>
                     </div>
                     
                     <div className="space-y-3.5 flex-1 tabular-nums">
@@ -1861,7 +1924,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                       )}
                     </div>
                     
-                    <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-6 -mb-4 sm:-mb-6 md:-mb-6 px-4 sm:px-6 md:px-6 py-3.5 sm:py-4 md:rounded-br-2xl">
+                    <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
                       <span className="text-[9px] sm:text-[10px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal</span>
                       <span className="font-black text-[var(--color-text)] text-sm sm:text-base shrink-0">
                         ₱{((soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
@@ -2021,7 +2084,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
-              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate pr-2">Payment Verification</h2>
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-wider truncate pr-2">Payment Verification</h2>
               <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
                 <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
@@ -2042,7 +2105,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   className="w-full bg-white border border-[var(--color-border)] hover:border-emerald-300 hover:bg-emerald-50 text-[var(--color-text)] p-4 sm:p-5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex justify-between items-center group active:scale-95"
                 >
                   <div className="flex flex-col text-left">
-                    <span className="font-bold text-xs sm:text-sm group-hover:text-emerald-700">Owner Payment</span>
+                    <span className="font-bold text-xs sm:text-sm group-hover:text-emerald-700 tracking-wider">Owner Payment</span>
                     <span className="text-xs text-slate-500 mt-0.5">Amount Due: ₱{ownerTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
                   <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-emerald-500" size={20} />
@@ -2075,7 +2138,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
-              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] capitalize tracking-tight truncate pr-2">{paymentModalParty} Payment</h2>
+              <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] capitalize tracking-wider truncate pr-2">{paymentModalParty} Payment</h2>
               <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
@@ -2088,7 +2151,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 
               <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[var(--color-border)] mb-6 sm:mb-8 shadow-sm">
                 <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-[var(--color-border)] gap-3">
-                  <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Amount Due</span>
+                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Amount Due</span>
                   <span className="font-black text-[var(--color-text)] text-xl sm:text-2xl tracking-tight shrink-0">
                     ₱{(paymentModalParty === 'owner' ? ownerTotalDue : tenantTotalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </span>
@@ -2102,7 +2165,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                   <div className="space-y-3 sm:space-y-4">
                     <div className="flex justify-between items-center gap-3">
                       <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Method Used</span>
-                      <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                      <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                         {fetchedPayment?.payment_method || 'Unknown'}
                       </span>
                     </div>
@@ -2123,12 +2186,19 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
                 )}
               </div>
 
+              {/* ✨ GUARDED PAYMENT BUTTON */}
               <button 
                 onClick={handleConfirmPayment}
-                disabled={isSimulating || isFetchingPayment || !fetchedPayment}
+                disabled={isSimulating || isFetchingPayment || !fetchedPayment || fetchedPayment?.status === 'Paid'}
                 className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent font-black uppercase tracking-widest py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-95 text-xs sm:text-sm"
               >
-                {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <><CheckCircle size={16} strokeWidth={2.5} className="sm:w-[18px] sm:h-[18px]" /> Mark as Paid</>}
+                {isSimulating ? (
+                  <><Loader2 size={16} className="animate-spin" /> Processing...</>
+                ) : fetchedPayment?.status === 'Paid' ? (
+                  <><CheckCircle size={16} strokeWidth={2.5} className="sm:w-[18px] sm:h-[18px]" /> Payment Already Settled</>
+                ) : (
+                  <><CheckCircle size={16} strokeWidth={2.5} className="sm:w-[18px] sm:h-[18px]" /> Mark as Paid</>
+                )}
               </button>
             </div>
           </div>
@@ -2335,7 +2405,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading }: any) {
 function BillingSkeletonCard() {
   return (
     <div className="bg-white border-slate-200 rounded-[var(--radius-md)] p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-sm border animate-pulse group cursor-pointer h-[72px] shrink-0">
-      <div className="flex-1 min-w-0 space-y-2">
+      <div className="flex-1 min-w-0 pr-1 space-y-2">
         <div className="h-4 bg-slate-200 rounded w-3/4"></div>
         <div className="flex items-center gap-2">
           <div className="h-3 bg-slate-100 rounded w-8"></div>

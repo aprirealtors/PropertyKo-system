@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
+import { usePushNotifications } from "@/utils/usePushNotifications";
 import { 
   Bell, CheckCircle2, ChevronRight, Camera, 
   Wrench, X, AlertTriangle, Briefcase, CheckCheck, Trash2, MapPin, CheckCircle, Home, Receipt, FileText, User, PenTool, LogOut, Inbox, Mail, PauseCircle, MessageSquare, FileCheck, AlertCircle,
@@ -13,9 +13,8 @@ import {
 import ConversationTab from "./conversation"; 
 import FinancialTab from "./financial"; 
 import LeaseTab from "./lease";
-import RepairTab from "./repair"; // ✨ IMPORTED THE REPAIR TAB
+import RepairTab from "./repair"; 
 
-// ✨ ENTERPRISE HELPER: Format Date and Time
 const formatDateTime = (dateString: string) => {
   if (!dateString) return "N/A";
   const date = new Date(dateString);
@@ -25,12 +24,19 @@ const formatDateTime = (dateString: string) => {
 export default function OwnerDashboard() {
   const router = useRouter();
 
-  // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
 
-  // TABS STATE
+  // ✨ FIX: Add this auto-restore block right here!
+  // This forces the UI button to immediately say "Notifications Enabled" upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
+
   const [activeTab, setActiveTab] = useState('home');
-  // ✨ NEW: Collapsible Sidebar State
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userData, setUserData] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
@@ -38,7 +44,6 @@ export default function OwnerDashboard() {
   const [liveTasks, setLiveTasks] = useState<any[]>([]); 
   const [teamMembers, setTeamMembers] = useState<any[]>([]); 
 
-  // BILLING & FINANCIAL STATES
   const [totalDue, setTotalDue] = useState(0);
   const [collectedGross, setCollectedGross] = useState(0);
   const [hasOverdue, setHasOverdue] = useState(false); 
@@ -49,7 +54,6 @@ export default function OwnerDashboard() {
   const [myTickets, setMyTickets] = useState<any[]>([]);
   const [statements, setStatements] = useState<any[]>([]);
 
-  // --- NEW: Edit Name States ---
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
@@ -57,26 +61,24 @@ export default function OwnerDashboard() {
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // NOTIFICATION STATES
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  // NEW: Delete Notification Modal States
   const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
 
-  // UNREAD MESSAGES STATE
   const [unreadMessages, setUnreadMessages] = useState<number>(0);
 
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  const intentTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
+
   const [rejectedTicketModalData, setRejectedTicketModalData] = useState<any | null>(null);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [orgLogo, setOrgLogo] = useState<string | null>(null);
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -84,7 +86,6 @@ export default function OwnerDashboard() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
 
-  // --- Eye Toggle States ---
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -176,9 +177,6 @@ export default function OwnerDashboard() {
 
                   const unitArea = getUnitAreaValue(unit.unit_area);
 
-                  // ==========================================
-                  // UNIT-SPECIFIC BILLING CALCULATION FALLBACK
-                  // ==========================================
                   const activeDuesRate = unit.dues_rate ?? orgData?.dues_rate ?? 0;
                   const activeParking = unit.parking ?? orgData?.default_parking ?? 0;
                   const activeWater = unit.water ?? orgData?.default_water ?? 0;
@@ -452,14 +450,34 @@ export default function OwnerDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // --- Handle Name Update Function (using Auth user_metadata) ---
+  // ✨ UPDATED: INSTANT SNAP FOR DEEP LINKING
+  const handleTabChange = (tabName: string, highlightId: string | null = null) => {
+    setActiveTab(tabName);
+
+    if (intentTimeoutRef.current) clearTimeout(intentTimeoutRef.current);
+    
+    if (highlightId) {
+      if (highlightId.startsWith('select_unit_')) {
+        // ✨ INSTANT ROUTING: Execute immediately for UI snap (No 800ms delay)
+        setHighlightTicketId(highlightId);
+      } else {
+        // Standard modal delay for other intents
+        setHighlightTicketId(null);
+        intentTimeoutRef.current = setTimeout(() => {
+          setHighlightTicketId(highlightId);
+        }, 800);
+      }
+    } else {
+      setHighlightTicketId(null);
+    }
+  };
+
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
       return;
     }
 
-    // Only open the modal if the name actually changed
     const currentFullName = userData?.name || "Owner";
     if (editedName.trim() === currentFullName) {
       setIsEditingName(false);
@@ -474,15 +492,13 @@ export default function OwnerDashboard() {
     setIsSavingName(true);
     try {
       const newName = editedName.trim();
-      const oldName = userData?.name; // Original name mapped directly from DB
+      const oldName = userData?.name; 
 
-      // 1. Update name directly in Supabase Auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { name: newName }
       });
       if (authError) throw authError;
 
-      // 2. Update name in the team_members table
       const { data, error: dbError } = await supabase
         .from('team_members')
         .update({ name: newName })
@@ -490,12 +506,10 @@ export default function OwnerDashboard() {
         .select();
       if (dbError) throw dbError;
 
-      // 3. Catch Silent RLS Failures
       if (!data || data.length === 0) {
         throw new Error("Update blocked by database permissions (RLS) or email not found.");
       }
 
-      // 4. ✨ NEW: Update the owner_name in the units table to maintain the link
       if (oldName) {
         const { error: unitError } = await supabase
           .from('units')
@@ -507,7 +521,6 @@ export default function OwnerDashboard() {
 
       setUserData((prev: any) => ({ ...prev, name: newName }));
 
-      // ✨ NEW: Update local units list so the UI reflects correctly
       setMyUnitsList((prev: any[]) => 
         prev.map(unit => ({
             ...unit,
@@ -525,7 +538,6 @@ export default function OwnerDashboard() {
     }
   }; 
 
-  // --- Handle Password Change ---
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -597,35 +609,28 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_hidden: true }).eq('recipient', userEmail);
   };
 
-  // --- NEW: Initiate Single Delete Modal ---
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
-    e.stopPropagation(); // Prevents clicking the background notification body
+    e.stopPropagation(); 
     setNotificationToDelete(notif);
     setIsDeleteNotifModalOpen(true);
   };
 
-  // --- NEW: Actual Function Called by the Delete Modal ---
   const confirmDeleteNotification = async () => {
     if (!userEmail || !notificationToDelete) return;
 
-    // 1. Update local state immediately for snappy UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    // 2. Adjust unread count if the deleted notification was unread
     if (!notificationToDelete.is_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. Update database
     await supabase
       .from('notifications')
       .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
-    // Clear the tracked notification
     setNotificationToDelete(null);
   };
 
@@ -638,8 +643,9 @@ export default function OwnerDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
+    const title = String(notif.title).toUpperCase();
 
-    if ((type === 'TICKET' || type === 'MAINTENANCE') && String(notif.title).toLowerCase().includes('rejected')) {
+    if ((type === 'TICKET' || type === 'MAINTENANCE') && title.includes('REJECTED')) {
       if (notif.reference_id) {
         const { data: ticketData } = await supabase.from('tickets').select('*').eq('id', notif.reference_id).single();
         if (ticketData) {
@@ -650,16 +656,15 @@ export default function OwnerDashboard() {
     }
 
     if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
-      setActiveTab("financials"); 
+      const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("financials", intent); 
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
-      if (notif.reference_id) {
-        setHighlightTicketId(`${notif.reference_id}_${Date.now()}`); 
-      }
-      setActiveTab("repair");
+      const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("repair", intent);
     } else if (type === 'MESSAGE' || type === 'CHAT') {
       handleConversationClick();
     } else {
-      setActiveTab("home");
+      handleTabChange("home");
     }
   };
 
@@ -1167,7 +1172,7 @@ export default function OwnerDashboard() {
              {/* TAB 5: FINANCIALS */}
              {activeTab === 'financials' && (
                <div className="flex flex-col w-full h-auto pb-10 md:pb-4 max-w-6xl mx-auto animate-in fade-in duration-300">
-                 <FinancialTab userData={userData} units={myUnitsList} />
+                 <FinancialTab userData={userData} units={myUnitsList} actionIntent={highlightTicketId} />
                </div>
              )}
 
@@ -1187,7 +1192,7 @@ export default function OwnerDashboard() {
             label="Chat" 
             badgeCount={unreadMessages}
           />
-          <MobileNavItem active={activeTab === 'financials' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={20} strokeWidth={2.5} />} label="Billing" />
+          <MobileNavItem active={activeTab === 'financials' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('financials'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<Receipt size={20} strokeWidth={2.5} />} label="Financials" />
           <MobileNavItem active={activeTab === 'leases' && !isWorkspaceModalOpen} onClick={() => {setActiveTab('leases'); setHighlightTicketId(null); setIsWorkspaceModalOpen(false);}} icon={<FileText size={20} strokeWidth={2.5} />} label="Leases" />
           <MobileNavItem 
             active={isWorkspaceModalOpen} 
@@ -1296,7 +1301,7 @@ export default function OwnerDashboard() {
             </div>
 
             <div className="overflow-y-auto p-5 sm:p-6 space-y-5 sm:space-y-6 custom-scrollbar pb-8 sm:pb-6">
-              <div className="bg-[var(--color-secondary)] rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
+              <div className="bg-[var(--color-secondary)] rounded-[1.5rem] sm:rounded-[var(--radius-xl)] p-5 sm:p-6 text-white flex flex-col items-center text-center gap-3 relative overflow-hidden shadow-lg shrink-0">
                 <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
 
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/10 flex items-center justify-center font-black text-2xl sm:text-3xl border-2 border-[var(--color-primary)] uppercase shadow-inner z-10" style={{backgroundColor: "var(--color-primary)", color: "var(--color-primary-text)"}}>
@@ -1571,9 +1576,9 @@ export default function OwnerDashboard() {
       {/* 🌟 PREMIUM CONFIRM NAME CHANGE MODAL */}
       {isConfirmNameModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
 
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
 
@@ -1604,9 +1609,9 @@ export default function OwnerDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80  backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Logout</h2>

@@ -1,11 +1,31 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { usePushNotifications } from "@/utils/usePushNotifications";
 
 export default function GlobalPushListener({ userEmail, role }: { userEmail: string, role: string }) {
-  const { token } = usePushNotifications();
+  const { token, requestPermission } = usePushNotifications();
+  
+  // ✨ FIX: Create a ref to hold our preloaded audio
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // ✨ FIX: Preload the audio once when the component mounts
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const audio = new Audio('/notification.wav');
+      audio.preload = "auto"; // Tells the browser to download it immediately
+      audioRef.current = audio;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -13,16 +33,29 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
     const normalizedRole = (role || "").toLowerCase().trim();
     const normalizedEmail = (userEmail || "").toLowerCase().trim();
 
-    // ✨ MOBILE FIX: Helper function to route notifications through the Service Worker
+    // ✨ FIX: Use the preloaded audio reference
+    const playNotificationSound = () => {
+      try {
+        if (audioRef.current) {
+          // Reset the time to 0 so it can play immediately even if triggered twice quickly
+          audioRef.current.currentTime = 0; 
+          audioRef.current.play().catch((err) => console.log("Audio blocked by browser autoplay policy:", err));
+        }
+      } catch (error) {
+        console.error("Error playing sound:", error);
+      }
+    };
+
     const triggerNotification = async (title: string, options: any) => {
       if (typeof window !== "undefined" && Notification.permission === "granted") {
+        
+        playNotificationSound();
+
         try {
           if ('serviceWorker' in navigator) {
-            // Mobile browsers require this to show the popup
             const registration = await navigator.serviceWorker.ready;
             await registration.showNotification(title, options);
           } else {
-            // Fallback for older desktop browsers
             new Notification(title, options);
           }
         } catch (error) {
@@ -48,11 +81,11 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
           if (isForMe) {
             const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
             
-            // ✨ Use the new mobile-friendly trigger
             triggerNotification(payload.new.title || "PropertyKo Update", {
               body: cleanMessage,
-              icon: "/icon-192.png", // Keeps your full colored logo on the right side
-              badge: "/badge.png",   // ✨ FIX: Points to the transparent silhouette for the left side
+              icon: "/icon-192.png", 
+              badge: "/badge.png",   
+              vibrate: [200, 100, 200], 
             });
           }
         }
@@ -77,7 +110,6 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
 
           if (isChatForMe && senderEmail !== normalizedEmail) {
             
-            // DYNAMIC SENDER NAME LOGIC
             let displayName = msg.sender_email; 
             
             try {
@@ -113,11 +145,11 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
               console.error("Could not fetch sender name for notification", error);
             }
 
-            // ✨ Use the new mobile-friendly trigger
             triggerNotification("New Message", {
               body: `${displayName}: ${msg.content ? msg.content.substring(0, 60) : "Sent a message"}`,
-              icon: "/icon-192.png", // Keeps your full colored logo on the right side
-              badge: "/badge.png"    // ✨ FIX: Points to the transparent silhouette for the left side
+              icon: "/icon-192.png", 
+              badge: "/badge.png",
+              vibrate: [200, 100, 200], 
             });
           }
         }

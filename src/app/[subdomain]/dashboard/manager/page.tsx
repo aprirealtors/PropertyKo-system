@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
@@ -27,6 +27,16 @@ export default function ManagerDashboard() {
   
   // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
+
+  // ✨ FIX: Add this auto-restore block right here!
+  // This forces the UI button to immediately say "Notifications Enabled" upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
 
   // Navigation & Modal States
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -71,6 +81,7 @@ export default function ManagerDashboard() {
 
   // TICKETS & MAINTENANCE HIGHLIGHT STATE
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
+  const intentTimeoutRef = useRef<NodeJS.Timeout | null>(null); // ✨ Added for deep linking
 
   // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -314,13 +325,26 @@ export default function ManagerDashboard() {
     router.push("/login");
   };
 
+  // ✨ GLOBAL TAB CHANGE LOGIC WITH DELAYED INTENT RENDERING
   const handleTabChange = (tabName: string, highlightId: string | null = null) => {
     setActiveTab(tabName);
     setIsMobileMenuOpen(false); 
+
+    // 1-CLICK 1-APPEAR: Clear any existing timeouts to prevent rapid-fire bugs
+    if (intentTimeoutRef.current) {
+      clearTimeout(intentTimeoutRef.current);
+    }
+
+    // Reset intent first. This forcibly closes any open modals in child tabs.
+    setHighlightTicketId(null);
+
     if (highlightId) {
-      setHighlightTicketId(highlightId);
-    } else if (tabName !== "Tickets" && tabName !== "Maintenance") {
-      setHighlightTicketId(null);
+      // SKELETON FIRST LOGIC: Wait 800ms before passing the intent down.
+      // This allows the child tab to mount and show its skeleton loading state
+      // BEFORE the modal pops up, making the UX perfectly smooth.
+      intentTimeoutRef.current = setTimeout(() => {
+        setHighlightTicketId(highlightId);
+      }, 800);
     }
   };
 
@@ -545,6 +569,7 @@ export default function ManagerDashboard() {
     setNotificationToDelete(null);
   };
 
+  // ✨ SMART ACTION-DRIVEN NOTIFICATION CLICK HANDLER
   const handleNotificationClick = async (notif: any) => {
     if (!notif.is_read) {
       setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
@@ -554,11 +579,30 @@ export default function ManagerDashboard() {
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
-    if (type === 'BILLING' || type === 'SOA') handleTabChange("Billing");
+    const title = notif.title?.toUpperCase() || '';
+
+    // ✨ SPECIFIC INTENT ROUTING FOR OWNER PAYMENTS
+    if (type === 'PAYMENT_OWNER') {
+      const intent = notif.reference_id ? `verify_payment_owner_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
+    }
+    // ✨ SPECIFIC INTENT ROUTING FOR TENANT PAYMENTS
+    else if (type === 'PAYMENT_TENANT') {
+      const intent = notif.reference_id ? `verify_payment_tenant_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
+    }
+    // Fallback for older billing notifications
+    else if (type === 'BILLING' || type === 'SOA' || title.includes('PAYMENT VERIFICATION')) {
+      const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Billing", intent);
+    } 
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
-      if (notif.reference_id) setHighlightTicketId(`${notif.reference_id}_${Date.now()}`);
-      handleTabChange("Maintenance"); 
-    } else handleTabChange("Dashboard");
+      const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
+      handleTabChange("Maintenance", intent); 
+    } 
+    else {
+      handleTabChange("Dashboard");
+    }
   };
 
   const formatColumnName = (key: string) => {
@@ -790,7 +834,7 @@ export default function ManagerDashboard() {
             <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} collapsed={isSidebarCollapsed} />
 
             <NavSectionLabel collapsed={isSidebarCollapsed}>Finance</NavSectionLabel>
-            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Payments" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />
+            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Finance" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />
             <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI Reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} collapsed={isSidebarCollapsed} />
 
             <div className="pt-3 pb-2">
@@ -835,7 +879,10 @@ export default function ManagerDashboard() {
             {activeTab === "Leasing" && <LeasingAndTenantsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Messages" && <ConversationTab orgData={orgData} managerProfile={managerProfile} />}
             {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
-            {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} />}
+            
+            {/* ✨ ADDED actionIntent to pass the parsed command from handleNotificationClick */}
+            {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} actionIntent={highlightTicketId} />}
+            
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Users" && <UsersTab orgData={orgData} isLoading={isLoading} />}
           </div>
@@ -1038,7 +1085,7 @@ export default function ManagerDashboard() {
                         minLength={6}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-sm)]" 
+                        className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                         disabled={isSubmittingPassword} 
                       />
                       <button 
@@ -1060,7 +1107,7 @@ export default function ManagerDashboard() {
                         minLength={6}
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
-                        className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-sm)]" 
+                        className="w-full px-4 pr-11 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-slate-50 focus:bg-white hover:border-[var(--color-primary)]/40 transition-all shadow-sm" 
                         disabled={isSubmittingPassword} 
                       />
                       <button 
@@ -1088,7 +1135,7 @@ export default function ManagerDashboard() {
                       }}
                       disabled={isSubmittingPassword}
                       className="flex-1 py-3 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-50 hover:bg-slate-100 hover:text-slate-700 transition-all text-xs border border-[var(--color-border)] active:scale-[0.98] shadow-sm"
-                      >
+                    >
                       Cancel
                     </button>
                     <button 
@@ -1237,7 +1284,7 @@ export default function ManagerDashboard() {
       {isConfirmNameModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            
+
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
@@ -1361,13 +1408,9 @@ export default function ManagerDashboard() {
           }`}
         >
           {toast.type === "success" ? (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="text-[var(--color-primary)] w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 border border-[var(--color-primary)]/20"><CheckCircle2 className="text-[var(--color-primary)] w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} /></div>
           ) : (
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="text-red-500 w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
-            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 border border-red-100"><AlertTriangle className="text-red-500 w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} /></div>
           )}
           <span className="truncate flex-1">{toast.message}</span>
         </div>
