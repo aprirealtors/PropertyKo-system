@@ -198,11 +198,12 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
         [...(adminMsgs || []), ...(sentMsgs || []), ...(superAdminMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
         setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
 
+        // ✨ FETCH UPDATED TO INCLUDE ASSISTANT AND HANDLE VARIANTS
         const { data: usersData } = await supabase
           .from('team_members')
           .select('name, email, role, access_level')
           .eq('admin_email', orgData.admin_email)
-          .in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager']); 
+          .in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager', 'Assistant', 'assistant', 'property_manager']); 
 
         const contactsMap = new Map();
 
@@ -217,13 +218,34 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
               let type = user.role ? user.role.toLowerCase() : 'tenant';
               let unitLabel = user.access_level || 'No assignments';
 
-              if (user.role === 'Owner') { icon = Key; type = 'owner'; }
-              if (user.role === 'Property manager') { icon = Briefcase; type = 'manager'; unitLabel = 'Maintenance & Daily Operations'; }
-              if (user.role === 'Maintenance staff') { icon = Wrench; type = 'maintenance'; unitLabel = 'Repairs & Operations'; }
-              if (user.role === 'Tenant') { type = 'tenant'; }
+              if (type === 'owner') { icon = Key; type = 'owner'; }
+              else if (type === 'property manager' || type === 'property_manager') { 
+                icon = Briefcase; 
+                type = 'manager'; 
+                unitLabel = 'Maintenance & Daily Operations'; 
+              }
+              // ✨ ASSISTANT SUPPORT
+              else if (type === 'assistant') { 
+                icon = Briefcase; 
+                type = 'assistant'; 
+                unitLabel = 'Assistant Operations'; 
+              }
+              // ✨ GRANULAR MAINTENANCE SUPPORT (Engineer, Technician, Housekeeping)
+              else if (type === 'maintenance staff' || type === 'maintenance') { 
+                icon = Wrench; 
+                type = 'maintenance'; 
+                // Display their specific designation from access_level in the UI
+                unitLabel = user.access_level || 'Repairs & Operations'; 
+              }
+              else if (type === 'tenant') { type = 'tenant'; }
 
               contactsMap.set(user.email, { 
-                id: user.email, name: user.name || user.email, unit: unitLabel, type: type, icon: icon
+                id: user.email, 
+                name: user.name || user.email, 
+                unit: unitLabel, 
+                type: type, 
+                icon: icon,
+                accessLevel: user.access_level // Saved for the badge logic
               });
             }
           });
@@ -398,7 +420,7 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
       recipient_role: isToSuperAdmin ? 'superadmin' : (activeContact.type === 'tenant' ? 'admin' : activeContact.type), 
       is_read: false,
       is_pinned: false,
-      is_deleted: false // ✨ NEW Soft Delete Field
+      is_deleted: false
     };
 
     const tempId = `temp_${Date.now()}`;
@@ -505,12 +527,17 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
     ? [] 
     : roleMessages.filter(msg => !msg.is_deleted && msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  const renderRoleBadge = (roleId: string | undefined) => {
+  // ✨ UPDATED: Role Badge dynamically displays Assistant and Specific Maintenance Roles
+  const renderRoleBadge = (roleId: string | undefined, accessLevel?: string) => {
     if (roleId === 'superadmin') return <span className="shrink-0 text-[9px] text-[#359b46] px-1.5 py-0.5 rounded border border-[#359b46]/30 uppercase font-bold tracking-wider bg-[#359b46]/10">Platform Support</span>;
     if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
     if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
+    if (roleId === 'assistant') return <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 uppercase font-bold tracking-wider bg-sky-100">Assistant</span>;
     if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">Maintenance</span>;
+    if (roleId === 'maintenance') {
+      const displayRole = accessLevel && accessLevel !== "None" ? accessLevel : 'Maintenance';
+      return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">{displayRole}</span>;
+    }
     if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
     return null;
   };
@@ -700,7 +727,8 @@ export default function ConversationTab({ orgData, adminProfile }: { orgData: an
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
-                    {renderRoleBadge(activeContactDetails?.type)}
+                    {/* ✨ PASS THE ACCESS LEVEL HERE */}
+                    {renderRoleBadge(activeContactDetails?.type, activeContactDetails?.accessLevel)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
                     {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}

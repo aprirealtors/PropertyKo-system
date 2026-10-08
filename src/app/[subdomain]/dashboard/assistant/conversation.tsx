@@ -1,94 +1,32 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import {
-  Send,
-  User,
-  Clock,
-  Shield,
-  Briefcase,
-  Key,
-  Info,
-  ChevronLeft,
-  MessageSquare,
-  Search,
-  X,
-  Edit,
-  Check,
-  CheckCheck,
-  Pin,
-  PinOff,
-  CornerUpLeft,
-  Copy,
-  ChevronDown,
-  Trash2
-} from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Send, User, Clock, ChevronLeft, MessageSquare, Search, 
+  X, Briefcase, Wrench, Key, Edit, Check, Shield, CheckCheck,
+  Pin, PinOff, CornerUpLeft, Copy, ChevronDown, Trash2
+} from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
-import { usePresence } from "@/components/GlobalPresence";
+import { usePresence } from '@/components/GlobalPresence';
 
-const CHAT_ROLES = [
-  {
-    id: "admin",
-    label: "Admin",
-    desc: "System & Account Support",
-    icon: Shield,
-  },
-  {
-    id: "manager",
-    label: "Property Manager",
-    desc: "Maintenance & Daily Operations",
-    icon: Briefcase,
-  },
-  // ✨ ADDED ASSISTANT
-  {
-    id: "assistant",
-    label: "Assistant",
-    desc: "Assistant Operations",
-    icon: Briefcase,
-  },
-  {
-    id: "owner",
-    label: "Unit Owner",
-    desc: "Lease & Payment Inquiries",
-    icon: Key,
-  },
-];
-
-export default function ConversationTab({
-  userData,
-  unit,
-}: {
-  userData: any;
-  unit: any;
-}) {
+export default function ConversationTab({ orgData, assistantProfile }: { orgData: any, assistantProfile: any }) {
   const [messages, setMessages] = useState<any[]>([]);
-  const [activeChat, setActiveChat] = useState<string>("");
+  const [activeChat, setActiveChat] = useState<string>(''); 
   const [newMessage, setNewMessage] = useState("");
-  // Save drafts per chat
   const [messageDrafts, setMessageDrafts] = useState<Record<string, string>>({});
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-
-  const [isEditingNames, setIsEditingNames] = useState(false);
-  const [customNames, setCustomNames] = useState<Record<string, string>>({
-    admin: "Admin",
-    manager: "Property Manager",
-    assistant: "Assistant", // ✨ ADDED DEFAULT NAME
-    owner: "Unit Owner",
-  });
-
-  const [roleEmails, setRoleEmails] = useState<Record<string, string>>({
-    admin: "",
-    manager: "",
-    assistant: "", // ✨ ADDED ASSISTANT
-    owner: "",
-  });
-  const [isContactsLoading, setIsContactsLoading] = useState(true);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
+  const [isEditingNames, setIsEditingNames] = useState(false);
+  const [customNames, setCustomNames] = useState<Record<string, string>>({});
 
+  const [contactSearch, setContactSearch] = useState(""); 
+  const [chatSearchQuery, setChatSearchQuery] = useState("");
+  const [isSearchActive, setIsSearchActive] = useState(false); 
+  
   // Pinned Message Accordion & Highlighting States
   const [isPinnedExpanded, setIsPinnedExpanded] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
@@ -105,7 +43,6 @@ export default function ConversationTab({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
-  const activeChatRef = useRef(activeChat);
   const channelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -119,23 +56,20 @@ export default function ConversationTab({
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    // Show button if scrolled up more than 100px from the bottom
     setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 100);
   };
 
   const scrollToMessage = (msgId: string) => {
-    // Automatically hide the pinned messages list when a pin is clicked
     setIsPinnedExpanded(false); 
     
     const element = document.getElementById(`msg-${msgId}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setHighlightedMsgId(msgId);
-      setTimeout(() => setHighlightedMsgId(null), 3000); // Remove highlight after 3 seconds
+      setTimeout(() => setHighlightedMsgId(null), 3000); 
     }
   };
 
-  // Helper for dynamic message date/time display
   const formatMessageTime = (dateString: string) => {
     const date = new Date(dateString);
     const today = new Date();
@@ -152,13 +86,11 @@ export default function ConversationTab({
     }
   };
 
-  // Helper for Messenger-style sidebar time display
   const formatSidebarTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     const now = new Date();
 
-    // Set to midnight to calculate day differences accurately
     const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
@@ -166,121 +98,33 @@ export default function ConversationTab({
     const diffDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / msInDay);
 
     if (diffDays === 0) {
-      // Today: Show Time
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffDays > 0 && diffDays < 7) {
-      // Within a week: Show Mon, Tue, Wed, etc.
       return date.toLocaleDateString([], { weekday: 'short' });
     } else {
-      // More than a week: Show Date (e.g. Oct 12)
       return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
 
   useEffect(() => {
-    if (activeChat && !isLoading && !isSearchActive && !isSending) {
-      setTimeout(() => {
-        if (window.innerWidth > 768) {
-          inputRef.current?.focus();
+    if (assistantProfile?.email) {
+      const storedNames = localStorage.getItem(`custom_chat_names_${assistantProfile.email}`);
+      if (storedNames) {
+        try {
+          setCustomNames(JSON.parse(storedNames));
+        } catch (e) {
+          console.error("Error parsing stored aliases", e);
         }
-      }, 50);
+      }
     }
-  }, [activeChat, isLoading, isSearchActive, isSending]);
+  }, [assistantProfile?.email]);
 
   useEffect(() => {
-    const fetchActualNames = async () => {
-      setIsContactsLoading(true);
-      if (!userData?.admin_email) {
-        setIsContactsLoading(false);
-        return;
-      }
+    if (assistantProfile?.email && Object.keys(customNames).length > 0) {
+      localStorage.setItem(`custom_chat_names_${assistantProfile.email}`, JSON.stringify(customNames));
+    }
+  }, [customNames, assistantProfile?.email]);
 
-      const fetchedNames = {
-        admin: "Admin",
-        manager: "Property Manager",
-        assistant: "Assistant", // ✨ ADDED
-        owner:
-          unit?.owner_name && unit.owner_name.trim() !== ""
-            ? unit.owner_name
-            : "Unit Owner",
-      };
-      
-      const fetchedEmails = {
-        admin: userData.admin_email,
-        manager: "",
-        assistant: "", // ✨ ADDED
-        owner: "",
-      };
-
-      try {
-        const { data: adminData } = await supabase
-          .from("team_members")
-          .select("name")
-          .eq("email", userData.admin_email)
-          .single();
-        if (adminData?.name) fetchedNames.admin = adminData.name;
-
-        const { data: managerData } = await supabase
-          .from("team_members")
-          .select("name, email")
-          .eq("admin_email", userData.admin_email)
-          .ilike("role", "%manager%")
-          .limit(1)
-          .maybeSingle();
-        if (managerData) {
-          if (managerData.name) fetchedNames.manager = managerData.name;
-          if (managerData.email) fetchedEmails.manager = managerData.email;
-        }
-
-        // ✨ FETCH ASSISTANT
-        const { data: assistantData } = await supabase
-          .from("team_members")
-          .select("name, email")
-          .eq("admin_email", userData.admin_email)
-          .ilike("role", "%assistant%")
-          .limit(1)
-          .maybeSingle();
-        if (assistantData) {
-          if (assistantData.name) fetchedNames.assistant = assistantData.name;
-          if (assistantData.email) fetchedEmails.assistant = assistantData.email;
-        }
-
-        if (unit?.owner_name) {
-          const { data: ownerData } = await supabase
-            .from("team_members")
-            .select("email")
-            .eq("role", "Owner")
-            .eq("admin_email", userData.admin_email)
-            .ilike("name", `%${unit.owner_name}%`)
-            .maybeSingle();
-          if (ownerData?.email) {
-            fetchedEmails.owner = ownerData.email;
-          }
-        }
-
-        setRoleEmails(fetchedEmails);
-
-        const storedNamesStr = localStorage.getItem(
-          `custom_chat_names_${userData.email}`,
-        );
-        let localOverrides = {};
-        if (storedNamesStr) {
-          try {
-            localOverrides = JSON.parse(storedNamesStr);
-          } catch (e) {}
-        }
-        setCustomNames({ ...fetchedNames, ...localOverrides });
-      } catch (error) {
-        console.error("Error fetching actual names:", error);
-      } finally {
-        setIsContactsLoading(false);
-      }
-    };
-
-    fetchActualNames();
-  }, [userData, unit]);
-
-  // Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
     setChatSearchQuery("");
@@ -295,124 +139,163 @@ export default function ConversationTab({
   }, [activeChat]);
 
   useEffect(() => {
-    if (userData?.email) fetchMessages();
-  }, [userData]);
-
-  // Decoupled scroll so highlighted pins stay in view without jumping to bottom
-  useEffect(() => {
     if (!isSearchActive && !highlightedMsgId) scrollToBottom();
-  }, [messages.length, activeChat, isSearchActive]); 
+  }, [messages.length, activeChat, isSearchActive]);
 
-  const isMessageForRole = (msg: any, roleId: string) => {
-    return (msg.recipient_role || "admin") === roleId;
+  const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
+    if (contactType === 'admin') {
+      return msg.tenant_email === assistantProfile.email && (msg.recipient_role === 'admin' || msg.sender_email === orgData.admin_email);
+    } else if (contactType === 'maintenance' || contactType === 'manager') {
+      return msg.tenant_email === contactId && (msg.recipient_role === 'assistant' || msg.recipient_role === contactType);
+    } else {
+      return msg.tenant_email === contactId && msg.recipient_role === 'assistant';
+    }
   };
 
   useEffect(() => {
     const markAsRead = async () => {
-      if (!activeChat || !userData?.email || messages.length === 0) return;
+      const activeContact = contacts.find(c => c.id === activeChat);
+      if (!activeContact || !orgData?.admin_email || messages.length === 0) return;
 
       const unreadIds = messages
-        .filter(
-          (m) =>
-            !m.is_read &&
-            m.sender_email !== userData.email &&
-            isMessageForRole(m, activeChat),
-        )
-        .map((m) => m.id);
+        .filter(m => !m.is_read && m.sender_email !== assistantProfile.email && isMessageForContact(m, activeContact.id, activeContact.type))
+        .map(m => m.id);
 
       if (unreadIds.length === 0) return;
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          unreadIds.includes(m.id) ? { ...m, is_read: true } : m,
-        ),
-      );
+      setMessages(prev => prev.map(m => unreadIds.includes(m.id) ? { ...m, is_read: true } : m));
 
       try {
-        await supabase
-          .from("messages")
-          .update({ is_read: true })
-          .in("id", unreadIds);
+        await supabase.from('messages').update({ is_read: true }).in('id', unreadIds);
       } catch (err) {
         console.error("Could not update read status:", err);
       }
     };
     markAsRead();
-  }, [activeChat, messages, userData?.email]);
+  }, [activeChat, messages, orgData?.admin_email, assistantProfile?.email, contacts]);
 
   useEffect(() => {
-    if (!userData?.email || !userData?.admin_email) return;
+    const fetchChatData = async () => {
+      setIsLoading(true);
+      try {
+        const { data: tenantMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('recipient_role', 'assistant');
+        // ✨ UPDATED: Now queries for 'manager' messages too
+        const { data: sysMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).or(`tenant_email.eq.${assistantProfile.email},sender_email.eq.${assistantProfile.email}`).in('recipient_role', ['admin', 'maintenance', 'manager']);
 
-    // Use shared channel network for cross-role typing indicators
-    const channel = supabase.channel(`chat-room-${userData.admin_email}`, {
+        const allMsgsMap = new Map();
+        [...(tenantMsgs || []), ...(sysMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
+        setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+
+        // ✨ UPDATED: Fetch 'Property manager' in addition to the others
+        const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Property manager']); 
+
+        const contactsMap = new Map();
+        
+        contactsMap.set(orgData.admin_email, { 
+          id: orgData.admin_email, 
+          name: 'Admin', 
+          unit: 'System & Account Support', 
+          type: 'admin', 
+          icon: Shield 
+        });
+
+        if (usersData) {
+          usersData.forEach(user => {
+            if (user.email && user.email.trim() !== '') { 
+              let unitLabel = user.access_level ? user.access_level : 'No unit assigned';
+              let icon = User;
+              let type = user.role.toLowerCase();
+
+              if (type === 'owner') { icon = Key; type = 'owner'; }
+              else if (type === 'property manager' || type === 'property_manager') { 
+                icon = Briefcase; 
+                type = 'manager'; 
+                unitLabel = 'Maintenance & Daily Operations'; 
+              }
+              // ✨ GRANULAR MAINTENANCE SUPPORT (Engineer, Technician, Housekeeping)
+              else if (type === 'maintenance staff' || type === 'maintenance') { 
+                icon = Wrench; 
+                type = 'maintenance'; 
+                // Display their specific designation from access_level in the UI
+                unitLabel = user.access_level || 'Repairs & Operations'; 
+              }
+              else if (type === 'tenant') { type = 'tenant'; }
+              
+              contactsMap.set(user.email, { 
+                id: user.email, 
+                name: user.name || user.email, 
+                unit: unitLabel,
+                type: type, 
+                icon: icon,
+                accessLevel: user.access_level // Saved for the badge logic
+              });
+            }
+          });
+        }
+
+        setContacts(Array.from(contactsMap.values()));
+
+        const initialNames: Record<string, string> = {};
+        contactsMap.forEach((val, key) => { initialNames[key] = val.name; });
+        setCustomNames(prev => ({ ...initialNames, ...prev }));
+
+      } catch (error) {
+        console.error("Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (orgData?.admin_email && assistantProfile?.email) {
+      fetchChatData();
+    } else {
+      const timer = setTimeout(() => setIsLoading(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [orgData?.admin_email, assistantProfile?.email]);
+
+  useEffect(() => {
+    if (!orgData?.admin_email || !assistantProfile?.email) return;
+
+    const channel = supabase.channel(`chat-room-${orgData.admin_email}`, {
       config: { broadcast: { ack: false, self: false } }
     });
-
+    
     channelRef.current = channel;
 
     channel
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `tenant_email=eq.${userData.email}`,
-        },
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
         (payload) => {
           const msg = payload.new;
-          setMessages((current) => {
-            if (current.some((m) => m.id === msg.id)) return current;
-            return [...current, msg];
-          });
-          // Auto-clear typing indicator when a message is received
-          setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
-        },
+          if (msg.recipient_role === 'assistant' || 
+              (msg.tenant_email === assistantProfile.email && ['admin'].includes(msg.recipient_role)) || 
+              ['maintenance', 'manager'].includes(msg.recipient_role) || // ✨ INCLUDE MANAGER IN LISTENER
+              msg.sender_email === assistantProfile.email) {
+            
+            setMessages((current) => {
+              if (current.some(m => m.id === msg.id)) return current;
+              return [...current, msg];
+            });
+            setRemoteTyping(prev => ({ ...prev, [msg.sender_email]: false }));
+          }
+        }
       )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "messages",
-          filter: `tenant_email=eq.${userData.email}`,
-        },
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` },
         (payload) => {
           const updatedMsg = payload.new;
-          setMessages((current) =>
-            current.map((m) => (m.id === updatedMsg.id ? updatedMsg : m)),
-          );
-        },
+          setMessages((current) => current.map(m => m.id === updatedMsg.id ? updatedMsg : m));
+        }
       )
       .on('broadcast', { event: 'typing' }, (payload) => {
         const { sender, recipient, isTyping } = payload.payload;
-        // Ensure we only listen to typing indicators meant for this exact user
-        if (recipient === userData.email) {
+        if (recipient === assistantProfile.email || recipient === 'assistant') {
           setRemoteTyping(prev => ({ ...prev, [sender]: isTyping }));
         }
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userData]);
-
-  const fetchMessages = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("tenant_email", userData.email)
-        .order("created_at", { ascending: true });
-      if (!error && data) setMessages(data);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return () => { supabase.removeChannel(channel); };
+  }, [orgData?.admin_email, assistantProfile?.email]);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -422,13 +305,11 @@ export default function ConversationTab({
     e.target.style.height = 'auto';
     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
 
-    // Handle typing indicator broadcast
-    const activeRoleEmail = roleEmails[activeChat];
-    if (!isTypingRef.current && channelRef.current && activeChat && activeRoleEmail) {
+    if (!isTypingRef.current && channelRef.current && activeChat) {
       isTypingRef.current = true;
       channelRef.current.send({
         type: 'broadcast', event: 'typing',
-        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: true }
+        payload: { sender: assistantProfile.email, recipient: activeChat, isTyping: true }
       });
     }
 
@@ -436,10 +317,10 @@ export default function ConversationTab({
     
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      if (channelRef.current && activeChat && activeRoleEmail) {
+      if (channelRef.current && activeChat) {
         channelRef.current.send({
           type: 'broadcast', event: 'typing',
-          payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+          payload: { sender: assistantProfile.email, recipient: activeChat, isTyping: false }
         });
       }
     }, 2000);
@@ -447,30 +328,29 @@ export default function ConversationTab({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userData || !activeChat || isSending) return;
+    if (!newMessage.trim() || !orgData || !activeChat || isSending) return;
+
+    const activeContact = contacts.find(c => c.id === activeChat);
+    if (!activeContact) return;
 
     let textToSend = newMessage.trim();
 
-    // Append reply quote if replying to a message
     if (replyingTo) {
       const snippet = replyingTo.content.length > 60 ? replyingTo.content.substring(0, 60) + "..." : replyingTo.content;
-      const roleLabel = CHAT_ROLES.find(r => r.id === activeChat)?.label || 'User';
-      const senderName = replyingTo.sender_email === userData.email ? 'You' : (customNames[activeChat] || roleLabel);
+      const senderName = replyingTo.sender_email === assistantProfile.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User');
       textToSend = `> Replying to ${senderName}:\n> "${snippet}"\n\n${textToSend}`;
     }
 
     setIsSending(true);
-    setNewMessage("");
+    setNewMessage(""); 
     setReplyingTo(null);
-    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); // Clear the draft when sent
+    setMessageDrafts(prev => ({ ...prev, [activeChat]: "" })); 
 
-    // Clear typing status immediately upon sending
     isTypingRef.current = false;
-    const activeRoleEmail = roleEmails[activeChat];
-    if (channelRef.current && activeRoleEmail) {
+    if (channelRef.current) {
       channelRef.current.send({
         type: 'broadcast', event: 'typing',
-        payload: { sender: userData.email, recipient: activeRoleEmail, isTyping: false }
+        payload: { sender: assistantProfile.email, recipient: activeChat, isTyping: false }
       });
     }
 
@@ -482,62 +362,49 @@ export default function ConversationTab({
       scrollToBottom();
     }, 10);
 
+    const authEmail = assistantProfile.email;
+
     const payload = {
-      tenant_email: userData.email,
-      admin_email: userData.admin_email || "",
-      sender_email: userData.email,
+      tenant_email: activeContact.type === 'admin' ? authEmail : activeChat,
+      admin_email: orgData.admin_email,
+      sender_email: authEmail, 
       content: textToSend,
-      is_from_tenant: true,
-      recipient_role: activeChat,
+      is_from_tenant: ['admin', 'maintenance', 'manager'].includes(activeContact.type), 
+      recipient_role: ['admin', 'maintenance', 'manager'].includes(activeContact.type) ? activeContact.type : 'assistant',
       is_read: false,
       is_pinned: false,
-      is_deleted: false // ✨ NEW Soft Delete Field
+      is_deleted: false
     };
 
     const tempId = `temp_${Date.now()}`;
-    const optimisticMessage = {
-      ...payload,
-      id: tempId,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimisticMessage]);
+    const optimisticMessage = { ...payload, id: tempId, created_at: new Date().toISOString() };
+    setMessages(prev => [...prev, optimisticMessage]);
 
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .insert([payload])
-        .select()
-        .single();
+      const { data, error } = await supabase.from('messages').insert([payload]).select().single();
       if (!error && data) {
-        setMessages((prev) => {
-          const realtimeAlreadyAdded = prev.some((m) => m.id === data.id);
-          if (realtimeAlreadyAdded) {
-            return prev.filter((m) => m.id !== tempId);
-          }
-          return prev.map((m) => (m.id === tempId ? data : m));
+        setMessages(prev => {
+          const realtimeAlreadyAdded = prev.some(m => m.id === data.id);
+          if (realtimeAlreadyAdded) return prev.filter(m => m.id !== tempId);
+          return prev.map(m => m.id === tempId ? data : m);
         });
       } else {
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setMessages(prev => prev.filter(m => m.id !== tempId));
         setNewMessage(textToSend);
       }
     } catch (error) {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages(prev => prev.filter(m => m.id !== tempId));
       setNewMessage(textToSend);
     } finally {
       setIsSending(false);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 10);
+      setTimeout(() => inputRef.current?.focus(), 10);
     }
   };
 
   const handleTogglePin = async (msgId: string, currentPinStatus: boolean) => {
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, is_pinned: !currentPinStatus } : m));
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_pinned: !currentPinStatus })
-        .eq('id', msgId);
+      const { error } = await supabase.from('messages').update({ is_pinned: !currentPinStatus }).eq('id', msgId);
       if (error) throw error;
     } catch (err) {
       console.error("Failed to toggle pin status:", err);
@@ -571,68 +438,64 @@ export default function ConversationTab({
     if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current);
   };
 
-  const getLastMessage = (roleId: string) => {
-    const roleMsgs = messages.filter((m) => isMessageForRole(m, roleId) && !m.is_deleted);
+  const getLastMessage = (contactId: string, type: string) => {
+    const roleMsgs = messages.filter(m => isMessageForContact(m, contactId, type) && !m.is_deleted);
     return roleMsgs.length > 0 ? roleMsgs[roleMsgs.length - 1] : null;
   };
 
-  const sortedRoles = [...CHAT_ROLES].sort((a, b) => {
-    const lastA = getLastMessage(a.id)?.created_at || "0";
-    const lastB = getLastMessage(b.id)?.created_at || "0";
+  const sortedContacts = [...contacts].sort((a, b) => {
+    const lastA = getLastMessage(a.id, a.type)?.created_at || '0';
+    const lastB = getLastMessage(b.id, b.type)?.created_at || '0';
+    
+    if (lastA === '0' && lastB === '0') {
+      const isASystem = ['admin', 'maintenance', 'manager'].includes(a.type);
+      const isBSystem = ['admin', 'maintenance', 'manager'].includes(b.type);
+      if (isASystem && !isBSystem) return -1;
+      if (!isASystem && isBSystem) return 1;
+    }
     return new Date(lastB).getTime() - new Date(lastA).getTime();
   });
 
-  const roleMessages = messages.filter((msg) =>
-    isMessageForRole(msg, activeChat),
+  const filteredContacts = contactSearch.trim() === "" ? sortedContacts : sortedContacts.filter(c => 
+    (customNames[c.id] || c.name).toLowerCase().includes(contactSearch.toLowerCase()) || 
+    c.unit.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.type.toLowerCase().includes(contactSearch.toLowerCase())
   );
+
+  const activeContactDetails = contacts.find(c => c.id === activeChat);
+  const ActiveIcon = activeContactDetails?.icon || User;
+  const currentChatName = activeContactDetails ? (customNames[activeContactDetails.id] || activeContactDetails.name) : "User";
   
-  // ✨ Hide deleted messages from pinned section
+  const isActiveContactOnline = activeContactDetails && onlineUsers.includes(activeContactDetails.id);
+  const isRemoteUserTyping = activeChat ? remoteTyping[activeChat] : false;
+
+  const roleMessages = messages.filter(msg => {
+    if (!activeContactDetails) return false;
+    return isMessageForContact(msg, activeContactDetails.id, activeContactDetails.type);
+  });
+  
+  // Hide deleted messages from pinned section
   const pinnedMessages = roleMessages.filter(msg => msg.is_pinned && !msg.is_deleted);
 
-  // Always show all messages in the background; generate search results dynamically for the overlay
   const displayedMessages = roleMessages;
   const searchResults = chatSearchQuery.trim() === "" 
     ? [] 
     : roleMessages.filter(msg => !msg.is_deleted && msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  const activeRoleDetails = CHAT_ROLES.find((r) => r.id === activeChat);
-  const ActiveIcon = activeRoleDetails?.icon || User;
-  const currentChatName = activeChat ? customNames[activeChat] : "";
-  
-  const activeRoleEmail = activeChat ? roleEmails[activeChat] : null;
-  const isActiveRoleOnline = activeRoleEmail ? onlineUsers.includes(activeRoleEmail) : false;
-  const isRemoteUserTyping = activeRoleEmail ? remoteTyping[activeRoleEmail] : false;
-
-  const renderRoleBadge = (roleId: string | undefined) => {
-    if (roleId === "owner")
-      return (
-        <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">
-          Owner
-        </span>
-      );
-    if (roleId === "manager")
-      return (
-        <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">
-          Manager
-        </span>
-      );
-    if (roleId === 'assistant') 
-      return (
-        <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 uppercase font-bold tracking-wider bg-sky-100">
-          Assistant
-        </span>
-      );
-    if (roleId === "admin")
-      return (
-        <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">
-          Admin
-        </span>
-      );
+  // ✨ UPDATED: Role Badge dynamically displays Specific Maintenance Roles
+  const renderRoleBadge = (roleId: string | undefined, accessLevel?: string) => {
+    if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
+    if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
+    if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
+    if (roleId === 'maintenance') {
+      const displayRole = accessLevel && accessLevel !== "None" ? accessLevel : 'Maintenance';
+      return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">{displayRole}</span>;
+    }
+    if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
     return null;
   };
 
   const renderMessageContent = (msg: any) => {
-    // ✨ Handle Unsent Messages UI
     if (msg.is_deleted) {
       return (
         <span className="italic text-slate-500/80 flex items-center gap-1.5 text-[11px] sm:text-[12px]">
@@ -657,224 +520,134 @@ export default function ConversationTab({
     return <span>{msg.content}</span>;
   };
 
-  const filteredRoles = sortedRoles.filter((role) => {
-    const displayName = customNames[role.id] || role.label;
-    const searchLower = sidebarSearchQuery.toLowerCase();
-
-    return (
-      displayName.toLowerCase().includes(searchLower) ||
-      role.label.toLowerCase().includes(searchLower) ||
-      role.id.toLowerCase().includes(searchLower)
-    );
-  });
-
   return (
     <div className="absolute inset-0 flex bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden pb-[80px] md:pb-0">
       
-      {/* Global Overlay for Mobile Long Press Dismissal */}
-      {longPressedMsgId && (
-        <div className="absolute inset-0 z-40 bg-transparent" onClick={() => setLongPressedMsgId(null)} />
-      )}
-      
       {/* SIDEBAR */}
-      <div
-        className={`w-full md:w-[360px] flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? "hidden md:flex" : "flex"} transition-all`}
-      >
+      <div className={`w-full md:w-[360px] shrink-0 flex flex-col border-r border-[var(--color-border)] bg-white ${activeChat ? 'hidden md:flex' : 'flex'} transition-all`}>
+        
         {/* SIDEBAR HEADER */}
         <div className="shrink-0 pt-5 sm:pt-6 pb-3 sm:pb-4 px-4 sm:px-5 border-b border-[var(--color-border)] bg-white">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
-            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">
-              Chats
-            </h1>
-            <button
+            <h1 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Chats</h1>
+            <button 
               onClick={() => setIsEditingNames(!isEditingNames)}
-              className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? "bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]" : "bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100"}`}
+              className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all border shadow-[var(--shadow-sm)] active:scale-95 duration-200 ${isEditingNames ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30 text-[var(--color-primary)]' : 'bg-slate-50 border-[var(--color-border)] text-slate-500 hover:bg-slate-100'}`}
             >
-              {isEditingNames ? (
-                <Check
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                  strokeWidth={2.5}
-                />
-              ) : (
-                <Edit size={14} className="sm:w-4 sm:h-4" />
-              )}
+              {isEditingNames ? <Check size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /> : <Edit size={14} className="sm:w-4 sm:h-4" />}
             </button>
           </div>
           <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-3.5 top-3 sm:top-3.5 text-slate-400 sm:w-[18px] sm:h-[18px]"
-            />
-            <input
-              type="text"
-              value={sidebarSearchQuery}
-              onChange={(e) => setSidebarSearchQuery(e.target.value)}
-              placeholder="Search by name or role..."
-              className="w-full bg-slate-50 border border-[var(--color-border)] text-[15px] md:text-sm rounded-[var(--radius-md)] pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] transition-all font-medium text-[var(--color-text)] placeholder:text-slate-400"
+            <Search size={16} className="absolute left-3.5 top-3 sm:top-3.5 text-slate-400 sm:w-[18px] sm:h-[18px]" />
+            <input 
+              type="text" 
+              value={contactSearch}
+              onChange={(e) => setContactSearch(e.target.value)}
+              placeholder="Search by name or role..." 
+              className="w-full bg-slate-50 border border-[var(--color-border)] text-[15px] md:text-sm rounded-[var(--radius-md)] pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] transition-all font-medium text-slate-700 placeholder:text-slate-400"
             />
           </div>
         </div>
 
         {/* SIDEBAR LIST */}
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-1 bg-white custom-scrollbar">
-          {isContactsLoading ? (
-            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider">
-              <Clock className="animate-spin mb-2 text-[var(--color-text)]" size={18} />{" "}
-              Loading...
-            </div>
-          ) : filteredRoles.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-32 text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider"><Clock className="animate-spin mb-2 text-[var(--color-text)]" size={18} /> Loading...</div>
+          ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-slate-400 text-[10px] sm:text-xs font-semibold">
               No conversations found.
             </div>
           ) : (
-            filteredRoles.map((role) => {
-              const Icon = role.icon;
-              const isActive = activeChat === role.id;
-              const lastMsg = getLastMessage(role.id);
+            filteredContacts.map((contact: any) => {
+              const isActive = activeChat === contact.id;
+              const lastMsg = getLastMessage(contact.id, contact.type);
               const displayTime = lastMsg ? formatSidebarTime(lastMsg.created_at) : '';
-              const unreadCount = messages.filter(
-                (m) =>
-                  !m.is_read &&
-                  m.sender_email !== userData.email &&
-                  isMessageForRole(m, role.id),
-              ).length;
-              const isOnline =
-                roleEmails[role.id] &&
-                onlineUsers.includes(roleEmails[role.id]);
-              const isTyping = roleEmails[role.id] && remoteTyping[roleEmails[role.id]];
-
+              const unreadCount = messages.filter(m => !m.is_read && m.sender_email !== assistantProfile.email && isMessageForContact(m, contact.id, contact.type)).length;
+              const isOnline = onlineUsers.includes(contact.id);
+              const isTyping = remoteTyping[contact.id];
+              const ContactIcon = contact.icon;
+              
               const getSidebarMessagePrefix = () => {
-                if (!lastMsg) return "";
-                if (lastMsg.is_deleted) return ""; // Hide prefix for unsent
-                if (lastMsg.sender_email === userData.email) return "You:";
-                const senderName = customNames[role.id] || role.label;
-                const firstName = senderName.split(" ")[0];
+                if (!lastMsg) return "No messages";
+                if (lastMsg.is_deleted) return ""; 
+                if (lastMsg.sender_email === assistantProfile.email) return "You:";
+                const senderName = customNames[contact.id] || contact.name;
+                const firstName = senderName.split(' ')[0];
                 return `${firstName}:`;
               };
 
               return (
-                <div
-                  key={role.id}
-                  onClick={() => {
-                    if (!isEditingNames) setActiveChat(role.id);
-                  }}
+                <div 
+                  key={contact.id} 
+                  onClick={() => { if (!isEditingNames) setActiveChat(contact.id); }} 
                   className={`flex items-center gap-3 sm:gap-3.5 p-2.5 sm:p-3 rounded-[var(--radius-md)] cursor-pointer transition-all duration-200 relative group ${
-                    isActive && !isEditingNames
-                      ? "bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 shadow-sm"
-                      : "border border-transparent hover:bg-slate-50"
+                    isActive && !isEditingNames 
+                      ? 'bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 shadow-sm' 
+                      : 'border border-transparent hover:bg-slate-50'
                   }`}
                 >
                   <div className="relative shrink-0">
-                    <div
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
-                        isActive && !isEditingNames
-                          ? "bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent shadow-[var(--shadow-md)] scale-105"
-                          : "bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105"
-                      }`}
-                    >
-                      <Icon
-                        size={20}
-                        className="sm:w-[22px] sm:h-[22px]"
-                        strokeWidth={isActive ? 2.5 : 2}
-                      />
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[var(--radius-md)] flex items-center justify-center shadow-sm border transition-all duration-300 ${
+                      isActive && !isEditingNames 
+                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent shadow-[var(--shadow-md)] scale-105' 
+                        : (contact.type === 'superadmin' ? 'bg-[#0a1e3f] text-[#359b46] border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border-[var(--color-border)] group-hover:scale-105')
+                    }`}>
+                      <ContactIcon size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={isActive ? 2.5 : 2} />
                     </div>
-                    {isOnline && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>
-                    )}
+                    {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm z-10"></div>}
                   </div>
 
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    
                     <div className="flex justify-between items-center w-full mb-1 gap-2">
                       <div className="flex-1 min-w-0">
-                        {isEditingNames ? (
-                          <input
-                            type="text"
-                            value={
-                              customNames[role.id] !== undefined
-                                ? customNames[role.id]
-                                : role.label
-                            }
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCustomNames((prev) => ({
-                                ...prev,
-                                [role.id]: val,
-                              }));
-
-                              if (userData?.email) {
-                                const storedStr = localStorage.getItem(
-                                  `custom_chat_names_${userData.email}`
-                                );
-                                const overrides = storedStr
-                                  ? JSON.parse(storedStr)
-                                  : {};
-                                overrides[role.id] = val;
-                                localStorage.setItem(
-                                  `custom_chat_names_${userData.email}`,
-                                  JSON.stringify(overrides)
-                                );
-                              }
-                            }}
-                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-transparent outline-none w-full py-0.5"
-                            onClick={(e) => e.stopPropagation()}
+                        {isEditingNames && contact.type !== 'superadmin' ? (
+                          <input 
+                            type="text" 
+                            value={customNames[contact.id] !== undefined ? customNames[contact.id] : contact.name}
+                            onChange={(e) => setCustomNames(prev => ({ ...prev, [contact.id]: e.target.value }))} 
+                            className="text-[14px] sm:text-[16px] md:text-sm font-bold text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-transparent outline-none w-full py-0.5" 
+                            onClick={(e) => e.stopPropagation()} 
                           />
                         ) : (
-                          <h3
+                          <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
+                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
                             }`}
-                            title={`${customNames[role.id] || role.label}`}
+                            title={`${customNames[contact.id] || contact.name}`}
                           >
-                            {customNames[role.id] || role.label}
+                            {customNames[contact.id] || contact.name}
                           </h3>
                         )}
                       </div>
-                      <span
-                        className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${
-                          unreadCount > 0 ? "font-bold text-[var(--color-primary)]" : "font-medium text-slate-400"
-                        }`}
-                      >
+                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[var(--color-primary)]' : 'font-medium text-slate-400'}`}>
                         {displayTime}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center w-full gap-2">
-                      <p
-                        className={`text-[11px] sm:text-[12.5px] truncate ${
-                          unreadCount > 0 ? "font-bold text-slate-900" : "font-medium text-slate-400"
-                        } ${lastMsg?.is_deleted ? 'italic' : ''}`}
-                      >
+                      <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-small text-slate-400'} ${lastMsg?.is_deleted ? 'italic' : ''}`}>
                         {isTyping ? (
                           <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
                           <span>
-                            <span
-                              className={
-                                unreadCount > 0
-                                  ? "text-[var(--color-text)] mr-1"
-                                  : "text-slate-500 mr-1"
-                              }
-                            >
+                            <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>
                               {getSidebarMessagePrefix()}
                             </span>
                             {lastMsg.is_deleted ? "You unsent a message" : lastMsg.content}
                           </span>
                         ) : (
-                          role.desc
+                          contact.unit
                         )}
                       </p>
-                      
+
                       <div className="shrink-0 flex items-center justify-end min-w-[16px]">
                         {unreadCount > 0 && !isEditingNames && (
-                          <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-[var(--shadow-sm)] shadow-red-500/20 animate-in zoom-in-50">
+                          <span className="bg-red-500 text-white text-[9px] sm:text-[10px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center shadow-sm shadow-red-500/20 animate-in zoom-in-50">
                             {unreadCount}
                           </span>
                         )}
                       </div>
                     </div>
-
                   </div>
                 </div>
               );
@@ -884,85 +657,39 @@ export default function ConversationTab({
       </div>
 
       {/* MAIN CHAT AREA */}
-      <div
-        className={`flex-1 min-w-0 flex flex-col bg-slate-50 relative ${!activeChat ? "hidden md:flex" : "flex"}`}
-      >
+      <div className={`flex-1 min-w-0 flex flex-col bg-slate-50 relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
         {!activeChat ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-[var(--color-bg)]">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-[var(--radius-lg)] flex items-center justify-center mb-3 sm:mb-4 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
-              <MessageSquare
-                size={28}
-                className="text-slate-300 sm:w-8 sm:h-8"
-              />
+              <MessageSquare size={28} className="text-slate-300 sm:w-8 sm:h-8" />
             </div>
-            <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">
-              No Conversation Selected
-            </h2>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-medium max-w-[200px] sm:max-w-[220px] mx-auto mt-1 leading-relaxed">
-              Choose a caretaker or management contact from the sidebar list to
-              view messages.
-            </p>
+            <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">No Conversation Selected</h2>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-medium max-w-[200px] sm:max-w-[220px] mx-auto mt-1 leading-relaxed">Choose an active property resident, owner, or team contact to initiate direct portal correspondence.</p>
           </div>
         ) : (
           <>
             {/* CHAT HEADER */}
             <div className="shrink-0 h-[60px] sm:h-[70px] md:h-[75px] bg-[var(--color-bg)]/90 backdrop-blur-md border-b border-[var(--color-border)] flex items-center justify-between px-3 sm:px-4 md:px-6 z-10 shadow-[var(--shadow-sm)]">
               <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-                <button
-                  onClick={() => setActiveChat("")}
-                  className="md:hidden p-1.5 sm:p-2 text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"
-                >
-                  <ChevronLeft
-                    size={20}
-                    className="sm:w-[22px] sm:h-[22px]"
-                    strokeWidth={2.5}
-                  />
-                </button>
+                <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[var(--color-primary)] hover:bg-slate-50 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] bg-slate-50 border border-[var(--color-border)] flex items-center justify-center text-slate-500 shadow-inner">
-                    <ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  </div>
-                  {isActiveRoleOnline && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>
-                  )}
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] bg-slate-50 border border-[var(--color-border)] flex items-center justify-center text-slate-500 shadow-inner"><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
+                  {isActiveContactOnline && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">
-                      {currentChatName}
-                    </h2>
-                    {renderRoleBadge(activeRoleDetails?.id)}
+                    <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
+                    {/* ✨ PASS THE ACCESS LEVEL HERE */}
+                    {renderRoleBadge(activeContactDetails?.type, activeContactDetails?.accessLevel)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                    {isActiveRoleOnline ? (
-                      <span className="text-green-600 font-bold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>
-                        Active now
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 font-semibold">
-                        Offline
-                      </span>
-                    )}
-                    <span className="hidden sm:inline text-slate-300 font-black">
-                      •
-                    </span>
-                    <span className="hidden sm:inline text-slate-400 font-medium">
-                      {activeRoleDetails?.desc}
-                    </span>
+                    {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}
+                    <span className="hidden sm:inline text-slate-300 font-black">•</span>
+                    <span className="hidden sm:inline text-slate-400 font-medium">{activeContactDetails?.unit}</span>
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsSearchActive(!isSearchActive)}
-                className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border ${isSearchActive ? "bg-[var(--color-primary)] border-transparent text-[var(--color-primary-text)] shadow-[var(--shadow-md)]" : "text-[var(--color-primary)] border-[var(--color-border)] hover:bg-[var(--color-primary)]/10 bg-white shadow-[var(--shadow-sm)]"}`}
-              >
-                <Search
-                  size={16}
-                  className="sm:w-[18px] sm:h-[18px]"
-                  strokeWidth={2.5}
-                />
-              </button>
+              <button onClick={() => setIsSearchActive(!isSearchActive)} className={`p-2 sm:p-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border ${isSearchActive ? 'bg-[var(--color-primary)] border-transparent text-[var(--color-primary-text)] shadow-[var(--shadow-md)]' : 'text-[var(--color-primary)] border-[var(--color-border)] hover:bg-[var(--color-primary)]/5 bg-white shadow-[var(--shadow-sm)]'}`}><Search size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} /></button>
             </div>
 
             {/* PINNED MESSAGES ACCORDION */}
@@ -985,7 +712,7 @@ export default function ConversationTab({
                     {pinnedMessages.length === 1 ? (
                       <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 min-w-0">
                         <span className="font-bold mr-1">
-                          {pinnedMessages[0].sender_email === userData.email ? 'You:' : currentChatName + ':'}
+                          {pinnedMessages[0].sender_email === assistantProfile.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}
                         </span>
                         {pinnedMessages[0].content}
                       </p>
@@ -1024,7 +751,7 @@ export default function ConversationTab({
                         onClick={() => scrollToMessage(pMsg.id)}
                       >
                         <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 ml-6 min-w-0">
-                          <span className="font-bold mr-1">{pMsg.sender_email === userData.email ? 'You:' : currentChatName + ':'}</span>
+                          <span className="font-bold mr-1">{pMsg.sender_email === assistantProfile.email ? 'You:' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User') + ':'}</span>
                           {pMsg.content}
                         </p>
                         <button 
@@ -1044,28 +771,10 @@ export default function ConversationTab({
             {isSearchActive && (
               <div className="shrink-0 bg-white border-b border-[var(--color-border)] p-2 sm:p-3 px-3 sm:px-5 flex items-center gap-2 sm:gap-3 z-10 shadow-[var(--shadow-sm)] animate-in slide-in-from-top duration-200">
                 <div className="flex-1 relative">
-                  <Search
-                    size={14}
-                    className="absolute left-3 sm:left-3.5 top-2.5 sm:top-3 text-slate-400 sm:w-4 sm:h-4"
-                  />
-                  <input
-                    type="text"
-                    value={chatSearchQuery}
-                    onChange={(e) => setChatSearchQuery(e.target.value)}
-                    placeholder="Search in conversation..."
-                    className="w-full bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-md)] pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-[var(--color-text)] font-medium"
-                    autoFocus
-                  />
+                  <Search size={14} className="absolute left-3 sm:left-3.5 top-2.5 sm:top-3 text-slate-400 sm:w-4 sm:h-4" />
+                  <input type="text" value={chatSearchQuery} onChange={(e) => setChatSearchQuery(e.target.value)} placeholder="Search in conversation..." className="w-full bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-md)] pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-[14px] sm:text-[16px] md:text-sm focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 transition-all text-slate-700 font-medium" autoFocus />
                 </div>
-                <button
-                  onClick={() => {
-                    setIsSearchActive(false);
-                    setChatSearchQuery("");
-                  }}
-                  className="text-slate-400 hover:text-[var(--color-text)] text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors"
-                >
-                  Cancel
-                </button>
+                <button onClick={() => { setIsSearchActive(false); setChatSearchQuery(""); }} className="text-slate-400 hover:text-[var(--color-text)] text-[10px] sm:text-xs font-black uppercase tracking-wider px-2 py-1.5 sm:py-2 transition-colors">Cancel</button>
               </div>
             )}
 
@@ -1088,16 +797,16 @@ export default function ConversationTab({
                       <div 
                         key={`search-${msg.id}`}
                         onClick={() => {
-                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setHighlightedMsgId(msg.id); 
                           setIsSearchActive(false);
                           setChatSearchQuery("");
-                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                          setTimeout(() => scrollToMessage(msg.id), 50); 
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
                       >
                         <div className="flex justify-between items-center">
                           <span className="text-[13px] font-bold text-[var(--color-text)]">
-                            {msg.sender_email === userData?.email ? 'You' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
+                            {msg.sender_email === assistantProfile?.email ? 'You' : (customNames[activeChat] || activeContactDetails?.name || 'User')}
                           </span>
                           <span className="text-[11px] text-slate-400 font-semibold">
                             {formatMessageTime(msg.created_at)}
@@ -1119,11 +828,7 @@ export default function ConversationTab({
               >
                 {isLoading ? (
                   <div className="flex justify-center items-center h-full text-slate-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider gap-2">
-                    <Clock
-                      size={14}
-                      className="animate-spin text-[var(--color-primary)] sm:w-4 sm:h-4"
-                    />{" "}
-                    Loading...
+                    <Clock size={14} className="animate-spin text-[var(--color-text)] sm:w-4 sm:h-4" /> Loading...
                   </div>
                 ) : displayedMessages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center max-w-sm mx-auto p-4 sm:p-6">
@@ -1139,19 +844,15 @@ export default function ConversationTab({
                   </div>
                 ) : (
                   displayedMessages.map((msg: any, idx: number) => {
-                    const isMe = msg.sender_email === userData.email;
-                    const isPending = msg.id.toString().startsWith("temp_");
+                    const isMe = msg.sender_email === assistantProfile.email;
+                    const isPending = msg.id.toString().startsWith('temp_');
                     const isDeleted = msg.is_deleted;
                     
                     return (
-                      <div
-                        key={
-                          msg.id.toString().startsWith("temp_")
-                            ? msg.id
-                            : `${msg.id}-${idx}`
-                        }
+                      <div 
+                        key={msg.id.toString().startsWith('temp_') ? msg.id : `${msg.id}-${idx}`}
                         id={`msg-${msg.id}`}
-                        className={`w-full flex flex-col ${isMe ? "items-end" : "items-start"} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
+                        className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                       >
                         <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                           
@@ -1162,17 +863,17 @@ export default function ConversationTab({
                             onTouchEnd={handleTouchEndOrMove}
                             onTouchMove={handleTouchEndOrMove}
                           >
-                            <div
-                              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-[var(--shadow-sm)] border relative transition-all duration-500 flex flex-col ${
+                            <div 
+                              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-[13px] sm:text-[14.5px] leading-relaxed whitespace-pre-wrap break-words font-medium shadow-sm border relative transition-all duration-500 flex flex-col ${
                                 highlightedMsgId === msg.id ? 'ring-4 ring-[var(--color-primary)]/40 shadow-lg z-10' : ''
                               } ${
                                 isDeleted
                                   ? 'bg-slate-100 text-slate-500 border-slate-200 rounded-[16px] sm:rounded-[20px]' 
-                                  : isMe
+                                  : isMe 
                                     ? 'bg-[#066cf1] text-white border-[var(--color-primary)]/20 rounded-[16px] sm:rounded-[20px] rounded-br-[4px]' 
                                     : 'bg-white text-[var(--color-text)] border-[var(--color-border)] rounded-[16px] sm:rounded-[20px] rounded-bl-[4px]'
-                              } ${isPending ? "opacity-60" : "opacity-100"}`}
-                              style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+                              } ${isPending ? 'opacity-60' : 'opacity-100'}`}
+                              style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
                             >
                               {msg.is_pinned && !isDeleted && (
                                 <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 p-0.5 rounded-full shadow-sm z-10 border border-amber-200">
@@ -1220,22 +921,11 @@ export default function ConversationTab({
                           {formatMessageTime(msg.created_at)}
                           {isMe && !isDeleted && (
                             isPending ? (
-                              <Clock
-                                size={10}
-                                className="text-slate-300 sm:w-[11px] sm:h-[11px]"
-                              />
+                              <Clock size={10} className="text-slate-300 sm:w-[11px] sm:h-[11px]" />
                             ) : msg.is_read ? (
-                              <CheckCheck
-                                size={12}
-                                className="text-blue-500 sm:w-[13px] sm:h-[13px]"
-                                strokeWidth={2.5}
-                              />
+                              <CheckCheck size={12} className="text-blue-500 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
                             ) : (
-                              <CheckCheck
-                                size={12}
-                                className="text-slate-300 sm:w-[13px] sm:h-[13px]"
-                                strokeWidth={2.5}
-                              />
+                              <CheckCheck size={12} className="text-slate-300 sm:w-[13px] sm:h-[13px]" strokeWidth={2.5} />
                             )
                           )}
                         </div>
@@ -1278,7 +968,7 @@ export default function ConversationTab({
                 <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
-                      Replying to {replyingTo.sender_email === userData.email ? 'yourself' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
+                      Replying to {replyingTo.sender_email === assistantProfile.email ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
                     </span>
                     <span className="text-[11px] sm:text-xs text-slate-600 truncate line-clamp-1">{replyingTo.content}</span>
                   </div>
@@ -1344,7 +1034,7 @@ export default function ConversationTab({
             {(() => {
               const msg = messages.find(m => m.id === longPressedMsgId);
               if (!msg || msg.is_deleted) return null; // No actions for deleted msgs
-              const isMe = msg.sender_email === userData.email;
+              const isMe = msg.sender_email === assistantProfile.email;
               
               return (
                 <div className="flex justify-around items-center max-w-sm mx-auto">
@@ -1421,7 +1111,6 @@ export default function ConversationTab({
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
-        .pb-safe { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
       `}} />
     </div>
   );

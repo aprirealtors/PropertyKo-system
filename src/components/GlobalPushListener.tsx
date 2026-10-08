@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { usePushNotifications } from "@/utils/usePushNotifications";
 
 export default function GlobalPushListener({ userEmail, role }: { userEmail: string, role: string }) {
   const { token, requestPermission } = usePushNotifications();
   
-  // ✨ FIX: Create a ref to hold our preloaded audio
+  // Create a ref to hold our preloaded audio
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // ✨ FIX: Preload the audio once when the component mounts
+  // Preload the audio once when the component mounts
   useEffect(() => {
     if (typeof window !== "undefined") {
       const audio = new Audio('/notification.wav');
@@ -27,13 +27,64 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
     }
   }, [token, requestPermission]);
 
+  // State to hold the user's specific module access levels if they are an assistant
+  const [userAccessLevel, setUserAccessLevel] = useState<string>("");
+
+  // Fetch access level on mount to ensure we have the latest scopes
+  useEffect(() => {
+    const fetchAccessLevel = async () => {
+      if (!userEmail) return;
+      const { data } = await supabase
+        .from('team_members')
+        .select('access_level')
+        .eq('email', userEmail)
+        .single();
+      
+      if (data?.access_level) {
+        setUserAccessLevel(data.access_level);
+      }
+    };
+    fetchAccessLevel();
+  }, [userEmail]);
+
+  // Dynamic Notification Filter exactly like the Dashboard
+  const isAllowedNotif = (notif: any, currentRole: string, accessScope: string) => {
+    if (currentRole === 'admin' || currentRole === 'manager') return true; // Admins and managers see everything
+    if (currentRole !== 'assistant') return true; // Tenants/Owners pass through to exact-email checks
+
+    const type = (notif.type || '').toUpperCase();
+    const title = (notif.title || '').toUpperCase();
+    
+    // Check if the assistant has the specific module in their access scope string
+    const hasAccess = (moduleName: string) => {
+      if (!accessScope) return false;
+      if (accessScope.includes("All properties") || accessScope.includes("Full Platform Access")) return true;
+      return accessScope.includes(moduleName);
+    };
+
+    if (type === 'TICKET' || type === 'MAINTENANCE') return hasAccess("Maintenance");
+    if (type.includes('PAYMENT') || type === 'BILLING' || type === 'SOA' || type === 'SUBSCRIPTION' || title.includes('PAYMENT')) return hasAccess("Billing");
+    if (type === 'MESSAGE' || type === 'CHAT') return hasAccess("Conversation");
+    if (type.includes('LEASE') || type.includes('TENANT')) return hasAccess("Leasing & Tenants") || hasAccess("Properties & Units");
+    if (type.includes('PROPERTY') || type.includes('UNIT')) return hasAccess("Properties & Units");
+    if (type.includes('USER') || type.includes('ACCOUNT')) return hasAccess("User");
+    if (type === 'KPI' || type === 'REPORT') return hasAccess("KPI Reports");
+    
+    // If it's a general admin alert, require full access
+    if (notif.recipient === 'ADMIN') {
+      return hasAccess("All properties") || hasAccess("Full Platform Access");
+    }
+
+    return true; 
+  };
+
   useEffect(() => {
     if (!userEmail) return;
 
     const normalizedRole = (role || "").toLowerCase().trim();
     const normalizedEmail = (userEmail || "").toLowerCase().trim();
 
-    // ✨ FIX: Use the preloaded audio reference
+    // Use the preloaded audio reference
     const playNotificationSound = () => {
       try {
         if (audioRef.current) {
@@ -73,20 +124,33 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
           const msgRecipient = (payload.new.recipient || "").toLowerCase().trim();
           const msgAdminEmail = (payload.new.admin_email || "").toLowerCase().trim();
 
-          const isForMe = 
-            msgRecipient === normalizedEmail || 
-            msgRecipient === normalizedRole ||
-            (msgAdminEmail === normalizedEmail && ['admin', 'manager'].includes(msgRecipient));
+          // ✨ FIX: Allow Assistants to catch 'admin' and 'manager' notifications if their scopes allow it
+          let isForMe = false;
+
+          if (normalizedRole === 'assistant') {
+            isForMe = msgRecipient === normalizedEmail || 
+                      msgRecipient === 'assistant' || 
+                      msgRecipient === 'admin' || 
+                      msgRecipient === 'manager' || 
+                      msgAdminEmail === normalizedEmail;
+          } else {
+            isForMe = msgRecipient === normalizedEmail || 
+                      msgRecipient === normalizedRole ||
+                      (msgAdminEmail === normalizedEmail && ['admin', 'manager'].includes(msgRecipient));
+          }
 
           if (isForMe) {
-            const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
-            
-            triggerNotification(payload.new.title || "PropertyKo Update", {
-              body: cleanMessage,
-              icon: "/icon-192.png", 
-              badge: "/badge.png",   
-              vibrate: [200, 100, 200], 
-            });
+            // ✨ FIX: Validate against the assistant's specific module access scopes before triggering!
+            if (isAllowedNotif(payload.new, normalizedRole, userAccessLevel)) {
+              const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
+              
+              triggerNotification(payload.new.title || "PropertyKo Update", {
+                body: cleanMessage,
+                icon: "/icon-192.png", 
+                badge: "/badge.png",   
+                vibrate: [200, 100, 200], 
+              });
+            }
           }
         }
       ).subscribe();
@@ -102,14 +166,31 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
           const tenantEmail = (msg.tenant_email || "").toLowerCase().trim();
           const adminEmail = (msg.admin_email || "").toLowerCase().trim();
 
-          const isChatForMe = 
-            recipientRole === normalizedRole || 
-            tenantEmail === normalizedEmail || 
-            msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
-            (adminEmail === normalizedEmail && ['admin', 'manager'].includes(recipientRole));
+          // ✨ FIX: Allow Assistants to catch chat messages routed to admins/managers if they have 'Conversation' scope
+          let isChatForMe = false;
 
+          if (normalizedRole === 'assistant') {
+             isChatForMe = recipientRole === 'assistant' || 
+                           recipientRole === 'admin' || 
+                           recipientRole === 'manager' ||
+                           tenantEmail === normalizedEmail || 
+                           msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
+                           adminEmail === normalizedEmail;
+          } else {
+             isChatForMe = recipientRole === normalizedRole || 
+                           tenantEmail === normalizedEmail || 
+                           msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
+                           (adminEmail === normalizedEmail && ['admin', 'manager'].includes(recipientRole));
+          }
+
+          // Ensure they don't get a sound for their own message, and if they are an assistant, check scope
           if (isChatForMe && senderEmail !== normalizedEmail) {
             
+            // Check conversation scope for assistants
+            if (normalizedRole === 'assistant' && !userAccessLevel.includes("Conversation") && !userAccessLevel.includes("Full Platform Access")) {
+              return; // Block sound if they don't have message access
+            }
+
             let displayName = msg.sender_email; 
             
             try {
@@ -159,7 +240,7 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
       supabase.removeChannel(notifChannel);
       supabase.removeChannel(chatChannel);
     };
-  }, [userEmail, role]);
+  }, [userEmail, role, userAccessLevel]); // Re-run if access level changes
 
   return null; 
 }

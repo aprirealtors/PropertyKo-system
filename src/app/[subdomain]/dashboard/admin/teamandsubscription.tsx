@@ -5,7 +5,8 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, 
-  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw, Settings
+  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw, Settings,
+  Edit2, Trash2, Eye, EyeOff
 } from "lucide-react";
 
 // Helper function to calculate the actual upcoming date based on the declared billing day
@@ -64,7 +65,13 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ✨ Catch "open_billing" intention passed down from notifications
+  // Edit & Delete States
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [isEditConfirmModalOpen, setIsEditConfirmModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<any>(null);
+
+  // Catch "open_billing" intention passed down from notifications
   useEffect(() => {
     if (actionIntent === "open_billing") {
       setIsBillingModalOpen(true);
@@ -100,7 +107,43 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   const [memberEmail, setMemberEmail] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
   const [memberRole, setMemberRole] = useState("Property manager");
-  const [memberAccess, setMemberAccess] = useState("All properties");
+  const [memberAccess, setMemberAccess] = useState<string[]>([]);
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+
+  // Available modules based on directory structure
+  const managerModules = [
+    "Billing", "Conversation", "Dashboard", "KPI Reports", 
+    "Leasing & Tenants", "Maintenance", "Properties & Units", "User"
+  ];
+  
+  // Specific designations for the Maintenance Staff role
+  const maintenanceModules = [
+    "Engineer", "Technician", "Housekeeping"
+  ];
+
+  const handleAccessChange = (module: string) => {
+    setMemberAccess((prev) =>
+      prev.includes(module)
+        ? prev.filter((m) => m !== module)
+        : [...prev, module]
+    );
+  };
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setMemberRole(e.target.value);
+    setMemberAccess([]); // Reset checkboxes when role switches
+  };
+
+  // Helper to determine which module list to show based on the selected role
+  const getAvailableModulesForRole = (role: string) => {
+    if (role === "Property manager" || role === "Assistant") {
+      return managerModules;
+    }
+    if (role === "Maintenance staff") {
+      return maintenanceModules;
+    }
+    return managerModules; // fallback
+  };
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -199,62 +242,163 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     setThemeConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  const handleAddUserSubmit = async (e: React.FormEvent) => {
+  // Helper to close user modal and reset states
+  const closeUserModal = () => {
+    setIsInviteModalOpen(false);
+    setEditingMemberId(null);
+    setMemberName("");
+    setMemberEmail("");
+    setMemberPassword("");
+    setShowMemberPassword(false);
+    setMemberRole("Property manager");
+    setMemberAccess([]);
+    setErrorMsg(null);
+  };
+
+  // Edit Click Handler (Populates the modal with user info)
+  const handleEditClick = (member: any) => {
+    setEditingMemberId(member.id);
+    setMemberName(member.name || "");
+    setMemberEmail(member.email || "");
+    setMemberRole(member.role || "Property manager");
+    
+    const parsedAccess = member.access_level && member.access_level !== "None" 
+      ? member.access_level.split(',').map((s: string) => s.trim()) 
+      : [];
+    setMemberAccess(parsedAccess);
+    
+    setIsInviteModalOpen(true);
+  };
+
+  // Pre-Submit handler that triggers the Edit Confirmation Modal
+  const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (team.length + 1 >= seatLimit) {
-      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats. Please contact support to increase your capacity.`);
-      setIsSubmitting(false);
+    if (memberAccess.length === 0) {
+      setErrorMsg(memberRole === "Maintenance staff" ? "Please select at least one maintenance role." : "Please select at least one module for property scope access.");
       return;
     }
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: memberEmail,
-        password: memberPassword,
-        options: {
-          data: {
-            org_name: orgData.org_name,
-            role: memberRole === "Property manager" ? "property_manager" : "staff",
-            admin_parent: orgData.admin_email
-          }
-        }
-      });
+    if (!editingMemberId && team.length + 1 >= seatLimit) {
+      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats.`);
+      return;
+    }
 
-      if (authError && !authError.message.includes("Error sending confirmation email")) {
-        throw new Error(`Auth Registration Error: ${authError.message}`);
+    // If editing, trigger the confirmation modal. If adding, save directly.
+    if (editingMemberId) {
+      setIsEditConfirmModalOpen(true);
+    } else {
+      executeSubmit();
+    }
+  };
+
+  // Master Submit logic executing the database insert/update
+  const executeSubmit = async () => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      if (editingMemberId) {
+        // ✨ MODIFIED: Added .select() to catch silent update blocks
+        const { data, error: dbError } = await supabase
+          .from('team_members')
+          .update({
+            name: memberName.trim(),
+            role: memberRole,
+            access_level: memberAccess.join(', '),
+          })
+          .eq('id', editingMemberId)
+          .select(); // Critical for detecting RLS blocks
+
+        if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+        
+        if (!data || data.length === 0) {
+          throw new Error("Update blocked by database security (RLS). Missing UPDATE policy.");
+        }
+
+        showToast("User updated successfully.", "success");
+        
+      } else {
+        // ADD NEW USER
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: memberEmail,
+          password: memberPassword,
+          options: {
+            data: {
+              org_name: orgData.org_name,
+              role: memberRole === "Property manager" ? "property_manager" : 
+                    memberRole === "Assistant" ? "assistant" : "staff",
+              admin_parent: orgData.admin_email
+            }
+          }
+        });
+
+        if (authError && !authError.message.includes("Error sending confirmation email")) {
+          throw new Error(`Auth Registration Error: ${authError.message}`);
+        }
+
+        const { error: dbError } = await supabase
+          .from('team_members')
+          .insert([
+            { 
+              admin_email: orgData.admin_email,
+              name: memberName.trim(),
+              email: memberEmail,
+              role: memberRole,
+              access_level: memberAccess.join(', '),
+              status: 'Active' 
+            }
+          ]);
+
+        if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+        showToast("User created successfully.", "success");
       }
 
-      const { error: dbError } = await supabase
-        .from('team_members')
-        .insert([
-          { 
-            admin_email: orgData.admin_email,
-            name: memberName.trim(),
-            email: memberEmail,
-            role: memberRole,
-            access_level: memberAccess,
-            status: 'Active' 
-          }
-        ]);
-
-      if (dbError) throw new Error(`Database Error: ${dbError.message}`);
-
       await fetchTeam();
-      setIsInviteModalOpen(false);
-      
-      setMemberName("");
-      setMemberEmail("");
-      setMemberPassword("");
-      setMemberAccess("All properties");
+      closeUserModal();
+      setIsEditConfirmModalOpen(false); 
       
     } catch (error: any) {
       console.error(error);
       setErrorMsg(error.message);
+      setIsEditConfirmModalOpen(false);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (member: any) => {
+    setMemberToDelete(member);
+    setIsInviteModalOpen(false); 
+    setIsDeleteModalOpen(true);  
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setIsSubmitting(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', memberToDelete.id)
+        .select(); 
+
+      if (error) throw new Error(error.message);
+
+      if (!data || data.length === 0) {
+        throw new Error("Action blocked by database security (RLS). Missing DELETE policy.");
+      }
+      
+      showToast(`${memberToDelete.name} has been removed.`, "success");
+      setTeam(prev => prev.filter(m => m.id !== memberToDelete.id));
+      setIsDeleteModalOpen(false);
+    } catch (error: any) {
+      showToast(`Error: ${error.message}`, "error");
+    } finally {
+      setIsSubmitting(false);
+      setMemberToDelete(null);
     }
   };
 
@@ -381,7 +525,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                     <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate" title="Access Control">Access Control</h3>
                   </div>
                   <button 
-                    onClick={() => setIsInviteModalOpen(true)}
+                    onClick={() => {
+                      closeUserModal();
+                      setIsInviteModalOpen(true);
+                    }}
                     className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent shrink-0"
                     title="Add User"
                   >
@@ -397,6 +544,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-center whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
@@ -414,17 +562,20 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         <td className="px-4 sm:px-6 py-4 text-right">
                           <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title="Active">Active</span>
                         </td>
+                        <td className="px-4 sm:px-6 py-4 text-center">
+                          <span className="text-slate-300 text-[10px] font-bold">—</span>
+                        </td>
                       </tr>
                       
                       {team.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          <td colSpan={5} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
                             No additional team members added.
                           </td>
                         </tr>
                       ) : filteredTeam.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          <td colSpan={5} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
                             No members match your search.
                           </td>
                         </tr>
@@ -440,18 +591,37 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                                 <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] sm:text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors shrink-0">
                                   {memberInitials}
                                 </div>
-                                <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
+                                <div className="flex flex-col">
+                                  <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
+                                  <span className="text-[10px] text-slate-400 font-medium truncate">{member.email}</span>
+                                </div>
                               </td>
                               <td className="px-4 sm:px-6 py-4">
-                                <span className="bg-slate-50 text-slate-600 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm block w-fit">
+                                <span className={`font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border uppercase tracking-wider shadow-sm block w-fit
+                                  ${member.role === 'Property manager' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-white transition-colors' : 
+                                  member.role === 'Assistant' ? 'bg-sky-50 text-sky-700 border-sky-200 group-hover:bg-white transition-colors' :
+                                  member.role === 'Maintenance staff' ? 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-white transition-colors' :
+                                  'bg-slate-50 text-slate-600 border-[var(--color-border)] group-hover:bg-white transition-colors'}`}
+                                >
                                   {member.role}
                                 </span>
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[180px]" title={member.access_level}>{member.access_level}</td>
+                              <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium max-w-[200px]" title={member.access_level}>{member.access_level}</td>
                               <td className="px-4 sm:px-6 py-4 text-right">
                                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[8px] sm:text-[9px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">
                                   {member.status}
                                 </span>
+                              </td>
+                              <td className="px-4 sm:px-6 py-4 text-center">
+                                <div className="flex justify-center items-center">
+                                  <button 
+                                    onClick={() => handleEditClick(member)}
+                                    className="text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1.5 rounded-md hover:bg-[var(--color-primary)]/10" 
+                                    title="Edit User Access"
+                                  >
+                                    <Edit2 size={16} strokeWidth={2.5} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -693,19 +863,21 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       )}
 
-      {/* ADD USER MODAL */}
+      {/* ✨ ADD/EDIT USER MODAL */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title="Add Workspace User">Add Workspace User</h2>
-              <button onClick={() => !isSubmitting && setIsInviteModalOpen(false)} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title={editingMemberId ? "Edit Workspace User" : "Add Workspace User"}>
+                {editingMemberId ? "Edit Workspace User" : "Add Workspace User"}
+              </h2>
+              <button onClick={() => !isSubmitting && closeUserModal()} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-              <form onSubmit={handleAddUserSubmit} className="space-y-4">
+              <form onSubmit={handlePreSubmit} className="space-y-4">
                 {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs sm:text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
 
                 <div>
@@ -715,239 +887,171 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
                 <div>
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
-                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className={`w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] ${editingMemberId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} disabled={isSubmitting || !!editingMemberId} />
+                  {editingMemberId && <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">Email cannot be changed after account creation.</p>}
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
-                  <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
-                </div>
+                {!editingMemberId && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
+                    <div className="relative group">
+                      <input 
+                        type={showMemberPassword ? "text" : "password"} 
+                        required 
+                        minLength={6} 
+                        placeholder="Minimum 6 characters" 
+                        value={memberPassword} 
+                        onChange={(e) => setMemberPassword(e.target.value)} 
+                        className="w-full px-4 pr-11 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] transition-all" 
+                        disabled={isSubmitting} 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowMemberPassword(!showMemberPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1.5 rounded-full hover:bg-[var(--color-primary)]/5"
+                        tabIndex={-1}
+                      >
+                        {showMemberPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Shield size={16} className="text-[var(--color-text)]" /> System Role</label>
-                  <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
+                  <select value={memberRole} onChange={handleRoleChange} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
                     <option value="Property manager">Property Manager</option>
+                    <option value="Assistant">Assistant</option>
                     <option value="Maintenance staff">Maintenance Staff</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5">Property Scope Access</label>
-                  <input type="text" required placeholder="e.g. All properties, Future Point Only" value={memberAccess} onChange={(e) => setMemberAccess(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-2">
+                    {memberRole === "Maintenance staff" ? "Maintenance Role Designation" : "Module Access Scope"}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] bg-slate-50/50">
+                    {getAvailableModulesForRole(memberRole).map((module) => (
+                      <label key={module} className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-600 cursor-pointer hover:text-[var(--color-text)] transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={memberAccess.includes(module)}
+                          onChange={() => handleAccessChange(module)}
+                          disabled={isSubmitting}
+                          className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 cursor-pointer accent-[var(--color-primary)]"
+                        />
+                        {module}
+                      </label>
+                    ))}
+                  </div>
+                  {memberAccess.length === 0 && (
+                     <p className="text-[10px] sm:text-xs text-amber-600 mt-2 font-medium">
+                       {memberRole === "Maintenance staff" 
+                         ? "Please select at least one maintenance role." 
+                         : "Please select at least one module to grant access."}
+                     </p>
+                  )}
                 </div>
 
               </form>
             </div>
             
-            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex gap-3 justify-end flex-wrap sm:flex-nowrap">
-              <button type="button" onClick={() => setIsInviteModalOpen(false)} disabled={isSubmitting} className="w-full sm:w-auto px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)] active:scale-95 transition-all order-2 sm:order-1">Cancel</button>
-              <button onClick={handleAddUserSubmit} disabled={isSubmitting} className="w-full sm:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold shadow-[var(--shadow-md)] active:scale-95 transition-all order-1 sm:order-2 flex justify-center items-center">
-                {isSubmitting ? "Creating Account..." : "Add User"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW DETAILS MODAL */}
-      {isBillingModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95" onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 sm:px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate" title="Subscription Details">Subscription Details</h2>
-              <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-[var(--color-text)] transition-colors p-1">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-              <div className="space-y-4 sm:space-y-5">
-                <div className="bg-white p-4 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-2 flex justify-between items-center">
-                  <div className="min-w-0 pr-2">
-                    <p className="text-[11px] sm:text-sm text-slate-600 mb-1 truncate" title="Current Billing: Dynamic Rate">Current Billing: <span className="font-bold text-[var(--color-text)]">Dynamic Rate</span></p>
-                    <p className="text-[10px] sm:text-xs text-slate-500 truncate" title="For limit increases, contact admin.">For limit increases, contact admin.</p>
-                  </div>
-                  <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] border text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusColor(billingStatus)}`}>
-                    {billingStatus}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5 truncate" title="Units Capacity">
-                      <Home size={16} className="text-[var(--color-text)] shrink-0" />
-                      <span className="truncate">Units Capacity</span>
-                    </label>
-                    <p className="text-xl sm:text-2xl font-extrabold text-[var(--color-text)] mt-1">{unitLimit}</p>
-                  </div>
-                  <div className="p-4 border border-[var(--color-border)] rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-sm)]">
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5 truncate" title="Team Limit">
-                      <Users size={16} className="text-[var(--color-text)] shrink-0" />
-                      <span className="truncate">Team Limit</span>
-                    </label>
-                    <p className="text-xl sm:text-2xl font-extrabold text-[var(--color-text)] mt-1">{seatLimit}</p>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <label className="flex items-center justify-between text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5">
-                    <div className="flex items-center gap-2 truncate" title="Estimated Monthly Total">
-                      <CreditCard size={16} className="text-[var(--color-text)] shrink-0" />
-                      <span className="truncate">Estimated Monthly Total</span>
-                    </div>
-                  </label>
-                  <div className="w-full px-4 py-3 rounded-[var(--radius-lg)] border border-[var(--color-text)]/20 bg-[var(--color-text)]/10 flex items-center justify-between shadow-[var(--shadow-sm)]">
-                    <div className="min-w-0 pr-2">
-                      <p className="text-[10px] sm:text-xs font-bold text-[var(--color-text)] opacity-80 uppercase tracking-wider truncate" title={`Due on ${nextBillingDateFormatted}`}>Due on {nextBillingDateFormatted}</p>
-                      <p className="text-[10px] sm:text-xs text-[var(--color-text)] font-medium truncate" title="₱99 Owner | ₱198 Tenanted">₱99 Owner | ₱198 Tenanted</p>
-                    </div>
-                    <div className="text-right shrink-0 pl-2">
-                      <p className="text-base sm:text-lg font-extrabold text-[var(--color-text)]" title={`₱${monthlyCost.toLocaleString()}`}>
-                        ₱{monthlyCost.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex justify-end">
-              <button 
-                type="button" 
-                onClick={handlePaymentClick} 
-                disabled={billingStatus.toLowerCase() === 'paid'}
-                className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent px-8 py-3.5 sm:py-3 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold transition-colors shadow-[var(--shadow-md)] flex items-center justify-center gap-2 active:scale-95"
-              >
-                {billingStatus.toLowerCase() === 'paid' ? (
-                   <><CheckCircle size={18} /> Settled</>
-                ) : (
-                   <><CreditCard size={18} /> Pay ₱{monthlyCost.toLocaleString()}</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DIGITAL WALLET PAYMENT MODAL */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[90vh] sm:h-auto overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
-            
-            {paymentSuccess ? (
-              <div className="px-6 py-12 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
-                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-50">
-                  <CheckCircle className="text-[#d97706]" size={40} strokeWidth={2.5} />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight truncate" title="Payment Submitted!">Payment Submitted!</h3>
-                <p className="text-slate-500 text-xs sm:text-sm mb-10 leading-relaxed px-4">
-                  Your payment receipt has been submitted successfully and is currently <strong className="text-amber-600">Pending Verification</strong>. Your account status will update once confirmed by the system admin.
-                </p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] sm:text-xs py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95"
+            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex justify-between items-center gap-3 flex-wrap sm:flex-nowrap">
+              {editingMemberId ? (
+                <button 
+                  type="button" 
+                  onClick={() => handleDeleteClick({ id: editingMemberId, name: memberName })} 
+                  disabled={isSubmitting} 
+                  className="text-red-500 hover:bg-red-50 px-3 py-2 rounded-md font-bold text-[11px] sm:text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 border border-transparent hover:border-red-100"
                 >
-                  Return to Dashboard
+                  <Trash2 size={14} strokeWidth={2.5} /> Remove User
+                </button>
+              ) : (
+                <div className="hidden sm:block"></div>
+              )}
+              
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <button type="button" onClick={() => closeUserModal()} disabled={isSubmitting} className="flex-1 sm:flex-none px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)] active:scale-95 transition-all">
+                  Cancel
+                </button>
+                <button onClick={handlePreSubmit} disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold shadow-[var(--shadow-md)] active:scale-95 transition-all flex justify-center items-center">
+                  {isSubmitting ? "Processing..." : (editingMemberId ? "Update User" : "Add User")}
                 </button>
               </div>
-            ) : (
-              <>
-                <div className="px-5 sm:px-6 py-5 sm:py-6 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] border-b border-[var(--color-border)] shrink-0">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--color-secondary)] to-[var(--color-primary)]"></div>
-                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2 truncate" title="Submit Payment">
-                    <CreditCard className="text-[var(--color-primary)] shrink-0" size={20} strokeWidth={2.5} />
-                    <span className="truncate">Submit Payment</span>
-                  </h2>
-                  <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-text)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
-                    <X size={16} strokeWidth={2.5} />
-                  </button>
-                </div>
-                
-                <div className="px-5 sm:px-6 py-6 sm:py-8 bg-[var(--color-bg)] overflow-y-auto custom-scrollbar flex-1 min-h-0">
-                  <p className="text-[11px] sm:text-xs font-semibold text-slate-500 mb-6 leading-relaxed">
-                    {orgData?.org_name || 'Organization'} · System Subscription - total <span className="font-black text-[var(--color-text)]">₱{monthlyCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                  </p>
-                  
-                  <div className="mb-6">
-                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 truncate" title="Payment Method">Payment Method</label>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-4 py-2.5 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]">
-                        Digital Wallet
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 p-4 sm:p-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-[var(--shadow-sm)] text-sm text-[var(--color-text)]">
-                    <div className="flex flex-col items-center">
-                      <p className="mb-4 font-bold text-[10px] sm:text-xs uppercase tracking-wider text-[var(--color-text)] text-center">Scan QR code using GCash or QR Ph</p>
-                      <div className="w-36 h-36 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-inner)] p-3">
-                        <Image src="/qr-ph.png" alt="Scan to pay" fill className="object-contain p-2" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 truncate" title="Reference / Transaction Number">Reference / Transaction Number</label>
-                    <input 
-                      type="text" 
-                      value={referenceNumber}
-                      onChange={(e) => setReferenceNumber(e.target.value)}
-                      placeholder="e.g. 1002934823"
-                      className="w-full bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] px-4 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] transition-all shadow-[var(--shadow-sm)]"
-                    />
-                  </div>
-                </div>
-                
-                <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] shrink-0">
-                  <button 
-                    onClick={handleSimulatePayment} 
-                    disabled={isSimulating || referenceNumber.length < 3} 
-                    className="w-full bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[10px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] border border-transparent active:scale-95 flex justify-center items-center gap-2"
-                  >
-                    {isSimulating ? <span className="animate-pulse">Processing...</span> : "I've paid, submit receipt"} <ArrowRight size={16} strokeWidth={2.5} className={isSimulating ? "hidden" : "block"} />
-                  </button>
-                </div>
-              </>
-            )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ✨ THEME ACTION CONFIRMATION MODAL */}
-      {themeConfirmModal.isOpen && (
+      {/* ✨ EDIT CONFIRMATION MODAL */}
+      {isEditConfirmModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 ${
-              themeConfirmModal.type === 'load' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20' :
-              themeConfirmModal.type === 'reset' ? 'bg-red-50 text-red-500 border-red-100' :
-              'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'
-            }`}>
-              {themeConfirmModal.type === 'load' && <DownloadCloud size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
-              {themeConfirmModal.type === 'reset' && <RotateCcw size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
-              {themeConfirmModal.type === 'apply' && <CheckCircle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 bg-blue-50 text-[var(--color-primary)] border-[var(--color-primary)]/20">
+              <Edit2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
             
-            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate" title={themeConfirmModal.title}>
-              {themeConfirmModal.title}
+            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate">
+              Confirm Update
             </h3>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
-              {themeConfirmModal.message}
+              Are you sure you want to save these changes to <strong className="text-[var(--color-text)]">{memberName}</strong>'s access profile?
             </p>
             
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button 
-                onClick={() => setThemeConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                onClick={() => setIsEditConfirmModalOpen(false)} 
+                disabled={isSubmitting}
                 className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-[11px] sm:text-xs uppercase tracking-wider duration-200 order-2 sm:order-1"
               >
                 Cancel
               </button>
               <button 
-                onClick={executeThemeAction} 
-                className={`w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-[var(--color-primary-text)] font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2 ${themeConfirmModal.confirmStyle}`}
-                title={themeConfirmModal.confirmText}
+                onClick={executeSubmit} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-white bg-[var(--color-primary)] hover:opacity-90 font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2"
               >
-                {themeConfirmModal.confirmText}
+                {isSubmitting ? "Saving..." : "Yes, Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ DELETE CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 bg-red-50 text-red-500 border-red-100">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate">
+              Remove User
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to remove <strong className="text-[var(--color-text)]">{memberToDelete?.name}</strong>? They will instantly lose access to the platform.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <button 
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setMemberToDelete(null);
+                }} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-[11px] sm:text-xs uppercase tracking-wider duration-200 order-2 sm:order-1"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteMember} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-white bg-red-500 hover:bg-red-600 font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2"
+              >
+                {isSubmitting ? "Removing..." : "Yes, Remove"}
               </button>
             </div>
           </div>

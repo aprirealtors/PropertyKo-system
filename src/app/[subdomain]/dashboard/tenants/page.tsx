@@ -34,6 +34,7 @@ const formatDateTime = (dateString: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
+
 export default function TenantDashboard() {
   const router = useRouter();
   
@@ -425,7 +426,7 @@ export default function TenantDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  // ✨ FIX: Delete ALL function instead of just updating UI
+  // ✨ FIX: Delete ALL function instead of permanently deleting
   const confirmDeleteAllNotifications = async () => {
     if (!userEmail) return;
     
@@ -435,10 +436,10 @@ export default function TenantDashboard() {
     setIsDeleteAllNotifModalOpen(false);
     setIsNotifOpen(false);
     
-    // Complete wipe from the table for this tenant
+    // ✨ FIX: Update to is_hidden: true instead of .delete()
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('recipient', userEmail); 
   };
 
@@ -464,10 +465,10 @@ export default function TenantDashboard() {
     // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Changed from .update({ is_hidden: true }) to .delete()
+    // 3. ✨ FIX: Changed from .delete() to .update({ is_hidden: true })
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
     // Clear the tracked notification

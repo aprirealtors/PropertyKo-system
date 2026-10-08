@@ -9,9 +9,11 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { usePresence } from '@/components/GlobalPresence';
 
+// ✨ ADDED: Assistant role to the chat options
 const CHAT_ROLES = [
   { id: 'admin', label: 'Admin', desc: 'System & Account Support', icon: Shield },
   { id: 'manager', label: 'Property Manager', desc: 'Maintenance & Daily Operations', icon: Briefcase },
+  { id: 'assistant', label: 'Assistant', desc: 'Assistant Operations', icon: Briefcase },
   { id: 'tenant', label: 'Tenant', desc: 'Your current lessee', icon: User },
 ];
 
@@ -29,15 +31,17 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   const [customNames, setCustomNames] = useState<Record<string, string>>({
     admin: 'Admin',
     manager: 'Property Manager',
+    assistant: 'Assistant', // ✨ ADDED default name
     tenant: 'Tenant'
   });
 
   const [tenantEmail, setTenantEmail] = useState<string | null>(null);
-  const [roleEmails, setRoleEmails] = useState<Record<string, string>>({ admin: '', manager: '', tenant: '' });
+  // ✨ ADDED: Tracking the assistant's email dynamically
+  const [roleEmails, setRoleEmails] = useState<Record<string, string>>({ admin: '', manager: '', assistant: '', tenant: '' });
   const [isContactsLoading, setIsContactsLoading] = useState(true);
 
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const [chatSearchQuery, setChatSearchQuery] = useState(""); // ✨ FIXED: Renamed to match the input
+  const [chatSearchQuery, setChatSearchQuery] = useState(""); 
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
   
   // Pinned Message Accordion & Highlighting States
@@ -135,8 +139,9 @@ export default function ConversationTab({ userData, units }: { userData: any, un
         return;
       }
 
-      const fetchedNames = { admin: 'Admin', manager: 'Property Manager', tenant: 'Tenant' };
-      const fetchedEmails = { admin: userData.admin_email, manager: '', tenant: '' };
+      // ✨ UPDATED: Structure to match the 4 specific owner chat roles
+      const fetchedNames = { admin: 'Admin', manager: 'Property Manager', assistant: 'Assistant', tenant: 'Tenant' };
+      const fetchedEmails = { admin: userData.admin_email, manager: '', assistant: '', tenant: '' };
       
       let foundTenantEmail = null;
 
@@ -144,10 +149,18 @@ export default function ConversationTab({ userData, units }: { userData: any, un
         const { data: adminData } = await supabase.from('team_members').select('name').eq('email', userData.admin_email).single();
         if (adminData?.name) fetchedNames.admin = adminData.name;
 
+        // Fetch Manager
         const { data: managerData } = await supabase.from('team_members').select('name, email').eq('admin_email', userData.admin_email).ilike('role', '%manager%').limit(1).maybeSingle();
         if (managerData) {
           if (managerData.name) fetchedNames.manager = managerData.name;
           if (managerData.email) fetchedEmails.manager = managerData.email;
+        }
+
+        // ✨ FETCH ASSISTANT
+        const { data: assistantData } = await supabase.from('team_members').select('name, email').eq('admin_email', userData.admin_email).ilike('role', '%assistant%').limit(1).maybeSingle();
+        if (assistantData) {
+          if (assistantData.name) fetchedNames.assistant = assistantData.name;
+          if (assistantData.email) fetchedEmails.assistant = assistantData.email;
         }
 
         if (units && units.length > 0) {
@@ -189,7 +202,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   // Clear the text box and load drafts when switching chats
   useEffect(() => {
     setIsSearchActive(false);
-    setChatSearchQuery(""); // ✨ FIXED variable reference
+    setChatSearchQuery("");
     setIsPinnedExpanded(false);
     setHighlightedMsgId(null);
     setReplyingTo(null);
@@ -209,6 +222,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     if (!isSearchActive && !highlightedMsgId) scrollToBottom();
   }, [messages.length, activeChat, isSearchActive]);
 
+  // ✨ UPDATED: Role matching function now utilizes strict emails from roleEmails
   const isMessageForRole = (msg: any, roleId: string) => {
     if (msg.sender_email === userData.email) {
       if (roleId === 'tenant') return msg.recipient_role === 'owner' && msg.tenant_email === tenantEmail;
@@ -216,7 +230,14 @@ export default function ConversationTab({ userData, units }: { userData: any, un
     } else {
       if (roleId === 'admin') return msg.sender_email === userData.admin_email;
       if (roleId === 'tenant') return msg.sender_email === tenantEmail;
-      if (roleId === 'manager') return msg.sender_email !== userData.admin_email && msg.sender_email !== tenantEmail;
+      if (roleId === 'manager') {
+        if (roleEmails.manager) return msg.sender_email === roleEmails.manager;
+        return msg.sender_email !== userData.admin_email && msg.sender_email !== tenantEmail && msg.sender_email !== roleEmails.assistant;
+      }
+      // ✨ ADDED: Match assistant strictly via their fetched email
+      if (roleId === 'assistant') {
+        return msg.sender_email === roleEmails.assistant;
+      }
       return false;
     }
   };
@@ -240,7 +261,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
       }
     };
     markAsRead();
-  }, [activeChat, messages, userData?.email, userData?.admin_email, tenantEmail]);
+  }, [activeChat, messages, userData?.email, userData?.admin_email, tenantEmail, roleEmails]);
 
   useEffect(() => {
     if (!userData?.email || !userData?.admin_email) return;
@@ -479,6 +500,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
   const renderRoleBadge = (roleId: string | undefined) => {
     if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
     if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
+    if (roleId === 'assistant') return <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 uppercase font-bold tracking-wider bg-sky-100">Assistant</span>;
     if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
     return null;
   };
@@ -812,16 +834,16 @@ export default function ConversationTab({ userData, units }: { userData: any, un
                       <div 
                         key={`search-${msg.id}`}
                         onClick={() => {
-                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setHighlightedMsgId(msg.id); 
                           setIsSearchActive(false);
                           setChatSearchQuery("");
-                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                          setTimeout(() => scrollToMessage(msg.id), 50); 
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
                       >
                         <div className="flex justify-between items-center">
                           <span className="text-[13px] font-bold text-[var(--color-text)]">
-                            {msg.sender_email === userData.email ? 'You' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
+                            {msg.sender_email === userData?.email ? 'You' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
                           </span>
                           <span className="text-[11px] text-slate-400 font-semibold">
                             {formatMessageTime(msg.created_at)}
@@ -980,7 +1002,7 @@ export default function ConversationTab({ userData, units }: { userData: any, un
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center pb-2 mb-4 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === userData.email ? 'yourself' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
@@ -994,37 +1016,41 @@ export default function ConversationTab({ userData, units }: { userData: any, un
               )}
 
               <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
-                <div className={`flex-1 bg-white border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
+                <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange} 
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
-                        if (newMessage.trim() && !isSending && !(activeChat === 'tenant' && !tenantEmail)) {
+                        if (newMessage.trim() && !isSending) {
                           handleSendMessage(e as any);
-                          e.currentTarget.style.height = 'auto'; 
+                          e.currentTarget.style.height = 'auto';
                         }
                       }
                     }}
-                    placeholder={activeChat === 'tenant' && !tenantEmail ? "No tenant assigned..." : "Type a message..."}
+                    placeholder="Type a message..."
                     className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-[var(--color-text)] font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
                     style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
-                    disabled={isSending || isLoading || (activeChat === 'tenant' && !tenantEmail)}
+                    disabled={isSending || isLoading}
                     rows={1}
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={!newMessage.trim() || isSending || (activeChat === 'tenant' && !tenantEmail)}
+                  disabled={!newMessage.trim() || isSending}
                   className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-[var(--shadow-sm)] duration-200 mb-0.5 ${
                     newMessage.trim() 
                       ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90' 
                       : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  {isSending ? <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" /> : <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />}
+                  {isSending ? (
+                    <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
+                  ) : (
+                    <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
+                  )}
                 </button>
               </form>
             </div>
@@ -1035,14 +1061,18 @@ export default function ConversationTab({ userData, units }: { userData: any, un
       {/* Global Mobile Bottom Sheet for Long Press Actions */}
       {longPressedMsgId && (
         <>
+          <div 
+            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
+            onClick={() => setLongPressedMsgId(null)} 
+          />
           <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
-
+            
             {(() => {
               const msg = messages.find(m => m.id === longPressedMsgId);
               if (!msg || msg.is_deleted) return null; // No actions for deleted msgs
               const isMe = msg.sender_email === userData.email;
-
+              
               return (
                 <div className="flex justify-around items-center max-w-sm mx-auto">
                   <button 

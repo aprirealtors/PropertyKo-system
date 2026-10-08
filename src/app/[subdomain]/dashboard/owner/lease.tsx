@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, RefreshCw, MessageSquare } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
+
+type DeclareErrors = {
+  tenantName?: string;
+  rent?: string;
+  startDate?: string;
+  endDate?: string;
+};
 
 export default function LeaseTab({ userData, units }: any) {
   const sortedUnits = useMemo(() => {
@@ -40,6 +47,11 @@ export default function LeaseTab({ userData, units }: any) {
   const [formStartDate, setFormStartDate] = useState("");
   const [formEndDate, setFormEndDate] = useState("");
 
+  // ⚠️ Required-field validation state (Declare Lease modal)
+  const [declareErrors, setDeclareErrors] = useState<DeclareErrors>({});
+  const declareWarningRef = useRef<HTMLDivElement>(null);
+  const hasDeclareErrors = Object.keys(declareErrors).length > 0;
+
   useEffect(() => {
     if (sortedUnits && sortedUnits.length > 0 && !selectedUnit) {
       setSelectedUnit(sortedUnits[0]);
@@ -51,6 +63,11 @@ export default function LeaseTab({ userData, units }: any) {
       fetchActiveLease(selectedUnit.id);
     }
   }, [selectedUnit]);
+
+  // Clear old warnings every time the declare modal is opened or closed
+  useEffect(() => {
+    setDeclareErrors({});
+  }, [isDeclareModalOpen]);
 
   const fetchActiveLease = async (unitId: string) => {
     setIsLoadingLease(true);
@@ -85,6 +102,43 @@ export default function LeaseTab({ userData, units }: any) {
   const showSuccess = (title: string, desc: string) => setSuccessModal({ isOpen: true, title, desc });
   const showError = (message: string) => setErrorModal({ isOpen: true, message });
 
+  // --- DECLARE FORM VALIDATION HELPERS ---
+  // Remove one field's error as soon as the user fixes it
+  const clearDeclareError = (field: keyof DeclareErrors) => {
+    setDeclareErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const validateDeclareForm = (): boolean => {
+    const errs: DeclareErrors = {};
+
+    if (!formTenantName.trim()) errs.tenantName = "Tenant full name is required.";
+
+    if (String(formRent).trim() === "") errs.rent = "Monthly rent is required.";
+    else if (Number(formRent) < 0) errs.rent = "Monthly rent cannot be negative.";
+
+    if (!formStartDate) errs.startDate = "Start date is required.";
+    if (!formEndDate) errs.endDate = "End date is required.";
+    else if (formStartDate && new Date(formEndDate) <= new Date(formStartDate)) {
+      errs.endDate = "End date must be after the start date.";
+    }
+
+    setDeclareErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  // Shared input styling: turns red when the field has an error
+  const declareInputClass = (hasError: boolean, extra = "px-4") =>
+    `w-full ${extra} py-3 sm:py-3.5 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${
+      hasError
+        ? "border-red-500 bg-red-50/40 focus:bg-white focus:ring-red-500/15 focus:border-red-500"
+        : "border-[var(--color-border)] bg-white focus:bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]"
+    }`;
+
   const handleOpenDeclareModal = () => {
     if (activeLease) {
       setFormTenantName(activeLease.tenant_name || "");
@@ -99,11 +153,21 @@ export default function LeaseTab({ userData, units }: any) {
       setFormRent("");
     }
     setFormStartDate(""); setFormEndDate("");
+    setDeclareErrors({});
     setIsDeclareModalOpen(true);
   };
 
   const confirmDeclareLease = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ✅ Validate first: show red borders + warning and stop if anything is missing
+    if (!validateDeclareForm()) {
+      requestAnimationFrame(() =>
+        declareWarningRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      );
+      return;
+    }
+
     const isRenewal = !!activeLease;
     setConfirmModal({
       isOpen: true,
@@ -621,7 +685,18 @@ export default function LeaseTab({ userData, units }: any) {
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
-              <form onSubmit={confirmDeclareLease} className="space-y-4 sm:space-y-5">
+              {/* noValidate: show our own red-border warnings instead of the browser's default popups */}
+              <form onSubmit={confirmDeclareLease} noValidate className="space-y-4 sm:space-y-5">
+
+                {/* ⚠️ WARNING BANNER: missing / invalid fields */}
+                <div ref={declareWarningRef}>
+                  {hasDeclareErrors && (
+                    <div role="alert" className="p-3 bg-red-50 text-red-700 text-xs font-bold rounded-xl border border-red-300 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <AlertCircle size={16} strokeWidth={2.5} className="shrink-0 mt-px" />
+                      <span>Please fill in all required fields highlighted in red before submitting.</span>
+                    </div>
+                  )}
+                </div>
                 
                 {activeLease && (
                   <p className="text-xs sm:text-sm font-medium text-slate-500 leading-relaxed mb-2">
@@ -630,42 +705,58 @@ export default function LeaseTab({ userData, units }: any) {
                 )}
 
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Tenant Full Name</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Tenant Full Name <span className="text-red-500">*</span></label>
                   <input 
-                    required type="text" placeholder="e.g. Juan Dela Cruz"
-                    value={formTenantName} onChange={e => setFormTenantName(e.target.value)}
-                    className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}
+                    type="text" placeholder="e.g. Juan Dela Cruz"
+                    value={formTenantName}
+                    onChange={e => { setFormTenantName(e.target.value); clearDeclareError("tenantName"); }}
+                    aria-invalid={!!declareErrors.tenantName}
+                    className={declareInputClass(!!declareErrors.tenantName)}
+                    disabled={isSubmitting}
                   />
+                  <DeclareFieldError message={declareErrors.tenantName} />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Monthly Rent</label>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Monthly Rent <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-[13px] sm:text-sm">₱</span>
+                    <span className={`absolute left-4 top-1/2 -translate-y-1/2 font-black text-[13px] sm:text-sm ${declareErrors.rent ? "text-red-400" : "text-slate-400"}`}>₱</span>
                     <input 
-                      required type="number" min="0" placeholder="0.00"
-                      value={formRent} onChange={e => setFormRent(e.target.value)}
-                      className="w-full pl-8 pr-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}
+                      type="number" min="0" placeholder="0.00"
+                      value={formRent}
+                      onChange={e => { setFormRent(e.target.value); clearDeclareError("rent"); }}
+                      aria-invalid={!!declareErrors.rent}
+                      className={declareInputClass(!!declareErrors.rent, "pl-8 pr-4")}
+                      disabled={isSubmitting}
                     />
                   </div>
+                  <DeclareFieldError message={declareErrors.rent} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">New Start Date</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">New Start Date <span className="text-red-500">*</span></label>
                     <input 
-                      required type="date"
-                      value={formStartDate} onChange={e => setFormStartDate(e.target.value)}
-                      className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}
+                      type="date"
+                      value={formStartDate}
+                      onChange={e => { setFormStartDate(e.target.value); clearDeclareError("startDate"); clearDeclareError("endDate"); }}
+                      aria-invalid={!!declareErrors.startDate}
+                      className={declareInputClass(!!declareErrors.startDate)}
+                      disabled={isSubmitting}
                     />
+                    <DeclareFieldError message={declareErrors.startDate} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">New End Date</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">New End Date <span className="text-red-500">*</span></label>
                     <input 
-                      required type="date"
-                      value={formEndDate} onChange={e => setFormEndDate(e.target.value)}
-                      className="w-full px-4 py-3 sm:py-3.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}
+                      type="date"
+                      value={formEndDate}
+                      onChange={e => { setFormEndDate(e.target.value); clearDeclareError("endDate"); }}
+                      aria-invalid={!!declareErrors.endDate}
+                      className={declareInputClass(!!declareErrors.endDate)}
+                      disabled={isSubmitting}
                     />
+                    <DeclareFieldError message={declareErrors.endDate} />
                   </div>
                 </div>
 
@@ -765,5 +856,15 @@ function FormField({ label, icon, value, valueColor = "text-[var(--color-text)]"
         </div>
       </div>
     </div>
+  );
+}
+
+// Inline red warning shown under a field that failed validation
+function DeclareFieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-1.5 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+      <AlertCircle size={12} strokeWidth={2.5} className="shrink-0" /> {message}
+    </p>
   );
 }

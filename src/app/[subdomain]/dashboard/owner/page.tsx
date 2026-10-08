@@ -475,6 +475,14 @@ export default function OwnerDashboard() {
     }
   };
 
+  // ✨ NEW: Smart Router Function for "Recent Statements" and "View Statements" buttons
+  // Directly passes the Intent to snap to the Details Card on Mobile instead of the properties list
+  const handleRouteToFinancialsDetail = () => {
+    const targetUnitId = myUnitsList.length > 0 ? myUnitsList[0].id : null;
+    const intent = targetUnitId ? `select_unit_${targetUnitId}_${Date.now()}` : null;
+    handleTabChange('financials', intent);
+  };
+
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
@@ -604,7 +612,7 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  // ✨ FIX: Delete ALL function instead of just updating UI
+  // ✨ FIX: Hide ALL function instead of permanently deleting
   const confirmDeleteAllNotifications = async () => {
     if (!userEmail) return;
     
@@ -614,10 +622,10 @@ export default function OwnerDashboard() {
     setIsDeleteAllNotifModalOpen(false);
     setIsNotifOpen(false);
     
-    // Complete wipe from the table for this owner
+    // ✨ FIX: Update to is_hidden: true instead of .delete()
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('recipient', userEmail); 
   };
 
@@ -643,10 +651,10 @@ export default function OwnerDashboard() {
     // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Changed from .update({ is_hidden: true }) to .delete()
+    // 3. ✨ FIX: Change back to update({ is_hidden: true }) to keep in DB
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
     // Clear the tracked notification
@@ -1037,7 +1045,7 @@ export default function OwnerDashboard() {
                      </div>
 
                      <button 
-                       onClick={() => setActiveTab('financials')} 
+                       onClick={handleRouteToFinancialsDetail} 
                        disabled={totalDue === 0}
                        className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-text)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
                      >
@@ -1077,7 +1085,7 @@ export default function OwnerDashboard() {
                   </button>
 
                    {/* Card 3: Financials -> Account Billing */}
-                  <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                  <button onClick={handleRouteToFinancialsDetail} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                       <Receipt size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
@@ -1112,7 +1120,7 @@ export default function OwnerDashboard() {
                        <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial statements</p>
                      </div>
                      <button 
-                       onClick={() => setActiveTab('financials')} 
+                       onClick={handleRouteToFinancialsDetail} 
                        className="text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-transparent"
                      >
                        View All
@@ -1146,7 +1154,7 @@ export default function OwnerDashboard() {
                          return (
                            <div 
                              key={idx} 
-                             onClick={() => setActiveTab('financials')}
+                             onClick={handleRouteToFinancialsDetail}
                              className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
                            >
                              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -1496,7 +1504,7 @@ export default function OwnerDashboard() {
                     )}
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative group">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
@@ -1518,7 +1526,7 @@ export default function OwnerDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative group">
                         <input 
                           type={showNewPassword ? "text" : "password"}
@@ -1540,7 +1548,7 @@ export default function OwnerDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
                       <div className="relative group">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}
