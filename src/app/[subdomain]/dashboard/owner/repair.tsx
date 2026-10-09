@@ -522,7 +522,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             {isLoading ? (
               <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : onHoldTasks.length === 0 ? (
-              <EmptyState icon={PauseCircle} title="No on hold" message="If a repair needs parts, it will show here." />
+              <EmptyState icon={PauseCircle} title="No on hold ticket" message="If a repair needs parts or gets delayed, it will show here." />
             ) : (
               onHoldTasks.map(t => {
                 const holdReason = t.on_hold_reason;

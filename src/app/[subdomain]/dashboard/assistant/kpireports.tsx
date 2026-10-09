@@ -224,7 +224,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Desktop/Tablet admin badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
-              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Manager</span>
+              <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Assistant</span>
               <div className="w-10 h-10 md:w-12 md:h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
                 {initials}
               </div>

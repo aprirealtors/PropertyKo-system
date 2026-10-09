@@ -183,6 +183,9 @@ export default function ConversationTab() {
     } else if (contactType === 'manager') {
       return (msg.sender_email === profileEmail && msg.recipient_role === 'manager' && msg.tenant_email === profileEmail) ||
              (msg.sender_email === contactId && msg.recipient_role === 'maintenance' && msg.tenant_email === profileEmail);
+    } else if (contactType === 'assistant') {
+      return (msg.sender_email === profileEmail && msg.recipient_role === 'assistant' && msg.tenant_email === profileEmail) ||
+             (msg.sender_email === contactId && msg.recipient_role === 'maintenance' && msg.tenant_email === profileEmail);
     } else if (contactType === 'maintenance') {
       return (msg.sender_email === profileEmail && msg.recipient_role === 'maintenance' && msg.tenant_email === contactId) ||
              (msg.sender_email === contactId && msg.recipient_role === 'maintenance' && msg.tenant_email === profileEmail);
@@ -262,7 +265,8 @@ export default function ConversationTab() {
       const { data, error } = await supabase.from('messages').select('*').eq('admin_email', adminEmail).or(`sender_email.eq.${profileEmail},recipient_role.eq.maintenance`).order('created_at', { ascending: true });
       if (data) setMessages(data);
 
-      const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', adminEmail).in('role', ['Property manager', 'Maintenance staff']); 
+      // ✨ UPDATED: Added 'Assistant' to the query roles
+      const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', adminEmail).in('role', ['Property manager', 'Maintenance staff', 'Assistant']); 
 
       const contactsMap = new Map();
 
@@ -286,11 +290,17 @@ export default function ConversationTab() {
               type = 'manager'; 
               unitLabel = 'Maintenance & Daily Operations';
             }
-
-            if (user.role === 'Maintenance staff') {
+            // ✨ ADDED ASSISTANT
+            else if (user.role === 'Assistant') {
+              icon = Briefcase; 
+              type = 'assistant'; 
+              unitLabel = 'Assistant Operations';
+            }
+            // ✨ UPDATED MAINTENANCE DESIGNATION
+            else if (user.role === 'Maintenance staff') {
               icon = Wrench;
               type = 'maintenance';
-              unitLabel = 'Repairs & Operations';
+              unitLabel = user.access_level || 'Repairs & Operations';
             }
 
             contactsMap.set(user.email, { 
@@ -298,7 +308,8 @@ export default function ConversationTab() {
               name: user.name || user.email, 
               unit: unitLabel,
               type: type, 
-              icon: icon
+              icon: icon,
+              accessLevel: user.access_level // For badge rendering
             });
           }
         });
@@ -388,7 +399,7 @@ export default function ConversationTab() {
     const authEmail = profileEmail;
 
     const payload = {
-      tenant_email: (activeContact.type === 'admin' || activeContact.type === 'manager') ? profileEmail : activeChat, 
+      tenant_email: (activeContact.type === 'admin' || activeContact.type === 'manager' || activeContact.type === 'assistant') ? profileEmail : activeChat, 
       admin_email: adminEmail,
       sender_email: authEmail, 
       content: textToSend,
@@ -407,8 +418,8 @@ export default function ConversationTab() {
       const { data, error } = await supabase.from('messages').insert([payload]).select().single();
       if (!error && data) {
         setMessages(prev => {
-          const realtimeAlreadyAdded = prev.some(m => m.id === data.id);
-          if (realtimeAlreadyAdded) return prev.filter(m => m.id !== tempId);
+          const isAlreadyAddedByRealtime = prev.some(m => m.id === data.id);
+          if (isAlreadyAddedByRealtime) return prev.filter(m => m.id !== tempId);
           return prev.map(m => m.id === tempId ? data : m);
         });
       } else {
@@ -476,6 +487,13 @@ export default function ConversationTab() {
   const sortedContacts = [...contacts].sort((a: any, b: any) => {
     const lastA = getLastMessage(a.id, a.type)?.created_at || '0';
     const lastB = getLastMessage(b.id, b.type)?.created_at || '0';
+    
+    if (lastA === '0' && lastB === '0') {
+      const isASystem = ['admin', 'manager', 'assistant'].includes(a.type);
+      const isBSystem = ['admin', 'manager', 'assistant'].includes(b.type);
+      if (isASystem && !isBSystem) return -1;
+      if (!isASystem && isBSystem) return 1;
+    }
     return new Date(lastB).getTime() - new Date(lastA).getTime();
   });
 
@@ -504,11 +522,15 @@ export default function ConversationTab() {
     ? [] 
     : roleMessages.filter((msg: any) => !msg.is_deleted && msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  // Unified Role Badges (Themified)
-  const renderRoleBadge = (roleId: string | undefined) => {
+  // ✨ UPDATED: Role Badge dynamically displays Assistant, Manager, and Maintenance Roles
+  const renderRoleBadge = (roleId: string | undefined, accessLevel?: string) => {
     if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-blue-100 border border-blue-200">Manager</span>;
+    if (roleId === 'assistant') return <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-sky-100 border border-sky-200">Assistant</span>;
     if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-blue-100 border border-blue-200">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-amber-50 border border-amber-200/50">Maintenance</span>;
+    if (roleId === 'maintenance') {
+      const displayRole = accessLevel && accessLevel !== "None" ? accessLevel : 'Maintenance';
+      return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider bg-amber-50 border border-amber-200/50">{displayRole}</span>;
+    }
     return null;
   };
 
@@ -696,13 +718,14 @@ export default function ConversationTab() {
               <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
                 <button onClick={() => setActiveChat('')} className="md:hidden p-1.5 sm:p-2 text-[var(--color-primary)] hover:bg-slate-50 rounded-[var(--radius-sm)] transition-colors active:scale-95 shrink-0"><ChevronLeft size={20} className="sm:w-[22px] sm:h-[22px]" strokeWidth={2.5} /></button>
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] bg-slate-50 border border-[var(--color-border)] flex items-center justify-center text-slate-500 shadow-inner"><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-[var(--radius-md)] flex items-center justify-center shadow-inner ${activeContactDetails?.type === 'superadmin' ? 'bg-[#0a1e3f] text-[#359b46] border border-[#0a1e3f]' : 'bg-slate-50 text-slate-500 border border-[var(--color-border)]'}`}><ActiveIcon size={16} className="sm:w-[18px] sm:h-[18px]" /></div>
                   {isActiveContactOnline && <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></div>}
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
-                    {renderRoleBadge(activeContactDetails?.type)}
+                    {/* ✨ PASS THE ACCESS LEVEL HERE */}
+                    {renderRoleBadge(activeContactDetails?.type, activeContactDetails?.accessLevel)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
                     {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}
@@ -729,7 +752,7 @@ export default function ConversationTab() {
                   }}
                 >
                   <Pin size={14} className="text-amber-600 shrink-0 mt-0.5" fill="currentColor" />
-
+                  
                   <div className="flex-1 min-w-0 flex justify-between items-center gap-3">
                     {pinnedMessages.length === 1 ? (
                       <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate flex-1 min-w-0">
@@ -819,10 +842,10 @@ export default function ConversationTab() {
                       <div 
                         key={`search-${msg.id}`}
                         onClick={() => {
-                          setHighlightedMsgId(msg.id); // Trigger highlight state immediately
+                          setHighlightedMsgId(msg.id); 
                           setIsSearchActive(false);
                           setChatSearchQuery("");
-                          setTimeout(() => scrollToMessage(msg.id), 50); // Small delay to clear overlay before native scroll
+                          setTimeout(() => scrollToMessage(msg.id), 50); 
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-[var(--color-border)] transition-colors flex flex-col gap-1.5"
                       >
@@ -877,7 +900,7 @@ export default function ConversationTab() {
                         className={`w-full flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-in fade-in duration-200 group transition-transform py-1 ${highlightedMsgId === msg.id ? 'scale-[1.02]' : ''}`}
                       >
                         <div className={`flex items-center gap-2 max-w-[85%] sm:max-w-[80%] md:max-w-[65%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-
+                          
                           {/* Bubble wrapper for touch events */}
                           <div 
                             className="relative"
@@ -987,7 +1010,7 @@ export default function ConversationTab() {
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center pb-2 mb-4 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === profileEmail ? 'yourself' : (customNames[activeChat] || activeContactDetails?.name?.split(' ')[0] || 'User')}
@@ -1046,14 +1069,18 @@ export default function ConversationTab() {
       {/* Global Mobile Bottom Sheet for Long Press Actions */}
       {longPressedMsgId && (
         <>
+          <div 
+            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
+            onClick={() => setLongPressedMsgId(null)} 
+          />
           <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
-
+            
             {(() => {
               const msg = messages.find(m => m.id === longPressedMsgId);
               if (!msg || msg.is_deleted) return null; // No actions for deleted msgs
               const isMe = msg.sender_email === profileEmail;
-
+              
               return (
                 <div className="flex justify-around items-center max-w-sm mx-auto">
                   <button 

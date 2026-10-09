@@ -882,24 +882,24 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
       {/* 🌟 PREMIUM PAYMENT MODAL */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[80vh] sm:max-h-[85vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[85vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             
             {/* Header - Fixed */}
-            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-[var(--color-border)] z-20">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0 shadow-sm">
-                  <CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full text-[var(--color-text)] flex items-center justify-center shrink-0 shadow-sm bg-slate-50">
+                  <CreditCard size={18} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Submit Payment</h2>
               </div>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-[var(--color-border)] rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-bg)] transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
             
             {/* Scrollable Form Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 flex-1 flex flex-col">
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/50 flex-1 flex flex-col relative z-10">
               
               {/* Premium Amount Due Card */}
               <div className="flex justify-between items-center bg-white p-4 sm:p-5 rounded-[1.25rem] sm:rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] mb-5 sm:mb-6 gap-3 shrink-0">
@@ -935,7 +935,7 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
                 
                 {paymentMethod === 'Digital Wallet' && (
                   <div className="flex flex-col items-center">
-                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[var(--color-secondary)] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
+                    <p className="mb-4 font-black text-[10px] sm:text-[11px] uppercase tracking-widest text-[var(--color-text)] text-center">Scan QR code using GCash, Maya, or QR Ph</p>
                     <div className="w-32 h-32 sm:w-40 sm:h-40 bg-slate-50 relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-inner p-3">
                       {activeQrCodeUrl ? (
                         <img src={activeQrCodeUrl} alt="Scan to pay" className="w-full h-full object-contain p-1" />
@@ -958,7 +958,7 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
                         <div className="flex justify-between items-center gap-3 mt-1 pt-1"><span className="text-slate-500 font-bold text-[11px] sm:text-xs shrink-0">Account No.</span> <span className="font-black font-mono text-[var(--color-text)] bg-[var(--color-primary)]/10 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-[var(--radius-sm)] border border-[var(--color-primary)]/20 text-[11px] sm:text-xs truncate text-right">{activeBankAccountNumber}</span></div>
                       </div>
                     ) : (
-                      <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)]">Bank details will be displayed here once configured by the administration.</p>
+                      <p className="text-[11px] sm:text-xs italic text-slate-500 text-center py-5 bg-white rounded-[var(--radius-md)] border border-dashed border-[var(--color-border)]">Bank details will be displayed here once configured by the administration.</p>
                     )}
                   </div>
                 )}
@@ -979,7 +979,7 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
 
               {/* Reference Number Input */}
               {paymentMethod !== 'Cash' && (
-                <div className="mb-6 shrink-0">
+                <div className="mb-2 shrink-0">
                   <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1 truncate">Reference / Transaction No.</label>
                   <input 
                     type="text" 
@@ -990,27 +990,27 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
                   />
                 </div>
               )}
-
-              {/* Stacked Mobile Buttons, Perfectly Balanced Desktop Buttons */}
-              <div className="mt-auto flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-1 sm:pb-2 z-20">
-                <button 
-                  type="button" 
-                  onClick={() => setIsPaymentModalOpen(false)} 
-                  disabled={isSimulating} 
-                  className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-[var(--color-border)] hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)]"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleSimulatePayment} 
-                  disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
-                  className="w-full flex-1 min-w-0 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex justify-center items-center gap-2"
-                >
-                  {isSimulating ? <span className="animate-pulse">Processing...</span> : "Submit Payment"} <ArrowRight size={16} strokeWidth={2.5} className={`w-4 h-4 sm:w-4 sm:h-4 ${isSimulating ? "hidden" : "block"}`} />
-                </button>
-              </div>
-
             </div>
+            
+            {/* FIXED FOOTER WITH SOLID BACKGROUND - NO MORE TEXT BLEEDING */}
+            <div className="mt-auto px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[var(--color-border)] flex gap-2.5 sm:gap-3 bg-white z-20 shrink-0 flex-col-reverse min-[480px]:flex-row shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+              <button 
+                type="button" 
+                onClick={() => setIsPaymentModalOpen(false)} 
+                disabled={isSimulating} 
+                className="w-full min-[480px]:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-[var(--color-border)] hover:border-slate-300 hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSimulatePayment} 
+                disabled={isSimulating || (paymentMethod !== 'Cash' && referenceNumber.length < 3)} 
+                className="w-full flex-1 min-w-0 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:shadow-none text-[var(--color-primary-text)] border border-transparent py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex justify-center items-center gap-2"
+              >
+                {isSimulating ? <span className="animate-pulse">Processing...</span> : "Submit Payment"} <ArrowRight size={16} strokeWidth={2.5} className={`w-4 h-4 sm:w-4 sm:h-4 ${isSimulating ? "hidden" : "block"}`} />
+              </button>
+            </div>
+
           </div>
         </div>
       )}

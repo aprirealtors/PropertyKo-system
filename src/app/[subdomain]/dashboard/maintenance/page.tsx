@@ -53,8 +53,9 @@ export default function MaintenanceDashboard() {
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  // Global Data States
-  const [profile, setProfile] = useState({ name: "Staff", initials: "S" });
+  
+  // Global Data States (✨ ADDED accessLevel)
+  const [profile, setProfile] = useState({ name: "Staff", initials: "S", accessLevel: "Maintenance Staff" });
   const [userEmail, setUserEmail] = useState<string>(""); 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -122,19 +123,25 @@ export default function MaintenanceDashboard() {
 
       const { data: userData } = await supabase
         .from('team_members')
-        .select('name')
+        .select('name, access_level') // ✨ FETCH access_level
         .eq('email', user.email)
         .single();
 
       if (userData) {
-        // ✨ UPDATED: Grab only the first letter
         const initials = userData.name.charAt(0).toUpperCase();
-        setProfile({ name: userData.name, initials });
+        setProfile({ 
+          name: userData.name, 
+          initials, 
+          accessLevel: userData.access_level || "Maintenance Staff" 
+        });
       } else if (user.user_metadata?.name || user.user_metadata?.full_name) {
         const metaName = user.user_metadata.name || user.user_metadata.full_name;
-        // ✨ UPDATED: Grab only the first letter
         const initials = metaName.charAt(0).toUpperCase();
-        setProfile({ name: metaName, initials });
+        setProfile({ 
+          name: metaName, 
+          initials, 
+          accessLevel: "Maintenance Staff" 
+        });
       }
 
       const { data: taskData, error: taskError } = await supabase
@@ -298,10 +305,9 @@ export default function MaintenanceDashboard() {
       }
       
       const newName = editedName.trim();
-      // ✨ UPDATED: Grab only the first letter
       const initials = newName.charAt(0).toUpperCase();
 
-      setProfile({ name: newName, initials });
+      setProfile(prev => ({ ...prev, name: newName, initials }));
       showToast("Staff name updated successfully!", "success");
       setIsEditingName(false);
     } catch (err: any) {
@@ -466,7 +472,7 @@ export default function MaintenanceDashboard() {
               {!isSidebarCollapsed && (
                 <div className="flex-1 min-w-0 flex flex-col justify-center mt-0.5">
                   <p className="text-[15px] font-extrabold text-white truncate leading-none mb-1.5">{profile.name}</p>
-                  <p className="text-[10px] font-extrabold text-white/50 truncate uppercase tracking-widest leading-none">STAFF PROFILE</p>
+                  <p className="text-[10px] font-extrabold text-white/50 truncate uppercase tracking-widest leading-none">{profile.accessLevel}</p>
                 </div>
               )}
 
@@ -556,7 +562,7 @@ export default function MaintenanceDashboard() {
                 
                 <div className="z-10 mt-1 min-w-0 w-full px-2">
                   <h3 className="font-extrabold text-lg sm:text-xl tracking-tight truncate">{profile.name}</h3>
-                  <p className="text-[10px] sm:text-xs font-bold text-white/70 mt-1 tracking-widest uppercase">Maintenance Staff</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-white/70 mt-1 tracking-widest uppercase">{profile.accessLevel}</p>
                 </div>
               </div>
 
@@ -806,14 +812,16 @@ export default function MaintenanceDashboard() {
       {isConfirmNameModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            
+
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
+            
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
+            
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 

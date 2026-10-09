@@ -74,13 +74,17 @@ export default function Home() {
         if (session?.user) {
           const userRole = session.user.user_metadata?.role;
           const userEmail = session.user.email;
+          const adminParentEmail = session.user.user_metadata?.admin_parent || userEmail;
           
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("subdomain, org_name, status")
-            .eq("admin_email", userEmail)
-            .single();
+          // ✨ NEW: Fetch BOTH org data and true role from team_members
+          const [{ data: orgData }, { data: teamMember }] = await Promise.all([
+            supabase.from("organizations").select("subdomain, org_name, status").eq("admin_email", adminParentEmail).single(),
+            supabase.from("team_members").select("role").eq("email", userEmail).single()
+          ]);
             
+          // Prioritize the role in the database over the auth metadata
+          const dbRole = teamMember?.role?.toLowerCase() || userRole;
+
           const hostname = window.location.hostname;
           const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
           const isLocal = hostname.includes("localhost");
@@ -112,11 +116,13 @@ export default function Home() {
           if (userEmail === "superadmin@propertyko.com") {
             router.push("/dashboard/superadmin");
           } else {
+            // ✨ NEW: Use the true database role for routing
             let routePath = "/dashboard/admin";
-            if (userRole === "staff") routePath = "/dashboard/maintenance";
-            else if (userRole === "property_manager") routePath = "/dashboard/manager";
-            else if (userRole === "owner") routePath = "/dashboard/owner";
-            else if (userRole === "tenant") routePath = "/dashboard/tenants";
+            if (dbRole === "maintenance staff" || dbRole === "staff") routePath = "/dashboard/maintenance";
+            else if (dbRole === "property manager" || dbRole === "property_manager") routePath = "/dashboard/manager";
+            else if (dbRole === "assistant") routePath = "/dashboard/assistant"; 
+            else if (dbRole === "owner") routePath = "/dashboard/owner";
+            else if (dbRole === "tenant") routePath = "/dashboard/tenants";
 
             if (isMainDomain && orgData?.subdomain) {
               window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}${routePath}`;
@@ -190,21 +196,22 @@ export default function Home() {
 
       const userRole = authData.user?.user_metadata?.role;
       const userEmail = authData.user?.email;
+      const adminParentEmail = authData.user?.user_metadata?.admin_parent || userEmail;
 
-      // 2. FETCH MATCHING ORG DATA FROM DATABASE
-      const { data: orgData, error: dbError } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("admin_email", userEmail)
-        .single();
+      // 2. FETCH MATCHING ORG DATA AND TRUE ROLE FROM DATABASE
+      const [{ data: orgData, error: dbError }, { data: teamMember }] = await Promise.all([
+        supabase.from("organizations").select("*").eq("admin_email", adminParentEmail).single(),
+        supabase.from("team_members").select("role").eq("email", userEmail).single()
+      ]);
+
+      const dbRole = teamMember?.role?.toLowerCase() || userRole;
 
       if (dbError) {
         console.log("Not a registered organization admin, checking alternate roles...");
       }
 
       // ✨ NEW SECURITY CHECKS: Deleted or Suspended Orgs
-      if (userRole === 'admin' && userEmail !== 'superadmin@propertyko.com') {
-        // If they are an org admin, but the org is missing from DB (Deleted)
+      if (dbRole === 'admin' && userEmail !== 'superadmin@propertyko.com') {
         if (!orgData || dbError) {
           await supabase.auth.signOut();
           setErrorMsg("Your workspace has been deleted or no longer exists. Please contact support.");
@@ -212,7 +219,6 @@ export default function Home() {
           return;
         }
 
-        // If the org is suspended for unpaid bills or other reasons
         if (orgData.status === 'suspended') {
           await supabase.auth.signOut();
           setErrorMsg("Access Denied: Your workspace has been suspended due to pending billing. Please contact support.");
@@ -253,15 +259,16 @@ export default function Home() {
         return;
       }
 
-      // 4. DYNAMIC ROUTING BASED ON ROLE & DOMAIN
+      // 4. DYNAMIC ROUTING BASED ON TRUE DB ROLE
       if (userEmail === "superadmin@propertyko.com") {
         router.push("/dashboard/superadmin");
       } else {
         let routePath = "/dashboard/admin";
-        if (userRole === "staff") routePath = "/dashboard/maintenance";
-        else if (userRole === "property_manager") routePath = "/dashboard/manager";
-        else if (userRole === "owner") routePath = "/dashboard/owner";
-        else if (userRole === "tenant") routePath = "/dashboard/tenants";
+        if (dbRole === "maintenance staff" || dbRole === "staff") routePath = "/dashboard/maintenance";
+        else if (dbRole === "property manager" || dbRole === "property_manager") routePath = "/dashboard/manager";
+        else if (dbRole === "assistant") routePath = "/dashboard/assistant"; 
+        else if (dbRole === "owner") routePath = "/dashboard/owner";
+        else if (dbRole === "tenant") routePath = "/dashboard/tenants";
 
         if (isMainDomain && orgData?.subdomain) {
           window.location.href = `${protocol}${orgData.subdomain}.${baseDomain}${routePath}`;

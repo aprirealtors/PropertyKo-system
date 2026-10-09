@@ -145,8 +145,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
   const isMessageForContact = (msg: any, contactId: string, contactType: string) => {
     if (contactType === 'admin') {
       return msg.tenant_email === managerProfile.email && (msg.recipient_role === 'admin' || msg.sender_email === orgData.admin_email);
-    } else if (contactType === 'maintenance') {
-      return msg.tenant_email === contactId && (msg.recipient_role === 'manager' || msg.recipient_role === 'maintenance');
+    } else if (contactType === 'maintenance' || contactType === 'assistant') {
+      return msg.tenant_email === contactId && (msg.recipient_role === 'manager' || msg.recipient_role === contactType);
     } else {
       return msg.tenant_email === contactId && msg.recipient_role === 'manager';
     }
@@ -179,13 +179,14 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       setIsLoading(true);
       try {
         const { data: tenantMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).eq('recipient_role', 'manager');
-        const { data: sysMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).or(`tenant_email.eq.${managerProfile.email},sender_email.eq.${managerProfile.email}`).in('recipient_role', ['admin', 'maintenance']);
+        const { data: sysMsgs } = await supabase.from('messages').select('*').eq('admin_email', orgData.admin_email).or(`tenant_email.eq.${managerProfile.email},sender_email.eq.${managerProfile.email}`).in('recipient_role', ['admin', 'maintenance', 'assistant']);
 
         const allMsgsMap = new Map();
         [...(tenantMsgs || []), ...(sysMsgs || [])].forEach(m => allMsgsMap.set(m.id, m));
         setMessages(Array.from(allMsgsMap.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
 
-        const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff']); 
+        // ✨ UPDATED: Query the database for 'Assistant' in addition to other roles
+        const { data: usersData } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email).in('role', ['Tenant', 'Owner', 'Maintenance staff', 'Assistant']); 
 
         const contactsMap = new Map();
         
@@ -204,20 +205,29 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
               let icon = User;
               let type = user.role.toLowerCase();
 
-              if (user.role === 'Owner') { icon = Key; type = 'owner'; }
-              if (user.role === 'Maintenance staff') {
-                icon = Wrench;
-                unitLabel = 'Repairs & Operations';
-                type = 'maintenance'; 
+              if (type === 'owner') { icon = Key; type = 'owner'; }
+              // ✨ ADDED ASSISTANT
+              else if (type === 'assistant') { 
+                icon = Briefcase; 
+                type = 'assistant'; 
+                unitLabel = 'Assistant Operations'; 
               }
-              if (user.role === 'Tenant') { type = 'tenant'; }
+              // ✨ GRANULAR MAINTENANCE SUPPORT (Engineer, Technician, Housekeeping)
+              else if (type === 'maintenance staff' || type === 'maintenance') { 
+                icon = Wrench; 
+                type = 'maintenance'; 
+                // Display their specific designation from access_level in the UI
+                unitLabel = user.access_level || 'Repairs & Operations'; 
+              }
+              else if (type === 'tenant') { type = 'tenant'; }
               
               contactsMap.set(user.email, { 
                 id: user.email, 
                 name: user.name || user.email, 
                 unit: unitLabel,
                 type: type, 
-                icon: icon
+                icon: icon,
+                accessLevel: user.access_level // Saved for the badge logic
               });
             }
           });
@@ -259,7 +269,7 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
           const msg = payload.new;
           if (msg.recipient_role === 'manager' || 
               (msg.tenant_email === managerProfile.email && ['admin'].includes(msg.recipient_role)) || 
-              ['maintenance'].includes(msg.recipient_role) || 
+              ['maintenance', 'assistant'].includes(msg.recipient_role) || // ✨ INCLUDE ASSISTANT IN LISTENER
               msg.sender_email === managerProfile.email) {
             
             setMessages((current) => {
@@ -359,8 +369,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
       admin_email: orgData.admin_email,
       sender_email: authEmail, 
       content: textToSend,
-      is_from_tenant: activeContact.type === 'admin' || activeContact.type === 'maintenance', 
-      recipient_role: activeContact.type === 'admin' || activeContact.type === 'maintenance' ? activeContact.type : 'manager',
+      is_from_tenant: ['admin', 'maintenance', 'assistant'].includes(activeContact.type), 
+      recipient_role: ['admin', 'maintenance', 'assistant'].includes(activeContact.type) ? activeContact.type : 'manager',
       is_read: false,
       is_pinned: false,
       is_deleted: false
@@ -438,8 +448,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     const lastB = getLastMessage(b.id, b.type)?.created_at || '0';
     
     if (lastA === '0' && lastB === '0') {
-      const isASystem = a.type === 'admin' || a.type === 'maintenance';
-      const isBSystem = b.type === 'admin' || b.type === 'maintenance';
+      const isASystem = ['admin', 'maintenance', 'assistant'].includes(a.type);
+      const isBSystem = ['admin', 'maintenance', 'assistant'].includes(b.type);
       if (isASystem && !isBSystem) return -1;
       if (!isASystem && isBSystem) return 1;
     }
@@ -472,11 +482,16 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
     ? [] 
     : roleMessages.filter(msg => !msg.is_deleted && msg.content.toLowerCase().includes(chatSearchQuery.toLowerCase()));
 
-  const renderRoleBadge = (roleId: string | undefined) => {
+  // ✨ UPDATED: Role Badge dynamically displays Assistant, Manager, and Maintenance Roles
+  const renderRoleBadge = (roleId: string | undefined, accessLevel?: string) => {
     if (roleId === 'owner') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Owner</span>;
     if (roleId === 'manager') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Manager</span>;
+    if (roleId === 'assistant') return <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 uppercase font-bold tracking-wider bg-sky-100">Assistant</span>;
     if (roleId === 'admin') return <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">Admin</span>;
-    if (roleId === 'maintenance') return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">Maintenance</span>;
+    if (roleId === 'maintenance') {
+      const displayRole = accessLevel && accessLevel !== "None" ? accessLevel : 'Maintenance';
+      return <span className="shrink-0 text-[9px] text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 uppercase font-bold tracking-wider bg-amber-50">{displayRole}</span>;
+    }
     if (roleId === 'tenant') return <span className="shrink-0 text-[9px] text-[var(--color-text)] px-1.5 py-0.5 rounded border border-[var(--color-text)]/20 uppercase font-bold tracking-wider bg-[var(--color-text)]/10">Tenant</span>;
     return null;
   };
@@ -665,7 +680,8 @@ export default function ConversationTab({ orgData, managerProfile }: { orgData: 
                 <div className="min-w-0 flex flex-col justify-center">
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <h2 className="font-black text-[var(--color-text)] text-[14px] sm:text-[15px] md:text-[16px] truncate tracking-tight">{currentChatName}</h2>
-                    {renderRoleBadge(activeContactDetails?.type)}
+                    {/* ✨ PASS THE ACCESS LEVEL HERE */}
+                    {renderRoleBadge(activeContactDetails?.type, activeContactDetails?.accessLevel)}
                   </div>
                   <p className="text-[10px] sm:text-[11px] truncate flex items-center gap-1 sm:gap-1.5 mt-0.5">
                     {isActiveContactOnline ? <span className="text-green-600 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block animate-pulse"></span>Active now</span> : <span className="text-slate-400 font-semibold">Offline</span>}

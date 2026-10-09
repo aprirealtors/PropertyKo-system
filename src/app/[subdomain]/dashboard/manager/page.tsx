@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabase/client";
-import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
+import { usePushNotifications } from "@/utils/usePushNotifications";
 import { 
   LayoutDashboard, Box, Home, Wrench, CreditCard, BarChart3, Settings, 
   AlertTriangle, Menu, X, Bell, CheckCheck, Trash2, Ticket,
@@ -46,7 +46,7 @@ export default function ManagerDashboard() {
   
   // User Profile Modal State
   const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
-  const [managerProfile, setManagerProfile] = useState({ name: "Manager", email: "" });
+  const [managerProfile, setManagerProfile] = useState({ name: "Manager", email: "", accessLevel: "" });
 
   // --- Edit Name States ---
   const [isEditingName, setIsEditingName] = useState(false);
@@ -84,7 +84,7 @@ export default function ManagerDashboard() {
 
   // TICKETS & MAINTENANCE HIGHLIGHT STATE
   const [highlightTicketId, setHighlightTicketId] = useState<string | null>(null);
-  const intentTimeoutRef = useRef<NodeJS.Timeout | null>(null); // ✨ Added for deep linking
+  const intentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- Change Password States ---
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -109,16 +109,17 @@ export default function ManagerDashboard() {
         if (authData?.user) {
           const userEmail = authData.user.email || "";
           
-          // Fetch Manager's name from team_members
+          // Fetch Manager's name and access_level from team_members
           const { data: teamMember } = await supabase
             .from('team_members')
-            .select('name')
+            .select('name, access_level')
             .eq('email', userEmail)
             .single();
 
           setManagerProfile({
             name: teamMember?.name || "Property Manager",
-            email: userEmail
+            email: userEmail,
+            accessLevel: teamMember?.access_level || ""
           });
 
           const adminParentEmail = authData.user.user_metadata?.admin_parent || authData.user.email;
@@ -151,7 +152,7 @@ export default function ManagerDashboard() {
         .select('*')
         .eq('admin_email', orgData.admin_email)
         .eq('recipient', 'MANAGER') 
-        .eq('is_hidden', false) 
+        .eq('manager_hidden', false) 
         .order('created_at', { ascending: false })
         .limit(15);
 
@@ -528,7 +529,7 @@ export default function ManagerDashboard() {
     .eq('is_read', false);
   };
 
-  // ✨ FIX: Delete ALL function instead of just updating UI
+  // ✨ FIX: Hide ALL function instead of permanently deleting
   const confirmDeleteAllNotifications = async () => {
     if (!orgData?.admin_email) return;
     
@@ -537,10 +538,10 @@ export default function ManagerDashboard() {
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
     
-    // Complete wipe from the table for this manager
+    // ✨ FIX: Update to is_hidden: true instead of .delete() to keep in DB
     await supabase
       .from('notifications')
-      .delete()
+      .update({ manager_hidden: true })
       .eq('admin_email', orgData.admin_email)
       .eq('recipient', 'MANAGER'); 
   };
@@ -567,10 +568,10 @@ export default function ManagerDashboard() {
     // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Changed from .update({ is_hidden: true }) to .delete()
+    // 3. ✨ FIX: Change back to update({ is_hidden: true }) to keep in DB
     await supabase
       .from('notifications')
-      .delete()
+      .update({ manager_hidden: true })
       .eq('id', notificationToDelete.id);
 
     // Clear the tracked notification
@@ -640,6 +641,14 @@ export default function ManagerDashboard() {
     });
 
     return { __html: safeText };
+  };
+
+  // ✨ Check if the manager has access to a specific module
+  const hasAccess = (moduleName: string) => {
+    if (!managerProfile.accessLevel) return false;
+    // Fallback for legacy admin/full access
+    if (managerProfile.accessLevel.includes("All properties") || managerProfile.accessLevel.includes("Full Platform Access")) return true;
+    return managerProfile.accessLevel.includes(moduleName);
   };
 
   return (
@@ -838,25 +847,40 @@ export default function ManagerDashboard() {
           </div>
 
           <nav className={`flex-1 py-2 space-y-1 px-2 ${isSidebarCollapsed ? "overflow-visible" : "overflow-y-auto custom-scrollbar"}`}>
-            <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
-            <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} collapsed={isSidebarCollapsed} />
+            
+            {hasAccess("Dashboard") && (
+              <>
+                <NavSectionLabel collapsed={isSidebarCollapsed}>Overview</NavSectionLabel>
+                <NavItem icon={<LayoutDashboard size={18} strokeWidth={2.5} />} label="Dashboard" isActive={activeTab === "Dashboard"} onClick={() => handleTabChange("Dashboard")} collapsed={isSidebarCollapsed} />
+              </>
+            )}
 
-            <NavSectionLabel collapsed={isSidebarCollapsed}>Properties</NavSectionLabel>
-            <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & Units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} collapsed={isSidebarCollapsed} />
-            <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & Tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} collapsed={isSidebarCollapsed} />
+            {(hasAccess("Properties & Units") || hasAccess("Leasing & Tenants")) && (
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Properties</NavSectionLabel>
+            )}
+            {hasAccess("Properties & Units") && <NavItem icon={<Box size={18} strokeWidth={2.5} />} label="Properties & Units" isActive={activeTab === "Properties"} onClick={() => handleTabChange("Properties")} collapsed={isSidebarCollapsed} />}
+            {hasAccess("Leasing & Tenants") && <NavItem icon={<Home size={18} strokeWidth={2.5} />} label="Leasing & Tenants" isActive={activeTab === "Leasing"} onClick={() => handleTabChange("Leasing")} collapsed={isSidebarCollapsed} />}
 
-            <NavSectionLabel collapsed={isSidebarCollapsed}>Operations</NavSectionLabel>
-            <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} collapsed={isSidebarCollapsed} />
-            <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} collapsed={isSidebarCollapsed} />
+            {(hasAccess("Conversation") || hasAccess("Maintenance")) && (
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Operations</NavSectionLabel>
+            )}
+            {hasAccess("Conversation") && <NavItem icon={<MessageSquare size={18} strokeWidth={2.5} />} label="Messages" isActive={activeTab === "Messages"} onClick={() => handleTabChange("Messages")} badgeCount={unreadMessageCount} collapsed={isSidebarCollapsed} />}
+            {hasAccess("Maintenance") && <NavItem icon={<Wrench size={18} strokeWidth={2.5} />} label="Maintenance" isActive={activeTab === "Maintenance"} onClick={() => handleTabChange("Maintenance")} badgeCount={pendingMaintenanceCount} collapsed={isSidebarCollapsed} />}
 
-            <NavSectionLabel collapsed={isSidebarCollapsed}>Finance</NavSectionLabel>
-            <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Finance" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />
-            <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI Reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} collapsed={isSidebarCollapsed} />
+            {(hasAccess("Billing") || hasAccess("KPI Reports")) && (
+              <NavSectionLabel collapsed={isSidebarCollapsed}>Finance</NavSectionLabel>
+            )}
+            {hasAccess("Billing") && <NavItem icon={<CreditCard size={18} strokeWidth={2.5} />} label="Billing & Finance" isActive={activeTab === "Billing"} onClick={() => handleTabChange("Billing")} collapsed={isSidebarCollapsed} />}
+            {hasAccess("KPI Reports") && <NavItem icon={<BarChart3 size={18} strokeWidth={2.5} />} label="KPI Reports" isActive={activeTab === "KPI"} onClick={() => handleTabChange("KPI")} collapsed={isSidebarCollapsed} />}
 
-            <div className="pt-3 pb-2">
-              <div className="h-px bg-white/10 mx-2"></div>
-            </div>
-            <NavItem icon={<Users size={18} strokeWidth={2.5} />} label="Accounts" isActive={activeTab === "Users"} onClick={() => handleTabChange("Users")} collapsed={isSidebarCollapsed} />
+            {hasAccess("User") && (
+              <>
+                <div className="pt-3 pb-2">
+                  <div className="h-px bg-white/10 mx-2"></div>
+                </div>
+                <NavItem icon={<Users size={18} strokeWidth={2.5} />} label="Accounts" isActive={activeTab === "Users"} onClick={() => handleTabChange("Users")} collapsed={isSidebarCollapsed} />
+              </>
+            )}
           </nav>
 
           <div className="shrink-0 p-3 border-t border-white/5 shadow-[0_-4px_24px_rgba(0,0,0,0.15)]">
@@ -1177,7 +1201,7 @@ export default function ManagerDashboard() {
 
       {/* 🌟 PREMIUM WORKSPACE MODAL (ORGANIZATION PROFILE) */}
       {isWorkspaceModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
             
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">

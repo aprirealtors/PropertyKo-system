@@ -1,0 +1,1424 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { supabase } from "@/utils/supabase/client";
+import { 
+  Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, 
+  Inbox, PauseCircle, Trash2, CheckCircle, 
+  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight, AlertTriangle
+} from "lucide-react";
+
+// ✨ ENTERPRISE HELPER: Format Date and Time
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
+export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
+  const [tickets, setTickets] = useState<any[]>([]); // Combined tasks & rejected requests
+  const [inboxTickets, setInboxTickets] = useState<any[]>([]); 
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]); 
+  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // ✨ UNIVERSAL ALERT STATE
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
+
+  // Reject Ticket States
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
+  
+  // UNIVERSAL MODAL STATE
+  const [selectedTicketForModal, setSelectedTicketForModal] = useState<any | null>(null);
+  
+  const [selectedInboxId, setSelectedInboxId] = useState(""); 
+  const [title, setTitle] = useState("");
+  const [location, setLocation] = useState("");
+  const [visitTime, setVisitTime] = useState(""); 
+  const [reporter, setReporter] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
+  const [priority, setPriority] = useState("Normal"); 
+  const [ticketImage, setTicketImage] = useState<File | null>(null);
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
+  // INLINE ERROR STATES
+  const [photoError, setPhotoError] = useState("");
+
+  // Searchable Dropdown States for Modal
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isReporterOpen, setIsReporterOpen] = useState(false);
+  
+  // VIEW MODE & SORT STATES
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [sortBy, setSortBy] = useState('sla');
+
+  // MOBILE & TABLET TAB SWITCHER STATE
+  const [activeView, setActiveView] = useState<'open' | 'in_progress' | 'on_hold' | 'resolved'>('open');
+
+  // HELPER: Show Alert
+  const showAlert = (type: 'success' | 'error' | 'warning', title: string, message: string) => {
+    setAlertConfig({ isOpen: true, type, title, message });
+  };
+
+  // Base Filter
+  const filteredTickets = tickets.filter(t => {
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      (t.title && t.title.toLowerCase().includes(searchLower)) ||
+      (t.location && t.location.toLowerCase().includes(searchLower)) ||
+      (t.description && t.description.toLowerCase().includes(searchLower)) ||
+      (t.assigned_to && t.assigned_to.toLowerCase().includes(searchLower))
+    );
+  });
+
+  // ENTERPRISE SLA SORTING FUNCTION LOGIC
+  const applySort = (ticketsArray: any[], isResolvedColumn: boolean = false) => {
+    return [...ticketsArray].sort((a, b) => {
+      if (sortBy === 'sla') {
+        if (isResolvedColumn) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+        if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+      } else if (sortBy === 'priority') {
+        if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+        if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); 
+      } else if (sortBy === 'oldest') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); 
+      }
+    });
+  };
+
+  const tableBaseTickets = sortBy === 'rejected' 
+    ? filteredTickets.filter(t => String(t.status).toLowerCase() === 'rejected')
+    : filteredTickets;
+    
+  const displayTickets = applySort(tableBaseTickets); 
+
+  const selectedInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
+  const existingPhotoUrl = selectedInboxTicket?.photo_url;
+
+  const capitalizeWords = (str: string) => {
+    if (!str) return "";
+    return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+  };
+
+  useEffect(() => {
+    if (orgData?.admin_email) {
+      fetchTickets();
+      fetchTeamMembers();
+      fetchUnits();
+
+      const ticketsChannel = supabase
+        .channel('manager-live-tickets')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` },
+          (payload) => {
+            fetchTickets(); 
+          }
+        )
+        .subscribe();
+
+      const tasksChannel = supabase
+        .channel('manager-live-tasks')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${orgData.admin_email}` },
+          (payload) => {
+            fetchTickets(); 
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(ticketsChannel);
+        supabase.removeChannel(tasksChannel);
+      };
+    }
+  }, [orgData?.admin_email]);
+
+  const fetchTickets = async () => {
+    setIsLoadingTickets(true);
+    const { data: tasksData } = await supabase.from('maintenance_tasks').select('*').eq('admin_email', orgData.admin_email);
+    const { data: inboxData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Open');
+    const { data: rejectedData } = await supabase.from('tickets').select('*').eq('admin_email', orgData.admin_email).eq('status', 'Rejected');
+
+    // ✨ FIX: Apply Enterprise SLA Sorting to the Inbox Dropdown
+    if (inboxData) {
+      setInboxTickets(inboxData.sort((a, b) => {
+        // 1. Urgent Priority first
+        if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
+        if (b.priority === 'Urgent' && a.priority !== 'Urgent') return 1;
+        // 2. Oldest date first (normal tickets na matagal na, aakyat)
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); 
+      }));
+    }
+    
+    let combined: any[] = [];
+    if (tasksData) combined = [...combined, ...tasksData];
+    if (rejectedData) {
+      const mappedRejected = rejectedData.map((r: any) => ({
+        ...r,
+        description: r.description || 'Request rejected by admin.',
+        assigned_to: 'Unassigned',
+      }));
+      combined = [...combined, ...mappedRejected];
+    }
+    
+    setTickets(combined);
+    setIsLoadingTickets(false);
+  };
+
+  const fetchTeamMembers = async () => {
+    const { data } = await supabase.from('team_members').select('name, email, role').eq('admin_email', orgData.admin_email); 
+    if (data) setTeamMembers(data);
+  };
+
+  const fetchUnits = async () => {
+    const { data } = await supabase.from('units').select('*').eq('admin_email', orgData.admin_email).order('property_name', { ascending: true }).order('unit_number', { ascending: true }); 
+    if (data) setUnits(data);
+  };
+
+  const handleRejectTicket = async () => {
+    if (!selectedInboxId || !rejectReason.trim()) {
+      showAlert('warning', 'Missing Information', "Please provide a reason for rejecting the request.");
+      return;
+    }
+    setIsRejecting(true);
+
+    try {
+      const ticketToReject = inboxTickets.find(t => String(t.id) === selectedInboxId);
+      if (!ticketToReject) throw new Error("Ticket not found.");
+
+      const { error: updateError } = await supabase
+        .from('tickets')
+        .update({ status: 'Rejected', remarks: rejectReason, updated_at: new Date().toISOString() })
+        .eq('id', selectedInboxId);
+
+      if (updateError) throw updateError;
+
+      if (ticketToReject.reporter_email) {
+        await supabase.from('notifications').insert([{
+          admin_email: orgData.admin_email,
+          recipient: ticketToReject.reporter_email,
+          type: 'TICKET',
+          title: 'Repair Request Rejected',
+          message: `Your request "${ticketToReject.title}" was not approved. Reason: ${rejectReason}`,
+          reference_id: ticketToReject.id,
+          is_read: false
+        }]);
+      }
+
+      setIsRejectModalOpen(false);
+      setIsModalOpen(false);
+      setRejectReason("");
+      setSelectedInboxId("");
+      setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+      setPhotoError("");
+      
+      showAlert('success', 'Ticket Rejected', 'The ticket has been successfully rejected and the user has been notified.');
+      await fetchTickets(); 
+
+    } catch (err: any) {
+      console.error(err);
+      showAlert('error', 'Rejection Failed', err.message || "Failed to reject ticket.");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleAddTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setPhotoError(""); 
+
+    if (!assignedTo) {
+      showAlert('warning', 'Missing Assignment', "Please assign this ticket to a maintenance staff member.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!ticketImage && !selectedInboxId) {
+      setPhotoError("A photo evidence is required to process this ticket.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      let photoUrlToSave = "";
+      
+      if (ticketImage) {
+        const fileExt = ticketImage.name.split('.').pop();
+        const fileName = `ticket-upload-${Math.random()}.${fileExt}`;
+        const { data: imgData, error: uploadError } = await supabase.storage.from('tickets').upload(`ticket-uploads/${fileName}`, ticketImage);
+        if (uploadError) throw new Error(`Image Upload Error: ${uploadError.message}`);
+        if (imgData) {
+          const { data: publicUrlData } = supabase.storage.from('tickets').getPublicUrl(imgData.path);
+          photoUrlToSave = publicUrlData.publicUrl;
+        }
+      } else if (selectedInboxId) {
+        const matchingInboxTicket = inboxTickets.find(t => String(t.id) === selectedInboxId);
+        if (matchingInboxTicket && matchingInboxTicket.photo_url) photoUrlToSave = matchingInboxTicket.photo_url;
+      }
+      
+      const finalDesc = `${visitTime ? `Best time to visit: ${visitTime.trim()}. ` : ''}Reported by ${reporter.trim() || 'Resident'}.`; 
+
+      const uniqueId = Math.floor(100000 + Math.random() * 900000);
+      const hasTicketNumber = /#\d+/.test(title);
+      const finalTitle = hasTicketNumber ? title.trim() : `${title.trim()} #${uniqueId}`;
+
+      const { data: newTask, error } = await supabase.from('maintenance_tasks').insert([{ 
+        admin_email: orgData.admin_email, 
+        title: finalTitle, 
+        location: location, 
+        description: finalDesc, 
+        status: 'pending', 
+        assigned_to: assignedTo, 
+        cost: 0, 
+        photo_url: photoUrlToSave, 
+        priority: priority,
+        updated_at: new Date().toISOString()
+      }]).select().single();
+
+      if (error) throw new Error(`Database Error: ${error.message}`);
+
+      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance', updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
+
+      await fetchTickets(); 
+      setIsModalOpen(false);
+      showAlert('success', 'Ticket Created', 'The maintenance task has been successfully assigned.');
+      
+      setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+
+      if (newTask) {
+        setTimeout(() => {
+          setViewMode('board'); 
+          setActiveView('open');
+          setTimeout(() => {
+            const targetElement = document.getElementById(`maintenance-card-${newTask.id}`);
+            if (targetElement) {
+              targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+              setActiveHighlightId(newTask.id);
+              setTimeout(() => setActiveHighlightId(null), 3500);
+            }
+          }, 300);
+        }, 300);
+      }
+
+    } catch (error: any) {
+      console.error(error);
+      showAlert('error', 'Creation Failed', error.message || 'An unexpected error occurred while creating the ticket.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openTickets = applySort(filteredTickets.filter(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s === 'pending' || s === 'open';
+  }), false);
+  
+  const inProgressTickets = applySort(filteredTickets.filter(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s === 'in_progress' || s === 'in progress' || s === 'working';
+  }), false);
+
+  const onHoldTickets = applySort(filteredTickets.filter(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s === 'on_hold' || s === 'on hold';
+  }), false);
+  
+  const resolvedTickets = applySort(filteredTickets.filter(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s === 'completed' || s === 'resolved' || s === 'closed';
+  }), true);
+
+  const initials = orgData?.org_name 
+  ? orgData.org_name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 4).toUpperCase() 
+  : "AD";
+
+  const getAssigneeName = (email: string) => {
+    if (!email || email === 'Unassigned') return "Unassigned";
+    const match = teamMembers?.find((m: any) => m.email === email);
+    return match?.name || email.split('@')[0];
+  };
+
+  const getUniversalStatusUI = (status: string) => {
+    const s = String(status || '').toLowerCase();
+    if (s === 'rejected') return { label: 'Rejected', color: 'red', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: <AlertCircle size={16} /> };
+    if (s === 'pending' || s === 'open') return { label: 'New', color: 'slate', bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200', icon: <Inbox size={16} /> };
+    if (s === 'in_progress' || s === 'in progress' || s === 'working') return { label: 'Working', color: 'blue', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: <Wrench size={16} /> };
+    if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'amber', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: <PauseCircle size={16} /> };
+    if (s === 'completed' || s === 'resolved' || s === 'closed') return { label: 'Closed', color: 'emerald', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <CheckCircle2 size={16} /> };
+    return { label: status || 'Unknown', color: 'slate', bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', icon: <Inbox size={16} /> };
+  };
+
+  useEffect(() => {
+    const processHighlight = async () => {
+      if (highlightTicketId && !isLoadingTickets) {
+        const actualId = highlightTicketId.split('_')[0];
+        if (actualId !== "NEW") {
+          
+          let existingTask = tickets.find(t => String(t.id) === actualId);
+          const pendingInbox = inboxTickets.find(t => String(t.id) === actualId);
+
+          if (!existingTask && !pendingInbox) {
+            try {
+              const { data: oldTicket } = await supabase
+                .from('tickets')
+                .select('title, location, status')
+                .eq('id', actualId)
+                .single();
+
+              if (oldTicket && oldTicket.status === 'Assigned to Maintenance') {
+                existingTask = tickets.find(t => t.title === oldTicket.title && t.location === oldTicket.location);
+              }
+            } catch (err) {
+              console.error("Ghost ticket cross-reference failed:", err);
+            }
+          }
+
+          if (existingTask) {
+            setViewMode('board');
+            setSelectedTicketForModal(existingTask); 
+
+            const s = String(existingTask.status || '').toLowerCase();
+            if (s === 'pending' || s === 'open') setActiveView('open');
+            else if (s === 'in_progress' || s === 'in progress' || s === 'working') setActiveView('in_progress');
+            else if (s === 'on_hold' || s === 'on hold') setActiveView('on_hold');
+            else if (s === 'completed' || s === 'resolved' || s === 'closed') setActiveView('resolved');
+            
+            setTimeout(() => {
+              const targetElement = document.getElementById(`maintenance-card-${existingTask.id}`);
+              if (targetElement) {
+                targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                setActiveHighlightId(String(existingTask.id)); 
+                setTimeout(() => setActiveHighlightId(null), 3500);
+              }
+            }, 500);
+          } 
+          else if (pendingInbox) {
+            setIsModalOpen(true);
+            setSelectedInboxId(actualId);
+            setTicketImage(null);
+            setPhotoError(""); 
+            
+            setTitle(pendingInbox.title ? capitalizeWords(pendingInbox.title) : ""); 
+            setLocation(pendingInbox.location || ""); 
+            setPriority(pendingInbox.priority || "Normal");
+            
+            const desc = pendingInbox.description || "";
+            if (desc.includes("Best time to visit:")) {
+              const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
+              if (timeMatch) setVisitTime(capitalizeWords(timeMatch.trim()));
+            } else {
+              setVisitTime("");
+            }
+            
+            if (desc.includes("Reported by ")) {
+              const repMatch = desc.split("Reported by ")[1]?.split(".")[0];
+              if (repMatch) setReporter(capitalizeWords(repMatch.trim()));
+            } else {
+              setReporter("Resident"); 
+            }
+          }
+        }
+      }
+    };
+
+    processHighlight();
+  }, [highlightTicketId, isLoadingTickets, tickets, inboxTickets]);
+
+  return (
+      <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+        
+        {/* ✨ PREMIUM HEADER */}
+        <div className="shrink-0 mb-4 px-1 sm:px-0 mt-2">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+            
+            <div className="w-full md:w-auto flex items-center justify-between sm:justify-start">
+              <div className="flex flex-col">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
+                    <Wrench className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
+                  </div>
+                  Maintenance &amp; Repairs
+                </h2>
+                <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  Tickets, Vendors &amp; SLA Turnaround
+                </p>
+              </div>
+
+              {/* Mobile-only avatar */}
+              <div className="flex flex-col items-end gap-2 sm:hidden">
+                <div className="w-10 h-10 p-2 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                  {initials}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
+              <div className="relative w-full sm:w-64 lg:w-72 group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
+                <input 
+                  type="text" 
+                  placeholder="Search name, title, id, units..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all" 
+                />
+              </div>
+              <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 bg-[var(--color-primary)]/10 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
+                <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden md:block">Assistant</span>
+                <div className="w-10 h-10 md:w-12 md:h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
+                  {initials}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        {/* ✨ SECONDARY ROW */}
+        <div className="shrink-0 flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4 gap-3 sm:gap-4 px-1 sm:px-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <h3 className="font-extrabold text-[var(--color-text)] text-sm sm:text-base tracking-tight px-2 sm:px-3 py-1.5 rounded-[var(--radius-md)]">
+              Workspace
+            </h3>
+            {inboxTickets.length > 0 && (
+              <span className="bg-red-50 border border-red-100 text-red-600 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black tracking-wider animate-pulse shadow-sm whitespace-nowrap">
+                {inboxTickets.length} Pending Inbox
+              </span>
+            )}
+          </div>
+          
+          <div className="flex flex-col min-[480px]:flex-row flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
+            {/* Sort Dropdown */}
+            <div className="relative w-full min-[480px]:w-auto flex-1 min-[480px]:flex-none">
+               <select 
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    if (e.target.value === 'rejected') setViewMode('list'); 
+                  }}
+                  className="w-full appearance-none bg-white border border-[var(--color-border)] text-slate-600 text-xs font-bold py-2 sm:py-2.5 pl-3 pr-8 rounded-[var(--radius-md)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 shadow-sm cursor-pointer"
+               >
+                  <option value="sla">Sort: Priority First</option>
+                  <option value="newest">Sort: Newest First</option>
+                  <option value="oldest">Sort: Oldest First</option>
+                  <option value="rejected">Show: Rejected Only</option>
+               </select>
+               <ArrowUpDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* View Switcher */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-[var(--radius-md)] border border-[var(--color-border)] shrink-0 w-full min-[480px]:w-auto justify-center min-[480px]:justify-start">
+               <button 
+                 onClick={() => setViewMode('board')} 
+                 title="Board View"
+                 disabled={sortBy === 'rejected'}
+                 className={`flex-1 min-[480px]:flex-none flex justify-center items-center p-1.5 sm:py-1.5 sm:px-2 rounded-[var(--radius-sm)] transition-all ${sortBy === 'rejected' ? 'opacity-50 cursor-not-allowed' : ''} ${viewMode === 'board' ? 'bg-white shadow-[var(--shadow-sm)] text-[var(--color-secondary)]' : 'text-slate-400 hover:text-[var(--color-primary)]'}`}
+               >
+                  <LayoutGrid size={14} className="sm:w-4 sm:h-4" strokeWidth={2.5}/>
+               </button>
+               <button 
+                 onClick={() => setViewMode('list')} 
+                 title="Table View"
+                 className={`flex-1 min-[480px]:flex-none flex justify-center items-center p-1.5 sm:py-1.5 sm:px-2 rounded-[var(--radius-sm)] transition-all ${viewMode === 'list' ? 'bg-white shadow-[var(--shadow-sm)] text-[var(--color-secondary)]' : 'text-slate-400 hover:text-[var(--color-primary)]'}`}
+               >
+                  <List size={14} className="sm:w-4 sm:h-4" strokeWidth={2.5}/>
+               </button>
+            </div>
+
+            <button 
+              onClick={() => { setIsModalOpen(true); setTicketImage(null); setPhotoError(""); }}
+              className="w-full min-[480px]:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2.5 sm:py-2.5 rounded-[var(--radius-md)] text-xs font-extrabold transition-all shadow-[var(--shadow-sm)] active:scale-95 duration-150 shrink-0 border border-transparent flex justify-center items-center gap-1.5"
+            >
+              + New ticket
+            </button>
+          </div>
+        </div>
+
+        {/* ✨ MOBILE & TABLET TAB SWITCHER (Visible on screens < lg in Board View) */}
+        {viewMode === 'board' && (
+          <div className="lg:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-[var(--radius-xl)] flex border border-[var(--color-border)] gap-1 overflow-x-auto custom-scrollbar">
+            <button 
+              onClick={() => setActiveView('open')}
+              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[11px] font-black transition-all ${activeView === 'open' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+            >
+              <Inbox size={13} strokeWidth={2.5}/> Open <span className="bg-black/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[9px]">{isLoadingTickets ? "-" : openTickets.length}</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('in_progress')}
+              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[11px] font-black transition-all ${activeView === 'in_progress' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+            >
+              <Wrench size={13} strokeWidth={2.5}/> Progress <span className="bg-black/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[9px]">{isLoadingTickets ? "-" : inProgressTickets.length}</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('on_hold')}
+              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[11px] font-black transition-all ${activeView === 'on_hold' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+            >
+              <PauseCircle size={13} strokeWidth={2.5}/> Hold <span className="bg-black/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[9px]">{isLoadingTickets ? "-" : onHoldTickets.length}</span>
+            </button>
+            <button 
+              onClick={() => setActiveView('resolved')}
+              className={`flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-[11px] font-black transition-all ${activeView === 'resolved' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+            >
+              <CheckCircle2 size={13} strokeWidth={2.5}/> Closed <span className="bg-black/10 px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[9px]">{isLoadingTickets ? "-" : resolvedTickets.length}</span>
+            </button>
+          </div>
+        )}
+  
+        {/* ✨ DYNAMIC CONTENT AREA */}
+        {viewMode === 'board' ? (
+          
+          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-16 custom-scrollbar animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 items-start w-full h-full min-h-[400px]">
+              
+              {/* Column 1: Open */}
+              <div className={`${activeView === 'open' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
+                <div className="hidden lg:flex justify-between items-center mb-4 px-1 tracking-tight">
+                  <h4 className="font-black text-[var(--color-text)] text-sm flex items-center gap-2">● Open Tickets</h4>
+                  <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black shadow-inner">{isLoadingTickets ? "-" : openTickets.length}</span>
+                </div>
+                <div className="flex flex-col space-y-3 sm:space-y-4">
+                  {isLoadingTickets ? (
+                    <> <SkeletonCard /> <SkeletonCard /> </>
+                  ) : openTickets.length === 0 ? (
+                    <EmptyState icon={Inbox} title="No open tickets" message="New maintenance requests will appear here." />
+                  ) : (
+                    openTickets.map((ticket) => (
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="slate" statusLabel="New" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Column 2: In Progress */}
+              <div className={`${activeView === 'in_progress' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
+                <div className="hidden lg:flex justify-between items-center mb-4 px-1 tracking-tight">
+                  <h4 className="font-black text-blue-700 text-sm flex items-center gap-2">● In progress</h4>
+                  <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black shadow-inner">{isLoadingTickets ? "-" : inProgressTickets.length}</span>
+                </div>
+                <div className="flex flex-col space-y-3 sm:space-y-4">
+                  {isLoadingTickets ? (
+                    <> <SkeletonCard /> <SkeletonCard /> </>
+                  ) : inProgressTickets.length === 0 ? (
+                    <EmptyState icon={Wrench} title="No active work" message="Tasks currently being worked on will be shown here." />
+                  ) : (
+                    inProgressTickets.map((ticket) => (
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="blue" statusLabel="Working" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Column 3: On Hold */}
+              <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
+                <div className="hidden lg:flex justify-between items-center mb-4 px-1 tracking-tight">
+                  <h4 className="font-black text-amber-600 text-sm flex items-center gap-2">● On Hold</h4>
+                  <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black shadow-inner">{isLoadingTickets ? "-" : onHoldTickets.length}</span>
+                </div>
+                <div className="flex flex-col space-y-3 sm:space-y-4">
+                  {isLoadingTickets ? (
+                    <> <SkeletonCard /> <SkeletonCard /> </>
+                  ) : onHoldTickets.length === 0 ? (
+                    <EmptyState icon={PauseCircle} title="Nothing on hold" message="Tasks that need further action or parts will be placed here." />
+                  ) : (
+                    onHoldTickets.map((ticket) => (
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="amber" statusLabel="On Hold" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Column 4: Resolved */}
+              <div className={`${activeView === 'resolved' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
+                <div className="hidden lg:flex justify-between items-center mb-4 px-1 tracking-tight">
+                  <h4 className="font-black text-emerald-600 text-sm flex items-center gap-2">● Resolved</h4>
+                  <span className="bg-white border border-[var(--color-border)] text-slate-600 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-black shadow-inner">{isLoadingTickets ? "-" : resolvedTickets.length}</span>
+                </div>
+                <div className="flex flex-col space-y-3 sm:space-y-4">
+                  {isLoadingTickets ? (
+                    <> <SkeletonCard /> <SkeletonCard /> </>
+                  ) : resolvedTickets.length === 0 ? (
+                    <EmptyState icon={CheckCircle2} title="No resolved tickets" message="Successfully completed tasks will be logged here." />
+                  ) : (
+                    resolvedTickets.map((ticket) => (
+                      <div key={ticket.id} title="Click to view full details" className="cursor-pointer transition-transform active:scale-[0.98]">
+                        <TicketCard id={`maintenance-card-${ticket.id}`} isHighlighted={activeHighlightId === String(ticket.id)} ticket={ticket} teamMembers={teamMembers} statusColor="green" statusLabel="Closed" onClick={() => setSelectedTicketForModal(ticket)} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        ) : (
+
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative border border-[var(--color-border)]">
+            {/* ✨ STRICT HORIZONTAL & VERTICAL SCROLL WRAPPER */}
+            <div className="w-full h-full overflow-auto custom-scrollbar rounded-[var(--radius-xl)]">
+              <table className="w-full text-left text-sm min-w-[900px] sm:min-w-[1000px] border-collapse relative">
+                <thead className="bg-slate-50/95 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 z-10 backdrop-blur-xl shadow-sm">
+                  <tr>
+                    <th className="px-6 py-4 whitespace-nowrap">Ticket Details</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Priority</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Location</th>
+                    <th className="px-6 py-4 whitespace-nowrap">Assigned To</th>
+                    <th className="px-6 py-4 whitespace-nowrap text-right">Date Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
+                  {isLoadingTickets ? (
+                    <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-bold text-xs uppercase tracking-widest animate-pulse">Loading data...</td></tr>
+                  ) : displayTickets.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center py-12 text-slate-400 font-medium">No records match your filters.</td></tr>
+                  ) : (
+                    displayTickets.map((ticket) => {
+                      const ui = getUniversalStatusUI(ticket.status);
+                      return (
+                        <tr 
+                          key={ticket.id} 
+                          onClick={() => setSelectedTicketForModal(ticket)}
+                          className={`hover:bg-[var(--color-primary)]/5 transition-colors group cursor-pointer ${activeHighlightId === String(ticket.id) ? 'bg-[var(--color-primary)]/10' : ''}`}
+                        >
+                          <td className="px-6 py-4 min-w-[250px]">
+                            <p className="font-extrabold text-[var(--color-text)] group-hover:text-[var(--color-text)] text-[13px] sm:text-sm line-clamp-1 transition-colors">
+                              {ticket.title}
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{ticket.description || 'No description provided'}</p>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2.5 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-wider border shadow-sm ${ui.bg} ${ui.text} ${ui.border}`}>
+                              {ui.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {ticket.priority === 'Urgent' ? (
+                              <span className="flex items-center gap-1.5 text-xs font-black text-red-600"><AlertCircle size={14} /> Urgent</span>
+                            ) : (
+                              <span className="text-xs font-semibold text-slate-500">Normal</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-[var(--radius-sm)] w-fit">
+                              <MapPin size={12} className="text-slate-600" /> {ticket.location}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[9px] font-black border border-slate-300">
+                                {getAssigneeName(ticket.assigned_to).substring(0,1)}
+                              </div>
+                              <span className="text-xs font-bold text-slate-700">{getAssigneeName(ticket.assigned_to)}</span>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4 whitespace-nowrap text-right relative">
+                            <div className="flex flex-col items-end gap-1 transition-opacity duration-200 group-hover:opacity-0">
+                              <span className="text-[11px] font-bold text-slate-500 block">
+                                {formatDateTime(ticket.created_at)}
+                              </span>
+                              {ticket.updated_at && ticket.updated_at !== ticket.created_at && (
+                                <span className="text-[9px] font-semibold text-slate-400">
+                                  Updated: {formatDateTime(ticket.updated_at)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="absolute inset-y-0 right-6 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
+                              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[var(--color-text)] bg-[var(--color-primary)] px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--color-primary)]/20 shadow-sm backdrop-blur-sm">
+                                View Details <ArrowRight size={12} strokeWidth={3} />
+                              </span>
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Sticky Bottom Footer for Count */}
+            <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg)]/80 backdrop-blur-md flex justify-between items-center shrink-0 w-full relative z-20">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Records: {displayTickets.length}</span>
+              <span className="text-[10px] font-semibold text-slate-400 hidden sm:block">Export capability coming in the next module upgrade.</span>
+            </div>
+          </div>
+        )}
+  
+        {/* ✨ UNIVERSAL TICKET DETAILS MODAL */}
+        {selectedTicketForModal && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-4xl overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] max-h-[95vh] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              
+              <div className={`px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center shrink-0 ${getUniversalStatusUI(selectedTicketForModal.status).bg}`}>
+                <div className={`flex items-center gap-2.5 ${getUniversalStatusUI(selectedTicketForModal.status).text}`}>
+                  {getUniversalStatusUI(selectedTicketForModal.status).icon}
+                  <h2 className="text-base sm:text-lg font-black tracking-tight uppercase">
+                    {getUniversalStatusUI(selectedTicketForModal.status).label}
+                  </h2>
+                </div>
+                <button onClick={() => setSelectedTicketForModal(null)} className="text-slate-500 hover:text-slate-600 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-black/5 active:scale-90">
+                  <X size={18} strokeWidth={2.5} className="sm:w-5 sm:h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50">
+                <div className="mb-5 sm:mb-6">
+                  <h3 className="font-black text-xl sm:text-2xl text-[var(--color-text)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
+                  <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-slate-500"/> {selectedTicketForModal.location}</span>
+                    <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                      <Clock size={12} className="text-slate-500"/> Reported: {formatDateTime(selectedTicketForModal.created_at)}
+                    </span>
+                  </div>
+                </div>
+
+                {(() => {
+                  const statusLabel = String(selectedTicketForModal.status).toLowerCase();
+                  const isRejected = statusLabel === 'rejected';
+                  const isOnHold = ['on_hold', 'on hold'].includes(statusLabel);
+                  const holdOrRejectRemarks = isRejected ? selectedTicketForModal.remarks : (selectedTicketForModal.on_hold_reason || selectedTicketForModal.remarks);
+
+                  if ((isRejected || isOnHold) && holdOrRejectRemarks) {
+                    return (
+                      <div className={`mb-5 sm:mb-6 p-4 rounded-xl border shadow-[var(--shadow-sm)] ${isRejected ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                        <div className="flex justify-between items-start mb-1.5">
+                          <h4 className={`text-[10px] font-black uppercase tracking-widest ${isRejected ? 'text-red-800' : 'text-amber-800'}`}>
+                            {isRejected ? 'Reason for Rejection' : 'Reason for Delay'}
+                          </h4>
+                          <span className={`text-[9px] font-bold flex items-center gap-1 ${isRejected ? 'text-red-600' : 'text-amber-600'}`}>
+                            <Clock size={10}/> Updated: {formatDateTime(selectedTicketForModal.updated_at || selectedTicketForModal.created_at)}
+                          </span>
+                        </div>
+                        <p className={`text-sm font-semibold italic ${isRejected ? 'text-red-700' : 'text-amber-700'}`}>
+                          "{holdOrRejectRemarks}"
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                <div className="mb-5 sm:mb-6 bg-white p-4 sm:p-5 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Request Description</h4>
+                  <p className="text-sm text-[var(--color-text)] leading-relaxed font-medium">{selectedTicketForModal.description || 'No detailed description provided.'}</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 sm:mb-6">
+                  <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Assigned To</span>
+                    <span className="text-sm font-bold text-[var(--color-text)]">{getAssigneeName(selectedTicketForModal.assigned_to)}</span>
+                  </div>
+                  {['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) ? (
+                    <div className="bg-emerald-50 p-4 rounded-[1.5rem] border border-emerald-200 shadow-[var(--shadow-sm)]">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block mb-1">Final Cost</span>
+                      <span className="text-lg font-black text-emerald-800">₱{(selectedTicketForModal.cost || 0).toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Priority</span>
+                      <span className={`text-sm font-bold ${selectedTicketForModal.priority === 'Urgent' ? 'text-red-600' : 'text-slate-600'}`}>
+                        {selectedTicketForModal.priority || 'Normal'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Photo Evidence</h4>
+                  <div className={`grid gap-4 ${
+                    ['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) || selectedTicketForModal.on_hold_photo_url || selectedTicketForModal.resolution_photo_url
+                    ? 'grid-cols-1 sm:grid-cols-2' 
+                    : 'grid-cols-1 max-w-2xl mx-auto'
+                  }`}>
+                    
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider bg-slate-200/50 w-fit px-2 py-0.5 rounded-[var(--radius-sm)]">Before / Issue</span>
+                      {selectedTicketForModal.photo_url ? (
+                        <div className="w-full h-48 sm:h-64 md:h-[400px] rounded-[1.5rem] border border-[var(--color-border)] overflow-hidden bg-slate-900/95 shadow-inner p-1">
+                          <img src={selectedTicketForModal.photo_url} alt="Reported Issue" className="w-full h-full object-contain transition-transform duration-700 hover:scale-[1.02]" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-48 sm:h-64 md:h-[400px] rounded-[1.5rem] border-2 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center bg-white text-slate-400 shadow-inner">
+                          <Camera size={32} strokeWidth={1.5} className="mb-3 opacity-50" />
+                          <span className="text-xs sm:text-sm font-bold text-slate-400">No issue photo provided.</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {(['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) || selectedTicketForModal.on_hold_photo_url || selectedTicketForModal.resolution_photo_url) && (
+                      <div className="flex flex-col gap-2">
+                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider w-fit px-2 py-0.5 rounded-[var(--radius-sm)] ${
+                          ['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) 
+                          ? 'text-amber-600 bg-amber-100' 
+                          : 'text-emerald-600 bg-emerald-100'
+                        }`}>
+                          {['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'After Hold Evidence' : 'After / Resolution'}
+                        </span>
+                        
+                        {selectedTicketForModal.resolution_photo_url || selectedTicketForModal.on_hold_photo_url ? (
+                          <div className={`w-full h-48 sm:h-64 md:h-[400px] rounded-[1.5rem] border-2 overflow-hidden bg-slate-900/95 shadow-md p-1 ${
+                            ['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'border-amber-400' : 'border-emerald-400'
+                          }`}>
+                            <img src={selectedTicketForModal.resolution_photo_url || selectedTicketForModal.on_hold_photo_url} alt="Status Evidence" className="w-full h-full object-contain transition-transform duration-700 hover:scale-[1.02]" />
+                          </div>
+                        ) : (
+                          <div className={`w-full h-48 sm:h-64 md:h-[400px] rounded-[1.5rem] border-2 border-dashed flex flex-col items-center justify-center shadow-inner ${
+                            ['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) 
+                            ? 'border-amber-200 bg-amber-50 text-amber-500' 
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-500'
+                          }`}>
+                            {['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? (
+                               <PauseCircle size={32} strokeWidth={1.5} className="mb-3 opacity-50" />
+                            ) : (
+                               <CheckCircle2 size={32} strokeWidth={1.5} className="mb-3 opacity-50" />
+                            )}
+                            <span className={`text-xs sm:text-sm font-bold ${['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'text-amber-600' : 'text-emerald-600'}`}>
+                              {['on_hold', 'on hold'].includes(String(selectedTicketForModal.status).toLowerCase()) ? 'No evidence photo uploaded.' : 'No resolution photo uploaded.'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) && selectedTicketForModal.remarks && (
+                  <div className="mt-6 bg-emerald-50/50 p-4 rounded-[1.5rem] border border-emerald-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">Staff Final Remarks</span>
+                      <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1"><Clock size={10}/> Resolved: {formatDateTime(selectedTicketForModal.updated_at || selectedTicketForModal.created_at)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-emerald-800 leading-relaxed">"{selectedTicketForModal.remarks}"</p>
+                  </div>
+                )}
+                
+              </div>
+
+              <div className="px-4 sm:px-6 py-4 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 flex justify-end">
+                <button onClick={() => setSelectedTicketForModal(null)} className="w-full sm:w-auto px-8 bg-[var(--color-primary)] text-[var(--color-text)] hover:opacity-90 py-3 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] border border-transparent">
+                  Close Details
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+  
+        {/* NEW TICKET MODAL */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
+                <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
+                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className="p-4 sm:p-5 overflow-y-auto max-h-full sm:max-h-[75vh] custom-scrollbar bg-slate-50/50">
+                <form onSubmit={handleAddTicket} className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
+                  
+                  {inboxTickets.length > 0 && (
+                    <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm">
+                      <label className="flex items-center gap-2 text-[10px] sm:text-xs font-black text-[var(--color-text)] uppercase tracking-wider mb-2"><Bell size={14} className="text-[var(--color-text)] sm:w-4 sm:h-4" /> Process Pending Request</label>
+                      <select
+                        value={selectedInboxId}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          setSelectedInboxId(id);
+                          setTicketImage(null); 
+                          setPhotoError(""); 
+                          if (id) {
+                            const t = inboxTickets.find(x => String(x.id) === id);
+                            if (t) {
+                              setTitle(t.title ? capitalizeWords(t.title) : ""); 
+                              setLocation(t.location || ""); 
+                              setPriority(t.priority || "Normal");
+                              const desc = t.description || "";
+                              if (desc.includes("Best time to visit:")) {
+                                const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
+                              if (timeMatch) setVisitTime(capitalizeWords(timeMatch.trim()));
+                              } else setVisitTime("");
+                              if (desc.includes("Reported by ")) {
+                                const repMatch = desc.split("Reported by ")[1]?.split(".")[0];
+                              if (repMatch) setReporter(capitalizeWords(repMatch.trim()));
+                              } else setReporter("Resident"); 
+                            }
+                          } else { setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setPriority("Normal"); }
+                        }}
+                        className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-inner"
+                        disabled={isSubmitting}
+                      >
+                        <option value="">-- Create custom ticket from scratch --</option>
+                        {inboxTickets.map(t => <option key={t.id} value={String(t.id)}>{t.title} ({t.location}){t.priority === 'Urgent' ? ' 🚨URGENT' : ''}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                      Photo Evidence <span className="text-red-500">*</span>
+                    </label>
+                    <div>
+                      {ticketImage ? (
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[var(--radius-xl)] border-2 border-solid border-emerald-400 bg-emerald-50/50 transition-all shadow-[var(--shadow-sm)]">
+                          <div className="relative w-full h-32 sm:h-40 rounded-[var(--radius-lg)] overflow-hidden bg-slate-900 shadow-inner">
+                            <img 
+                              src={URL.createObjectURL(ticketImage)} 
+                              alt="Ticket preview" 
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <span className="text-xs truncate text-emerald-900 font-black">
+                                {ticketImage.name}
+                              </span>
+                              <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 size={12} strokeWidth={3} /> Ready to submit
+                              </span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={(e) => { e.preventDefault(); setTicketImage(null); }} 
+                              className="flex items-center gap-1.5 px-3 py-2 bg-white text-red-500 hover:bg-red-500 hover:text-white rounded-[var(--radius-sm)] shadow-sm border border-red-100 transition-all active:scale-95 shrink-0 font-bold text-[10px] uppercase tracking-wider"
+                            >
+                              <Trash2 size={14} strokeWidth={2.5} /> Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : existingPhotoUrl ? (
+                        <div className="flex flex-col gap-2.5 w-full p-2.5 sm:p-3 rounded-[var(--radius-xl)] border-2 border-solid border-[var(--color-primary)]/50 bg-[var(--color-primary)]/5 transition-all shadow-[var(--shadow-sm)]">
+                          <div className="relative w-full h-32 sm:h-40 rounded-[var(--radius-lg)] overflow-hidden bg-slate-900 shadow-inner">
+                            <img 
+                              src={existingPhotoUrl} 
+                              alt="Resident's submitted photo" 
+                              className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0 flex flex-col">
+                              <span className="text-xs truncate text-[var(--color-secondary)] font-black">
+                                Resident's Submitted Photo
+                              </span>
+                              <span className="text-[9px] text-[var(--color-primary)] font-extrabold uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                <CheckCircle2 size={12} strokeWidth={3} /> From Pending Request
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 sm:gap-3 w-full">
+                          <label className={`flex md:hidden flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                              <Camera size={20} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
+                                Take Photo
+                              </span>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  setTicketImage(e.target.files[0]);
+                                  setPhotoError(""); 
+                                }
+                              }}
+                              className="hidden"
+                              disabled={isSubmitting}
+                            />
+                          </label>
+                          <label className={`flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                            </div>
+                            <div>
+                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
+                                Upload Photo
+                              </span>
+                            </div>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              onChange={(e) => {
+                                if (e.target.files) {
+                                  setTicketImage(e.target.files[0]);
+                                  setPhotoError(""); 
+                                }
+                              }}
+                              className="hidden"
+                              disabled={isSubmitting}
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                    {/* ✨ INLINE PHOTO ERROR MESSAGE */}
+                    {photoError && (
+                      <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
+                        <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {selectedInboxId && (
+                    <div className="bg-slate-100 p-2.5 rounded-[var(--radius-md)] border border-slate-200 flex items-start gap-2 mb-2">
+                      <AlertCircle size={14} className="text-slate-500 shrink-0 mt-0.5" />
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 leading-tight">
+                        Resident inputs are locked to preserve data integrity and maintain an accurate audit trail.
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="e.g. Aircon leaking" 
+                      value={title} 
+                      onChange={(e) => setTitle(capitalizeWords(e.target.value))} 
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId} 
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text"
+                      required 
+                      placeholder="Search or enter location..." 
+                      value={location} 
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        setIsLocationOpen(true);
+                      }} 
+                      onFocus={() => setIsLocationOpen(true)}
+                      onBlur={() => setTimeout(() => setIsLocationOpen(false), 200)}
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId}
+                    />
+                    {isLocationOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = location.toLowerCase();
+                          const defaultOpts = ["Common Area"];
+                          const unitOpts = units.map(u => `${u.property_name} - ${u.unit_number}`);
+                          const allOpts = [...defaultOpts, ...unitOpts];
+                          const filtered = allOpts.filter(opt => opt.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom location</div>;
+                          }
+
+                          return filtered.map((opt, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setLocation(opt); setIsLocationOpen(false); }}
+                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
+                            >
+                              {opt}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Best Time to Visit (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Tomorrow morning, Weekends only" 
+                      value={visitTime} 
+                      onChange={(e) => setVisitTime(capitalizeWords(e.target.value))} 
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId} 
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
+                    <input 
+                      type="text" 
+                      placeholder="Search owner or tenant..." 
+                      value={reporter} 
+                      onChange={(e) => {
+                        setReporter(capitalizeWords(e.target.value));
+                        setIsReporterOpen(true);
+                      }} 
+                      onFocus={() => setIsReporterOpen(true)}
+                      onBlur={() => setTimeout(() => setIsReporterOpen(false), 200)}
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId} 
+                    />
+                    {isReporterOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = reporter.toLowerCase();
+                          const eligibleMembers = teamMembers.filter(m => {
+                            const role = String(m.role || "").toLowerCase();
+                            return role.includes('owner') || role.includes('tenant');
+                          });
+                          const filtered = eligibleMembers.filter(m => m.name.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom name</div>;
+                          }
+
+                          return filtered.map((m, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setReporter(m.name); setIsReporterOpen(false); }}
+                              className="px-4 py-2.5 flex items-center justify-between hover:bg-[var(--color-primary)]/10 cursor-pointer border-b border-slate-50 last:border-0 group transition-colors"
+                            >
+                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-primary)]">{m.name}</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-primary)]/70">{m.role}</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To <span className="text-red-500">*</span></label>
+                      <select required value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" disabled={isSubmitting}>
+                        <option value="" disabled>Select staff...</option>
+                        {teamMembers.filter(m => { const r = String(m.role || "").toLowerCase(); return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager'); }).map((member) => ( <option key={member.email} value={member.email}>{member.name}</option> ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Priority Level <span className="text-red-500">*</span></label>
+                      <select required value={priority} onChange={(e) => setPriority(e.target.value)} className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm ${selectedInboxId ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : "focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]"}`} disabled={isSubmitting || !!selectedInboxId}>
+                        <option value="Normal">Normal (Flexible)</option>
+                        <option value="Urgent">🚨 Urgent (Due Today)</option>
+                      </select>
+                      {selectedInboxId && <p className="text-[10px] text-slate-400 font-medium mt-1.5 italic ml-0.5">Priority set by user.</p>}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 sm:mt-8 flex gap-2 sm:gap-3 justify-end pt-4 border-t border-[var(--color-border)] shrink-0">
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
+                    
+                    {selectedInboxId && (
+                      <button 
+                        type="button" 
+                        onClick={() => setIsRejectModalOpen(true)} 
+                        disabled={isSubmitting} 
+                        className="bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 py-2.5 px-3 sm:px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all active:scale-[0.98]"
+                      >
+                        Reject Request
+                      </button>
+                    )}
+
+                    <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 border border-transparent text-[var(--color-primary-text)] py-2.5 px-4 sm:px-5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.98]">{isSubmitting ? "Saving..." : "Create Ticket"}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* ✨ REJECT TICKET MODAL */}
+        {isRejectModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-red-50 shrink-0">
+                <div className="flex items-center gap-2 text-red-600">
+                  <AlertCircle size={18} strokeWidth={2.5} />
+                  <h2 className="text-base font-black tracking-tight">Reject Request</h2>
+                </div>
+                <button onClick={() => !isRejecting && setIsRejectModalOpen(false)} className="text-red-400 hover:text-red-600 transition-colors p-1.5 rounded-full hover:bg-red-100 active:scale-90" disabled={isRejecting}>
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              <div className="p-5 sm:p-6 pb-8 sm:pb-6 bg-slate-50/50">
+                <p className="text-[11px] sm:text-xs text-slate-500 mb-4 font-medium leading-relaxed">
+                  Please provide a reason for rejecting this request. This will be sent directly to the tenant or owner to inform them.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason for Rejection</label>
+                  <textarea 
+                    autoFocus
+                    placeholder="e.g. This issue is outside HOA coverage and must be handled privately." 
+                    value={rejectReason} 
+                    onChange={(e) => setRejectReason(capitalizeWords(e.target.value))}
+                    className="w-full px-3 sm:px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-400 text-sm font-medium text-[var(--color-text)] shadow-sm min-h-[100px] resize-none"
+                    disabled={isRejecting}
+                  />
+                </div>
+                <div className="mt-6 flex gap-3">
+                  <button type="button" onClick={() => setIsRejectModalOpen(false)} disabled={isRejecting} className="flex-1 py-3 sm:py-2.5 rounded-[var(--radius-md)] sm:rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 transition-all border border-transparent">Cancel</button>
+                  <button type="button" onClick={handleRejectTicket} disabled={isRejecting || !rejectReason.trim()} className="flex-1 py-3 sm:py-2.5 rounded-[var(--radius-md)] sm:rounded-[var(--radius-sm)] text-xs font-black uppercase tracking-wider bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 active:scale-95 transition-all shadow-[var(--shadow-md)] shadow-red-500/20 border border-transparent">
+                    {isRejecting ? "Rejecting..." : "Confirm Reject"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✨ UNIVERSAL ALERT MODAL (NEW) */}
+        {alertConfig.isOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-md)] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
+              <div className={`w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-emerald-100 text-emerald-600 border-emerald-200/20' : alertConfig.type === 'error' ? 'bg-red-100 text-red-600 border-red-200/20' : 'bg-amber-100 text-amber-600 border-amber-200/20'}`}>
+                {alertConfig.type === 'success' && <CheckCircle size={28} strokeWidth={2.5} />}
+                {alertConfig.type === 'error' && <AlertCircle size={28} strokeWidth={2.5} />}
+                {alertConfig.type === 'warning' && <AlertTriangle size={28} strokeWidth={2.5} />}
+              </div>
+              <h2 className="text-lg font-black text-[var(--color-text)] mb-2 tracking-tight">{alertConfig.title}</h2>
+              <p className="text-slate-500 text-xs mb-6 leading-relaxed whitespace-pre-wrap font-medium">{alertConfig.message}</p>
+              <button onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} className={`w-full text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] duration-150 border border-transparent ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)]' : alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}>Got it</button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  }
+  
+  function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, onClick, isHighlighted }: any) {
+    const colors: any = {
+      slate: 'bg-slate-50 text-slate-700 border-slate-200/60',
+      blue: 'bg-blue-50 text-blue-600 border-blue-200/60',
+      amber: 'bg-amber-50 text-amber-700 border-amber-200/60',
+      green: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+    };
+  
+    let assigneeName = "Unassigned";
+    if (ticket.assigned_to) {
+      const memberMatch = teamMembers?.find((m: any) => m.email === ticket.assigned_to);
+      if (memberMatch && memberMatch.name) assigneeName = memberMatch.name; 
+      else assigneeName = ticket.assigned_to.split('@')[0];
+    }
+  
+    return (
+    <div 
+      id={id}
+      onClick={onClick} 
+      className={`bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
+        isHighlighted ? 'ring-4 ring-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 border-[var(--color-primary)]/50 scale-[1.02] shadow-[var(--shadow-md)] animate-pulse z-10' 
+        : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-[var(--color-border)] border-r-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md' 
+        : statusColor === 'green' ? 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md hover:border-emerald-200' 
+        : 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md'
+      }`}
+    >
+        <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+          <div className="flex items-start gap-2 min-w-0">
+            {statusColor === 'green' && <CheckCircle size={16} className="text-emerald-600 mt-0.5 shrink-0" strokeWidth={2.5} />}
+            <h4 title={ticket.title} className={`font-extrabold text-[var(--color-text)] text-[14px] sm:text-[15px] leading-snug tracking-tight line-clamp-2 ${statusColor !== 'green' ? 'transition-colors group-hover:opacity-90' : ''}`}>
+              {ticket.title}
+            </h4>
+          </div>
+          <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${colors[statusColor]}`}>
+            {statusLabel}
+          </span>
+        </div>
+        
+        <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[var(--color-text)] font-bold text-[10px] sm:text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate w-fit">
+              <MapPin size={12} className="text-[var(--color-slate)] shrink-0" />
+              <span className="truncate">{ticket.location}</span>
+            </p>
+            <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 ml-1">
+              <Clock size={10} /> {['completed', 'resolved', 'closed', 'rejected', 'on hold', 'on_hold'].includes(String(ticket.status).toLowerCase()) ? 'Updated' : 'Reported'}: {formatDateTime(ticket.updated_at || ticket.created_at)}
+            </p>
+          </div>
+          {ticket.priority === 'Urgent' && statusColor !== 'green' && (
+            <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider animate-pulse shrink-0 self-start" title="Urgent">
+              🚨
+            </span>
+          )}
+        </div>
+  
+        <div className={`flex justify-between items-center shrink-0 border-t pt-3 ${isHighlighted ? 'border-[var(--color-primary)]/20' : 'border-[var(--color-border)]'}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[9px] sm:text-[10px] font-black shadow-sm shrink-0 border border-slate-300">
+              {assigneeName !== "Unassigned" ? assigneeName.substring(0, 1) : "?"}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned To</span>
+              <span className="text-[10px] sm:text-xs font-bold text-[var(--color-text)] truncate">{assigneeName}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-[150px] animate-pulse shrink-0 overflow-hidden">
+      <div className="flex justify-between items-start mb-3 shrink-0">
+        <div className="h-4 bg-slate-200 rounded-md w-3/4"></div>
+        <div className="h-4 bg-slate-200 rounded-lg w-16"></div>
+      </div>
+      <div className="h-3 bg-slate-200 rounded-md w-1/2 mt-auto mb-4 shrink-0"></div>
+      <div className="flex justify-between items-center border-t border-[var(--color-border)] pt-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 bg-slate-200 rounded-full"></div>
+          <div className="h-3 sm:h-4 bg-slate-200 rounded-md w-20 sm:w-24"></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, title, message }: any) {
+  return (
+    <div className="flex flex-col items-center justify-center h-[180px] border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-4 text-center shrink-0">
+      <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-[var(--shadow-sm)] border border-slate-100 mb-2">
+        <Icon size={18} className="text-slate-400" />
+      </div>
+      <h4 className="text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1">{title}</h4>
+      <p className="text-[9px] sm:text-[10px] text-slate-500 max-w-[200px] leading-tight">{message}</p>
+    </div>
+  );
+}

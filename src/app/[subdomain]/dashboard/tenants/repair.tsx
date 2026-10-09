@@ -492,7 +492,7 @@ export default function RepairTab({ highlightTicketId }: any) {
           <h4 className="hidden md:flex font-extrabold text-[var(--color-text)] text-sm mb-5 shrink-0 items-center justify-between tracking-wide">
             <span className="flex items-center gap-2">
               <div className="p-1.5 text-amber-600 rounded-[var(--radius-sm)]"><PauseCircle size={16} strokeWidth={2.5} /></div>
-              Delayed / On Hold
+              On Hold
             </span>
             <span className="bg-white border border-[var(--color-border)] text-[var(--color-text)] px-3 py-1 rounded-full text-xs font-bold shadow-[var(--shadow-sm)]">
               {isLoading ? <div className="h-3 w-3 bg-slate-200 rounded-full animate-pulse inline-block"></div> : onHoldTasks.length}
@@ -503,7 +503,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             {isLoading ? (
               <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : onHoldTasks.length === 0 ? (
-              <EmptyState icon={PauseCircle} title="No delays" message="If a repair needs parts or gets delayed, it will show here." />
+              <EmptyState icon={PauseCircle} title="No on hold ticket" message="If a repair needs parts or gets delayed, it will show here." />
             ) : (
               onHoldTasks.map(t => {
                 const holdReason = t.on_hold_reason;
