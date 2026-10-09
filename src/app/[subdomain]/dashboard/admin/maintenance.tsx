@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, Wrench, MapPin, Bell, CheckCircle2, Camera, AlertCircle, 
   Inbox, PauseCircle, Trash2, CheckCircle, 
-  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight, AlertTriangle
+  LayoutGrid, List, ArrowUpDown, Clock, ArrowRight, AlertTriangle, Droplets, Zap, Wind, Sparkles
 } from "lucide-react";
+
+// ✨ ENTERPRISE: Symptom-Based Categories with Role Mapping
+export const TICKET_CATEGORIES = [
+  { id: "Plumbing & Electrical", label: "Plumbing & Electrical", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200", requiredRole: "Engineer" },
+  { id: "Air Conditioning & Facility", label: "Air Conditioning & Facility", icon: Wind, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-200", requiredRole: "Engineer" },
+  { id: "Appliance & Equipment", label: "Appliance & Equipment", icon: Zap, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200", requiredRole: "Technician" },
+  { id: "Internet & Access", label: "Internet & Access", icon: Zap, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200", requiredRole: "Technician" },
+  { id: "Cleaning & Waste", label: "Cleaning & Waste", icon: Sparkles, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200", requiredRole: "Housekeeping" },
+  { id: "Sanitation & Pest", label: "Sanitation & Pest", icon: Sparkles, color: "text-pink-500", bg: "bg-pink-50", border: "border-pink-200", requiredRole: "Housekeeping" },
+  { id: "General Repair", label: "General Repair", icon: Wrench, color: "text-slate-500", bg: "bg-slate-50", border: "border-slate-200", requiredRole: "All" },
+];
 
 // ✨ ENTERPRISE HELPER: Format Date and Time
 const formatDateTime = (dateString: string) => {
@@ -44,6 +55,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   const [priority, setPriority] = useState("Normal"); 
   const [ticketImage, setTicketImage] = useState<File | null>(null);
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
+  // ✨ NEW: Smart Category Selection State for Modal
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   // INLINE ERROR STATES
   const [photoError, setPhotoError] = useState("");
@@ -180,7 +194,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   };
 
   const fetchTeamMembers = async () => {
-    const { data } = await supabase.from('team_members').select('name, email, role').eq('admin_email', orgData.admin_email); 
+    // ✨ FETCH ACCESS_LEVEL PARA SA ROLE (Engineer, Technician, Housekeeping)
+    const { data } = await supabase.from('team_members').select('name, email, role, access_level').eq('admin_email', orgData.admin_email); 
     if (data) setTeamMembers(data);
   };
 
@@ -188,6 +203,28 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     const { data } = await supabase.from('units').select('*').eq('admin_email', orgData.admin_email).order('property_name', { ascending: true }).order('unit_number', { ascending: true }); 
     if (data) setUnits(data);
   };
+
+  // ✨ SMART ROLE FILTERING MEMO
+  const availableStaff = useMemo(() => {
+    // ✨ STRICTLY FILTER BY ROLE: "Maintenance staff"
+    const baseStaff = teamMembers.filter(m => { 
+      return String(m.role || "").trim().toLowerCase() === 'maintenance staff'; 
+    });
+
+    // If no specific category is selected, or it's General Repair, show everyone (who is a maintenance staff)
+    if (!selectedCategory || selectedCategory === "General Repair") {
+      return baseStaff; 
+    }
+
+    // Find the mapping for the selected category
+    const categoryConfig = TICKET_CATEGORIES.find(c => c.id === selectedCategory);
+    const targetRole = categoryConfig ? categoryConfig.requiredRole : "All";
+
+    if (targetRole === "All") return baseStaff;
+
+    // Filter staff whose access_level specifically matches the required role
+    return baseStaff.filter(staff => String(staff.access_level || "").trim().toLowerCase() === targetRole.toLowerCase());
+  }, [selectedCategory, teamMembers]);
 
   const handleRejectTicket = async () => {
     if (!selectedInboxId || !rejectReason.trim()) {
@@ -223,7 +260,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       setIsModalOpen(false);
       setRejectReason("");
       setSelectedInboxId("");
-      setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+      setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null); setSelectedCategory("");
       setPhotoError("");
       
       showAlert('success', 'Ticket Rejected', 'The ticket has been successfully rejected and the user has been notified.');
@@ -244,6 +281,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
     if (!assignedTo) {
       showAlert('warning', 'Missing Assignment', "Please assign this ticket to a maintenance staff member.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!selectedCategory) {
+      showAlert('warning', 'Missing Category', "Please select a ticket category before submitting.");
       setIsSubmitting(false);
       return;
     }
@@ -287,18 +330,19 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         cost: 0, 
         photo_url: photoUrlToSave, 
         priority: priority,
+        category: selectedCategory, // ✨ Saving the new category field
         updated_at: new Date().toISOString()
       }]).select().single();
 
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance', updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
+      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance', category: selectedCategory, updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
 
       await fetchTickets(); 
       setIsModalOpen(false);
       showAlert('success', 'Ticket Created', 'The maintenance task has been successfully assigned.');
       
-      setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null);
+      setSelectedInboxId(""); setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setAssignedTo(""); setPriority("Normal"); setTicketImage(null); setSelectedCategory("");
 
       if (newTask) {
         setTimeout(() => {
@@ -416,7 +460,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             setTitle(pendingInbox.title ? capitalizeWords(pendingInbox.title) : ""); 
             setLocation(pendingInbox.location || ""); 
             setPriority(pendingInbox.priority || "Normal");
-            
+            setSelectedCategory(pendingInbox.category || ""); // Auto-set if exists
+
             const desc = pendingInbox.description || "";
             if (desc.includes("Best time to visit:")) {
               const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
@@ -540,7 +585,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
             </div>
 
             <button 
-              onClick={() => { setIsModalOpen(true); setTicketImage(null); setPhotoError(""); }}
+              onClick={() => { setIsModalOpen(true); setTicketImage(null); setPhotoError(""); setSelectedCategory(""); setAssignedTo(""); setTitle(""); }}
               className="w-full min-[480px]:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2.5 sm:py-2.5 rounded-[var(--radius-md)] text-xs font-extrabold transition-all shadow-[var(--shadow-sm)] active:scale-95 duration-150 shrink-0 border border-transparent flex justify-center items-center gap-1.5"
             >
               + New ticket
@@ -785,14 +830,22 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
               </div>
 
               <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50">
-                <div className="mb-5 sm:mb-6">
-                  <h3 className="font-black text-xl sm:text-2xl text-[var(--color-text)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
-                  <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-                    <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-slate-500"/> {selectedTicketForModal.location}</span>
-                    <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
-                      <Clock size={12} className="text-slate-500"/> Reported: {formatDateTime(selectedTicketForModal.created_at)}
-                    </span>
+                <div className="mb-5 sm:mb-6 flex flex-col min-[480px]:flex-row min-[480px]:justify-between min-[480px]:items-start gap-3 min-[480px]:gap-0">
+                  <div>
+                    <h3 className="font-black text-xl sm:text-2xl text-[var(--color-text)] tracking-tight mb-2">{selectedTicketForModal.title}</h3>
+                    <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                      <span className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]"><MapPin size={12} className="text-slate-500"/> {selectedTicketForModal.location}</span>
+                      <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                        <Clock size={12} className="text-slate-500"/> Reported: {formatDateTime(selectedTicketForModal.created_at)}
+                      </span>
+                    </div>
                   </div>
+                  {/* Category Badge on View Modal */}
+                  {selectedTicketForModal.category && (
+                    <div className="shrink-0 flex items-center gap-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-full border border-[var(--color-primary)]/20 shadow-sm w-fit min-[480px]:w-auto">
+                       <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">{selectedTicketForModal.category}</span>
+                    </div>
+                  )}
                 </div>
 
                 {(() => {
@@ -827,17 +880,17 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5 sm:mb-6">
-                  <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                  <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col justify-center">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Assigned To</span>
                     <span className="text-sm font-bold text-[var(--color-text)]">{getAssigneeName(selectedTicketForModal.assigned_to)}</span>
                   </div>
                   {['completed', 'resolved', 'closed'].includes(String(selectedTicketForModal.status).toLowerCase()) ? (
-                    <div className="bg-emerald-50 p-4 rounded-[1.5rem] border border-emerald-200 shadow-[var(--shadow-sm)]">
+                    <div className="bg-emerald-50 p-4 rounded-[1.5rem] border border-emerald-200 shadow-[var(--shadow-sm)] flex flex-col justify-center">
                       <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block mb-1">Final Cost</span>
                       <span className="text-lg font-black text-emerald-800">₱{(selectedTicketForModal.cost || 0).toLocaleString()}</span>
                     </div>
                   ) : (
-                    <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)]">
+                    <div className="bg-white p-4 rounded-[1.5rem] border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col justify-center">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Priority</span>
                       <span className={`text-sm font-bold ${selectedTicketForModal.priority === 'Urgent' ? 'text-red-600' : 'text-slate-600'}`}>
                         {selectedTicketForModal.priority || 'Normal'}
@@ -926,19 +979,23 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           </div>
         )}
   
-        {/* NEW TICKET MODAL */}
+        {/* NEW TICKET MODAL WITH SMART CATEGORY SELECTION */}
         {isModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-              <div className="px-5 sm:px-6 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-white shrink-0">
-                <h2 className="text-lg font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
-                <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); } }} className="text-slate-400 hover:opacity-90 transition-colors p-2 rounded-[var(--radius-sm)] hover:bg-slate-50 active:scale-90" disabled={isSubmitting}>
-                  <X size={16} strokeWidth={2.5} />
-                </button>
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+              <div className="px-5 py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Fill in the details below to create a new maintenance ticket.</p>
+                </div>
+                  <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); setSelectedCategory(""); setAssignedTo(""); setTitle(""); } }} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-[var(--radius-sm)] text-slate-500 active:scale-95 shrink-0" disabled={isSubmitting}>
+                    <X size={18} strokeWidth={2.5} />
+                  </button>
               </div>
               <div className="p-4 sm:p-5 overflow-y-auto max-h-full sm:max-h-[75vh] custom-scrollbar bg-slate-50/50">
                 <form onSubmit={handleAddTicket} className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
                   
+                  {/* Select Inbox Item */}
                   {inboxTickets.length > 0 && (
                     <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm">
                       <label className="flex items-center gap-2 text-[10px] sm:text-xs font-black text-[var(--color-text)] uppercase tracking-wider mb-2"><Bell size={14} className="text-[var(--color-text)] sm:w-4 sm:h-4" /> Process Pending Request</label>
@@ -952,20 +1009,25 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           if (id) {
                             const t = inboxTickets.find(x => String(x.id) === id);
                             if (t) {
+                              // ✨ AUTO-FILL TITLE (Issue Description input)
                               setTitle(t.title ? capitalizeWords(t.title) : ""); 
                               setLocation(t.location || ""); 
                               setPriority(t.priority || "Normal");
+                              setSelectedCategory(t.category || ""); // ✨ PRE-FILL CATEGORY IF EXISTS
+                              
                               const desc = t.description || "";
                               if (desc.includes("Best time to visit:")) {
                                 const timeMatch = desc.split("Best time to visit:")[1]?.split(".")[0];
-                              if (timeMatch) setVisitTime(capitalizeWords(timeMatch.trim()));
+                                if (timeMatch) setVisitTime(capitalizeWords(timeMatch.trim()));
                               } else setVisitTime("");
                               if (desc.includes("Reported by ")) {
                                 const repMatch = desc.split("Reported by ")[1]?.split(".")[0];
-                              if (repMatch) setReporter(capitalizeWords(repMatch.trim()));
+                                if (repMatch) setReporter(capitalizeWords(repMatch.trim()));
                               } else setReporter("Resident"); 
                             }
-                          } else { setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setPriority("Normal"); }
+                          } else { 
+                            setTitle(""); setLocation(""); setVisitTime(""); setReporter(""); setPriority("Normal"); setSelectedCategory(""); 
+                          }
                         }}
                         className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-inner"
                         disabled={isSubmitting}
@@ -975,6 +1037,206 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       </select>
                     </div>
                   )}
+
+                  {/* ✨ SMART CATEGORY SELECTOR */}
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                      Select Ticket Category <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                      {TICKET_CATEGORIES.map((cat) => {
+                        const IconComponent = cat.icon;
+                        const isSelected = selectedCategory === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory(cat.id);
+                              setAssignedTo(""); // Auto-reset assign dropdown when category changes
+                              
+                              // ✨ STRICT AUTO-FILL (Since field is now disabled)
+                              if (!selectedInboxId) {
+                                setTitle(`${cat.label} Issue`);
+                              }
+                            }}
+                            className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border text-center transition-all ${
+                              isSelected 
+                              ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
+                              : `bg-white border-[var(--color-border)] text-slate-500 hover:bg-slate-50`
+                            }`}
+                            disabled={isSubmitting || !!selectedInboxId} // Prevent change if pulled from Inbox with existing category
+                          >
+                            <div className={`w-8 h-8 rounded-full mb-1.5 flex items-center justify-center ${isSelected ? cat.bg : 'bg-slate-100'}`}>
+                              <IconComponent size={14} className={isSelected ? cat.color : 'text-slate-400'} />
+                            </div>
+                            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider leading-tight ${isSelected ? 'text-[var(--color-text)]' : 'text-slate-400'}`}>
+                              {cat.label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder={selectedInboxId ? "Waiting for inbox data..." : "Select a category above to auto-fill..."} 
+                      value={title} 
+                      readOnly
+                      disabled
+                      className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-slate-200/60 bg-slate-50 text-slate-500 cursor-not-allowed focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors"
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit <span className="text-red-500">*</span></label>
+                    <input 
+                      type="text"
+                      required 
+                      placeholder="Search or enter location..." 
+                      value={location} 
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        setIsLocationOpen(true);
+                      }} 
+                      onFocus={() => setIsLocationOpen(true)}
+                      onBlur={() => setTimeout(() => setIsLocationOpen(false), 200)}
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId}
+                    />
+                    {isLocationOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = location.toLowerCase();
+                          const defaultOpts = ["Common Area"];
+                          const unitOpts = units.map(u => `${u.property_name} - ${u.unit_number}`);
+                          const allOpts = [...defaultOpts, ...unitOpts];
+                          const filtered = allOpts.filter(opt => opt.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom location</div>;
+                          }
+
+                          return filtered.map((opt, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setLocation(opt); setIsLocationOpen(false); }}
+                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
+                            >
+                              {opt}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Best Time to Visit (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Tomorrow morning, Weekends only" 
+                      value={visitTime} 
+                      onChange={(e) => setVisitTime(capitalizeWords(e.target.value))} 
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId} 
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
+                    <input 
+                      type="text" 
+                      placeholder="Search or enter reporter's name..." 
+                      value={reporter} 
+                      onChange={(e) => {
+                        setReporter(capitalizeWords(e.target.value));
+                        setIsReporterOpen(true);
+                      }} 
+                      onFocus={() => setIsReporterOpen(true)}
+                      onBlur={() => setTimeout(() => setIsReporterOpen(false), 200)}
+                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
+                        selectedInboxId 
+                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
+                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                      }`}
+                      disabled={isSubmitting || !!selectedInboxId} 
+                    />
+                    {isReporterOpen && !selectedInboxId && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const searchLower = reporter.toLowerCase();
+                          const eligibleMembers = teamMembers.filter(m => {
+                            const role = String(m.role || "").toLowerCase();
+                            return role.includes('owner') || role.includes('tenant');
+                          });
+                          const filtered = eligibleMembers.filter(m => m.name.toLowerCase().includes(searchLower));
+
+                          if (filtered.length === 0) {
+                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom name</div>;
+                          }
+
+                          return filtered.map((m, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setReporter(m.name); setIsReporterOpen(false); }}
+                              className="px-4 py-2.5 flex items-center justify-between hover:bg-[var(--color-primary)]/10 cursor-pointer border-b border-slate-50 last:border-0 group transition-colors"
+                            >
+                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-primary)]">{m.name}</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-primary)]/70">{m.role}</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To <span className="text-red-500">*</span></label>
+                      <select 
+                        required 
+                        value={assignedTo} 
+                        onChange={(e) => setAssignedTo(e.target.value)} 
+                        className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" 
+                        disabled={isSubmitting}
+                      >
+                        <option value="" disabled>Select staff...</option>
+                        {/* ✨ DYNAMICALLY FILTERED STAFF */}
+                        {availableStaff.map((member) => ( 
+                          <option key={member.email} value={member.email}>
+                            {member.name} {member.access_level ? `- ${member.access_level}` : ''}
+                          </option> 
+                        ))}
+                      </select>
+                      {/* ✨ Filter Helper Text */}
+                      {selectedCategory && selectedCategory !== "General Repair" && (
+                        <p className="text-[9px] text-[var(--color-primary)] font-bold mt-1.5 ml-0.5">
+                          Filtered by: {TICKET_CATEGORIES.find(c => c.id === selectedCategory)?.requiredRole}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Priority Level <span className="text-red-500">*</span></label>
+                      <select required value={priority} onChange={(e) => setPriority(e.target.value)} className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm ${selectedInboxId ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : "focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]"}`} disabled={isSubmitting || !!selectedInboxId}>
+                        <option value="Normal">Normal (Flexible)</option>
+                        <option value="Urgent">🚨 Urgent (Due Today)</option>
+                      </select>
+                      {selectedInboxId && <p className="text-[10px] text-slate-400 font-medium mt-1.5 italic ml-0.5">Priority set by user.</p>}
+                    </div>
+                  </div>
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
@@ -1054,11 +1316,11 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             />
                           </label>
                           <label className={`flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
-                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                            <div className="w-30 h-30 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
                             <div>
-                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
+                              <span className="text-sm font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
                                 Upload Photo
                               </span>
                             </div>
@@ -1095,155 +1357,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       </p>
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Issue Description <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
-                      required 
-                      placeholder="e.g. Aircon leaking" 
-                      value={title} 
-                      onChange={(e) => setTitle(capitalizeWords(e.target.value))} 
-                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
-                        selectedInboxId 
-                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
-                      }`}
-                      disabled={isSubmitting || !!selectedInboxId} 
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text"
-                      required 
-                      placeholder="Search or enter location..." 
-                      value={location} 
-                      onChange={(e) => {
-                        setLocation(e.target.value);
-                        setIsLocationOpen(true);
-                      }} 
-                      onFocus={() => setIsLocationOpen(true)}
-                      onBlur={() => setTimeout(() => setIsLocationOpen(false), 200)}
-                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
-                        selectedInboxId 
-                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
-                      }`}
-                      disabled={isSubmitting || !!selectedInboxId}
-                    />
-                    {isLocationOpen && !selectedInboxId && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
-                        {(() => {
-                          const searchLower = location.toLowerCase();
-                          const defaultOpts = ["Common Area"];
-                          const unitOpts = units.map(u => `${u.property_name} - ${u.unit_number}`);
-                          const allOpts = [...defaultOpts, ...unitOpts];
-                          const filtered = allOpts.filter(opt => opt.toLowerCase().includes(searchLower));
-
-                          if (filtered.length === 0) {
-                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom location</div>;
-                          }
-
-                          return filtered.map((opt, idx) => (
-                            <div
-                              key={idx}
-                              onMouseDown={() => { setLocation(opt); setIsLocationOpen(false); }}
-                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
-                            >
-                              {opt}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Best Time to Visit (Optional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. Tomorrow morning, Weekends only" 
-                      value={visitTime} 
-                      onChange={(e) => setVisitTime(capitalizeWords(e.target.value))} 
-                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
-                        selectedInboxId 
-                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
-                      }`}
-                      disabled={isSubmitting || !!selectedInboxId} 
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
-                    <input 
-                      type="text" 
-                      placeholder="Search owner or tenant..." 
-                      value={reporter} 
-                      onChange={(e) => {
-                        setReporter(capitalizeWords(e.target.value));
-                        setIsReporterOpen(true);
-                      }} 
-                      onFocus={() => setIsReporterOpen(true)}
-                      onBlur={() => setTimeout(() => setIsReporterOpen(false), 200)}
-                      className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
-                        selectedInboxId 
-                          ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
-                      }`}
-                      disabled={isSubmitting || !!selectedInboxId} 
-                    />
-                    {isReporterOpen && !selectedInboxId && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
-                        {(() => {
-                          const searchLower = reporter.toLowerCase();
-                          const eligibleMembers = teamMembers.filter(m => {
-                            const role = String(m.role || "").toLowerCase();
-                            return role.includes('owner') || role.includes('tenant');
-                          });
-                          const filtered = eligibleMembers.filter(m => m.name.toLowerCase().includes(searchLower));
-
-                          if (filtered.length === 0) {
-                            return <div className="px-4 py-3 text-xs text-slate-500 italic">Press enter to use custom name</div>;
-                          }
-
-                          return filtered.map((m, idx) => (
-                            <div
-                              key={idx}
-                              onMouseDown={() => { setReporter(m.name); setIsReporterOpen(false); }}
-                              className="px-4 py-2.5 flex items-center justify-between hover:bg-[var(--color-primary)]/10 cursor-pointer border-b border-slate-50 last:border-0 group transition-colors"
-                            >
-                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-primary)]">{m.name}</span>
-                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-primary)]/70">{m.role}</span>
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To <span className="text-red-500">*</span></label>
-                      <select required value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" disabled={isSubmitting}>
-                        <option value="" disabled>Select staff...</option>
-                        {teamMembers.filter(m => { const r = String(m.role || "").toLowerCase(); return !r.includes('owner') && !r.includes('tenant') && !r.includes('manager'); }).map((member) => ( <option key={member.email} value={member.email}>{member.name}</option> ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Priority Level <span className="text-red-500">*</span></label>
-                      <select required value={priority} onChange={(e) => setPriority(e.target.value)} className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm ${selectedInboxId ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : "focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]"}`} disabled={isSubmitting || !!selectedInboxId}>
-                        <option value="Normal">Normal (Flexible)</option>
-                        <option value="Urgent">🚨 Urgent (Due Today)</option>
-                      </select>
-                      {selectedInboxId && <p className="text-[10px] text-slate-400 font-medium mt-1.5 italic ml-0.5">Priority set by user.</p>}
-                    </div>
-                  </div>
                   
                   <div className="mt-6 sm:mt-8 flex gap-2 sm:gap-3 justify-end pt-4 border-t border-[var(--color-border)] shrink-0">
-                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
+                    <button type="button" onClick={() => { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); setSelectedCategory(""); setAssignedTo(""); setTitle(""); }} disabled={isSubmitting} className="py-2.5 px-4 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-black uppercase tracking-wider bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 duration-150 border border-transparent">Cancel</button>
                     
                     {selectedInboxId && (
                       <button 
@@ -1337,12 +1453,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       if (memberMatch && memberMatch.name) assigneeName = memberMatch.name; 
       else assigneeName = ticket.assigned_to.split('@')[0];
     }
+
+    // ✨ FIND TICKET CATEGORY ICON
+    const categoryConfig = TICKET_CATEGORIES.find(c => c.id === ticket.category) || TICKET_CATEGORIES[6]; // Fallback to General
+    const CatIcon = categoryConfig.icon;
   
     return (
     <div 
       id={id}
       onClick={onClick} 
-      className={`bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] border flex flex-col h-[180px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
+      className={`bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] border flex flex-col h-[210px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
         isHighlighted ? 'ring-4 ring-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 border-[var(--color-primary)]/50 scale-[1.02] shadow-[var(--shadow-md)] animate-pulse z-10' 
         : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-[var(--color-border)] border-r-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md' 
         : statusColor === 'green' ? 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md hover:border-emerald-200' 
@@ -1361,6 +1481,15 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           </span>
         </div>
         
+        {/* ✨ ADDED CATEGORY BADGE */}
+        {ticket.category && (
+          <div className="flex items-center gap-1.5 mb-2 shrink-0">
+            <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 w-fit px-2 py-0.5 rounded-full border ${categoryConfig.color} ${categoryConfig.bg} ${categoryConfig.border}`}>
+              <CatIcon size={10} /> {ticket.category}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
           <div className="flex flex-col gap-1.5">
             <p className="text-[var(--color-text)] font-bold text-[10px] sm:text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate w-fit">
@@ -1413,7 +1542,7 @@ function SkeletonCard() {
 
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
-    <div className="flex flex-col items-center justify-center h-[180px] border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-4 text-center shrink-0">
+    <div className="flex flex-col items-center justify-center h-[210px] border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-4 text-center shrink-0">
       <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-[var(--shadow-sm)] border border-slate-100 mb-2">
         <Icon size={18} className="text-slate-400" />
       </div>

@@ -4,13 +4,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Camera, Clock, Wrench, AlertCircle, Inbox, PauseCircle, CheckCircle2, AlertTriangle, MapPin, X, CheckCircle, User, ChevronRight, Check, Trash2, Droplets, Zap, Wind, Sparkles, PhilippinePesoIcon } from 'lucide-react';
 import { supabase } from "@/utils/supabase/client";
 
-// ✨ ENTERPRISE: Symptom-Based Categories (Semantic colors retained for indicators)
+// ✨ ENTERPRISE: Symptom-Based Categories (Matched with Admin and Owner)
 const CATEGORIES = [
-  { id: "Plumbing", label: "Plumbing / Water", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200" },
-  { id: "Electrical", label: "Electrical / Light", icon: Zap, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200" },
-  { id: "Aircon", label: "Aircon / HVAC", icon: Wind, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-200" },
-  { id: "Housekeeping", label: "Cleaning / Pest", icon: Sparkles, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200" },
-  { id: "General", label: "General Repair", icon: Wrench, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200" },
+  { id: "Plumbing & Electrical", label: "Plumbing & Electrical", icon: Droplets, color: "text-blue-500", bg: "bg-blue-50", border: "border-blue-200" },
+  { id: "Air Conditioning & Facility", label: "Air Conditioning & Facility", icon: Wind, color: "text-cyan-500", bg: "bg-cyan-50", border: "border-cyan-200" },
+  { id: "Appliance & Equipment", label: "Appliance & Equipment", icon: Zap, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-200" },
+  { id: "Internet & Access", label: "Internet & Access", icon: Zap, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-200" },
+  { id: "Cleaning & Waste", label: "Cleaning & Waste", icon: Sparkles, color: "text-purple-500", bg: "bg-purple-50", border: "border-purple-200" },
+  { id: "Sanitation & Pest", label: "Sanitation & Pest", icon: Sparkles, color: "text-pink-500", bg: "bg-pink-50", border: "border-pink-200" },
+  { id: "General Repair", label: "General Repair", icon: Wrench, color: "text-slate-500", bg: "bg-slate-50", border: "border-slate-200" },
 ];
 
 // ✨ ENTERPRISE HELPER: Format Date and Time
@@ -93,7 +95,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
         const { data: tasksData } = await supabase
           .from('maintenance_tasks')
-          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at, updated_at, on_hold_reason, remarks')
+          .select('id, title, location, status, admin_email, assigned_to, cost, resolution_photo_url, priority, description, created_at, updated_at, on_hold_reason, remarks, category')
           .eq('admin_email', profileData.admin_email);
         if (tasksData) setLiveTasks(tasksData);
 
@@ -207,6 +209,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       const uniqueId = Math.floor(100000 + Math.random() * 900000);
       const finalTitle = `${issueCategory} Ticket #${uniqueId}`;
 
+      // ✨ FIX: Apply the `category` to the payload just like the Owner side
       const { data: newTicket, error } = await supabase
         .from('tickets')
         .insert([{
@@ -218,7 +221,8 @@ export default function RepairTab({ highlightTicketId }: any) {
           status: 'Open',
           photo_url: photoUrl,
           priority: repairPriority,
-          remarks: issueCategory,
+          category: issueCategory, // ✨ Passed properly for smart filtering
+          remarks: issueCategory, // Fallback
           updated_at: new Date().toISOString()
         }])
         .select()
@@ -269,7 +273,7 @@ export default function RepairTab({ highlightTicketId }: any) {
     if (s === 'in_progress' || s === 'in progress' || s === 'working') return { label: 'Working', color: 'bg-blue-100 text-blue-700 border-blue-200', step: 3 };
     if (s === 'on_hold' || s === 'on hold') return { label: 'On Hold', color: 'bg-purple-100 text-purple-700 border-purple-200', step: 2 };
     if (s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success') return { label: 'Resolved', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', step: 4 };
-    if (s === 'failed') return { label: 'Failed', color: 'bg-red-100 text-red-800 border-red-200', step: 1 };
+    if (s === 'failed' || s === 'rejected') return { label: 'Rejected', color: 'bg-red-100 text-red-800 border-red-200', step: 1 };
     return { label: status, color: 'bg-slate-100 text-slate-700 border-slate-200', step: 1 };
   };
 
@@ -359,7 +363,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   const resolvedTasks = enrichedTickets.filter(t => {
     const s = String(t.currentLiveStatus).toLowerCase();
-    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success'; 
+    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success' || s === 'rejected'; 
   }).sort((a, b) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -572,7 +576,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             ) : resolvedTasks.length === 0 ? (
               <EmptyState icon={CheckCircle2} title="No resolved tickets" message="Successfully completed tasks will be logged here." />
             ) : (
-              resolvedTasks.map(t => {
+              resolvedTasks.map((t: any) => {
                 return (
                   <div 
                     key={t.id} 
@@ -590,24 +594,27 @@ export default function RepairTab({ highlightTicketId }: any) {
                         <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                       </p>
                       <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 ml-1">
-                        <Clock size={10} /> Resolved: {formatDateTime(t.updated_at || t.created_at)}
+                        <Clock size={10} /> {t.label === 'Rejected' ? 'Rejected' : 'Resolved'}: {formatDateTime(t.updated_at || t.created_at)}
                       </p>
                     </div>
 
                     <div className="space-y-2 mb-3 flex-1 overflow-hidden mt-1">
-                      <p className="text-xs leading-relaxed font-semibold text-emerald-700 line-clamp-2">
-                        <CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} />
-                        {t.staffRemarks || "Task completed successfully."}
+                      <p className={`text-xs leading-relaxed font-semibold line-clamp-2 ${t.label === 'Rejected' ? 'text-red-700' : 'text-emerald-700'}`}>
+                        {t.label === 'Rejected' ? (
+                          <><AlertCircle size={12} className="inline mr-1 text-red-500" strokeWidth={3} /> {t.staffRemarks || "Request rejected by admin."}</>
+                        ) : (
+                          <><CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} /> {t.staffRemarks || "Task completed successfully."}</>
+                        )}
                       </p>
                     </div>
 
                     <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[10px] font-bold border border-[var(--color-primary)]/20">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border ${t.label === 'Rejected' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20'}`}>
                           {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Fixed By</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{t.label === 'Rejected' ? 'Rejected By' : 'Fixed By'}</span>
                           <span className="text-xs font-bold text-[var(--color-text)]">{t.staffName}</span>
                         </div>
                       </div>
@@ -642,7 +649,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                 
                 {/* Visual Category Grid */}
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 1: Select Category</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 1: Select Ticket Category <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {CATEGORIES.map(cat => {
                       const isSelected = issueCategory === cat.id;
@@ -654,13 +661,16 @@ export default function RepairTab({ highlightTicketId }: any) {
                             setIssueCategory(cat.id);
                           }}
                           className={`cursor-pointer rounded-[var(--radius-md)] border-2 flex flex-col items-center justify-center p-3 sm:p-4 text-center transition-all duration-200 active:scale-95 ${
-                            isSelected ? `${cat.border} ${cat.bg} shadow-[var(--shadow-md)] scale-[1.02]` : 'border-[var(--color-border)] bg-white hover:border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)]'
+                            isSelected ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
+                              : `bg-white border-[var(--color-border)] text-slate-500 hover:bg-slate-50`
                           }`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${isSelected ? 'bg-white shadow-[var(--shadow-sm)]' : cat.bg}`}>
+                          <div className={`w-8 h-8 rounded-full mb-1.5 flex items-center justify-center ${isSelected ? cat.bg : 'bg-slate-100'}`}>
                             <Icon size={20} className={cat.color} strokeWidth={isSelected ? 2.5 : 2} />
                           </div>
-                          <span className={`text-[10px] sm:text-xs font-black tracking-tight ${isSelected ? cat.color : 'text-[var(--color-text)]'}`}>{cat.label}</span>
+                          <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider leading-tight ${isSelected ? 'text-[var(--color-text)]' : 'text-slate-400'}`}>
+                            {cat.label}
+                          </span>
                         </div>
                       )
                     })}
@@ -789,7 +799,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {/* ✨ 2. ACTIVE REQUEST DETAILS MODAL */}
       {reviewActiveTicket && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-500">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] absolute bottom-0 sm:relative transform transition-transform animate-in slide-in-from-bottom sm:zoom-in duration-500 border border-[var(--color-border)]">
             
             <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 z-10 shadow-[var(--shadow-sm)]">
               <div className="min-w-0 flex-1 pr-4">
@@ -908,7 +918,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                 <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex items-center gap-3">
                     <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Before</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Initial Report</span>
+                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]"> Your Initial Report</span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-[var(--shadow-inner)] group p-1">
@@ -939,7 +949,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                 <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-slate-200/60 shadow-[var(--shadow-sm)]">Update</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Update</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Staff Report</span>
                     </div>
                     <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border bg-amber-50 border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
@@ -1090,7 +1100,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {isSuccessModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-emerald-200/50">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-emerald-500/20">
               <CheckCircle2 size={40} strokeWidth={2.5} />
             </div>
             <h2 className="text-2xl font-black text-[var(--color-text)] mb-3">Request Submitted!</h2>
@@ -1107,6 +1117,92 @@ export default function RepairTab({ highlightTicketId }: any) {
         </div>
       )}
 
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ TICKET CARD COMPONENT
+// -------------------------------------------------------------
+function TicketCard({ id, ticket, teamMembers, statusColor, statusLabel, onClick, isHighlighted }: any) {
+  const colors: any = {
+    slate: 'bg-slate-50 text-slate-700 border-slate-200/60',
+    blue: 'bg-blue-50 text-blue-600 border-blue-200/60',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200/60',
+    green: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  };
+
+  let assigneeName = "Unassigned";
+  if (ticket.assigned_to) {
+    const memberMatch = teamMembers?.find((m: any) => m.email === ticket.assigned_to);
+    if (memberMatch && memberMatch.name) assigneeName = memberMatch.name; 
+    else assigneeName = ticket.assigned_to.split('@')[0];
+  }
+
+  // ✨ FIND TICKET CATEGORY ICON
+  const categoryConfig = CATEGORIES.find(c => c.id === ticket.category) || CATEGORIES[6]; // Fallback to General
+  const CatIcon = categoryConfig.icon;
+
+  return (
+  <div 
+    id={id}
+    onClick={onClick} 
+    className={`bg-white p-4 sm:p-5 rounded-[var(--radius-xl)] border flex flex-col h-[190px] shrink-0 group transition-all duration-300 overflow-hidden cursor-pointer ${
+      isHighlighted ? 'ring-4 ring-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 border-[var(--color-primary)]/50 scale-[1.02] shadow-[var(--shadow-md)] animate-pulse z-10' 
+      : ticket.priority === 'Urgent' && statusColor !== 'green' ? 'border-l-4 border-red-500 border-y-[var(--color-border)] border-r-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md' 
+      : statusColor === 'green' ? 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md hover:border-emerald-200' 
+      : 'border-[var(--color-border)] shadow-[var(--shadow-sm)] hover:-translate-y-1.5 hover:shadow-md'
+    }`}
+  >
+      <div className="flex justify-between items-start mb-2 gap-3 shrink-0">
+        <div className="flex items-start gap-2 min-w-0">
+          {statusColor === 'green' && <CheckCircle size={16} className="text-emerald-600 mt-0.5 shrink-0" strokeWidth={2.5} />}
+          <h4 title={ticket.title} className={`font-extrabold text-[var(--color-text)] text-[14px] sm:text-[15px] leading-snug tracking-tight line-clamp-2 ${statusColor !== 'green' ? 'transition-colors group-hover:opacity-90' : ''}`}>
+            {ticket.title}
+          </h4>
+        </div>
+        <span className={`shrink-0 px-2.5 py-1 rounded-[var(--radius-sm)] text-[9px] font-black uppercase tracking-widest border shadow-[var(--shadow-sm)] ${colors[statusColor]}`}>
+          {statusLabel}
+        </span>
+      </div>
+      
+      {/* ✨ ADDED CATEGORY BADGE */}
+      {ticket.category && (
+        <div className="flex items-center gap-1.5 mb-2 shrink-0">
+          <span className={`text-[9px] font-black uppercase tracking-wider flex items-center gap-1 w-fit px-2 py-0.5 rounded-full border ${categoryConfig.color} ${categoryConfig.bg} ${categoryConfig.border}`}>
+            <CatIcon size={10} /> {ticket.category}
+          </span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mt-auto mb-3 shrink-0">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[var(--color-text)] font-bold text-[10px] sm:text-xs flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100 truncate w-fit">
+            <MapPin size={12} className="text-[var(--color-slate)] shrink-0" />
+            <span className="truncate">{ticket.location}</span>
+          </p>
+          <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 ml-1">
+            <Clock size={10} /> {['completed', 'resolved', 'closed', 'rejected', 'on hold', 'on_hold'].includes(String(ticket.status).toLowerCase()) ? 'Updated' : 'Reported'}: {formatDateTime(ticket.updated_at || ticket.created_at)}
+          </p>
+        </div>
+        {ticket.priority === 'Urgent' && statusColor !== 'green' && (
+          <span className="bg-red-50 text-red-600 border border-red-100 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider animate-pulse shrink-0 self-start" title="Urgent">
+            🚨
+          </span>
+        )}
+      </div>
+
+      <div className={`flex justify-between items-center shrink-0 border-t pt-3 ${isHighlighted ? 'border-[var(--color-primary)]/20' : 'border-[var(--color-border)]'}`}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--color-primary)] text-[var(--color-text)] flex items-center justify-center text-[9px] sm:text-[10px] font-black shadow-sm shrink-0 border border-slate-300">
+            {assigneeName !== "Unassigned" ? assigneeName.substring(0, 1) : "?"}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-widest">Assigned To</span>
+            <span className="text-[10px] sm:text-xs font-bold text-[var(--color-text)] truncate">{assigneeName}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

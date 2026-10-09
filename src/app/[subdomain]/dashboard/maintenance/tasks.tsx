@@ -225,7 +225,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div 
                     key={task.id} 
                     onClick={() => setReviewActiveTask(task)}
-                    className={`group h-auto min-h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
+                    className={`group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
                       task.priority === 'Urgent' ? 'border-l-4 border-l-red-500 shadow-sm shadow-red-500/5 border-[var(--color-border)]' : 'hover:border-[var(--color-primary)]/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border-[var(--color-border)]'
                     }`}
                   >
@@ -283,7 +283,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div 
                     key={task.id} 
                     onClick={() => setReviewOnHoldTask(task)}
-                    className="group h-auto min-h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+                    className="group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -331,7 +331,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div 
                     key={task.id} 
                     onClick={() => setReviewResolvedTask(task)} 
-                    className="group h-auto min-h-[200px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5"
+                    className="group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -818,7 +818,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
 function SkeletonCard() {
   return (
-    <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col h-[200px] animate-pulse overflow-hidden mb-4 shrink-0 shadow-[var(--shadow-sm)]">
+    <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col h-[210px] animate-pulse overflow-hidden mb-4 shrink-0 shadow-[var(--shadow-sm)]">
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
         <div className="h-4 bg-slate-200 rounded-md w-3/4 mb-3"></div>
         <div className="h-3 bg-slate-200 rounded-md w-1/2 mb-4"></div>
@@ -832,7 +832,7 @@ function SkeletonCard() {
 
 function EmptyState({ icon: Icon, title, message }: any) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-6 text-center h-[200px]">
+    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-[var(--color-border)] bg-slate-50/50 rounded-[var(--radius-xl)] p-6 text-center h-[210px]">
       <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm border border-[var(--color-border)] mb-3">
         <Icon size={24} className="text-slate-400" strokeWidth={2}/>
       </div>
