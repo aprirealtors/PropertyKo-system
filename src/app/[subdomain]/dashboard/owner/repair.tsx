@@ -54,6 +54,16 @@ export default function RepairTab({ highlightTicketId }: any) {
   const [repairPriority, setRepairPriority] = useState("Normal");
   const [issueCategory, setIssueCategory] = useState(""); 
   const [photoError, setPhotoError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   
@@ -265,6 +275,18 @@ export default function RepairTab({ highlightTicketId }: any) {
   // ---------------------------------------------------------------------------
   const handleReportRepair = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Inline validation (replaces the browser's built-in popups and the category toast)
+    const validationErrors: Record<string, string> = {};
+    if (!issueCategory) validationErrors.category = "Please select an issue category.";
+    const missingPhoto = !!issueCategory && !selectedImage;
+    if (issueCategory && myUnitsList.length > 1 && !selectedUnitForRepair) validationErrors.unit = "Please select which unit.";
+    if (Object.keys(validationErrors).length > 0 || missingPhoto) {
+      setFieldErrors(validationErrors);
+      setPhotoError(missingPhoto ? "Please upload a photo of the issue." : "");
+      return;
+    }
+    setFieldErrors({});
     setPhotoError(""); 
 
     if (!issueCategory) {
@@ -361,6 +383,7 @@ export default function RepairTab({ highlightTicketId }: any) {
     setIssueCategory(""); 
     setRepairTime(""); 
     setPhotoError(""); 
+    setFieldErrors({});
     setIsRepairModalOpen(true);
   };
 
@@ -666,8 +689,15 @@ export default function RepairTab({ highlightTicketId }: any) {
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 pb-safe">
-              <form onSubmit={handleReportRepair} className="space-y-6">
+              <form onSubmit={handleReportRepair} noValidate className="space-y-6">
                 
+                {(Object.keys(fieldErrors).length > 0 || photoError) && (
+                  <div className="p-4 bg-red-50 text-red-700 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-3">
+                    <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                    Please fill in all required fields highlighted in red before submitting.
+                  </div>
+                )}
+
                 {/* Visual Category Grid */}
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 1: Select Ticket Category <span className="text-red-500">*</span></label>
@@ -680,10 +710,11 @@ export default function RepairTab({ highlightTicketId }: any) {
                           key={cat.id}
                           onClick={() => {
                             setIssueCategory(cat.id);
+                            clearFieldError('category');
                           }}
                           className={`cursor-pointer rounded-[var(--radius-md)] border-2 flex flex-col items-center justify-center p-3 sm:p-4 text-center transition-all duration-200 active:scale-95 ${
                             isSelected ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
-                              : `bg-white border-[var(--color-border)] text-slate-500 hover:bg-slate-50`
+                              : `bg-white ${fieldErrors.category ? 'border-red-400 bg-red-50/50' : 'border-[var(--color-border)]'} text-slate-500 hover:bg-slate-50`
                           }`}
                         >
                           <div className={`w-8 h-8 rounded-full mb-1.5 flex items-center justify-center ${isSelected ? cat.bg : 'bg-slate-100'}`}>
@@ -696,6 +727,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                       )
                     })}
                   </div>
+                  <FieldError message={fieldErrors.category} />
                 </div>
 
                 {/* Animated reveal */}
@@ -783,17 +815,16 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                       {/* ✨ INLINE PHOTO ERROR MESSAGE */}
                       {photoError && (
-                        <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
-                          <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
-                        </div>
+                        <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-1.5 ml-1">
+                          <AlertCircle size={13} className="shrink-0" /> {photoError}
+                        </p>
                       )}
                     </div>
 
                     {myUnitsList.length > 1 && (
                       <div className="space-y-1.5 pt-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Location / Unit <span className="text-red-500">*</span></label>
-                        <select required value={selectedUnitForRepair} onChange={(e) => setSelectedUnitForRepair(e.target.value)} className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 text-xs sm:text-sm font-bold text-[var(--color-text)] bg-white hover:border-[var(--color-primary)]/50 transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
+                        <select required value={selectedUnitForRepair} onChange={(e) => { setSelectedUnitForRepair(e.target.value); clearFieldError('unit'); }} className={`w-full px-4 py-3 rounded-[var(--radius-md)] ${fieldErrors.unit ? 'border border-red-400 bg-red-50/50 focus:outline-none focus:border-red-400 focus:ring-4 focus:ring-red-100 text-xs sm:text-sm font-bold text-[var(--color-text)]' : 'border border-[var(--color-border)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 text-xs sm:text-sm font-bold text-[var(--color-text)] bg-white hover:border-[var(--color-primary)]/50'} transition-all shadow-[var(--shadow-sm)]`} disabled={isSubmitting}>
                           <option value="" disabled>Select which unit...</option>
                           {[...myUnitsList]
                             .sort((a, b) => {
@@ -807,6 +838,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                               </option>
                             ))}
                         </select>
+                        <FieldError message={fieldErrors.unit} />
                       </div>
                     )}
 
@@ -1302,5 +1334,14 @@ function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, 
       <h4 className="font-extrabold text-[var(--color-text)] mb-1.5">{title}</h4>
       <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
     </div>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-1.5 ml-1">
+      <AlertCircle size={13} className="shrink-0" /> {message}
+    </p>
   );
 }
