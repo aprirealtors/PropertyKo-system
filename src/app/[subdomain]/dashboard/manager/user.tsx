@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -14,6 +14,16 @@ export default function UsersTab({ orgData }: any) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   // Form States
   const [name, setName] = useState("");
@@ -157,10 +167,11 @@ export default function UsersTab({ orgData }: any) {
       
       const occupantEmail = role === "Tenant" ? unitData.tenant_email : unitData.owner_email;
       
-      if (occupantName) setName(occupantName);
-      if (occupantEmail) setEmail(occupantEmail);
+      if (occupantName) { setName(occupantName); clearFieldError('name'); }
+      if (occupantEmail) { setEmail(occupantEmail); clearFieldError('email'); }
       
       setSelectedUnits([...selectedUnits, unitString]);
+      clearFieldError('units');
     } else {
       const newSelected = selectedUnits.filter(u => u !== unitString);
       setSelectedUnits(newSelected);
@@ -174,6 +185,28 @@ export default function UsersTab({ orgData }: any) {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Inline validation (replaces the browser's built-in popups)
+    const validationErrors: Record<string, string> = {};
+    if (selectedUnits.length === 0) validationErrors.units = "Please assign at least one unit/property to this user.";
+    if (!name.trim()) validationErrors.name = "Full name is required.";
+    if (!email.trim()) {
+      validationErrors.email = "Login email is required.";
+    } else if (!/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(email.trim())) {
+      validationErrors.email = "Please enter a valid email address.";
+    }
+    if (!password) {
+      validationErrors.password = "Initial password is required.";
+    } else if (password.length < 6) {
+      validationErrors.password = "Password must be at least 6 characters.";
+    }
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setErrorMsg("Please fill in all required fields highlighted in red before submitting.");
+      return;
+    }
+    setFieldErrors({});
+
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -324,6 +357,7 @@ export default function UsersTab({ orgData }: any) {
             <button 
               onClick={() => {
                 setErrorMsg(null);
+                setFieldErrors({});
                 setIsModalOpen(true);
                 setUnitSearchQuery("");
                 setName(""); 
@@ -432,7 +466,7 @@ export default function UsersTab({ orgData }: any) {
             </div>
 
             {/* ✨ FIX: The form now wraps both the scrollable content AND the fixed footer */}
-            <form onSubmit={handleCreateUser} className="flex flex-col min-h-0 flex-1">
+            <form onSubmit={handleCreateUser} noValidate className="flex flex-col min-h-0 flex-1">
               
               {/* Scrollable Content Area */}
               <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
@@ -474,7 +508,7 @@ export default function UsersTab({ orgData }: any) {
                   {/* DYNAMIC UNIT SELECTION */}
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      <Home size={14} className="text-slate-500" /> Select Unit Allocation
+                      <Home size={14} className="text-slate-500" /> Select Unit Allocation <span className="text-red-500">*</span>
                     </label>
                     
                     <div className="relative mb-3 group">
@@ -489,7 +523,7 @@ export default function UsersTab({ orgData }: any) {
                       />
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
+                    <div className={`max-h-48 overflow-y-auto custom-scrollbar border ${fieldErrors.units ? 'border-red-400 bg-red-50/50' : 'border-[var(--color-border)] bg-white'} rounded-[var(--radius-lg)] p-2 space-y-1 shadow-inner`}>
                       {filteredAvailableUnits.length === 0 ? (
                         <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
                           {unitSearchQuery ? "No matching units found." : (role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners.")}
@@ -528,28 +562,31 @@ export default function UsersTab({ orgData }: any) {
                         })
                       )}
                     </div>
+                    <FieldError message={fieldErrors.units} />
                   </div>
 
                   {/* FORM FIELDS */}
                   <div className="space-y-4 pt-2">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => { setName(e.target.value); clearFieldError('name'); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border ${fieldErrors.name ? 'border-red-400 bg-red-50/50 focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-400' : 'border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]'} text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${fieldErrors.name ? '' : 'bg-white'}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.name} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border ${fieldErrors.email ? 'border-red-400 bg-red-50/50 focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-400' : 'border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]'} text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${fieldErrors.email ? '' : 'bg-white'}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.email} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password <span className="text-red-500">*</span></label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input 
@@ -558,8 +595,8 @@ export default function UsersTab({ orgData }: any) {
                           minLength={6} 
                           placeholder="Minimum 6 characters" 
                           value={password} 
-                          onChange={(e) => setPassword(e.target.value)} 
-                          className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }} 
+                          className={`w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border ${fieldErrors.password ? 'border-red-400 bg-red-50/50 focus:outline-none focus:ring-4 focus:ring-red-100 focus:border-red-400' : 'border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]'} text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${fieldErrors.password ? '' : 'bg-white'}`} 
                           disabled={isSubmitting} 
                         />
                         <button
@@ -571,6 +608,7 @@ export default function UsersTab({ orgData }: any) {
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
+                      <FieldError message={fieldErrors.password} />
                     </div>
                   </div>
                 </div>
@@ -589,5 +627,14 @@ export default function UsersTab({ orgData }: any) {
         </div>
       )}
     </div>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-1.5 ml-1">
+      <AlertCircle size={13} className="shrink-0" /> {message}
+    </p>
   );
 }

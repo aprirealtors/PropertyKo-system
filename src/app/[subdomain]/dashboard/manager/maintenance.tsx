@@ -61,6 +61,21 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   // INLINE ERROR STATES
   const [photoError, setPhotoError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  // Reset inline errors whenever the New Ticket modal closes
+  useEffect(() => {
+    if (!isModalOpen) setFieldErrors({});
+  }, [isModalOpen]);
 
   // Searchable Dropdown States for Modal
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -276,6 +291,21 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Inline validation (locked fields from a pending request are skipped, same as native validation)
+    const validationErrors: Record<string, string> = {};
+    if (!selectedCategory) validationErrors.category = "Please select a ticket category.";
+    if (!selectedInboxId && !location.trim()) validationErrors.location = "Location is required.";
+    if (!selectedInboxId && !reporter.trim()) validationErrors.reporter = "Reported by is required.";
+    if (!assignedTo) validationErrors.assignedTo = "Please select a staff member to assign.";
+    const missingPhoto = !ticketImage && !selectedInboxId;
+    if (Object.keys(validationErrors).length > 0 || missingPhoto) {
+      setFieldErrors(validationErrors);
+      setPhotoError(missingPhoto ? "A photo evidence is required to process this ticket." : "");
+      return;
+    }
+    setFieldErrors({});
+
     setIsSubmitting(true);
     setPhotoError(""); 
 
@@ -993,8 +1023,15 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </button>
               </div>
               <div className="p-4 sm:p-5 overflow-y-auto max-h-full sm:max-h-[75vh] custom-scrollbar bg-slate-50/50">
-                <form onSubmit={handleAddTicket} className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
+                <form onSubmit={handleAddTicket} noValidate className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
                   
+                  {(Object.keys(fieldErrors).length > 0 || photoError) && (
+                    <div className="p-4 bg-red-50 text-red-700 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-3">
+                      <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                      Please fill in all required fields highlighted in red before submitting.
+                    </div>
+                  )}
+
                   {/* Select Inbox Item */}
                   {inboxTickets.length > 0 && (
                     <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-primary)]/20 shadow-sm">
@@ -1053,6 +1090,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             type="button"
                             onClick={() => {
                               setSelectedCategory(cat.id);
+                              clearFieldError('category');
                               setAssignedTo(""); // Auto-reset assign dropdown when category changes
                               
                               // ✨ STRICT AUTO-FILL (Since field is now disabled)
@@ -1063,7 +1101,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border text-center transition-all ${
                               isSelected 
                               ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
-                              : `bg-white border-[var(--color-border)] text-slate-500 hover:bg-slate-50`
+                              : `bg-white ${fieldErrors.category ? 'border-red-400 bg-red-50/50' : 'border-[var(--color-border)]'} text-slate-500 hover:bg-slate-50`
                             }`}
                             disabled={isSubmitting || !!selectedInboxId} // Prevent change if pulled from Inbox with existing category
                           >
@@ -1077,6 +1115,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         );
                       })}
                     </div>
+                    <FieldError message={fieldErrors.category} />
                   </div>
 
                   <div>
@@ -1101,6 +1140,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       value={location} 
                       onChange={(e) => {
                         setLocation(e.target.value);
+                        clearFieldError('location');
                         setIsLocationOpen(true);
                       }} 
                       onFocus={() => setIsLocationOpen(true)}
@@ -1108,10 +1148,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
                         selectedInboxId 
                           ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                          : fieldErrors.location
+                            ? "bg-red-50/50 border-red-400 focus:ring-4 focus:ring-red-100 focus:border-red-400 text-[var(--color-text)]"
+                            : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
                       }`}
                       disabled={isSubmitting || !!selectedInboxId}
                     />
+                    <FieldError message={fieldErrors.location} />
                     {isLocationOpen && !selectedInboxId && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                         {(() => {
@@ -1156,13 +1199,14 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
 
                   <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Reported By <span className="text-red-500">*</span></label>
                     <input 
                       type="text" 
                       placeholder="Search or enter reporter's name..." 
                       value={reporter} 
                       onChange={(e) => {
                         setReporter(capitalizeWords(e.target.value));
+                        clearFieldError('reporter');
                         setIsReporterOpen(true);
                       }} 
                       onFocus={() => setIsReporterOpen(true)}
@@ -1170,10 +1214,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-medium shadow-sm transition-colors ${
                         selectedInboxId 
                           ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                          : fieldErrors.reporter
+                            ? "bg-red-50/50 border-red-400 focus:ring-4 focus:ring-red-100 focus:border-red-400 text-[var(--color-text)]"
+                            : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
                       }`}
                       disabled={isSubmitting || !!selectedInboxId} 
                     />
+                    <FieldError message={fieldErrors.reporter} />
                     {isReporterOpen && !selectedInboxId && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                         {(() => {
@@ -1209,8 +1256,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       <select 
                         required 
                         value={assignedTo} 
-                        onChange={(e) => setAssignedTo(e.target.value)} 
-                        className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" 
+                        onChange={(e) => { setAssignedTo(e.target.value); clearFieldError('assignedTo'); }} 
+                        className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm ${fieldErrors.assignedTo ? 'border-red-400 bg-red-50/50 focus:ring-red-100 focus:border-red-400' : 'border-[var(--color-border)] bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]'}`} 
                         disabled={isSubmitting}
                       >
                         <option value="" disabled>Select staff...</option>
@@ -1221,6 +1268,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           </option> 
                         ))}
                       </select>
+                      <FieldError message={fieldErrors.assignedTo} />
                       {/* ✨ Filter Helper Text */}
                       {selectedCategory && selectedCategory !== "General Repair" && (
                         <p className="text-[9px] text-[var(--color-primary)] font-bold mt-1.5 ml-0.5">
@@ -1342,10 +1390,9 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                     </div>
                     {/* ✨ INLINE PHOTO ERROR MESSAGE */}
                     {photoError && (
-                      <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
-                        <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
-                      </div>
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-1.5 ml-1">
+                        <AlertCircle size={13} className="shrink-0" /> {photoError}
+                      </p>
                     )}
                   </div>
                   
@@ -1549,5 +1596,14 @@ function EmptyState({ icon: Icon, title, message }: any) {
       <h4 className="text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1">{title}</h4>
       <p className="text-[9px] sm:text-[10px] text-slate-500 max-w-[200px] leading-tight">{message}</p>
     </div>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600 mt-1.5 ml-1">
+      <AlertCircle size={13} className="shrink-0" /> {message}
+    </p>
   );
 }
