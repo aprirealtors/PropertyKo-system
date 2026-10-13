@@ -76,14 +76,23 @@ export default function Home() {
           const userEmail = session.user.email;
           const adminParentEmail = session.user.user_metadata?.admin_parent || userEmail;
           
-          // ✨ NEW: Fetch BOTH org data and true role from team_members
+          // ✨ NEW: Fetch org data, role, AND status from team_members
           const [{ data: orgData }, { data: teamMember }] = await Promise.all([
             supabase.from("organizations").select("subdomain, org_name, status").eq("admin_email", adminParentEmail).single(),
-            supabase.from("team_members").select("role").eq("email", userEmail).single()
+            supabase.from("team_members").select("role, status").eq("email", userEmail).single()
           ]);
             
           // Prioritize the role in the database over the auth metadata
           const dbRole = teamMember?.role?.toLowerCase() || userRole;
+          const dbStatus = teamMember?.status?.toLowerCase();
+
+          // 🚨 TERMINATED ACCOUNT SECURITY CHECK
+          if (dbStatus === 'terminated' || dbStatus === 'inactive') {
+            await supabase.auth.signOut();
+            setErrorMsg("Your account has been terminated. Please contact support or your property manager.");
+            setIsPageLoading(false);
+            return;
+          }
 
           const hostname = window.location.hostname;
           const isMainDomain = hostname === "propertyko.com" || hostname === "www.propertyko.com" || hostname === "localhost";
@@ -201,10 +210,19 @@ export default function Home() {
       // 2. FETCH MATCHING ORG DATA AND TRUE ROLE FROM DATABASE
       const [{ data: orgData, error: dbError }, { data: teamMember }] = await Promise.all([
         supabase.from("organizations").select("*").eq("admin_email", adminParentEmail).single(),
-        supabase.from("team_members").select("role").eq("email", userEmail).single()
+        supabase.from("team_members").select("role, status").eq("email", userEmail).single() // ✨ Added status
       ]);
 
       const dbRole = teamMember?.role?.toLowerCase() || userRole;
+      const dbStatus = teamMember?.status?.toLowerCase();
+
+      // 🚨 TERMINATED ACCOUNT SECURITY CHECK
+      if (dbStatus === 'terminated' || dbStatus === 'inactive') {
+        await supabase.auth.signOut();
+        setErrorMsg("Your account has been terminated. Please contact support or your property manager.");
+        setLoading(false);
+        return;
+      }
 
       if (dbError) {
         console.log("Not a registered organization admin, checking alternate roles...");

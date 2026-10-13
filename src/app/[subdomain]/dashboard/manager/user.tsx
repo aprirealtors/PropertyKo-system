@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon } from "lucide-react";
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -184,6 +184,7 @@ export default function UsersTab({ orgData }: any) {
     }
 
     try {
+      // 1. Create the Auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -202,6 +203,7 @@ export default function UsersTab({ orgData }: any) {
 
       const finalAccessLevel = selectedUnits.join(", ");
 
+      // 2. Create the portal profile
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -217,6 +219,32 @@ export default function UsersTab({ orgData }: any) {
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
+      // ✨ NEW LOGIC: Update the `units` table so notifications have the correct email destination
+      const selectedUnitIds = availableUnits
+        .filter(u => selectedUnits.includes(`${u.property_name} - ${u.unit_number}`))
+        .map(u => u.id);
+
+      if (selectedUnitIds.length > 0) {
+        if (role === 'Owner') {
+          // Update Owner details on the unit
+          const { error: unitError } = await supabase
+            .from('units')
+            .update({ owner_email: email.trim(), owner_name: name.trim() })
+            .in('id', selectedUnitIds);
+          
+          if (unitError) console.error("Failed to update owner email in units:", unitError);
+        } else if (role === 'Tenant') {
+          // Update Tenant details on the unit
+          const { error: unitError } = await supabase
+            .from('units')
+            .update({ tenant_email: email.trim(), tenant_name: name.trim() })
+            .in('id', selectedUnitIds);
+            
+          if (unitError) console.error("Failed to update tenant email in units:", unitError);
+        }
+      }
+
+      // 3. Update existing active leases (if Tenant)
       if (role === 'Tenant') {
         const { data: tenantLeases } = await supabase
           .from('leases')
@@ -339,7 +367,7 @@ export default function UsersTab({ orgData }: any) {
           {/* Scrollable Table Area */}
           <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative w-full">
             <table className="w-full text-left text-sm relative min-w-[600px]">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 text-[10px] shadow-md">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 text-[10px] shadow-md z-10">
                 <tr>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Name / Email</th>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Role</th>
@@ -401,8 +429,13 @@ export default function UsersTab({ orgData }: any) {
                         {formatUnitsForTable(user.access_level)}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 group-hover:bg-[#359b46] group-hover:text-white transition-colors">
-                          <UserCheck size={14} strokeWidth={2.5} /> {user.status}
+                        <span className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 transition-colors border ${
+                          user.status === 'Terminated' || user.status === 'Inactive'
+                            ? 'bg-red-50 text-red-700 border-red-200/60 group-hover:bg-red-600 group-hover:text-white'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 group-hover:bg-[#359b46] group-hover:text-white'
+                        }`}>
+                          {user.status === 'Terminated' || user.status === 'Inactive' ? <XOctagon size={14} strokeWidth={2.5} /> : <UserCheck size={14} strokeWidth={2.5} />} 
+                          {user.status || 'Active'}
                         </span>
                       </td>
                     </tr>

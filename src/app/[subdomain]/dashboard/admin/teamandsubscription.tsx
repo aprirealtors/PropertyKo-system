@@ -327,7 +327,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
           options: {
             data: {
               org_name: orgData.org_name,
-              role: memberRole === "Property manager" ? "property_manager" : 
+              // ✨ FIX: Standardize the Auth role without underscores to match system routing
+              role: memberRole === "Property manager" ? "manager" : 
                     memberRole === "Assistant" ? "assistant" : "staff",
               admin_parent: orgData.admin_email
             }

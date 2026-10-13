@@ -28,8 +28,6 @@ export default function ManagerDashboard() {
   // ✨ INITIALIZE NOTIFICATION HOOK
   const { token, requestPermission } = usePushNotifications();
 
-  // ✨ FIX: Add this auto-restore block right here!
-  // This forces the UI button to immediately say "Notifications Enabled" upon login
   useEffect(() => {
     if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
       if (requestPermission) {
@@ -57,7 +55,6 @@ export default function ManagerDashboard() {
   // Workspace Info Modal & White Label States
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  // NEW: Logo Lightbox Modal State
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
   
   // Toast Notification State
@@ -72,11 +69,9 @@ export default function ManagerDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   
-  // NEW: Delete Notification Modal States
+  // Delete Notification Modal States
   const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
   const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
-
-  // ✨ NEW: Delete ALL Notifications Modal State
   const [isDeleteAllNotifModalOpen, setIsDeleteAllNotifModalOpen] = useState(false);
 
   // MESSAGES STATE
@@ -109,7 +104,6 @@ export default function ManagerDashboard() {
         if (authData?.user) {
           const userEmail = authData.user.email || "";
           
-          // Fetch Manager's name and access_level from team_members
           const { data: teamMember } = await supabase
             .from('team_members')
             .select('name, access_level')
@@ -143,6 +137,29 @@ export default function ManagerDashboard() {
     fetchOrgData();
   }, []);
 
+  // ✨ UNIVERSAL ACCESS CHECKER
+  const hasAccess = (moduleName: string) => {
+    if (!managerProfile.accessLevel) return false;
+    if (managerProfile.accessLevel.includes("All properties") || managerProfile.accessLevel.includes("Full Platform Access")) return true;
+    return managerProfile.accessLevel.includes(moduleName);
+  };
+
+  // ✨ DYNAMIC NOTIFICATION FILTER
+  const isAllowedNotif = (notif: any) => {
+    const type = (notif.type || '').toUpperCase();
+    const title = (notif.title || '').toUpperCase();
+    
+    if (type === 'TICKET' || type === 'MAINTENANCE') return hasAccess("Maintenance");
+    if (type.includes('PAYMENT') || type === 'BILLING' || type === 'SOA' || type === 'SUBSCRIPTION' || title.includes('PAYMENT')) return hasAccess("Billing");
+    if (type === 'MESSAGE' || type === 'CHAT') return hasAccess("Conversation");
+    if (type.includes('LEASE') || type.includes('TENANT')) return hasAccess("Leasing & Tenants") || hasAccess("Properties & Units");
+    if (type.includes('PROPERTY') || type.includes('UNIT')) return hasAccess("Properties & Units");
+    if (type.includes('USER') || type.includes('ACCOUNT')) return hasAccess("User");
+    if (type === 'KPI' || type === 'REPORT') return hasAccess("KPI Reports");
+    
+    return true; 
+  };
+
   // FETCH NOTIFICATIONS & SETUP REAL-TIME LISTENER
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -151,14 +168,17 @@ export default function ManagerDashboard() {
         .from('notifications')
         .select('*')
         .eq('admin_email', orgData.admin_email)
-        .eq('recipient', 'MANAGER') 
+        // ✨ FIX: Allow Manager to pull ADMIN notifications (Leases, etc.)
+        .in('recipient', ['MANAGER', 'ADMIN', orgData.admin_email]) 
         .eq('manager_hidden', false) 
         .order('created_at', { ascending: false })
-        .limit(15);
+        .limit(50); // Fetch a wider net before filtering
 
         if (!error && data) {
-          setNotifications(data);
-          setUnreadCount(data.filter(n => !n.is_read).length);
+          const allowedData = data.filter(isAllowedNotif).slice(0, 15);
+          setNotifications(allowedData);
+          // ✨ FIX: Target manager_read instead of is_read
+          setUnreadCount(allowedData.filter(n => !n.manager_read).length);
         }
       }
     };
@@ -170,16 +190,21 @@ export default function ManagerDashboard() {
         .channel('manager-live-notifications')
         .on(
           'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'notifications',
-            filter: `recipient=eq.MANAGER` 
-          },
+          { event: 'INSERT', schema: 'public', table: 'notifications' },
           (payload) => {
-            if (payload.new.admin_email === orgData.admin_email) {
-              setNotifications((currentNotifs) => [payload.new, ...currentNotifs]);
-              setUnreadCount((currentCount) => currentCount + 1);
+            const notif = payload.new;
+            if (
+              notif.admin_email === orgData.admin_email &&
+              // ✨ FIX: Accept ADMIN level alerts into real-time
+              ['MANAGER', 'ADMIN', orgData.admin_email].includes(notif.recipient)
+            ) {
+              if (isAllowedNotif(notif)) {
+                setNotifications((currentNotifs) => [notif, ...currentNotifs]);
+                // Ensure we only increment if the incoming isn't instantly marked read
+                if (!notif.manager_read) {
+                  setUnreadCount((currentCount) => currentCount + 1);
+                }
+              }
             }
           }
         )
@@ -189,37 +214,30 @@ export default function ManagerDashboard() {
         supabase.removeChannel(realtimeChannel);
       };
     }
-  }, [orgData]);
+  }, [orgData, managerProfile.accessLevel]);
 
   // ✨ LIVE ASSIGNED TICKETS (OPEN & IN PROGRESS) SIDEBAR COUNTER STATE FOR MANAGER
   const [activeTicketsCount, setActiveTicketsCount] = useState<number>(0);
 
   useEffect(() => {
-    if (!orgData?.admin_email) return;
+    if (!orgData?.admin_email || !hasAccess("Maintenance")) {
+      setActiveTicketsCount(0);
+      return;
+    }
 
     const fetchActiveTicketsCount = async () => {
       try {
-        const { data: ticketsData } = await supabase
-          .from('tickets')
-          .select('title, location, status')
-          .eq('admin_email', orgData.admin_email);
-
-        const { data: tasksData } = await supabase
-          .from('maintenance_tasks')
-          .select('title, location, status')
-          .eq('admin_email', orgData.admin_email);
+        const { data: ticketsData } = await supabase.from('tickets').select('title, location, status').eq('admin_email', orgData.admin_email);
+        const { data: tasksData } = await supabase.from('maintenance_tasks').select('title, location, status').eq('admin_email', orgData.admin_email);
 
         if (ticketsData) {
           const activeCount = ticketsData.filter(ticket => {
             const liveMatch = tasksData?.find(task => task.title === ticket.title && task.location === ticket.location);
             const currentLiveStatus = String(liveMatch ? liveMatch.status : ticket.status).toLowerCase().trim();
             
-            return currentLiveStatus === 'pending' || 
-                   currentLiveStatus === 'open' || 
-                   currentLiveStatus === 'in_progress' || 
-                   currentLiveStatus === 'in progress' || 
-                   currentLiveStatus === 'assigned to maintenance' || 
-                   currentLiveStatus === 'working';
+            return currentLiveStatus === 'pending' || currentLiveStatus === 'open' || 
+                   currentLiveStatus === 'in_progress' || currentLiveStatus === 'in progress' || 
+                   currentLiveStatus === 'assigned to maintenance' || currentLiveStatus === 'working';
           }).length;
 
           setActiveTicketsCount(activeCount);
@@ -233,55 +251,42 @@ export default function ManagerDashboard() {
 
     const viewTicketChannel = supabase
       .channel('manager-sidebar-live-viewticket-counts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` }, () => {
-        fetchActiveTicketsCount();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${orgData.admin_email}` }, () => {
-        fetchActiveTicketsCount();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` }, () => fetchActiveTicketsCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `admin_email=eq.${orgData.admin_email}` }, () => fetchActiveTicketsCount())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(viewTicketChannel);
-    };
-  }, [orgData]);
+    return () => { supabase.removeChannel(viewTicketChannel); };
+  }, [orgData, managerProfile.accessLevel]);
 
   // ✨ LIVE MAINTENANCE TICKETS INBOX COUNTER STATE FOR MANAGER SIDEBAR
   const [pendingMaintenanceCount, setPendingMaintenanceCount] = useState<number>(0);
 
   useEffect(() => {
-    if (!orgData?.admin_email) return;
+    if (!orgData?.admin_email || !hasAccess("Maintenance")) {
+      setPendingMaintenanceCount(0);
+      return;
+    }
 
     const fetchPendingTickets = async () => {
-      const { data, error } = await supabase
-        .from('tickets')
-        .select('id')
-        .eq('admin_email', orgData.admin_email)
-        .eq('status', 'Open');
-
-      if (!error && data) {
-        setPendingMaintenanceCount(data.length);
-      }
+      const { data, error } = await supabase.from('tickets').select('id').eq('admin_email', orgData.admin_email).eq('status', 'Open');
+      if (!error && data) setPendingMaintenanceCount(data.length);
     };
     fetchPendingTickets();
 
     const maintenanceChannel = supabase
       .channel('manager-sidebar-live-maintenance-counts')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` },
-        () => {
-          fetchPendingTickets();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `admin_email=eq.${orgData.admin_email}` }, () => fetchPendingTickets())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(maintenanceChannel);
-    };
-  }, [orgData]);
+    return () => { supabase.removeChannel(maintenanceChannel); };
+  }, [orgData, managerProfile.accessLevel]);
 
   // ✨ LIVE CHAT MESSAGES UNREAD COUNT COUNTER FOR SIDEBAR
   useEffect(() => {
-    if (!managerProfile.email || !orgData?.admin_email) return;
+    if (!managerProfile.email || !orgData?.admin_email || !hasAccess("Conversation")) {
+      setUnreadMessageCount(0);
+      return;
+    }
 
     const fetchUnreadMessages = async () => {
       const { data, error } = await supabase
@@ -296,7 +301,6 @@ export default function ManagerDashboard() {
           return m.recipient_role === 'manager' || 
                  (m.tenant_email === managerProfile.email && ['admin', 'maintenance'].includes(m.recipient_role));
         });
-
         setUnreadMessageCount(managerUnreadItems.length);
       }
     };
@@ -305,47 +309,25 @@ export default function ManagerDashboard() {
 
     const messagesChannel = supabase
       .channel('manager-sidebar-permanent-sync')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'messages',
-          filter: `admin_email=eq.${orgData.admin_email}`
-        },
-        () => {
-          fetchUnreadMessages();
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `admin_email=eq.${orgData.admin_email}` }, () => fetchUnreadMessages())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(messagesChannel);
-    };
-  }, [managerProfile.email, orgData]);
+    return () => { supabase.removeChannel(messagesChannel); };
+  }, [managerProfile.email, orgData, managerProfile.accessLevel]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
-  // ✨ GLOBAL TAB CHANGE LOGIC WITH DELAYED INTENT RENDERING
   const handleTabChange = (tabName: string, highlightId: string | null = null) => {
     setActiveTab(tabName);
     setIsMobileMenuOpen(false); 
 
-    // 1-CLICK 1-APPEAR: Clear any existing timeouts to prevent rapid-fire bugs
-    if (intentTimeoutRef.current) {
-      clearTimeout(intentTimeoutRef.current);
-    }
-
-    // Reset intent first. This forcibly closes any open modals in child tabs.
+    if (intentTimeoutRef.current) clearTimeout(intentTimeoutRef.current);
     setHighlightTicketId(null);
 
     if (highlightId) {
-      // SKELETON FIRST LOGIC: Wait 800ms before passing the intent down.
-      // This allows the child tab to mount and show its skeleton loading state
-      // BEFORE the modal pops up, making the UX perfectly smooth.
       intentTimeoutRef.current = setTimeout(() => {
         setHighlightTicketId(highlightId);
       }, 800);
@@ -357,44 +339,29 @@ export default function ManagerDashboard() {
     setTimeout(() => setToast(null), 3000); 
   };
 
-  // --- Trigger Modal Instead of Saving Immediately ---
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
       return;
     }
-    
-    // Only open the modal if the name actually changed
     if (editedName.trim() === managerProfile.name) {
       setIsEditingName(false);
       return;
     }
-
     setIsConfirmNameModalOpen(true);
   };
 
-  // --- Actual Save Function called from Modal ---
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
     
     try {
-      // 1. Update name directly in Supabase Auth user metadata
-      const { error: authError } = await supabase.auth.updateUser({
-        data: { name: editedName.trim() }
-      });
+      const { error: authError } = await supabase.auth.updateUser({ data: { name: editedName.trim() } });
       if (authError) throw authError;
         
-      // 2. Update name in the team_members table
-      const { data, error: dbError } = await supabase
-        .from('team_members')
-        .update({ name: editedName.trim() })
-        .eq('email', managerProfile.email)
-        .select(); 
-        
+      const { data, error: dbError } = await supabase.from('team_members').update({ name: editedName.trim() }).eq('email', managerProfile.email).select(); 
       if (dbError) throw dbError;
 
-      // 3. Catch Silent RLS Failures
       if (!data || data.length === 0) {
         throw new Error("Update blocked by database permissions (RLS) or email not found.");
       }
@@ -432,24 +399,16 @@ export default function ManagerDashboard() {
         password: currentPassword,
       });
 
-      if (signInError) {
-        throw new Error("Incorrect current password.");
-      }
+      if (signInError) throw new Error("Incorrect current password.");
 
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (updateError) {
-        throw new Error(`Failed to update password: ${updateError.message}`);
-      }
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw new Error(`Failed to update password: ${updateError.message}`);
 
       showToast("Password updated successfully!", "success");
       setIsChangingPassword(false);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      
       setShowCurrentPassword(false);
       setShowNewPassword(false);
       setShowConfirmPassword(false);
@@ -470,22 +429,13 @@ export default function ManagerDashboard() {
       const fileName = `logo_${orgData.id}_${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file, { upsert: true });
-
+      const { error: uploadError } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from('logos').getPublicUrl(filePath);
       const newLogoUrl = publicUrlData.publicUrl;
 
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ logo_url: newLogoUrl })
-        .eq('id', orgData.id);
-
+      const { error: updateError } = await supabase.from('organizations').update({ logo_url: newLogoUrl }).eq('id', orgData.id);
       if (updateError) throw updateError;
 
       setOrgData((prev: any) => ({ ...prev, logo_url: newLogoUrl }));
@@ -517,90 +467,91 @@ export default function ManagerDashboard() {
     setIsMobileMenuOpen(false); 
   };
 
+  // ✨ SMART MARK AS READ (Targets only manager_read)
   const markAllAsRead = async () => {
-    if (!orgData?.admin_email) return;
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    if (!orgData?.admin_email || notifications.length === 0) return;
+    
+    const unreadIds = notifications.filter(n => !n.manager_read).map(n => n.id);
+    
+    setNotifications(notifications.map(n => ({ ...n, manager_read: true })));
     setUnreadCount(0);
-    await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('admin_email', orgData.admin_email)
-    .eq('recipient', 'MANAGER') 
-    .eq('is_read', false);
+    
+    if (unreadIds.length > 0) {
+      await supabase
+      .from('notifications')
+      .update({ manager_read: true })
+      .in('id', unreadIds);
+    }
   };
 
-  // ✨ FIX: Hide ALL function instead of permanently deleting
+  // ✨ SMART DELETE ALL (Targets only the UI loaded notifications)
   const confirmDeleteAllNotifications = async () => {
-    if (!orgData?.admin_email) return;
+    if (!orgData?.admin_email || notifications.length === 0) return;
     
-    // Optimistic UI updates
+    const idsToDelete = notifications.map(n => n.id);
+    
     setNotifications([]);
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
+    setIsNotifOpen(false);
     
-    // ✨ FIX: Update to is_hidden: true instead of .delete() to keep in DB
-    await supabase
-      .from('notifications')
-      .update({ manager_hidden: true })
-      .eq('admin_email', orgData.admin_email)
-      .eq('recipient', 'MANAGER'); 
+    if (idsToDelete.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({ manager_hidden: true })
+        .in('id', idsToDelete); 
+    }
   };
 
-  // --- NEW: Initiate Single Delete Modal ---
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
-    e.stopPropagation(); // Prevents clicking the background notification body
+    e.stopPropagation(); 
     setNotificationToDelete(notif);
     setIsDeleteNotifModalOpen(true);
   };
 
-  // --- NEW: Actual Function Called by the Delete Modal ---
   const confirmDeleteNotification = async () => {
     if (!orgData?.admin_email || !notificationToDelete) return;
 
-    // 1. Update local state immediately for snappy UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    // 2. Adjust unread count if the deleted notification was unread
-    if (!notificationToDelete.is_read) {
+    // ✨ FIX: decrement based on manager_read
+    if (!notificationToDelete.manager_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Change back to update({ is_hidden: true }) to keep in DB
     await supabase
       .from('notifications')
       .update({ manager_hidden: true })
       .eq('id', notificationToDelete.id);
 
-    // Clear the tracked notification
     setNotificationToDelete(null);
   };
 
-  // ✨ SMART ACTION-DRIVEN NOTIFICATION CLICK HANDLER
   const handleNotificationClick = async (notif: any) => {
-    if (!notif.is_read) {
-      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+    // ✨ FIX: Update manager_read
+    if (!notif.manager_read) {
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, manager_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      await supabase.from('notifications').update({ manager_read: true }).eq('id', notif.id);
     }
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
     const title = notif.title?.toUpperCase() || '';
 
-    // ✨ SPECIFIC INTENT ROUTING FOR OWNER PAYMENTS
-    if (type === 'PAYMENT_OWNER') {
+    if (type === 'LEASE' || type === 'LEASE_TERMINATION' || title.includes('LEASE') || title.includes('TERMINATION') || title.includes('TENANT')) {
+      handleTabChange("Leasing");
+    }
+    else if (type === 'PAYMENT_OWNER') {
       const intent = notif.reference_id ? `verify_payment_owner_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Billing", intent);
     }
-    // ✨ SPECIFIC INTENT ROUTING FOR TENANT PAYMENTS
     else if (type === 'PAYMENT_TENANT') {
       const intent = notif.reference_id ? `verify_payment_tenant_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Billing", intent);
     }
-    // Fallback for older billing notifications
     else if (type === 'BILLING' || type === 'SOA' || title.includes('PAYMENT VERIFICATION')) {
       const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Billing", intent);
@@ -609,16 +560,16 @@ export default function ManagerDashboard() {
       const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Maintenance", intent); 
     } 
+    else if (type === 'MESSAGE' || type === 'CHAT') {
+      handleTabChange("Messages"); 
+    } 
     else {
       handleTabChange("Dashboard");
     }
   };
 
   const formatColumnName = (key: string) => {
-    return key
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+    return key.split('_').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   const formatNotificationMessage = (text: string) => {
@@ -630,9 +581,7 @@ export default function ManagerDashboard() {
       .replace(/>/g, "&gt;");
 
     safeText = safeText.replace(/\b(COMPLETED|ON HOLD|RESOLVED|PENDING|IN PROGRESS|SUCCESS|FAILED)\b/g, '<span class="font-black text-[var(--color-text)] bg-slate-200/70 border border-slate-300 px-1.5 py-0.5 rounded text-[9px] tracking-wider ml-0.5 mr-0.5">$1</span>');
-    
     safeText = safeText.replace(/^([a-zA-Z0-9\s]+?)\s(marked|put|requested|created|updated|resolved|submitted|assigned)\b/i, '<strong class="font-extrabold text-[var(--color-text)]">$1</strong> $2');
-    
     safeText = safeText.replace(/(Remarks|Reason|Note|Notes):\s*(.*)/gi, function(match, label, content) {
       return `<div class="mt-2.5 bg-white border border-[var(--color-border)] rounded-xl p-2.5 shadow-[var(--shadow-sm)]">
                 <span class="block text-[9px] font-black uppercase tracking-widest text-[var(--color-text)] mb-0.5">${label}</span>
@@ -641,14 +590,6 @@ export default function ManagerDashboard() {
     });
 
     return { __html: safeText };
-  };
-
-  // ✨ Check if the manager has access to a specific module
-  const hasAccess = (moduleName: string) => {
-    if (!managerProfile.accessLevel) return false;
-    // Fallback for legacy admin/full access
-    if (managerProfile.accessLevel.includes("All properties") || managerProfile.accessLevel.includes("Full Platform Access")) return true;
-    return managerProfile.accessLevel.includes(moduleName);
   };
 
   return (
@@ -726,13 +667,12 @@ export default function ManagerDashboard() {
                       </div>
                     ) : (
                       notifications.map((notif) => (
-                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/5' : 'opacity-80'}`}>
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.manager_read ? 'bg-[var(--color-primary)]/5' : 'opacity-80'}`}>
                           <div className="flex justify-between items-start mb-1.5 gap-2">
-                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
+                            <span className={`font-bold text-sm truncate flex-1 ${!notif.manager_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
                             
-                            {/* Updated delete button to trigger modal */}
                             <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                              {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
+                              {!notif.manager_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
                               
                               <button
                                 onClick={(e) => handleInitiateDeleteNotification(e, notif)}
@@ -784,7 +724,6 @@ export default function ManagerDashboard() {
         <aside 
           className={`fixed sm:relative inset-y-0 left-0 z-[60] sm:z-10 ${isSidebarCollapsed ? "sm:w-[84px]" : "sm:w-[260px]"} w-[260px] h-full bg-[var(--color-secondary)] text-slate-300 flex flex-col shrink-0 transition-all duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full sm:translate-x-0"}`}
         >
-          {/* Collapse / expand toggle — desktop only, floats on the sidebar's edge */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="hidden sm:flex absolute top-[72px] -right-3 w-6 h-6 rounded-full bg-white border border-[var(--color-border)] shadow-md items-center justify-center z-20 text-slate-500 hover:text-[var(--color-primary)] hover:scale-110 hover:shadow-lg transition-all duration-200 group"
@@ -811,7 +750,6 @@ export default function ManagerDashboard() {
             <button onClick={() => setIsMobileMenuOpen(false)} className="p-1.5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
           </div>
           
-          {/* Workspace card */}
           <div className="p-2 sm:pt-4 pb-2 shrink-0">
             <div 
               onClick={openWorkspaceFromSidebar}
@@ -918,11 +856,8 @@ export default function ManagerDashboard() {
             {activeTab === "Properties" && <PropertiesAndUnitsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Leasing" && <LeasingAndTenantsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Messages" && <ConversationTab orgData={orgData} managerProfile={managerProfile} />}
-            {activeTab === "Maintenance" && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
-            
-            {/* ✨ ADDED actionIntent to pass the parsed command from handleNotificationClick */}
+            {activeTab === "Maintenance" && hasAccess("Maintenance") && <MaintenanceTab orgData={orgData} isLoading={isLoading} highlightTicketId={highlightTicketId} />}
             {activeTab === "Billing" && <BillingTab orgData={orgData} isLoading={isLoading} actionIntent={highlightTicketId} />}
-            
             {activeTab === "KPI" && <KPIReportsTab orgData={orgData} isLoading={isLoading} />}
             {activeTab === "Users" && <UsersTab orgData={orgData} isLoading={isLoading} />}
           </div>
@@ -967,7 +902,6 @@ export default function ManagerDashboard() {
                   Account Details
                 </h4>
                 <div className="space-y-4 sm:space-y-5">
-                  {/* --- MODIFIED FULL NAME SECTION --- */}
                   <div>
                     <div className="flex justify-between items-center mb-1.5 sm:mb-2">
                       <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block">Full Name</label>
@@ -1025,7 +959,6 @@ export default function ManagerDashboard() {
                       </div>
                     )}
                   </div>
-                  {/* --- END MODIFIED FULL NAME SECTION --- */}
                   
                   <div>
                     <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Email Address</label>
@@ -1042,7 +975,6 @@ export default function ManagerDashboard() {
                 </div>
               </div>
 
-              {/* ✨ NEW: Desktop Notifications Box */}
               <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
                 <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
                   Preferences
@@ -1067,10 +999,7 @@ export default function ManagerDashboard() {
                 </div>
               </div>
 
-             {/* --- Change Password Box --- */}
             <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
-              
-              {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
               <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : 'mb-0'}`}>
                 <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
                   Security
@@ -1305,7 +1234,7 @@ export default function ManagerDashboard() {
                       ) : (
                         <div className="col-span-1 sm:col-span-2 text-center text-slate-400 text-xs py-8">
                           <div className="animate-pulse flex flex-col items-center gap-2.5">
-                            <div className="w-6 h-6 border-3 border-slate-200 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
+                            <div className="w-6 h-6 border-3 border-[var(--color-border)] border-t-[var(--color-primary)] rounded-full animate-spin"></div>
                             <span className="font-bold uppercase tracking-wider">Loading details...</span>
                           </div>
                         </div>
@@ -1328,12 +1257,10 @@ export default function ManagerDashboard() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
-            
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
-            
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 

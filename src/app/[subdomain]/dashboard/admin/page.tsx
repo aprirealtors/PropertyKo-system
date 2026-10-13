@@ -251,7 +251,8 @@ export default function AdminDashboard() {
         .in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]).eq('admin_hidden', false).order('created_at', { ascending: false }).limit(15);
         if (!error && data) {
           setNotifications(data);
-          setUnreadCount(data.filter(n => !n.is_read).length);
+          // ✨ NEW: Use admin_read
+          setUnreadCount(data.filter(n => !n.admin_read).length);
         }
       }
     };
@@ -263,7 +264,10 @@ export default function AdminDashboard() {
             const validRecipients = ['ADMIN', 'MANAGER', orgData.admin_email];
             if (validRecipients.includes(payload.new.recipient)) {
               setNotifications((currentNotifs) => [payload.new, ...currentNotifs]);
-              setUnreadCount((currentCount) => currentCount + 1);
+              // ✨ FIX: Check admin_read inside the realtime listener before incrementing
+              if (!payload.new.admin_read) {
+                setUnreadCount((currentCount) => currentCount + 1);
+              }
             }
           }
         ).subscribe();
@@ -448,28 +452,42 @@ export default function AdminDashboard() {
     setIsMobileMenuOpen(false); 
   };
 
+  // ✨ NEW: Map specifically over admin_read
   const markAllAsRead = async () => {
-    if (!orgData?.admin_email) return;
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    if (!orgData?.admin_email || notifications.length === 0) return;
+    
+    const unreadIds = notifications.filter(n => !n.admin_read).map(n => n.id);
+    
+    setNotifications(notifications.map(n => ({ ...n, admin_read: true })));
     setUnreadCount(0);
-    await supabase.from('notifications').update({ is_read: true }).eq('admin_email', orgData.admin_email).in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]).eq('is_read', false);
+    
+    if (unreadIds.length > 0) {
+      await supabase
+      .from('notifications')
+      .update({ admin_read: true })
+      .in('id', unreadIds);
+    }
   };
 
   // ✨ FIX: Hide ALL function instead of permanently deleting
   const confirmDeleteAllNotifications = async () => {
-    if (!orgData?.admin_email) return;
+    if (!orgData?.admin_email || notifications.length === 0) return;
     
+    const idsToDelete = notifications.map(n => n.id);
+
     // Optimistic UI updates
     setNotifications([]);
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
+    setIsNotifOpen(false);
     
     // ✨ FIX: Update to is_hidden: true instead of .delete() to keep in DB
-    await supabase
-      .from('notifications')
-      .update({ admin_hidden: true })
-      .eq('admin_email', orgData.admin_email)
-      .in('recipient', ['ADMIN', 'MANAGER', orgData.admin_email]); 
+    if (idsToDelete.length > 0) {
+      await supabase
+        .from('notifications')
+        .update({ admin_hidden: true })
+        .in('id', idsToDelete); 
+    }
   };
 
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
@@ -483,7 +501,8 @@ export default function AdminDashboard() {
 
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    if (!notificationToDelete.is_read) {
+    // ✨ NEW: Use admin_read
+    if (!notificationToDelete.admin_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
@@ -499,18 +518,23 @@ export default function AdminDashboard() {
   };
 
   const handleNotificationClick = async (notif: any) => {
-    if (!notif.is_read) {
-      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+    // ✨ NEW: Use admin_read
+    if (!notif.admin_read) {
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, admin_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      await supabase.from('notifications').update({ admin_read: true }).eq('id', notif.id);
     }
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
     const title = notif.title?.toUpperCase() || '';
 
+    // ✨ FIX: Added the missing LEASE routing logic back!
+    if (type === 'LEASE' || type === 'LEASE_TERMINATION' || title.includes('LEASE') || title.includes('TERMINATION') || title.includes('TENANT')) {
+      handleTabChange("Leasing");
+    }
     // Route SaaS Subscriptions to Team Tab
-    if (title.includes('PAYMENT REMINDER') || type === 'SUBSCRIPTION') {
+    else if (title.includes('PAYMENT REMINDER') || type === 'SUBSCRIPTION') {
       handleTabChange("Team", "open_billing");
     } 
     // ✨ SPECIFIC INTENT ROUTING FOR OWNER PAYMENTS
@@ -531,6 +555,9 @@ export default function AdminDashboard() {
     else if (type === 'TICKET' || type === 'MAINTENANCE') {
       const intent = notif.reference_id ? `${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Maintenance", intent); 
+    } 
+    else if (type === 'MESSAGE' || type === 'CHAT') {
+      handleTabChange("Messages"); 
     } 
     else {
       handleTabChange("Dashboard");
@@ -642,12 +669,12 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       notifications.map((notif) => (
-                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-blue-50/40' : 'opacity-80'}`}>
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.admin_read ? 'bg-blue-50/40' : 'opacity-80'}`}>
                           <div className="flex justify-between items-start mb-1.5 gap-2">
-                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
+                            <span className={`font-bold text-sm truncate flex-1 ${!notif.admin_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
                             
                             <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                              {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
+                              {!notif.admin_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
                               
                               <button
                                 onClick={(e) => handleInitiateDeleteNotification(e, notif)}
@@ -665,7 +692,7 @@ export default function AdminDashboard() {
                           />
 
                           <div className="flex justify-between items-center mt-3.5 pt-3 border-t border-slate-100/60">
-                            <span className={`text-[9px] font-extrabold px-2 py-1 rounded-md uppercase tracking-wider ${notif.type === 'TICKET' || notif.type === 'MAINTENANCE' ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{notif.type}</span>
+                            <span className={`text-[9px] font-extrabold px-2 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider ${notif.type === 'TICKET' || notif.type === 'MAINTENANCE' ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{notif.type}</span>
                             <span className="text-[10px] font-semibold text-slate-400">{new Date(notif.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
@@ -863,7 +890,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Account Details Box */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 space-y-4 sm:space-y-5">
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 space-y-4  sm:space-y-5">
                 <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] pb-3 border-b border-slate-100">
                   Account Details
                 </h4>
@@ -1101,11 +1128,11 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 PREMIUM WORKSPACE MODAL */}
+      {/* 🌟 PREMIUM WORKSPACE MODAL (ORGANIZATION PROFILE) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
-
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500">
+            
             <div className="px-5 py-4 sm:px-6 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Organization Profile</h2>
               <button 
@@ -1115,7 +1142,7 @@ export default function AdminDashboard() {
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>
             </div>
-
+            
             <div className="overflow-y-auto bg-[var(--color-bg)] custom-scrollbar flex-1 pb-8 sm:pb-0">
 
               <div className="bg-[var(--color-secondary)] px-5 sm:px-8 py-6 sm:py-8 flex flex-col sm:flex-row items-center sm:items-center gap-4 sm:gap-6 relative shrink-0 text-center sm:text-left">
@@ -1130,7 +1157,7 @@ export default function AdminDashboard() {
                     ) : (
                       <Building className="text-slate-300 w-8 h-8 sm:w-10 sm:h-10" />
                     )}
-
+                    
                     <div className="absolute inset-0 bg-[var(--color-secondary)] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-sm">
                       <label className="cursor-pointer text-white flex flex-col items-center gap-1 w-full h-full justify-center">
                         <Upload className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
@@ -1165,7 +1192,7 @@ export default function AdminDashboard() {
 
               <div className="p-4 sm:p-6 md:p-6">
                 <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] overflow-hidden">
-
+                  
                   <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-[var(--color-border)] flex items-center justify-between bg-slate-50/50">
                     <h4 className="text-xs sm:text-sm uppercase font-black text-[var(--color-text)] tracking-tight flex items-center gap-2">
                       <Box size={14} className="text-[var(--color-text)] sm:w-4 sm:h-4" />
@@ -1175,7 +1202,7 @@ export default function AdminDashboard() {
                       View Only
                     </span>
                   </div>
-
+                  
                   <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       {orgData ? (
@@ -1216,7 +1243,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-
+              
             </div>
           </div>
         </div>
@@ -1256,7 +1283,7 @@ export default function AdminDashboard() {
 
       {/* 🌟 PREMIUM LOGOUT MODAL */}
       {isLogoutModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80  backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
               <AlertTriangle size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
@@ -1448,7 +1475,7 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
 
         {!collapsed && (
           <>
-            <span className="tracking-wide truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
+            <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
             {badgeCount !== undefined && badgeCount > 0 && (
               <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
                 isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'

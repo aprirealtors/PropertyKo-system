@@ -15,8 +15,8 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   // ✨ Universal Beautiful Modals
   const [successModal, setSuccessModal] = useState({ isOpen: false, title: "", desc: "" });
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: "" });
-  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, desc: string, action: (() => void) | null}>({ 
-    isOpen: false, title: "", desc: "", action: null 
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, desc: string, action: (() => void) | null, isDestructive?: boolean}>({ 
+    isOpen: false, title: "", desc: "", action: null, isDestructive: false 
   });
 
   // Modal States
@@ -185,6 +185,66 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
     } catch (error: any) {
       console.error(error);
       showError(error?.message || "An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✨ CONFIRMATION: Terminate Lease (Admin action)
+  const confirmTerminateAdmin = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Terminate Lease",
+      desc: "Are you sure you want to terminate this lease early? This will mark the unit as vacant and end the active contract.",
+      isDestructive: true,
+      action: executeTerminateAdmin
+    });
+  };
+
+  const executeTerminateAdmin = async () => {
+    setIsSubmitting(true);
+    try {
+      // 1. Terminate Lease
+      await supabase.from('leases').update({ status: 'Terminated', renewal_status: null }).eq('id', viewLeaseData.id);
+      
+      // 2. Vacate Unit (also clear tenant_email so notifications detach)
+      await supabase.from('units').update({ status: 'Vacant', tenant_name: null, tenant_email: null, monthly_rent: 0 }).eq('id', viewLeaseData.unit_id);
+      
+      // 3. ✨ NEW: Update Tenant Account Status
+      if (viewLeaseData.tenant_email) {
+        // Fetch current access level to correctly parse out the terminated unit
+        const { data: tenantData } = await supabase
+          .from('team_members')
+          .select('access_level')
+          .eq('email', viewLeaseData.tenant_email)
+          .single();
+
+        if (tenantData) {
+          const unitStringToRemove = `${viewLeaseData.units?.property_name} - ${viewLeaseData.units?.unit_number}`;
+          
+          let newAccessLevel = tenantData.access_level
+            ? tenantData.access_level.split(', ').filter((u: string) => u !== unitStringToRemove).join(', ')
+            : "";
+            
+          // If no units are left in access level, mark status as Terminated
+          const newStatus = newAccessLevel.trim() === "" ? "Terminated" : "Active";
+
+          await supabase
+            .from('team_members')
+            .update({ 
+              status: newStatus,
+              access_level: newAccessLevel
+            })
+            .eq('email', viewLeaseData.tenant_email);
+        }
+      }
+      
+      await fetchData();
+      setIsViewModalOpen(false);
+      showSuccess("Lease Terminated", "The lease has been terminated and the tenant's access has been updated.");
+    } catch (err: any) {
+      console.error(err);
+      showError("An error occurred while terminating the lease.");
     } finally {
       setIsSubmitting(false);
     }
@@ -433,7 +493,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                     >
                       {leasesList.filter(l => l.status === 'Pending').map((lease) => (
                         <option key={lease.id} value={lease.id}>
-                          {lease.units?.property_name} {lease.units?.unit_number} - Requested by {lease.units?.owner_name || 'Owner'}
+                          {lease.units?.property_name} {lease.units?.unit_number} Requested by {lease.units?.owner_name || 'Owner'}
                         </option>
                       ))}
                     </select>
@@ -511,34 +571,54 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
 
             <div className="p-6 sm:p-8 overflow-y-auto max-h-[75vh] custom-scrollbar bg-slate-50/50 space-y-5">
               
-              <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
-                <div>
-                  <h4 className="text-xl font-black text-[var(--color-text)]">{viewLeaseData.tenant_name}</h4>
-                  <div className="flex flex-col gap-1 mt-1.5">
-                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
-                      <MapPin size={14} className="text-slate-500"/>
-                      {viewLeaseData.units?.property_name} · Unit {viewLeaseData.units?.unit_number}
-                    </p>
-                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
-                      <Users size={14} className="text-slate-500"/>
-                      Owner: <span className="text-slate-500">{viewLeaseData.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
-                    </p>
+              {/* ✨ MOVED UP: MANAGEMENT TERMINATION REQUEST BANNERS */}
+              {viewLeaseData.status === 'Active' && viewLeaseData.renewal_status === 'Termination_Approved_by_Owner' && (
+                <div className="p-5 bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                  <div>
+                    <h4 className="font-black text-red-900 text-sm flex items-center gap-2">
+                      <AlertTriangle size={16} /> Owner Approved Tenant Termination
+                    </h4>
+                    <p className="text-xs text-red-700/80 font-bold mt-1">Tenant requested to end the lease, and the Owner has approved. Awaiting final force termination.</p>
                   </div>
+                  <button 
+                    onClick={confirmTerminateAdmin}
+                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all w-full sm:w-auto shrink-0"
+                  >
+                    Force Terminate
+                  </button>
                 </div>
-                <div className={`px-3 py-1.5 border rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-[var(--shadow-sm)] ${
-                  viewLeaseData.status === 'Terminated' ? 'bg-slate-100 text-slate-500 border-slate-300' :
-                  viewLeaseData.status === 'Expired' ? 'bg-red-50 text-red-600 border-red-200' :
-                  'bg-emerald-50 text-emerald-700 border-emerald-200'
-                }`}>
-                  {viewLeaseData.status === 'Terminated' ? <XOctagon size={14} /> :
-                   viewLeaseData.status === 'Expired' ? <AlertTriangle size={14} /> :
-                   <CheckCircle size={14} />} 
-                  {viewLeaseData.status}
-                </div>
-              </div>
+              )}
 
-              {/* ✨ MANAGER RENEWAL TRACKING BLOCK (Only show if there is an active tracking status) */}
-              {viewLeaseData.renewal_status && (
+              {viewLeaseData.status === 'Active' && viewLeaseData.renewal_status === 'Termination_Requested_by_Owner' && (
+                <div className="p-5 bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                  <div>
+                    <h4 className="font-black text-red-900 text-sm flex items-center gap-2">
+                      <AlertTriangle size={16} /> Owner Requested Early Termination
+                    </h4>
+                    <p className="text-xs text-red-700/80 font-bold mt-1">Reason: <strong className="text-red-700">{viewLeaseData.renewal_reason}</strong></p>
+                  </div>
+                  <button 
+                    onClick={confirmTerminateAdmin}
+                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all w-full sm:w-auto shrink-0"
+                  >
+                    Force Terminate
+                  </button>
+                </div>
+              )}
+
+              {viewLeaseData.status === 'Active' && viewLeaseData.renewal_status === 'Termination_Requested_by_Tenant' && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col shadow-sm">
+                  <h4 className="font-black text-amber-900 text-sm flex items-center gap-2">
+                    <Clock size={16} /> Tenant Requested Termination
+                  </h4>
+                  <p className="text-xs text-amber-700/80 font-medium mt-1">
+                    The tenant wants to terminate early. This is currently waiting for the Owner's approval.
+                  </p>
+                </div>
+              )}
+
+              {/* ✨ MANAGER RENEWAL TRACKING BLOCK */}
+              {viewLeaseData.renewal_status && !viewLeaseData.renewal_status.includes('Termination_') && (
                 <div className={`p-4 rounded-xl border shadow-sm ${
                   viewLeaseData.renewal_status === 'Accepted' ? 'bg-emerald-50 border-emerald-200' :
                   viewLeaseData.renewal_status === 'Declined' ? 'bg-slate-100 border-slate-300' :
@@ -570,6 +650,32 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   )}
                 </div>
               )}
+
+              <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center">
+                <div>
+                  <h4 className="text-xl font-black text-[var(--color-text)]">{viewLeaseData.tenant_name}</h4>
+                  <div className="flex flex-col gap-1 mt-1.5">
+                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
+                      <MapPin size={14} className="text-slate-500"/>
+                      {viewLeaseData.units?.property_name} · Unit {viewLeaseData.units?.unit_number}
+                    </p>
+                    <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5">
+                      <Users size={14} className="text-slate-500"/>
+                      Owner: <span className="text-slate-500">{viewLeaseData.units?.owner_name || <span className="italic text-slate-400">Unassigned</span>}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className={`px-3 py-1.5 border rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-[var(--shadow-sm)] ${
+                  viewLeaseData.status === 'Terminated' ? 'bg-red-50 text-red-700 border-red-200/60' :
+                  viewLeaseData.status === 'Expired' ? 'bg-red-50 text-red-600 border-red-200' :
+                  'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}>
+                  {viewLeaseData.status === 'Terminated' ? <XOctagon size={14} /> :
+                   viewLeaseData.status === 'Expired' ? <AlertTriangle size={14} /> :
+                   <CheckCircle size={14} />} 
+                  {viewLeaseData.status}
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-[var(--color-border)] space-y-4">
@@ -652,7 +758,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                           </p>
                           {pastLease.renewal_status && (
                             <p className="text-[10px] font-bold text-blue-600 mt-1.5 flex items-center gap-1.5 uppercase tracking-widest">
-                              <RefreshCw size={10} /> Tracking: {pastLease.renewal_status}
+                              <RefreshCw size={10} /> Tracking: {pastLease.renewal_status.split('_').join(' ')}
                             </p>
                           )}
                         </div>
@@ -681,7 +787,6 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         </div>
@@ -691,23 +796,23 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30`}>
-              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
+              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {confirmModal.desc}
             </p>
             <div className="flex gap-3 w-full">
-              <button onClick={() => setConfirmModal({ isOpen: false, title: "", desc: "", action: null })} className="flex-1 bg-white hover:bg-slate-50 text-slate-500 border border-[var(--color-border)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-sm active:scale-95">
+              <button onClick={() => setConfirmModal({ isOpen: false, title: "", desc: "", action: null, isDestructive: false })} className="flex-1 bg-white hover:bg-slate-50 text-slate-500 border border-[var(--color-border)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-sm active:scale-95">
                 Cancel
               </button>
               <button 
                 onClick={() => {
                   if (confirmModal.action) confirmModal.action();
-                  setConfirmModal({ isOpen: false, title: "", desc: "", action: null });
+                  setConfirmModal({ isOpen: false, title: "", desc: "", action: null, isDestructive: false });
                 }} 
-                className={`flex-1 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 bg-[var(--color-primary)] hover:opacity-90`}
+                className={`flex-1 text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 ${confirmModal.isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-[var(--color-primary)] hover:opacity-90'}`}
               >
                 Yes, Proceed
               </button>
@@ -719,7 +824,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* ✨ SUCCESS MODAL */}
       {successModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
@@ -737,7 +842,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {/* ✨ ERROR MODAL */}
       {errorModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-red-200">
               <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
