@@ -181,11 +181,12 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
   };
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+    // 📐 FULL WIDTH + FULL HEIGHT: fills the whole content area (parent must be `relative`)
+    <div className="absolute inset-0 flex flex-col w-full h-full overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
 
       {/* 🌟 HEADER */}
-      <div className="shrink-0 mb-6 px-4 sm:px-0">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 lg:px-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
+      <div className="shrink-0 w-full px-4 sm:px-6 pt-4 sm:pt-6 mb-2 sm:mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 lg:px-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl w-full">
 
           <div className="w-full sm:w-auto min-w-0">
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
@@ -224,10 +225,10 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
       {isLoadingData ? (
         <DashboardSkeleton />
       ) : (
-        <div className="flex-1 w-full min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-8 overflow-y-auto lg:overflow-hidden custom-scrollbar px-4 sm:px-0">
+        <div className="flex-1 w-full min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-8 overflow-y-auto lg:overflow-hidden custom-scrollbar px-4 sm:px-6">
 
           {/* LEFT COLUMN - Independent scroll on Desktop */}
-          <div className="flex-1 w-full flex flex-col gap-6 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2 pb-12 lg:pb-8">
+          <div className="flex-1 min-w-0 w-full flex flex-col gap-6 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pr-2 pb-12 lg:pb-6">
 
             {/* STATS GRID - 1 Col Mobile, 2 Col Tablet, 4 Col Large Desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 shrink-0">
@@ -257,7 +258,8 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
               />
             </div>
 
-            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] p-4 sm:p-6 lg:p-8 shrink-0 flex flex-col gap-6 sm:gap-8 border border-[var(--color-border)]">
+            {/* grow: this card stretches to fill any leftover height */}
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] p-4 sm:p-6 lg:p-8 grow shrink-0 flex flex-col gap-6 sm:gap-8 border border-[var(--color-border)]">
               <div>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-0 mb-4">
                   <h3 className="font-black text-[var(--color-text)] text-base sm:text-lg tracking-tight">Billing Collected This Month</h3>
@@ -266,10 +268,29 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                     <span className="font-medium text-slate-400 whitespace-nowrap">of ₱{totalExpectedBilling.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </span>
                 </div>
-                <div className="h-3 sm:h-4 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                  <div className="h-full bg-[var(--color-primary)] rounded-full shadow-[0_0_12px_var(--color-primary)] relative transition-all duration-1000" style={{ width: `${collectionPct}%` }}>
+                <div
+                  className="relative h-5 sm:h-6 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner"
+                  role="progressbar" aria-valuenow={Math.round(collectionPct)} aria-valuemin={0} aria-valuemax={100} aria-label="Billing collected this month"
+                >
+                  <div className="h-full bg-[var(--color-primary)] rounded-full shadow-[0_0_12px_var(--color-primary)] relative transition-all duration-1000" style={{ width: `${Math.min(collectionPct, 100)}%` }}>
                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                   </div>
+                  {/* Percentage: inside the bar when it fits, otherwise just after the fill */}
+                  {collectionPct >= 12 ? (
+                    <span
+                      className="absolute top-0 h-full flex items-center justify-end pr-3 text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] drop-shadow-sm transition-all duration-1000 pointer-events-none"
+                      style={{ width: `${Math.min(collectionPct, 100)}%` }}
+                    >
+                      {collectionPct.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span
+                      className="absolute top-0 h-full flex items-center text-[10px] sm:text-xs font-black text-slate-600 transition-all duration-1000 pointer-events-none"
+                      style={{ left: `calc(${collectionPct}% + 8px)` }}
+                    >
+                      {collectionPct.toFixed(1)}%
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -285,24 +306,17 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </div>
 
                 {/* PIE CHART SECTION - Flex responsive layout (Col -> Row -> Col -> Row) */}
-                <div className="bg-slate-50/50 rounded-[var(--radius-xl)] lg:rounded-[2rem] p-5 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-slate-100 flex flex-col md:flex-row lg:flex-col xl:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12 shadow-sm">
-                  <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 shrink-0 transition-transform hover:scale-105 duration-500">
-                    <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-2xl rounded-full">
-                      <g transform="rotate(-90 50 50)">
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-slate-700)" strokeWidth="50" strokeDasharray={`${(ownersPct/100)*157.08} 157.08`} strokeDashoffset="0" className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-blue-800)" strokeWidth="50" strokeDasharray={`${(availablePct/100)*157.08} 157.08`} strokeDashoffset={`${-(ownersPct/100)*157.08}`} className="transition-all duration-1000 ease-out" />
-                        <circle cx="50" cy="50" r="25" fill="transparent" stroke="var(--color-amber-500)" strokeWidth="50" strokeDasharray={`${(holdPct/100)*157.08} 157.08`} strokeDashoffset={`${-((ownersPct + availablePct)/100)*157.08}`} className="transition-all duration-1000 ease-out" />
-                        {ownersPct > 0 && availablePct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${(ownersPct/100)*360} 50 50)`} />}
-                        {availablePct > 0 && holdPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(${((ownersPct+availablePct)/100)*360} 50 50)`} />}
-                        {holdPct > 0 && ownersPct > 0 && <line x1="50" y1="50" x2="100" y2="50" stroke="white" strokeWidth="1" transform={`rotate(0 50 50)`} />}
-                      </g>
-                      {ownersPct > 5 && <text x={getLabelCoord(0, ownersPct).x} y={getLabelCoord(0, ownersPct).y} fill="white" fontSize="12" fontWeight="900" textAnchor="middle" dominantBaseline="central" className="drop-shadow-md">{Math.round(ownersPct)}%</text>}
-                      {availablePct > 5 && <text x={getLabelCoord(ownersPct, availablePct).x} y={getLabelCoord(ownersPct, availablePct).y} fill="white" fontSize="12" fontWeight="900" textAnchor="middle" dominantBaseline="central" className="drop-shadow-md">{Math.round(availablePct)}%</text>}
-                      {holdPct > 5 && <text x={getLabelCoord(ownersPct + availablePct, holdPct).x} y={getLabelCoord(ownersPct + availablePct, holdPct).y} fill="white" fontSize="12" fontWeight="900" textAnchor="middle" dominantBaseline="central" className="drop-shadow-md">{Math.round(holdPct)}%</text>}
-                    </svg>
-                  </div>
+                <div className="bg-slate-50/50 rounded-[var(--radius-xl)] lg:rounded-[2rem] p-5 sm:p-6 lg:p-8 mb-4 sm:mb-4 border border-slate-100 flex flex-col md:flex-row lg:flex-col xl:flex-row items-center justify-center gap-6 sm:gap-8 lg:gap-12 shadow-sm">
+                  <UnitPieChart
+                    total={totalUnits}
+                    slices={[
+                      { key: 'owners', label: 'Occupied', count: ownersCount, pct: ownersPct, color: 'var(--color-slate-700)' },
+                      { key: 'available', label: 'Available', count: availableCount, pct: availablePct, color: 'var(--color-blue-800)' },
+                      { key: 'hold', label: 'On Hold', count: holdCount, pct: holdPct, color: 'var(--color-amber-500)' },
+                    ]}
+                  />
 
-                  <div className="flex-1 w-full max-w-md bg-white rounded-[var(--radius-xl)] lg:rounded-[1.5rem] shadow-lg border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-shadow shrink-0">
+                  <div className="flex-1 w-full max-w-md bg-white rounded-[var(--radius-xl)] shadow-lg border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-shadow shrink-0">
                     <div className="bg-[var(--color-secondary)] px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 sm:gap-5 text-white shrink-0">
                       <PieChart size={20} className="text-white shrink-0 sm:w-6 sm:h-6" strokeWidth={2.5}/>
                       <span className="font-black text-[14px] sm:text-[16px] lg:text-[18px] tracking-[0.15em] uppercase">Summary Unit</span>
@@ -330,20 +344,31 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </div>
               </div>
 
-              <div className="pt-2">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-3 sm:gap-0">
+              <div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-2 gap-3 sm:gap-0">
                   <h3 className="font-black text-[var(--color-text)] text-base sm:text-lg tracking-tight">Occupancy Level</h3>
                   <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-slate-50 px-3 py-1.5 rounded-[var(--radius-md)] border border-slate-100 flex items-center justify-center w-full sm:w-auto whitespace-nowrap">
                     <span className="text-[var(--color-text)]">{ownersCount} occupied</span> <span className="text-slate-300 mx-1.5 shrink-0">|</span> <span>{totalVacantCount} vacant</span>
                   </span>
                 </div>
-                <div className="h-3 sm:h-4 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
-                  <div className="h-full bg-[var(--color-secondary)] transition-all duration-1000 rounded-full" style={{ width: `${occupancyPercentage}%` }}></div>
-                  <div className="h-full bg-slate-200 transition-all duration-1000" style={{ width: `${100 - occupancyPercentage}%` }}></div>
+                <div
+                  className="h-5 sm:h-6 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner"
+                  role="progressbar" aria-valuenow={Math.round(occupancyPercentage)} aria-valuemin={0} aria-valuemax={100} aria-label="Occupancy level"
+                >
+                  <div className="h-full bg-[var(--color-secondary)] transition-all duration-1000 rounded-full flex items-center justify-center overflow-hidden" style={{ width: `${occupancyPercentage}%` }}>
+                    {occupancyPercentage >= 10 && (
+                      <span className="text-[10px] sm:text-xs font-black text-white whitespace-nowrap">{occupancyPercentage.toFixed(1)}%</span>
+                    )}
+                  </div>
+                  <div className="h-full bg-slate-200 transition-all duration-1000 flex items-center justify-center overflow-hidden" style={{ width: `${100 - occupancyPercentage}%` }}>
+                    {totalUnits > 0 && 100 - occupancyPercentage >= 10 && (
+                      <span className="text-[10px] sm:text-xs font-black text-slate-500 whitespace-nowrap">{(100 - occupancyPercentage).toFixed(1)}%</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="pt-4 lg:pt-6 w-full">
+              <div className="pt-2 lg:pt-4 w-full">
                 <div className="w-full overflow-x-auto custom-scrollbar pb-2 border-t border-[var(--color-border)] pt-4 sm:pt-6">
                   <table className="w-full text-left text-[11px] sm:text-sm min-w-[450px]">
                     <thead className="text-slate-400 text-[9px] sm:text-[10px] uppercase font-black tracking-widest border-b-2 border-slate-100">
@@ -374,7 +399,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                               </td>
                               <td className="py-3 sm:py-4 px-2 text-slate-500 font-semibold whitespace-nowrap">{unit.tenant_name || <span className="italic text-slate-300">Unassigned</span>}</td>
                               <td className="py-3 sm:py-4 px-2 text-right">
-                                <span className={`inline-flex items-center justify-center px-2 sm:px-3 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] whitespace-nowrap ${unit.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/20'}`}>
+                                <span className={`inline-flex items-center justify-center px-2 sm:px-3 py-1 rounded-[var(--radius-sm)] text-[9px] sm:text-[10px] font-black uppercase tracking-wider border shadow-[var(--shadow-sm)] whitespace-nowrap ${unit.status === 'Vacant' ? 'bg-white text-slate-500 border-slate-200' : 'bg-white text-[var(--color-text)] border-[var(--color-primary)]/20'}`}>
                                   {unit.status}
                                 </span>
                               </td>
@@ -390,11 +415,12 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
           </div>
 
           {/* RIGHT COLUMN - Independent scroll on Desktop, adaptive Grid on Tablet */}
-          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pl-2 pb-12 lg:pb-8">
+          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0 lg:h-full lg:overflow-y-auto custom-scrollbar lg:pl-2 pb-12 lg:pb-6">
             
-            <div className="bg-white rounded-[var(--radius-xl)] lg:rounded-[2rem] shadow-[var(--shadow-sm)] flex flex-col w-full h-fit border border-[var(--color-border)] shrink-0">
+            {/* lg:min-h-full: the card stretches to the full column height */}
+            <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col w-full lg:min-h-full border border-[var(--color-border)] shrink-0">
               
-              <div className="bg-[var(--color-secondary)] p-4 sm:p-5 text-white relative overflow-hidden shrink-0 rounded-t-[var(--radius-xl)] lg:rounded-t-[2rem]">
+              <div className="bg-[var(--color-secondary)] p-4 sm:p-5 text-white relative overflow-hidden shrink-0 rounded-t-[var(--radius-xl)]">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -translate-y-10 translate-x-10 pointer-events-none"></div>
                 <h3 className="font-black text-base sm:text-lg mb-0.5 sm:mb-1 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-amber-400 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5}/> Needs Action
@@ -404,7 +430,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </p>
               </div>
 
-              <div className="p-4 sm:p-5 pb-3 sm:pb-4">
+              <div className="p-4 sm:p-5 pb-3 sm:pb-4 flex-1">
                 {/* Responsive Action Item Grid: 1 Col (Mobile), 2 Col (Tablet), 1 Col (Desktop Sidebar) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-2.5">
                   <AttentionItem label="SOAs To Issue" value={soasToIssue.toString()} isUrgent={soasToIssue > 0} color="text-amber-500" />
@@ -415,7 +441,7 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                 </div>
               </div>
 
-              <div className="p-4 sm:p-5 pt-0">
+              <div className="p-4 sm:p-5 pt-0 shrink-0">
                 <button 
                   onClick={() => onNavigate("Billing")}
                   className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] font-black py-3 sm:py-3.5 rounded-[var(--radius-md)] lg:rounded-[var(--radius-lg)] transition-all shadow-[var(--shadow-md)] flex justify-center items-center gap-2 active:scale-95 uppercase tracking-wider text-[11px] sm:text-xs border border-transparent whitespace-nowrap"
@@ -494,11 +520,103 @@ function SummaryRow({ icon, title, sub, count, pct, color, bg }: any) {
   );
 }
 
+/* ---------- Interactive pie chart for Unit Distribution ---------- */
+type PieSlice = { key: string; label: string; count: number; pct: number; color: string };
+
+function UnitPieChart({ slices, total }: { slices: PieSlice[]; total: number }) {
+  const [active, setActive] = useState<string | null>(null);
+  const CX = 50, CY = 50, R = 46;
+  const visible = slices.filter(s => s.pct > 0);
+  const pt = (deg: number, r: number) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
+  };
+
+  let angle = 0;
+  const wedges = visible.map(s => {
+    const sweep = (s.pct / 100) * 360;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+    const mid = start + sweep / 2;
+    const p1 = pt(start, R);
+    const p2 = pt(end - 0.001, R);
+    const d = `M ${CX} ${CY} L ${p1.x} ${p1.y} A ${R} ${R} 0 ${sweep > 180 ? 1 : 0} 1 ${p2.x} ${p2.y} Z`;
+    const label = pt(mid, R * 0.6);
+    const shift = pt(mid, 2.5);
+    return { ...s, d, labelPos: label, dx: shift.x - CX, dy: shift.y - CY };
+  });
+
+  return (
+    <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 shrink-0">
+      <svg
+        viewBox="0 0 100 100"
+        role="img"
+        aria-label={`Unit distribution: ${slices.map(s => `${s.label} ${Math.round(s.pct)}%`).join(', ')}`}
+        className="w-full h-full drop-shadow-2xl overflow-visible"
+      >
+        {total === 0 || wedges.length === 0 ? (
+          <>
+            <circle cx={CX} cy={CY} r={R} fill="#e2e8f0" />
+            <text x={CX} y={CY} textAnchor="middle" dominantBaseline="central" fill="#64748b" fontSize="6" fontWeight="800">No units yet</text>
+          </>
+        ) : (
+          wedges.map(w => {
+            const isActive = active === w.key;
+            const dimmed = active !== null && !isActive;
+            return (
+              <g
+                key={w.key}
+                className="cursor-pointer transition-all duration-300 ease-out"
+                style={{ transform: isActive ? `translate(${w.dx}px, ${w.dy}px)` : 'translate(0,0)', opacity: dimmed ? 0.55 : 1 }}
+                onMouseEnter={() => setActive(w.key)}
+                onMouseLeave={() => setActive(null)}
+                onClick={() => setActive(prev => (prev === w.key ? null : w.key))}
+              >
+                {wedges.length === 1 ? (
+                  <circle cx={CX} cy={CY} r={R} fill={w.color} />
+                ) : (
+                  <path d={w.d} fill={w.color} stroke="white" strokeWidth="0.8" strokeLinejoin="round" />
+                )}
+                {w.pct >= 5 && (
+                  <text
+                    x={wedges.length === 1 ? CX : w.labelPos.x}
+                    y={wedges.length === 1 ? CY : w.labelPos.y}
+                    fill="white"
+                    fontSize="10"
+                    fontWeight="900"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    className="pointer-events-none select-none"
+                    style={{ paintOrder: 'stroke', stroke: 'rgba(0,0,0,0.15)', strokeWidth: 0.6 }}
+                  >
+                    {Math.round(w.pct)}%
+                  </text>
+                )}
+              </g>
+            );
+          })
+        )}
+      </svg>
+      {active && (() => {
+        const w = wedges.find(x => x.key === active);
+        if (!w) return null;
+        return (
+          <div className="absolute left-1/2 -bottom-3 -translate-x-1/2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-lg text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-700 whitespace-nowrap pointer-events-none">
+            <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ background: w.color }} />
+            {w.label}: {w.count} unit{w.count === 1 ? '' : 's'}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
 function DashboardSkeleton() {
   return (
-    <div className="flex-1 w-full min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-8 px-4 sm:px-0 animate-in fade-in duration-300 pb-12 lg:pb-16 overflow-y-auto lg:overflow-hidden">
+    <div className="flex-1 w-full min-h-0 flex flex-col lg:flex-row gap-6 lg:gap-8 px-4 sm:px-6 animate-in fade-in duration-300 pb-12 lg:pb-6 overflow-y-auto lg:overflow-hidden">
 
-      <div className="flex-1 w-full flex flex-col gap-6 lg:h-full overflow-hidden">
+      <div className="flex-1 min-w-0 w-full flex flex-col gap-6 lg:h-full overflow-hidden">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 shrink-0">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="bg-white p-4 sm:p-5 lg:p-6 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] lg:rounded-[var(--radius-xl)] h-[120px] lg:h-[140px] flex flex-col justify-between animate-pulse shadow-sm border border-[var(--color-border)]">
@@ -525,7 +643,7 @@ function DashboardSkeleton() {
       </div>
 
       <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col mt-6 lg:mt-0">
-        <div className="w-full h-auto lg:h-full bg-white rounded-[var(--radius-xl)] lg:rounded-[2rem] animate-pulse shadow-sm flex flex-col overflow-hidden border border-[var(--color-border)] shrink-0">
+        <div className="w-full h-auto lg:h-full bg-white rounded-[var(--radius-xl)] animate-pulse shadow-sm flex flex-col overflow-hidden border border-[var(--color-border)] shrink-0">
            <div className="h-28 sm:h-32 bg-slate-200 w-full mb-4 sm:mb-6 shrink-0"></div>
            <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4 sm:gap-5 flex-1">
              {[1,2,3,4,5].map(i => <div key={i} className="w-full h-10 bg-slate-50 rounded-[var(--radius-md)] border border-slate-100"></div>)}

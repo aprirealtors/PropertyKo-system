@@ -5,7 +5,7 @@ import { supabase } from "@/utils/supabase/client";
 import { 
   Building2, Calendar, Edit2, 
   X, AlertTriangle, Mail, Lock, Users, Home, CreditCard, CheckCircle, Search, Eye, EyeOff, Globe, Palette, Type, CheckCircle2, RotateCcw,
-  Ban, Trash2
+  Ban, Trash2, AlertCircle
 } from "lucide-react";
 
 // ✨ CONSTANT: Default PropertyKo Theme (Fallback/Reset)
@@ -81,8 +81,18 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
   const [adminPassword, setAdminPassword] = useState("");
   const [plan, setPlan] = useState("Dynamic (₱99-₱198/unit)");
   const [usersCount, setUsersCount] = useState("1");
-  const [unitsCount, setUnitsCount] = useState("0");
+  const [unitsCount, setUnitsCount] = useState("1");
   const [billingDay, setBillingDay] = useState("1"); 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
 
   // Fetch live units to calculate exact MRR based on tenant status
   useEffect(() => {
@@ -126,15 +136,53 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
     setAdminPassword("");
     setPlan("Dynamic (₱99-₱198/unit)");
     setUsersCount("1");
-    setUnitsCount("0");
+    setUnitsCount("1");
     setBillingDay("1"); 
     setEditingOrgId(null);
     setErrorMsg(null);
+    setFieldErrors({});
     setShowPassword(false);
+  };
+
+  const validateOnboardForm = () => {
+    const errs: Record<string, string> = {};
+    if (!orgName.trim()) errs.orgName = "Organization name is required.";
+
+    if (!subdomain.trim()) errs.subdomain = "Subdomain is required.";
+    else if (!subdomain.toLowerCase().replace(/[^a-z0-9-]/g, '')) errs.subdomain = "Please provide a valid subdomain.";
+
+    if (!adminEmail.trim()) errs.adminEmail = "Admin email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail.trim())) errs.adminEmail = "Please enter a valid email address.";
+
+    if (!adminPassword) errs.adminPassword = "Password is required.";
+    else if (adminPassword.length < 6) errs.adminPassword = "Password must be at least 6 characters.";
+
+    const seats = Number(usersCount);
+    if (usersCount.trim() === "") errs.usersCount = "Team seats is required.";
+    else if (!Number.isInteger(seats) || seats < 1) errs.usersCount = "Team seats must be at least 1.";
+
+    const units = Number(unitsCount);
+    if (unitsCount.trim() === "") errs.unitsCount = "Max unit limit is required.";
+    else if (!Number.isInteger(units) || units < 1) errs.unitsCount = "Max unit limit must be at least 1.";
+
+    const day = Number(billingDay);
+    if (billingDay.trim() === "") errs.billingDay = "Billing day is required.";
+    else if (!Number.isInteger(day) || day < 1 || day > 31) errs.billingDay = "Billing day must be between 1 and 31.";
+
+    return errs;
   };
 
   const handleOnboardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errs = validateOnboardForm();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setErrorMsg("Please fill in all required fields highlighted in red before submitting.");
+      return;
+    }
+    setFieldErrors({});
+
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -566,7 +614,7 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               </button>
             </div>
 
-            <form onSubmit={handleOnboardSubmit} className="p-8 overflow-y-auto max-h-[75vh]">
+            <form onSubmit={handleOnboardSubmit} noValidate className="p-8 overflow-y-auto max-h-[75vh]">
               {errorMsg && (
                 <div className="mb-6 p-4 bg-red-50 text-red-700 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-3">
                   <AlertTriangle size={18} className="shrink-0 mt-0.5" />
@@ -577,14 +625,15 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
               <div className="space-y-6">
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <Building2 size={16} className="text-[#359b46]" /> Organization Name
+                    <Building2 size={16} className="text-[#359b46]" /> Organization Name <span className="text-red-500">*</span>
                   </label>
-                  <input type="text" required placeholder="e.g. Apex Realty Group" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
+                  <input type="text" required placeholder="e.g. Apex Realty Group" value={orgName} onChange={(e) => { setOrgName(e.target.value); clearFieldError("orgName"); }} className={`w-full px-4 py-3 rounded-xl border ${fieldErrors.orgName ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} disabled={isSubmitting} />
+                  <FieldError message={fieldErrors.orgName} />
                 </div>
                 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <Globe size={16} className="text-[#359b46]" /> Subdomain URL
+                    <Globe size={16} className="text-[#359b46]" /> Subdomain URL <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center">
                     <input 
@@ -592,59 +641,65 @@ export default function OrganizationDirectory({ organizations, isLoadingOrgs, fe
                       required 
                       placeholder="futurepoint" 
                       value={subdomain} 
-                      onChange={(e) => setSubdomain(e.target.value)} 
-                      className="w-full px-4 py-3 rounded-l-xl border border-r-0 border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" 
+                      onChange={(e) => { setSubdomain(e.target.value); clearFieldError("subdomain"); }} 
+                      className={`w-full px-4 py-3 rounded-l-xl border border-r-0 ${fieldErrors.subdomain ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} 
                       disabled={isSubmitting} 
                     />
                     <span className="bg-slate-50 border border-slate-200 border-l-0 px-4 py-3 rounded-r-xl text-slate-500 text-sm font-medium shadow-sm">
                       .propertyko.com
                     </span>
                   </div>
+                  <FieldError message={fieldErrors.subdomain} />
                   <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Must be lowercase letters, numbers, or hyphens only.</p>
                 </div>
 
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <Mail size={16} className="text-[#359b46]" /> Primary Admin Email
+                    <Mail size={16} className="text-[#359b46]" /> Primary Admin Email <span className="text-red-500">*</span>
                   </label>
-                  <input type="email" required placeholder="admin@apexrealty.com" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
+                  <input type="email" required placeholder="admin@apexrealty.com" value={adminEmail} onChange={(e) => { setAdminEmail(e.target.value); clearFieldError("adminEmail"); }} className={`w-full px-4 py-3 rounded-xl border ${fieldErrors.adminEmail ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} disabled={isSubmitting} />
+                  <FieldError message={fieldErrors.adminEmail} />
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <Lock size={16} className="text-[#359b46]" /> Initial Admin Password
+                    <Lock size={16} className="text-[#359b46]" /> Initial Admin Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    <input type={showPassword ? "text" : "password"} required placeholder="Create a strong password" minLength={6} value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="w-full pl-4 pr-12 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
+                    <input type={showPassword ? "text" : "password"} required placeholder="Create a strong password" minLength={6} value={adminPassword} onChange={(e) => { setAdminPassword(e.target.value); clearFieldError("adminPassword"); }} className={`w-full pl-4 pr-12 py-3 rounded-xl border ${fieldErrors.adminPassword ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} disabled={isSubmitting} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors outline-none" tabIndex={-1}>
                       {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                   </div>
+                  <FieldError message={fieldErrors.adminPassword} />
                 </div>
                 <div className="grid grid-cols-2 gap-5">
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                      <Users size={16} className="text-[#359b46]" /> Team Seats
+                      <Users size={16} className="text-[#359b46]" /> Team Seats <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" min="1" required value={usersCount} onChange={(e) => setUsersCount(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
+                    <input type="number" min="1" required value={usersCount} onChange={(e) => { setUsersCount(e.target.value); clearFieldError("usersCount"); }} className={`w-full px-4 py-3 rounded-xl border ${fieldErrors.usersCount ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} disabled={isSubmitting} />
+                    <FieldError message={fieldErrors.usersCount} />
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                      <Home size={16} className="text-[#359b46]" /> Max Unit Limit
+                      <Home size={16} className="text-[#359b46]" /> Max Unit Limit <span className="text-red-500">*</span>
                     </label>
-                    <input type="number" min="0" required value={unitsCount} onChange={(e) => setUnitsCount(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#359b46]/50 focus:border-[#359b46] text-sm shadow-sm" disabled={isSubmitting} />
+                    <input type="number" min="1" required value={unitsCount} onChange={(e) => { setUnitsCount(e.target.value); clearFieldError("unitsCount"); }} className={`w-full px-4 py-3 rounded-xl border ${fieldErrors.unitsCount ? "border-red-400 bg-red-50/40 focus:ring-red-300 focus:border-red-400" : "border-slate-200 focus:ring-[#359b46]/50 focus:border-[#359b46]"} focus:outline-none focus:ring-2 text-sm shadow-sm`} disabled={isSubmitting} />
+                    <FieldError message={fieldErrors.unitsCount} />
                   </div>
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-2">
-                    <Calendar size={16} className="text-[#359b46]" /> Billing Cycle
+                    <Calendar size={16} className="text-[#359b46]" /> Billing Cycle <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-slate-200 focus-within:ring-2 focus-within:ring-[#359b46]/50 focus-within:border-[#359b46] text-sm shadow-sm bg-white">
+                  <div className={`flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border ${fieldErrors.billingDay ? "border-red-400 bg-red-50/40 focus-within:ring-red-300 focus-within:border-red-400" : "border-slate-200 focus-within:ring-[#359b46]/50 focus-within:border-[#359b46] bg-white"} focus-within:ring-2 text-sm shadow-sm`}>
                     <span className="text-slate-500 font-medium">Every</span>
-                    <input type="number" min="1" max="31" required value={billingDay} onChange={(e) => setBillingDay(e.target.value)} className="w-12 text-center outline-none font-bold text-[#0a1e3f] bg-slate-50 p-1 rounded-md" disabled={isSubmitting} />
+                    <input type="number" min="1" max="31" required value={billingDay} onChange={(e) => { setBillingDay(e.target.value); clearFieldError("billingDay"); }} className="w-12 text-center outline-none font-bold text-[#0a1e3f] bg-slate-50 p-1 rounded-md" disabled={isSubmitting} />
                     <span className="text-slate-500 font-medium">
                       {getOrdinalSuffix(parseInt(billingDay) || 1).replace(/^\d+/, "")} of the month
                     </span>
                   </div>
+                  <FieldError message={fieldErrors.billingDay} />
                 </div>
                 
                 <div>
@@ -1059,4 +1114,13 @@ function StatusBadge({ text, color }: { text: string, color: 'green' | 'red' | '
     blue: 'bg-blue-50 text-[#1d82f5] border-blue-200/60',
   };
   return <span className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border shadow-sm ${colors[color]}`}>{text}</span>;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-red-600">
+      <AlertCircle size={13} className="shrink-0" /> {message}
+    </p>
+  );
 }

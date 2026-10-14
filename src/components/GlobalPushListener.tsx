@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { usePushNotifications } from "@/utils/usePushNotifications";
 
 export default function GlobalPushListener({ userEmail, role }: { userEmail: string, role: string }) {
   const { token, requestPermission } = usePushNotifications();
   
-  // ✨ FIX: Create a ref to hold our preloaded audio
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // ✨ FIX: Preload the audio once when the component mounts
   useEffect(() => {
     if (typeof window !== "undefined") {
       const audio = new Audio('/notification.wav');
-      audio.preload = "auto"; // Tells the browser to download it immediately
+      audio.preload = "auto"; 
       audioRef.current = audio;
     }
   }, []);
@@ -27,19 +25,76 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
     }
   }, [token, requestPermission]);
 
+  const [userAccessLevel, setUserAccessLevel] = useState<string>("");
+
+  // ✨ FIX 1: Robustly map "property_manager" (with underscore) to "manager"
+  const getMappedRole = (rawRole: string) => {
+    const r = (rawRole || "").toLowerCase().trim().replace('_', ' ');
+    return (r === "property manager" || r === "manager") ? "manager" : r;
+  };
+
+  useEffect(() => {
+    const fetchAccessLevel = async () => {
+      const currentRole = getMappedRole(role);
+      
+      // Now it will correctly identify 'manager' and proceed!
+      if (!userEmail || (currentRole !== 'assistant' && currentRole !== 'manager')) return;
+      
+      const { data } = await supabase
+        .from('team_members')
+        .select('access_level')
+        .eq('email', userEmail)
+        .single();
+      
+      if (data?.access_level) {
+        setUserAccessLevel(data.access_level);
+      }
+    };
+    fetchAccessLevel();
+  }, [userEmail, role]);
+
+  const isAllowedNotif = (notif: any, currentRole: string, accessScope: string) => {
+    if (currentRole === 'admin') return true; 
+    // ✨ FIX 2: Check against the mapped role
+    if (currentRole !== 'assistant' && currentRole !== 'manager') return true; 
+
+    const type = (notif.type || '').toUpperCase();
+    const title = (notif.title || '').toUpperCase();
+    
+    const hasAccess = (moduleName: string) => {
+      if (!accessScope) return false;
+      if (accessScope.includes("All properties") || accessScope.includes("Full Platform Access")) return true;
+      return accessScope.includes(moduleName);
+    };
+
+    if (type === 'TICKET' || type === 'MAINTENANCE') return hasAccess("Maintenance");
+    if (type.includes('PAYMENT') || type === 'BILLING' || type === 'SOA' || type === 'SUBSCRIPTION' || title.includes('PAYMENT')) return hasAccess("Billing");
+    if (type === 'MESSAGE' || type === 'CHAT') return hasAccess("Conversation");
+    if (type.includes('LEASE') || type.includes('TENANT')) return hasAccess("Leasing & Tenants") || hasAccess("Properties & Units");
+    if (type.includes('PROPERTY') || type.includes('UNIT')) return hasAccess("Properties & Units");
+    if (type.includes('USER') || type.includes('ACCOUNT')) return hasAccess("User");
+    if (type === 'KPI' || type === 'REPORT') return hasAccess("KPI Reports");
+    
+    // Allow managers/assistants to see admin alerts if they have broad enough scopes
+    if (notif.recipient === 'ADMIN' || notif.recipient === notif.admin_email) {
+      return hasAccess("All properties") || hasAccess("Full Platform Access") || hasAccess("Billing") || hasAccess("Leasing & Tenants");
+    }
+
+    return true; 
+  };
+
   useEffect(() => {
     if (!userEmail) return;
 
-    const normalizedRole = (role || "").toLowerCase().trim();
+    // ✨ FIX 3: Use the mapped role across all event listeners
+    const mappedRole = getMappedRole(role);
     const normalizedEmail = (userEmail || "").toLowerCase().trim();
 
-    // ✨ FIX: Use the preloaded audio reference
     const playNotificationSound = () => {
       try {
         if (audioRef.current) {
-          // Reset the time to 0 so it can play immediately even if triggered twice quickly
           audioRef.current.currentTime = 0; 
-          audioRef.current.play().catch((err) => console.log("Audio blocked by browser autoplay policy:", err));
+          audioRef.current.play().catch((err) => console.log("Audio blocked by browser autoplay policy.", err));
         }
       } catch (error) {
         console.error("Error playing sound:", error);
@@ -53,8 +108,12 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
 
         try {
           if ('serviceWorker' in navigator) {
-            const registration = await navigator.serviceWorker.ready;
-            await registration.showNotification(title, options);
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            if (registrations.length > 0) {
+              await registrations[0].showNotification(title, options);
+            } else {
+              new Notification(title, options);
+            }
           } else {
             new Notification(title, options);
           }
@@ -73,20 +132,32 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
           const msgRecipient = (payload.new.recipient || "").toLowerCase().trim();
           const msgAdminEmail = (payload.new.admin_email || "").toLowerCase().trim();
 
-          const isForMe = 
-            msgRecipient === normalizedEmail || 
-            msgRecipient === normalizedRole ||
-            (msgAdminEmail === normalizedEmail && ['admin', 'manager'].includes(msgRecipient));
+          let isForMe = false;
+
+          if (mappedRole === 'assistant' || mappedRole === 'manager') {
+            isForMe = msgRecipient === normalizedEmail || 
+                      msgRecipient === 'assistant' || 
+                      msgRecipient === 'manager' || 
+                      msgRecipient === 'admin' || 
+                      msgAdminEmail === normalizedEmail ||
+                      msgRecipient === msgAdminEmail; // ✨ ALLOWS THEM TO HEAR COMPANY-WIDE ALERTS
+          } else if (mappedRole === 'admin') {
+            isForMe = msgRecipient === 'admin' || msgAdminEmail === normalizedEmail || msgRecipient === normalizedEmail;
+          } else {
+            isForMe = msgRecipient === normalizedEmail || msgRecipient === mappedRole;
+          }
 
           if (isForMe) {
-            const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
-            
-            triggerNotification(payload.new.title || "PropertyKo Update", {
-              body: cleanMessage,
-              icon: "/icon-192.png", 
-              badge: "/badge.png",   
-              vibrate: [200, 100, 200], 
-            });
+            if (isAllowedNotif(payload.new, mappedRole, userAccessLevel)) {
+              const cleanMessage = payload.new.message?.replace(/<[^>]*>?/gm, '') || "New alert";
+              
+              triggerNotification(payload.new.title || "PropertyKo Update", {
+                body: cleanMessage,
+                icon: "/icon-192.png", 
+                badge: "/badge.png",   
+                vibrate: [200, 100, 200], 
+              });
+            }
           }
         }
       ).subscribe();
@@ -102,14 +173,34 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
           const tenantEmail = (msg.tenant_email || "").toLowerCase().trim();
           const adminEmail = (msg.admin_email || "").toLowerCase().trim();
 
-          const isChatForMe = 
-            recipientRole === normalizedRole || 
-            tenantEmail === normalizedEmail || 
-            msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
-            (adminEmail === normalizedEmail && ['admin', 'manager'].includes(recipientRole));
+          let isChatForMe = false;
+
+          if (mappedRole === 'assistant' || mappedRole === 'manager') {
+             isChatForMe = recipientRole === 'assistant' || 
+                           recipientRole === 'manager' || 
+                           recipientRole === 'admin' || 
+                           tenantEmail === normalizedEmail || 
+                           msg.recipient_email?.toLowerCase().trim() === normalizedEmail ||
+                           adminEmail === normalizedEmail;
+          } else if (mappedRole === 'admin') {
+             isChatForMe = recipientRole === 'admin' || 
+                           adminEmail === normalizedEmail || 
+                           msg.recipient_email?.toLowerCase().trim() === normalizedEmail;
+          } else {
+             isChatForMe = recipientRole === mappedRole || 
+                           tenantEmail === normalizedEmail || 
+                           msg.recipient_email?.toLowerCase().trim() === normalizedEmail;
+          }
 
           if (isChatForMe && senderEmail !== normalizedEmail) {
             
+            if ((mappedRole === 'assistant' || mappedRole === 'manager') && 
+                !userAccessLevel.includes("Conversation") && 
+                !userAccessLevel.includes("Full Platform Access") &&
+                !userAccessLevel.includes("All properties")) {
+              return; 
+            }
+
             let displayName = msg.sender_email; 
             
             try {
@@ -159,7 +250,7 @@ export default function GlobalPushListener({ userEmail, role }: { userEmail: str
       supabase.removeChannel(notifChannel);
       supabase.removeChannel(chatChannel);
     };
-  }, [userEmail, role]);
+  }, [userEmail, role, userAccessLevel]); 
 
   return null; 
 }

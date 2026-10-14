@@ -5,7 +5,8 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Search, X, UserPlus, Shield, CreditCard, Mail, Lock, Home, Users, ArrowRight, 
-  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw, Settings
+  CheckCircle, Receipt, AlertCircle, Palette, DownloadCloud, RotateCcw, Settings,
+  Edit2, Trash2, Eye, EyeOff
 } from "lucide-react";
 
 // Helper function to calculate the actual upcoming date based on the declared billing day
@@ -64,7 +65,13 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ✨ Catch "open_billing" intention passed down from notifications
+  // Edit & Delete States
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [isEditConfirmModalOpen, setIsEditConfirmModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<any>(null);
+
+  // Catch "open_billing" intention passed down from notifications
   useEffect(() => {
     if (actionIntent === "open_billing") {
       setIsBillingModalOpen(true);
@@ -100,7 +107,43 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   const [memberEmail, setMemberEmail] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
   const [memberRole, setMemberRole] = useState("Property manager");
-  const [memberAccess, setMemberAccess] = useState("All properties");
+  const [memberAccess, setMemberAccess] = useState<string[]>([]);
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+
+  // Available modules based on directory structure
+  const managerModules = [
+    "Billing", "Conversation", "Dashboard", "KPI Reports", 
+    "Leasing & Tenants", "Maintenance", "Properties & Units", "User"
+  ];
+  
+  // Specific designations for the Maintenance Staff role
+  const maintenanceModules = [
+    "Engineer", "Technician", "Housekeeping"
+  ];
+
+  const handleAccessChange = (module: string) => {
+    setMemberAccess((prev) =>
+      prev.includes(module)
+        ? prev.filter((m) => m !== module)
+        : [...prev, module]
+    );
+  };
+
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setMemberRole(e.target.value);
+    setMemberAccess([]); // Reset checkboxes when role switches
+  };
+
+  // Helper to determine which module list to show based on the selected role
+  const getAvailableModulesForRole = (role: string) => {
+    if (role === "Property manager" || role === "Assistant") {
+      return managerModules;
+    }
+    if (role === "Maintenance staff") {
+      return maintenanceModules;
+    }
+    return managerModules; // fallback
+  };
 
   useEffect(() => {
     if (orgData?.admin_email) {
@@ -199,62 +242,164 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     setThemeConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
-  const handleAddUserSubmit = async (e: React.FormEvent) => {
+  // Helper to close user modal and reset states
+  const closeUserModal = () => {
+    setIsInviteModalOpen(false);
+    setEditingMemberId(null);
+    setMemberName("");
+    setMemberEmail("");
+    setMemberPassword("");
+    setShowMemberPassword(false);
+    setMemberRole("Property manager");
+    setMemberAccess([]);
+    setErrorMsg(null);
+  };
+
+  // Edit Click Handler (Populates the modal with user info)
+  const handleEditClick = (member: any) => {
+    setEditingMemberId(member.id);
+    setMemberName(member.name || "");
+    setMemberEmail(member.email || "");
+    setMemberRole(member.role || "Property manager");
+    
+    const parsedAccess = member.access_level && member.access_level !== "None" 
+      ? member.access_level.split(',').map((s: string) => s.trim()) 
+      : [];
+    setMemberAccess(parsedAccess);
+    
+    setIsInviteModalOpen(true);
+  };
+
+  // Pre-Submit handler that triggers the Edit Confirmation Modal
+  const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (team.length + 1 >= seatLimit) {
-      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats. Please contact support to increase your capacity.`);
-      setIsSubmitting(false);
+    if (memberAccess.length === 0) {
+      setErrorMsg(memberRole === "Maintenance staff" ? "Please select at least one maintenance role." : "Please select at least one module for property scope access.");
       return;
     }
 
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: memberEmail,
-        password: memberPassword,
-        options: {
-          data: {
-            org_name: orgData.org_name,
-            role: memberRole === "Property manager" ? "property_manager" : "staff",
-            admin_parent: orgData.admin_email
-          }
-        }
-      });
+    if (!editingMemberId && team.length + 1 >= seatLimit) {
+      setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats.`);
+      return;
+    }
 
-      if (authError && !authError.message.includes("Error sending confirmation email")) {
-        throw new Error(`Auth Registration Error: ${authError.message}`);
+    // If editing, trigger the confirmation modal. If adding, save directly.
+    if (editingMemberId) {
+      setIsEditConfirmModalOpen(true);
+    } else {
+      executeSubmit();
+    }
+  };
+
+  // Master Submit logic executing the database insert/update
+  const executeSubmit = async () => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      if (editingMemberId) {
+        // ✨ MODIFIED: Added .select() to catch silent update blocks
+        const { data, error: dbError } = await supabase
+          .from('team_members')
+          .update({
+            name: memberName.trim(),
+            role: memberRole,
+            access_level: memberAccess.join(', '),
+          })
+          .eq('id', editingMemberId)
+          .select(); // Critical for detecting RLS blocks
+
+        if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+        
+        if (!data || data.length === 0) {
+          throw new Error("Update blocked by database security (RLS). Missing UPDATE policy.");
+        }
+
+        showToast("User updated successfully.", "success");
+        
+      } else {
+        // ADD NEW USER
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: memberEmail,
+          password: memberPassword,
+          options: {
+            data: {
+              org_name: orgData.org_name,
+              // ✨ FIX: Standardize the Auth role without underscores to match system routing
+              role: memberRole === "Property manager" ? "manager" : 
+                    memberRole === "Assistant" ? "assistant" : "staff",
+              admin_parent: orgData.admin_email
+            }
+          }
+        });
+
+        if (authError && !authError.message.includes("Error sending confirmation email")) {
+          throw new Error(`Auth Registration Error: ${authError.message}`);
+        }
+
+        const { error: dbError } = await supabase
+          .from('team_members')
+          .insert([
+            { 
+              admin_email: orgData.admin_email,
+              name: memberName.trim(),
+              email: memberEmail,
+              role: memberRole,
+              access_level: memberAccess.join(', '),
+              status: 'Active' 
+            }
+          ]);
+
+        if (dbError) throw new Error(`Database Error: ${dbError.message}`);
+        showToast("User created successfully.", "success");
       }
 
-      const { error: dbError } = await supabase
-        .from('team_members')
-        .insert([
-          { 
-            admin_email: orgData.admin_email,
-            name: memberName.trim(),
-            email: memberEmail,
-            role: memberRole,
-            access_level: memberAccess,
-            status: 'Active' 
-          }
-        ]);
-
-      if (dbError) throw new Error(`Database Error: ${dbError.message}`);
-
       await fetchTeam();
-      setIsInviteModalOpen(false);
-      
-      setMemberName("");
-      setMemberEmail("");
-      setMemberPassword("");
-      setMemberAccess("All properties");
+      closeUserModal();
+      setIsEditConfirmModalOpen(false); 
       
     } catch (error: any) {
       console.error(error);
       setErrorMsg(error.message);
+      setIsEditConfirmModalOpen(false);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (member: any) => {
+    setMemberToDelete(member);
+    setIsInviteModalOpen(false); 
+    setIsDeleteModalOpen(true);  
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setIsSubmitting(true);
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', memberToDelete.id)
+        .select(); 
+
+      if (error) throw new Error(error.message);
+
+      if (!data || data.length === 0) {
+        throw new Error("Action blocked by database security (RLS). Missing DELETE policy.");
+      }
+      
+      showToast(`${memberToDelete.name} has been removed.`, "success");
+      setTeam(prev => prev.filter(m => m.id !== memberToDelete.id));
+      setIsDeleteModalOpen(false);
+    } catch (error: any) {
+      showToast(`Error: ${error.message}`, "error");
+    } finally {
+      setIsSubmitting(false);
+      setMemberToDelete(null);
     }
   };
 
@@ -318,10 +463,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   });
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* 🌟 PREMIUM HEADER - Responsive up to xl */}
-      <div className="shrink-0 mb-6 px-4 sm:px-0">
+      <div className="shrink-0 mb-6 px-0 w-full">
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white/80 p-4 sm:p-5 lg:px-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
 
           <div className="w-full xl:w-auto min-w-0 flex-1">
@@ -342,10 +487,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none w-4 h-4 sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
               <input 
                 type="text" 
-                placeholder="Search members..." 
+                placeholder="Search Member's Name..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 sm:pl-11 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white/60 focus:bg-white transition-all shadow-sm"
+                className="w-full pl-10 sm:pl-11 pr-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white/60 focus:bg-white transition-all shadow-sm"
               />
             </div>
 
@@ -366,12 +511,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       {isLoadingTeam || isOrgLoading ? (
         <TeamTabSkeleton />
       ) : (
-        <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar">
-          <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-0 custom-scrollbar">
+          <div className="w-full max-w-none lg:h-full flex flex-col lg:flex-row gap-4">
             
             {/* TEAM TABLE - Left Column */}
-            <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
-              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full relative overflow-hidden">
+            <div className="w-full lg:w-[60%] xl:w-[70%] flex flex-col h-[500px] lg:h-full flex-none lg:overflow-hidden shrink-0">
+              <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col h-full w-full relative overflow-hidden">
                 
                 <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)]/50 shrink-0">
                   <div className="flex items-center gap-3">
@@ -381,7 +526,10 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                     <h3 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate" title="Access Control">Access Control</h3>
                   </div>
                   <button 
-                    onClick={() => setIsInviteModalOpen(true)}
+                    onClick={() => {
+                      closeUserModal();
+                      setIsInviteModalOpen(true);
+                    }}
                     className="bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-bold transition-all shadow-[var(--shadow-sm)] active:scale-95 flex items-center gap-2 border border-transparent shrink-0"
                     title="Add User"
                   >
@@ -389,14 +537,15 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                   </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto overflow-x-auto relative bg-white">
-                  <table className="w-full text-left text-sm min-w-[500px] sm:min-w-[600px] border-collapse">
+                <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-auto relative bg-white">
+                  <table className="w-full min-w-full text-left text-sm border-collapse">
                     <thead className="bg-[var(--color-bg)]/80 text-slate-500 font-black text-[10px] sm:text-[11px] uppercase tracking-widest border-b border-[var(--color-border)] sticky top-0 backdrop-blur-md z-10">
                       <tr>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Member Name</th>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Role</th>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 whitespace-nowrap">Access Scope</th>
                         <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-right whitespace-nowrap">Status</th>
+                        <th className="px-4 sm:px-6 py-3.5 sm:py-4 text-center whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)]">
@@ -405,26 +554,29 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-[10px] sm:text-[12px] font-black shadow-sm shrink-0">
                             {initials}
                           </div>
-                          <span className="truncate max-w-[120px] sm:max-w-[200px]" title="You">You</span>
+                          <span title="You">You</span>
                         </td>
                         <td className="px-4 sm:px-6 py-4">
-                          <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm truncate block w-fit" title="Admin">Admin</span>
+                          <span className="bg-slate-200 text-slate-800 border border-[var(--color-primary)]/20 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider shadow-sm block w-fit" title="Admin">Admin</span>
                         </td>
-                        <td className="px-4 sm:px-6 py-4 text-slate-800 font-semibold truncate max-w-[120px] sm:max-w-[180px]" title="Full Platform Access">Full Platform Access</td>
+                        <td className="px-4 sm:px-6 py-4 text-slate-800 font-semibold" title="Full Platform Access">Full Platform Access</td>
                         <td className="px-4 sm:px-6 py-4 text-right">
-                          <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm truncate" title="Active">Active</span>
+                          <span className="bg-emerald-100 text-emerald-700 font-black text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm" title="Active">Active</span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-center">
+                          <span className="text-slate-300 text-[10px] font-bold">—</span>
                         </td>
                       </tr>
                       
                       {team.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          <td colSpan={5} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
                             No additional team members added.
                           </td>
                         </tr>
                       ) : filteredTeam.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
+                          <td colSpan={5} className="px-6 py-12 text-center text-[11px] font-bold text-slate-400">
                             No members match your search.
                           </td>
                         </tr>
@@ -440,18 +592,37 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                                 <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[9px] sm:text-[10px] font-extrabold border border-slate-200 group-hover:bg-white transition-colors shrink-0">
                                   {memberInitials}
                                 </div>
-                                <span className="truncate max-w-[120px] sm:max-w-[200px]" title={member.name}>{member.name}</span>
+                                <div className="flex flex-col">
+                                  <span title={member.name}>{member.name}</span>
+                                  <span className="text-[10px] text-slate-400 font-medium">{member.email}</span>
+                                </div>
                               </td>
                               <td className="px-4 sm:px-6 py-4">
-                                <span className="bg-slate-50 text-slate-600 font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border border-[var(--color-border)] uppercase tracking-wider group-hover:bg-white transition-colors shadow-sm block w-fit">
+                                <span className={`font-bold text-[9px] sm:text-[10px] px-2.5 py-1 rounded-[var(--radius-sm)] border uppercase tracking-wider shadow-sm block w-fit
+                                  ${member.role === 'Property manager' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-white transition-colors' : 
+                                  member.role === 'Assistant' ? 'bg-sky-50 text-sky-700 border-sky-200 group-hover:bg-white transition-colors' :
+                                  member.role === 'Maintenance staff' ? 'bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-white transition-colors' :
+                                  'bg-slate-50 text-slate-600 border-[var(--color-border)] group-hover:bg-white transition-colors'}`}
+                                >
                                   {member.role}
                                 </span>
                               </td>
-                              <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[180px]" title={member.access_level}>{member.access_level}</td>
+                              <td className="px-4 sm:px-6 py-4 text-slate-500 font-medium" title={member.access_level}>{member.access_level}</td>
                               <td className="px-4 sm:px-6 py-4 text-right">
                                 <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[8px] sm:text-[9px] px-2.5 py-1 rounded-[var(--radius-sm)] uppercase tracking-widest shadow-sm">
                                   {member.status}
                                 </span>
+                              </td>
+                              <td className="px-4 sm:px-6 py-4 text-center">
+                                <div className="flex justify-center items-center">
+                                  <button 
+                                    onClick={() => handleEditClick(member)}
+                                    className="text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1.5 rounded-md hover:bg-[var(--color-primary)]/10" 
+                                    title="Edit User Access"
+                                  >
+                                    <Edit2 size={16} strokeWidth={2.5} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -469,7 +640,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
             </div>
 
             {/* SUBSCRIPTION & THEME PANEL - Right Column */}
-            <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 pb-6 lg:pr-2 shrink-0">
+            <div className="w-full lg:w-[40%] xl:w-[30%] flex flex-col lg:h-full lg:overflow-y-auto custom-scrollbar gap-6 lg:pr-2 shrink-0">
               
               {/* Subscription Box */}
               <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col relative group shrink-0">
@@ -661,7 +832,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                           title: 'Apply Custom Colors',
                           message: 'This will officially save and apply your customized theme globally across your workspace. Continue?',
                           confirmText: 'Apply Theme',
-                          confirmStyle: 'bg-[var(--color-secondary)] hover:opacity-90 shadow-[var(--shadow-md)]'
+                          confirmStyle: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 shadow-[var(--shadow-md)]'
                         })}
                         disabled={isSavingTheme}
                         className="w-2/3 bg-[var(--color-secondary)] hover:opacity-90 text-white font-black uppercase tracking-widest text-[9px] sm:text-[10px] py-2.5 sm:py-3 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95 border border-transparent truncate px-2"
@@ -693,19 +864,21 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       )}
 
-      {/* ADD USER MODAL */}
+      {/* ✨ ADD/EDIT USER MODAL */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
-              <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title="Add Workspace User">Add Workspace User</h2>
-              <button onClick={() => !isSubmitting && setIsInviteModalOpen(false)} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
+              <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title={editingMemberId ? "Edit Workspace User" : "Add Workspace User"}>
+                {editingMemberId ? "Edit Workspace User" : "Add Workspace User"}
+              </h2>
+              <button onClick={() => !isSubmitting && closeUserModal()} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-              <form onSubmit={handleAddUserSubmit} className="space-y-4">
+              <form onSubmit={handlePreSubmit} className="space-y-4">
                 {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs sm:text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
 
                 <div>
@@ -715,35 +888,97 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 
                 <div>
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
-                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className={`w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] ${editingMemberId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} disabled={isSubmitting || !!editingMemberId} />
+                  {editingMemberId && <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">Email cannot be changed after account creation.</p>}
                 </div>
 
-                <div>
-                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
-                  <input type="password" required minLength={6} placeholder="Minimum 6 characters" value={memberPassword} onChange={(e) => setMemberPassword(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
-                </div>
+                {!editingMemberId && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
+                    <div className="relative group">
+                      <input 
+                        type={showMemberPassword ? "text" : "password"} 
+                        required 
+                        minLength={6} 
+                        placeholder="Minimum 6 characters" 
+                        value={memberPassword} 
+                        onChange={(e) => setMemberPassword(e.target.value)} 
+                        className="w-full px-4 pr-11 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] transition-all" 
+                        disabled={isSubmitting} 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowMemberPassword(!showMemberPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] transition-colors p-1.5 rounded-full hover:bg-[var(--color-primary)]/5"
+                        tabIndex={-1}
+                      >
+                        {showMemberPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Shield size={16} className="text-[var(--color-text)]" /> System Role</label>
-                  <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
+                  <select value={memberRole} onChange={handleRoleChange} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm bg-white shadow-[var(--shadow-sm)]" disabled={isSubmitting}>
                     <option value="Property manager">Property Manager</option>
+                    <option value="Assistant">Assistant</option>
                     <option value="Maintenance staff">Maintenance Staff</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5">Property Scope Access</label>
-                  <input type="text" required placeholder="e.g. All properties, Future Point Only" value={memberAccess} onChange={(e) => setMemberAccess(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-2">
+                    {memberRole === "Maintenance staff" ? "Maintenance Role Designation" : "Module Access Scope"}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3 p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] bg-slate-50/50">
+                    {getAvailableModulesForRole(memberRole).map((module) => (
+                      <label key={module} className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-600 cursor-pointer hover:text-[var(--color-text)] transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={memberAccess.includes(module)}
+                          onChange={() => handleAccessChange(module)}
+                          disabled={isSubmitting}
+                          className="w-4 h-4 rounded border-slate-300 text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 cursor-pointer accent-[var(--color-primary)]"
+                        />
+                        {module}
+                      </label>
+                    ))}
+                  </div>
+                  {memberAccess.length === 0 && (
+                     <p className="text-[10px] sm:text-xs text-amber-600 mt-2 font-medium">
+                       {memberRole === "Maintenance staff" 
+                         ? "Please select at least one maintenance role." 
+                         : "Please select at least one module to grant access."}
+                     </p>
+                  )}
                 </div>
 
               </form>
             </div>
             
-            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex gap-3 justify-end flex-wrap sm:flex-nowrap">
-              <button type="button" onClick={() => setIsInviteModalOpen(false)} disabled={isSubmitting} className="w-full sm:w-auto px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)] active:scale-95 transition-all order-2 sm:order-1">Cancel</button>
-              <button onClick={handleAddUserSubmit} disabled={isSubmitting} className="w-full sm:w-auto bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold shadow-[var(--shadow-md)] active:scale-95 transition-all order-1 sm:order-2 flex justify-center items-center">
-                {isSubmitting ? "Creating Account..." : "Add User"}
-              </button>
+            <div className="px-5 sm:px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] shrink-0 flex justify-between items-center gap-3 flex-wrap sm:flex-nowrap">
+              {editingMemberId ? (
+                <button 
+                  type="button" 
+                  onClick={() => handleDeleteClick({ id: editingMemberId, name: memberName })} 
+                  disabled={isSubmitting} 
+                  className="text-red-500 hover:bg-red-50 px-3 py-2 rounded-md font-bold text-[11px] sm:text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 border border-transparent hover:border-red-100"
+                >
+                  <Trash2 size={14} strokeWidth={2.5} /> Remove User
+                </button>
+              ) : (
+                <div className="hidden sm:block"></div>
+              )}
+              
+              <div className="flex gap-2 w-full sm:w-auto justify-end">
+                <button type="button" onClick={() => closeUserModal()} disabled={isSubmitting} className="flex-1 sm:flex-none px-5 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-[var(--radius-md)] border border-transparent shadow-[var(--shadow-sm)] active:scale-95 transition-all">
+                  Cancel
+                </button>
+                <button onClick={handlePreSubmit} disabled={isSubmitting} className="flex-1 sm:flex-none bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] border border-transparent px-6 py-2.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-semibold shadow-[var(--shadow-md)] active:scale-95 transition-all flex justify-center items-center">
+                  {isSubmitting ? "Processing..." : (editingMemberId ? "Update User" : "Add User")}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -954,6 +1189,81 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       )}
 
+      {/* ✨ EDIT CONFIRMATION MODAL */}
+      {isEditConfirmModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 bg-blue-50 text-[var(--color-primary)] border-[var(--color-primary)]/20">
+              <Edit2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate">
+              Confirm Update
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to save these changes to <strong className="text-[var(--color-text)]">{memberName}</strong>'s access profile?
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <button 
+                onClick={() => setIsEditConfirmModalOpen(false)} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-[11px] sm:text-xs uppercase tracking-wider duration-200 order-2 sm:order-1"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={executeSubmit} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-white bg-[var(--color-primary)] hover:opacity-90 font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2"
+              >
+                {isSubmitting ? "Saving..." : "Yes, Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ DELETE CONFIRMATION MODAL */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm p-6 sm:p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-[var(--radius-md)] sm:rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-inner border-4 bg-red-50 text-red-500 border-red-100">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            
+            <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight truncate">
+              Remove User
+            </h3>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to remove <strong className="text-[var(--color-text)]">{memberToDelete?.name}</strong>? They will instantly lose access to the platform.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <button 
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setMemberToDelete(null);
+                }} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] font-black text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 border border-[var(--color-border)] transition-all active:scale-[0.96] text-[11px] sm:text-xs uppercase tracking-wider duration-200 order-2 sm:order-1"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteMember} 
+                disabled={isSubmitting}
+                className="w-full sm:flex-1 py-3 sm:py-3.5 rounded-[var(--radius-md)] text-white bg-red-500 hover:bg-red-600 font-black uppercase tracking-wider transition-all shadow-lg active:scale-[0.96] text-[11px] sm:text-xs duration-200 border border-transparent order-1 sm:order-2 flex items-center justify-center truncate px-2"
+              >
+                {isSubmitting ? "Removing..." : "Yes, Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -961,11 +1271,11 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
 // ✨ TEAM TAB FULL WORKSPACE SKELETON
 function TeamTabSkeleton() {
   return (
-    <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-4 sm:px-0 custom-scrollbar animate-pulse">
-      <div className="max-w-[1600px] mx-auto w-full lg:h-full flex flex-col lg:flex-row gap-4">
+    <div className="flex-1 w-full min-h-0 flex flex-col overflow-y-auto lg:overflow-hidden px-0 custom-scrollbar animate-pulse">
+      <div className="w-full max-w-none lg:h-full flex flex-col lg:flex-row gap-4">
         
         {/* Left Col (Access Control) Skeleton */}
-        <div className="w-full lg:w-[55%] xl:w-[65%] flex flex-col h-[500px] lg:h-full flex-none shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm overflow-hidden">
+        <div className="w-full lg:w-[60%] xl:w-[70%] flex flex-col h-[500px] lg:h-full flex-none shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm overflow-hidden">
           <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] bg-[var(--color-bg)]/50 flex justify-between items-center h-[68px] sm:h-[76px]">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-slate-200"></div>
@@ -985,7 +1295,7 @@ function TeamTabSkeleton() {
         </div>
 
         {/* Right Col (Subscription & Theme Builder) Skeleton */}
-        <div className="w-full lg:w-[45%] xl:w-[35%] flex flex-col gap-6 pb-6 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
+        <div className="w-full lg:w-[40%] xl:w-[30%] flex flex-col gap-6 pb-6 shrink-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
           
           {/* Subscription Skeleton Box */}
           <div className="bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] p-5 sm:p-6 lg:p-8 flex flex-col gap-5 shadow-sm">

@@ -453,7 +453,7 @@ export default function OwnerDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ✨ UPDATED: INSTANT SNAP FOR DEEP LINKING
+  // ✨ INSTANT SNAP FOR DEEP LINKING
   const handleTabChange = (tabName: string, highlightId: string | null = null) => {
     setActiveTab(tabName);
 
@@ -461,10 +461,8 @@ export default function OwnerDashboard() {
     
     if (highlightId) {
       if (highlightId.startsWith('select_unit_')) {
-        // ✨ INSTANT ROUTING: Execute immediately for UI snap (No 800ms delay)
         setHighlightTicketId(highlightId);
       } else {
-        // Standard modal delay for other intents
         setHighlightTicketId(null);
         intentTimeoutRef.current = setTimeout(() => {
           setHighlightTicketId(highlightId);
@@ -473,6 +471,12 @@ export default function OwnerDashboard() {
     } else {
       setHighlightTicketId(null);
     }
+  };
+
+  const handleRouteToFinancialsDetail = () => {
+    const targetUnitId = myUnitsList.length > 0 ? myUnitsList[0].id : null;
+    const intent = targetUnitId ? `select_unit_${targetUnitId}_${Date.now()}` : null;
+    handleTabChange('financials', intent);
   };
 
   const handleInitiateNameSave = () => {
@@ -604,52 +608,42 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  // ✨ FIX: Delete ALL function instead of just updating UI
   const confirmDeleteAllNotifications = async () => {
     if (!userEmail) return;
     
-    // Optimistic UI updates
     setNotifications([]);
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
     setIsNotifOpen(false);
     
-    // Complete wipe from the table for this owner
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('recipient', userEmail); 
   };
 
-  // --- NEW: Initiate Single Delete Modal ---
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
     e.stopPropagation(); 
     setNotificationToDelete(notif);
     setIsDeleteNotifModalOpen(true);
   };
 
-  // --- NEW: Actual Function Called by the Delete Modal ---
   const confirmDeleteNotification = async () => {
     if (!userEmail || !notificationToDelete) return;
 
-    // 1. Update local state immediately for snappy UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    // 2. Adjust unread count if the deleted notification was unread
     if (!notificationToDelete.is_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Changed from .update({ is_hidden: true }) to .delete()
     await supabase
       .from('notifications')
-      .delete()
+      .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
-    // Clear the tracked notification
     setNotificationToDelete(null);
   };
 
@@ -675,7 +669,10 @@ export default function OwnerDashboard() {
       }
     }
 
-    if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
+    // ✨ ROUTING UPDATED: Route Lease notifications to the Lease tab (`leases`)
+    if (type === 'LEASE_TERMINATION' || type === 'LEASE' || title.includes('LEASE') || title.includes('TERMINATION')) {
+      handleTabChange("leases");
+    } else if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
       const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("financials", intent); 
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
@@ -813,6 +810,8 @@ export default function OwnerDashboard() {
                         Icon = Wrench; iconColor = "text-orange-500"; iconBg = "bg-orange-100";
                       } else if (type === 'MESSAGE' || type === 'CHAT') {
                         Icon = MessageSquare; iconColor = "text-[var(--color-primary)]"; iconBg = "bg-[var(--color-primary)]/10";
+                      } else if (type === 'LEASE_TERMINATION' || type === 'LEASE') {
+                        Icon = FileText; iconColor = "text-emerald-600"; iconBg = "bg-emerald-100";
                       }
 
                       return (
@@ -1037,7 +1036,7 @@ export default function OwnerDashboard() {
                      </div>
 
                      <button 
-                       onClick={() => setActiveTab('financials')} 
+                       onClick={handleRouteToFinancialsDetail} 
                        disabled={totalDue === 0}
                        className="w-full bg-white hover:opacity-90 disabled:bg-white/10 disabled:text-white/50 disabled:border-transparent text-[var(--color-text)] transition-all rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black text-sm md:text-base flex items-center justify-center gap-2 active:scale-[0.99] border border-transparent shadow-[var(--shadow-md)] hover:shadow-xl hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none duration-300"
                      >
@@ -1077,7 +1076,7 @@ export default function OwnerDashboard() {
                   </button>
 
                    {/* Card 3: Financials -> Account Billing */}
-                  <button onClick={() => setActiveTab('financials')} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
+                  <button onClick={handleRouteToFinancialsDetail} className="bg-white flex flex-col p-4 sm:p-5 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] hover:-translate-y-1 transition-all duration-300 active:scale-[0.97] text-left relative overflow-hidden group h-full">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[var(--color-primary)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className=" transition-colors w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-3 sm:mb-4 relative z-10 shrink-0">
                       <Receipt size={18} className="text-[var(--color-text)] sm:w-5 sm:h-5" />
@@ -1112,7 +1111,7 @@ export default function OwnerDashboard() {
                        <p className="text-slate-400 text-[10px] sm:text-xs mt-0.5 font-medium truncate hidden sm:block">Overview of recent monthly financial statements</p>
                      </div>
                      <button 
-                       onClick={() => setActiveTab('financials')} 
+                       onClick={handleRouteToFinancialsDetail} 
                        className="text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] hover:opacity-90 bg-[var(--color-primary)] px-3 py-2 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-[var(--shadow-sm)] whitespace-nowrap shrink-0 border border-transparent"
                      >
                        View All
@@ -1146,7 +1145,7 @@ export default function OwnerDashboard() {
                          return (
                            <div 
                              key={idx} 
-                             onClick={() => setActiveTab('financials')}
+                             onClick={handleRouteToFinancialsDetail}
                              className="flex items-center justify-between p-3 sm:p-4 bg-white hover:bg-[var(--color-primary)]/5 border border-[var(--color-border)] rounded-[var(--radius-lg)] transition-all duration-200 cursor-pointer shadow-[var(--shadow-sm)] group gap-2"
                            >
                              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -1268,7 +1267,7 @@ export default function OwnerDashboard() {
                 <p className="text-sm font-semibold leading-relaxed">
                   {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
                 </p>
-                {/* reported issue date and time  */}
+                {/* reported issue date and time */}
                 <p className="text-[10px] font-bold text-red-200 uppercase tracking-widest mt-3">Reported on: {formatDateTime(rejectedTicketModalData.created_at)}</p>
               </div>
 
@@ -1496,7 +1495,7 @@ export default function OwnerDashboard() {
                     )}
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Current Password</label>
                       <div className="relative group">
                         <input 
                           type={showCurrentPassword ? "text" : "password"}
@@ -1518,7 +1517,7 @@ export default function OwnerDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">New Password</label>
                       <div className="relative group">
                         <input 
                           type={showNewPassword ? "text" : "password"}
@@ -1540,7 +1539,7 @@ export default function OwnerDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Confirm New Password</label>
                       <div className="relative group">
                         <input 
                           type={showConfirmPassword ? "text" : "password"}

@@ -39,6 +39,13 @@ const CHAT_ROLES = [
     desc: "Maintenance & Daily Operations",
     icon: Briefcase,
   },
+  // ✨ ADDED ASSISTANT
+  {
+    id: "assistant",
+    label: "Assistant",
+    desc: "Assistant Operations",
+    icon: Briefcase,
+  },
   {
     id: "owner",
     label: "Unit Owner",
@@ -67,12 +74,14 @@ export default function ConversationTab({
   const [customNames, setCustomNames] = useState<Record<string, string>>({
     admin: "Admin",
     manager: "Property Manager",
+    assistant: "Assistant", // ✨ ADDED DEFAULT NAME
     owner: "Unit Owner",
   });
 
   const [roleEmails, setRoleEmails] = useState<Record<string, string>>({
     admin: "",
     manager: "",
+    assistant: "", // ✨ ADDED ASSISTANT
     owner: "",
   });
   const [isContactsLoading, setIsContactsLoading] = useState(true);
@@ -189,14 +198,17 @@ export default function ConversationTab({
       const fetchedNames = {
         admin: "Admin",
         manager: "Property Manager",
+        assistant: "Assistant", // ✨ ADDED
         owner:
           unit?.owner_name && unit.owner_name.trim() !== ""
             ? unit.owner_name
             : "Unit Owner",
       };
+      
       const fetchedEmails = {
         admin: userData.admin_email,
         manager: "",
+        assistant: "", // ✨ ADDED
         owner: "",
       };
 
@@ -218,6 +230,19 @@ export default function ConversationTab({
         if (managerData) {
           if (managerData.name) fetchedNames.manager = managerData.name;
           if (managerData.email) fetchedEmails.manager = managerData.email;
+        }
+
+        // ✨ FETCH ASSISTANT
+        const { data: assistantData } = await supabase
+          .from("team_members")
+          .select("name, email")
+          .eq("admin_email", userData.admin_email)
+          .ilike("role", "%assistant%")
+          .limit(1)
+          .maybeSingle();
+        if (assistantData) {
+          if (assistantData.name) fetchedNames.assistant = assistantData.name;
+          if (assistantData.email) fetchedEmails.assistant = assistantData.email;
         }
 
         if (unit?.owner_name) {
@@ -591,6 +616,12 @@ export default function ConversationTab({
           Manager
         </span>
       );
+    if (roleId === 'assistant') 
+      return (
+        <span className="shrink-0 text-[9px] text-sky-700 px-1.5 py-0.5 rounded border border-sky-200 uppercase font-bold tracking-wider bg-sky-100">
+          Assistant
+        </span>
+      );
     if (roleId === "admin")
       return (
         <span className="shrink-0 text-[9px] text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 uppercase font-bold tracking-wider bg-blue-100">
@@ -792,7 +823,7 @@ export default function ConversationTab({
                         ) : (
                           <h3
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
+                              unreadCount > 0 ? "font-black text-[var(--color-text)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
                             }`}
                             title={`${customNames[role.id] || role.label}`}
                           >
@@ -802,7 +833,7 @@ export default function ConversationTab({
                       </div>
                       <span
                         className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${
-                          unreadCount > 0 ? "font-bold text-[var(--color-primary)]" : "font-medium text-slate-400"
+                          unreadCount > 0 ? "font-bold text-[var(--color-text)]" : "font-medium text-slate-400"
                         }`}
                       >
                         {displayTime}
@@ -816,7 +847,7 @@ export default function ConversationTab({
                         } ${lastMsg?.is_deleted ? 'italic' : ''}`}
                       >
                         {isTyping ? (
-                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                          <span className="text-[var(--color-text)] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
                           <span>
                             <span
@@ -1107,7 +1138,7 @@ export default function ConversationTab({
                     </p>
                   </div>
                 ) : (
-                  displayedMessages.map((msg, idx) => {
+                  displayedMessages.map((msg: any, idx: number) => {
                     const isMe = msg.sender_email === userData.email;
                     const isPending = msg.id.toString().startsWith("temp_");
                     const isDeleted = msg.is_deleted;
@@ -1244,7 +1275,7 @@ export default function ConversationTab({
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center pb-2 mb-4 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === userData.email ? 'yourself' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
@@ -1258,27 +1289,23 @@ export default function ConversationTab({
               )}
 
               <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
-                <div className={`flex-1 bg-white border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
+                <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
                   <textarea
                     ref={inputRef as any}
                     value={newMessage}
-                    onChange={handleMessageChange} 
+                    onChange={handleMessageChange}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         if (newMessage.trim() && !isSending) {
                           handleSendMessage(e as any);
-                          e.currentTarget.style.height = "auto";
+                          e.currentTarget.style.height = 'auto';
                         }
                       }
                     }}
                     placeholder="Type a message..."
                     className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-[var(--color-text)] font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
-                    style={{
-                      minHeight: "24px",
-                      height: "24px",
-                      maxHeight: "120px",
-                    }}
+                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
                     disabled={isSending || isLoading}
                     rows={1}
                   />
@@ -1287,22 +1314,15 @@ export default function ConversationTab({
                   type="submit"
                   disabled={!newMessage.trim() || isSending}
                   className={`h-[40px] w-[40px] sm:h-[48px] sm:w-[48px] rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 border transition-all active:scale-95 shadow-[var(--shadow-sm)] duration-200 mb-0.5 ${
-                    newMessage.trim()
-                      ? "bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90"
-                      : "bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none"
+                    newMessage.trim() 
+                      ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90' 
+                      : 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed shadow-none'
                   }`}
                 >
                   {isSending ? (
-                    <Clock
-                      size={16}
-                      className="animate-spin sm:w-[20px] sm:h-[20px]"
-                    />
+                    <Clock size={16} className="animate-spin sm:w-[20px] sm:h-[20px]" />
                   ) : (
-                    <Send
-                      size={16}
-                      strokeWidth={2.5}
-                      className={`sm:w-5 sm:h-5 ${newMessage.trim() ? "translate-x-0.5 -translate-y-0.5" : ""}`}
-                    />
+                    <Send size={16} strokeWidth={2.5} className={`sm:w-5 sm:h-5 ${newMessage.trim() ? 'translate-x-0.5 -translate-y-0.5' : ''}`} />
                   )}
                 </button>
               </form>
@@ -1314,6 +1334,10 @@ export default function ConversationTab({
       {/* Global Mobile Bottom Sheet for Long Press Actions */}
       {longPressedMsgId && (
         <>
+          <div 
+            className="fixed md:hidden inset-0 z-[100] bg-transparent" 
+            onClick={() => setLongPressedMsgId(null)} 
+          />
           <div className="fixed md:hidden bottom-0 left-0 right-0 z-[101] bg-white rounded-t-3xl pt-3 pb-8 px-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-full duration-300 ease-out">
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8"></div>
             
@@ -1392,17 +1416,13 @@ export default function ConversationTab({
         </div>
       )}
 
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
+      <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         @media (min-width: 768px) { .custom-scrollbar::-webkit-scrollbar { width: 5px; } }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 20px; }
         .pb-safe { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-      `,
-        }}
-      />
+      `}} />
     </div>
   );
 }
