@@ -277,7 +277,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
   });
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500 bg-[var(--color-bg)]">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500 bg-[var(--color-bg)]">
       
       {/* HEADER SECTION - Themified */}
       <div className="shrink-0 mb-4 px-1 sm:px-0">
@@ -309,7 +309,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text"
-                placeholder="Search tenant, owner, unit..." 
+                placeholder="Search Name & Unit..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all hover:bg-white"
@@ -348,7 +348,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       )}
 
       {/* 🌟 FOLDER GRID SYSTEM */}
-      <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pb-24 px-1 sm:px-0">
+      <div className="flex-1 w-full min-h-0 overflow-y-auto custom-scrollbar pb-6 px-1 sm:px-0">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-x-5 gap-y-6 sm:gap-x-6 sm:gap-y-8 mt-2">
             {Array.from({ length: 8 }).map((_, i) => (

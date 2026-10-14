@@ -485,10 +485,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
   }, [highlightTicketId, isLoadingTickets, tickets, inboxTickets]);
 
   return (
-      <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+      <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
         
         {/* ✨ PREMIUM HEADER */}
-        <div className="shrink-0 mb-4 px-1 sm:px-0 mt-2">
+        <div className="shrink-0 mb-4 px-1 sm:px-0">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
             
             <div className="w-full md:w-auto flex items-center justify-between sm:justify-start">
@@ -517,7 +517,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
                 <input 
                   type="text" 
-                  placeholder="Search name, title, id, units..." 
+                  placeholder="Search Name, Ticket & Unit..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all" 
@@ -626,8 +626,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ DYNAMIC CONTENT AREA */}
         {viewMode === 'board' ? (
           
-          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-16 custom-scrollbar animate-in fade-in duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 items-start w-full h-full min-h-[400px]">
+          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-4 custom-scrollbar animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 items-stretch w-full h-full min-h-[400px]">
               
               {/* Column 1: Open */}
               <div className={`${activeView === 'open' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
@@ -718,7 +718,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
         ) : (
 
-          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative border border-[var(--color-border)]">
+          <div className="flex-1 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] flex flex-col h-full animate-in fade-in duration-300 min-h-0 relative">
             {/* ✨ STRICT HORIZONTAL & VERTICAL SCROLL WRAPPER */}
             <div className="w-full h-full overflow-auto custom-scrollbar rounded-[var(--radius-xl)]">
               <table className="w-full text-left text-sm min-w-[900px] sm:min-w-[1000px] border-collapse relative">
@@ -842,7 +842,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
                   {/* Category Badge on View Modal */}
                   {selectedTicketForModal.category && (
-                    <div className="shrink-0 flex items-center gap-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-full border border-[var(--color-primary)]/20 shadow-sm w-fit min-[480px]:w-auto">
+                    <div className="shrink-0 flex items-center gap-1.5 bg-[var(--color-primary)]/10 text-[var(--color-text)] px-3 py-1.5 rounded-full border border-[var(--color-primary)]/20 shadow-sm w-fit min-[480px]:w-auto">
                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">{selectedTicketForModal.category}</span>
                     </div>
                   )}
@@ -1223,7 +1223,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       </select>
                       {/* ✨ Filter Helper Text */}
                       {selectedCategory && selectedCategory !== "General Repair" && (
-                        <p className="text-[9px] text-[var(--color-primary)] font-bold mt-1.5 ml-0.5">
+                        <p className="text-[9px] text-[var(--color-text)] font-bold mt-1.5 ml-0.5">
                           Filtered by: {TICKET_CATEGORIES.find(c => c.id === selectedCategory)?.requiredRole}
                         </p>
                       )}

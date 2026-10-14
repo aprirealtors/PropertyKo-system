@@ -393,10 +393,10 @@ export default function RepairTab({ highlightTicketId }: any) {
   });
 
   return (
-    <div className="flex flex-col w-full mx-auto h-full overflow-y-auto custom-scrollbar font-[family-name:var(--font-corporate)]">
-      
+    <div className="absolute inset-0 flex flex-col w-full h-full px-2 sm:px-6 pt-4 sm:pt-6 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+        
       {/* Header */}
-      <div className="flex-none shrink-0">
+      <div className="shrink-0 mb-4 px-1 sm:px-0">
         <div className="bg-white p-5 sm:px-8 sm:py-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
           <div className="w-full sm:w-auto">
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2.5 sm:gap-3">

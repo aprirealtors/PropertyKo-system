@@ -6,7 +6,7 @@ import { Clock, CheckCircle, MapPin, Wrench, ChevronRight, Activity, AlertCircle
 // ✨ SKELETON LOADER COMPONENT (Perfectly matches the Home UI)
 export function HomeSkeleton() {
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-8 max-w-7xl mx-auto px-1 sm:px-0">
+    <div className="flex flex-col w-full min-h-full space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-8">
       
       {/* Skeleton Header */}
       <div className="flex justify-between items-center mb-5 md:mb-8 gap-4">
@@ -33,7 +33,7 @@ export function HomeSkeleton() {
       </div>
 
       {/* Skeleton Up Next */}
-      <section className="bg-white rounded-[1.5rem] p-5 md:p-8 shadow-[var(--shadow-sm)]">
+      <section className="flex-1 flex flex-col bg-white rounded-[1.5rem] p-5 md:p-8 shadow-[var(--shadow-sm)]">
         <div className="flex items-center justify-between mb-6 pb-5">
           <div className="flex items-center gap-3 md:gap-4">
             <div className="w-2 h-7 bg-slate-200 rounded-full animate-pulse"></div>
@@ -42,9 +42,9 @@ export function HomeSkeleton() {
           <div className="w-28 h-9 bg-slate-100 rounded-[var(--radius-md)] animate-pulse hidden sm:block"></div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
           {[1, 2, 3].map(i => (
-            <div key={i} className="rounded-[var(--radius-lg)] p-5 sm:p-6 flex flex-col h-[180px] bg-slate-50 animate-pulse">
+            <div key={i} className="rounded-[var(--radius-lg)] p-5 sm:p-6 flex flex-col min-h-[180px] bg-slate-50 animate-pulse">
               <div className="w-3/4 h-5 bg-slate-200 rounded mb-3"></div>
               <div className="w-1/2 h-4 bg-slate-200 rounded mb-5"></div>
               <div className="mt-auto pt-4 border-t border-slate-200 flex items-center justify-between">
@@ -96,7 +96,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
     .slice(0, 3);
 
   return (
-    <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-8 max-w-7xl mx-auto px-1 sm:px-0">
+    <div className="flex flex-col w-full min-h-full space-y-6 md:space-y-8 animate-in fade-in duration-500 pb-8">
       
       {/* 🌟 ULTRA-PREMIUM HEADER SECTION */}
       <div className="flex justify-between items-center mb-5 md:mb-8 gap-4">
@@ -183,7 +183,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
       </div>
 
       {/* 🚀 UP NEXT SECTION */}
-      <section className="bg-white rounded-[var(--radius-xl)] p-5 md:p-8 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
+      <section className="flex-1 flex flex-col bg-white rounded-[var(--radius-xl)] p-5 md:p-8 shadow-[var(--shadow-sm)] border border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-6 border-b border-[var(--color-border)]/50 pb-5">
           <div className="flex items-center gap-3 md:gap-4">
             <div className="w-2 h-7 bg-[var(--color-primary)] rounded-full shadow-sm"></div>
@@ -194,9 +194,9 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
           </button>
         </div>
 
-        <div>
+        <div className="flex-1 flex flex-col">
           {upNextTasks.length === 0 ? (
-            <div className="py-14 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-[var(--color-primary)]/30">
+            <div className="flex-1 py-14 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-[var(--color-primary)]/30">
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 rounded-[var(--radius-md)] flex items-center justify-center mb-5 shadow-inner text-emerald-500 border border-emerald-200/20">
                 <CheckCircle size={36} className="sm:w-10 sm:h-10" />
               </div>
@@ -204,7 +204,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
               <p className="text-xs md:text-sm text-slate-500 mt-2 font-medium max-w-sm mx-auto leading-relaxed">Awesome work. You have no pending maintenance tasks on your plate right now.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
               {upNextTasks.map((task: any) => (
                 <div 
                   key={task.id} 

@@ -493,7 +493,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
     `w-full px-4 py-3 rounded-[var(--radius-md)] border ${isError ? 'border-red-400 bg-red-50/30' : 'border-slate-200 focus:border-[var(--color-primary)] bg-slate-50 focus:bg-white'} focus:outline-none focus:ring-4 ${isError ? 'focus:ring-red-500/10' : 'focus:ring-[var(--color-primary)]/20'} text-sm font-bold text-[var(--color-text)] transition-all`;
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-100px)] relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* HEADER SECTION - Themified */}
       <div className="shrink-0 mb-4 px-1 sm:px-0">
@@ -508,7 +508,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex items-center gap-1.5 sm:gap-2 flex-wrap">
               Vacancy Board & Inventory <span className="w-1.5 h-1.5 rounded-full bg-slate-300 hidden sm:block"></span> 
-              <span className="font-bold text-slate-700 bg-slate-100 px-2 sm:px-2.5 py-0.5 rounded-md border border-[var(--color-border)] shadow-inner whitespace-nowrap mt-1 sm:mt-0">
+              <span className="font-bold text-slate-700 bg-slate-100 px-2 sm:px-2.5 rounded-md border border-[var(--color-border)] shadow-inner whitespace-nowrap mt-1 sm:mt-0">
                 {isOrgLoading ? "..." : maxUnits} Units Limit
               </span>
             </p>
@@ -519,7 +519,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
-                placeholder="Search unit, tenant, owner..." 
+                placeholder="Search Name & Unit..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all"
@@ -591,7 +591,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
       {/* GRID WRAPPER */}
       <div className="flex-1 w-full min-h-0 bg-slate-50/70 rounded-t-[var(--radius-xl)] border-t border-[var(--color-border)] overflow-hidden flex flex-col mt-2 shadow-inner">
-        <div className="flex-1 overflow-x-hidden overflow-y-auto pb-24 p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto pb-6 p-4 sm:p-6 lg:p-8 custom-scrollbar">
           
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
             
@@ -729,7 +729,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
 
                     <button
                       onClick={() => openEditModal(unit)}
-                      className="p-2.5 text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-xl transition-all border border-slate-100 hover:border-[var(--color-primary)]/30 shadow-sm active:scale-95 bg-slate-50 shrink-0"
+                      className="p-2.5 text-slate-400 hover:text-[var(--color-text)] hover:bg-[var(--color-primary)] rounded-xl transition-all border border-slate-100 hover:border-[var(--color-primary)]/30 shadow-sm active:scale-95 bg-slate-50 shrink-0"
                       title="Edit Unit"
                     >
                       <Edit size={16} strokeWidth={2.5} />

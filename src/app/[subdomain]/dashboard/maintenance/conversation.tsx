@@ -656,7 +656,7 @@ export default function ConversationTab() {
                         ) : (
                           <h3 
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? 'font-black text-[var(--color-secondary)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
+                              unreadCount > 0 ? 'font-black text-[var(--color-text)]' : isActive ? 'font-bold text-[var(--color-text)]' : 'font-normal text-[var(--color-text)]'
                             }`}
                             title={`${customNames[contact.id] || contact.name}`}
                           >
@@ -664,7 +664,7 @@ export default function ConversationTab() {
                           </h3>
                         )}
                       </div>
-                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[var(--color-primary)]' : 'font-medium text-slate-400'}`}>
+                      <span className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${unreadCount > 0 ? 'font-bold text-[var(--color-text)]' : 'font-medium text-slate-400'}`}>
                         {displayTime}
                       </span>
                     </div>
@@ -672,7 +672,7 @@ export default function ConversationTab() {
                     <div className="flex justify-between items-center w-full gap-2">
                       <p className={`text-[11px] sm:text-[12.5px] truncate ${unreadCount > 0 ? 'font-bold text-slate-900' : 'font-small text-slate-400'} ${lastMsg?.is_deleted ? 'italic' : ''}`}>
                         {isTyping ? (
-                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                          <span className="text-[var(--color-text)] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
                           <span>
                             <span className={unreadCount > 0 ? "text-[var(--color-text)] mr-1" : "text-slate-500 mr-1"}>

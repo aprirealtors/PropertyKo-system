@@ -1646,7 +1646,7 @@ function HomeView({
                   <MapPin size={14} className="text-[var(--color-primary)] shrink-0" />
                   <div className="truncate min-w-0">
                     <p className="font-semibold truncate text-[10px] sm:text-[11px] uppercase tracking-widest">
-                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[white/80]`}>· {soaStatus}</span>}
+                      {propertyName} · {unitNumber} {soaStatus !== 'Unassigned' && <span className={`font-bold ml-1 text-[white/80]`}>· {soaStatus} Payment</span>}
                     </p>
                   </div>
                 </div>
