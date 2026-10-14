@@ -6,6 +6,13 @@ import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings, Printer } from "lucide-react";
 
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="flex items-center gap-1.5 mt-2 text-[11px] font-black text-red-600 tracking-wide">
+      <AlertCircle size={14} strokeWidth={2.5} /> {message}
+    </p>
+  ) : null;
+
 export default function BillingTab({ orgData, isLoading: isOrgLoading, actionIntent }: any) {
   
   // App Mount State for Portal
@@ -52,6 +59,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [waivingParty, setWaivingParty] = useState<'owner' | 'tenant' | null>(null);
   const [isSavingUnitConfig, setIsSavingUnitConfig] = useState(false);
   const [unitConfigError, setUnitConfigError] = useState<string | null>(null);
+
+  // Unit config field errors
+  const [unitFieldErrors, setUnitFieldErrors] = useState<Record<string, string>>({});
+  const clearUnitErr = (key: string) => setUnitFieldErrors(p => ({ ...p, [key]: "" }));
+  const ucErr = (key: string) =>
+    unitFieldErrors[key]
+      ? "border-red-300 bg-red-50 focus:bg-red-50 focus:ring-red-500/15 focus:border-red-400"
+      : "border-slate-200 focus:bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]";
 
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
@@ -378,6 +393,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     setUnitCompBankAccountNumber(selectedUnit.bank_account_number || "");
     setUnitCompQrUrl(selectedUnit.qr_code_url || "");
     setUnitConfigError(null);
+    setUnitFieldErrors({});
     setIsUnitConfigModalOpen(true);
   };
 
@@ -697,6 +713,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         .getPublicUrl(filePath);
 
       setUnitCompQrUrl(publicUrlData.publicUrl);
+      clearUnitErr("qr");
 
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -711,25 +728,46 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     e.preventDefault();
     if (!selectedUnit) return;
 
-    // All fields are required (0 is a valid amount; blank is not)
-    const missingFields: string[] = [];
-    if (String(unitCompCollectionDay).trim() === "") missingFields.push("Collection Start");
-    if (String(unitCompGracePeriod).trim() === "") missingFields.push("Grace Period");
-    if (String(unitCompDuesRate).trim() === "") missingFields.push("Assoc. Dues");
-    if (String(unitCompParking).trim() === "") missingFields.push("Parking");
-    if (String(unitCompWater).trim() === "") missingFields.push("Water");
-    if (String(unitCompElec).trim() === "") missingFields.push("Electricity");
-    if (String(unitCompPenaltyValue).trim() === "") missingFields.push("Late Penalty Deduction");
-    if (unitCompBankName.trim() === "") missingFields.push("Bank Name");
-    if (unitCompBankAccountName.trim() === "") missingFields.push("Account Name");
-    if (unitCompBankAccountNumber.trim() === "") missingFields.push("Account Number");
-    if (!unitCompQrUrl) missingFields.push("Digital Wallet QR");
+    const isBlank = (v: string) => String(v).trim() === "";
+    const isPositive = (v: string) => {
+      const n = parseFloat(String(v));
+      return !isNaN(n) && n > 0;
+    };
 
-    if (missingFields.length > 0) {
-      setUnitConfigError(`Please complete all required fields`);
-      return;
+    const errs: Record<string, string> = {};
+
+    if (isBlank(unitCompCollectionDay)) {
+      errs.collectionDay = "Please enter the collection start day.";
+    } else {
+      const day = parseInt(unitCompCollectionDay);
+      if (isNaN(day) || day < 1 || day > 31) errs.collectionDay = "Please enter a day between 1 and 31.";
     }
-    setUnitConfigError(null);
+
+    if (isBlank(unitCompGracePeriod)) errs.gracePeriod = "Please enter the grace period.";
+    else if (!isPositive(unitCompGracePeriod)) errs.gracePeriod = "Grace period should have a value.";
+
+    if (isBlank(unitCompDuesRate)) errs.duesRate = "Please enter the association dues rate.";
+    else if (!isPositive(unitCompDuesRate)) errs.duesRate = "Amount cannot be 0.";
+
+    if (isBlank(unitCompParking)) errs.parking = "Please enter the parking fee.";
+    else if (!isPositive(unitCompParking)) errs.parking = "Amount cannot be 0.";
+
+    if (isBlank(unitCompWater)) errs.water = "Please enter the water charge.";
+    else if (!isPositive(unitCompWater)) errs.water = "Amount cannot be 0.";
+
+    if (isBlank(unitCompElec)) errs.electricity = "Please enter the electricity charge.";
+    else if (!isPositive(unitCompElec)) errs.electricity = "Amount cannot be 0.";
+
+    if (isBlank(unitCompPenaltyValue)) errs.penalty = "Please enter the late penalty value.";
+    else if (!isPositive(unitCompPenaltyValue)) errs.penalty = "Penalty cannot be 0.";
+
+    if (unitCompBankName.trim() === "") errs.bankName = "Please enter the bank name.";
+    if (unitCompBankAccountName.trim() === "") errs.bankAccountName = "Please enter the account name.";
+    if (unitCompBankAccountNumber.trim() === "") errs.bankAccountNumber = "Please enter the account number.";
+    if (!unitCompQrUrl) errs.qr = "Please upload a QR code.";
+
+    setUnitFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setIsSavingUnitConfig(true);
 
@@ -1607,50 +1645,56 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
             </div>
             
             <div className="p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
-              <form onSubmit={handleSaveUnitConfig} className="space-y-4 sm:space-y-5 pb-4">
+              <form onSubmit={handleSaveUnitConfig} noValidate className="space-y-4 sm:space-y-5 pb-4">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Collection Start <span className="text-red-500">*</span></label>
-                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => setUnitCompCollectionDay(e.target.value)} className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.collectionDay ? "text-red-500" : "text-slate-500"}`}>Collection Start <span className="text-red-500">*</span></label>
+                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => { setUnitCompCollectionDay(e.target.value); clearUnitErr("collectionDay"); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("collectionDay")}`} />
+                    <FieldError message={unitFieldErrors.collectionDay} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Grace Period <span className="text-red-500">*</span></label>
-                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => setUnitCompGracePeriod(e.target.value)} className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => setUnitCompDuesRate(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompParking} onChange={(e) => setUnitCompParking(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
-                    </div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.gracePeriod ? "text-red-500" : "text-slate-500"}`}>Grace Period <span className="text-red-500">*</span></label>
+                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => { setUnitCompGracePeriod(e.target.value); clearUnitErr("gracePeriod"); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("gracePeriod")}`} />
+                    <FieldError message={unitFieldErrors.gracePeriod} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.duesRate ? "text-red-500" : "text-slate-500"}`}>Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompWater} onChange={(e) => setUnitCompWater(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => { setUnitCompDuesRate(e.target.value); clearUnitErr("duesRate"); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("duesRate")}`} />
                     </div>
+                    <FieldError message={unitFieldErrors.duesRate} />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Electricity <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.parking ? "text-red-500" : "text-slate-500"}`}>Parking <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompElec} onChange={(e) => setUnitCompElec(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompParking} onChange={(e) => { setUnitCompParking(e.target.value); clearUnitErr("parking"); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("parking")}`} />
                     </div>
+                    <FieldError message={unitFieldErrors.parking} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.water ? "text-red-500" : "text-slate-500"}`}>Water <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompWater} onChange={(e) => { setUnitCompWater(e.target.value); clearUnitErr("water"); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("water")}`} />
+                    </div>
+                    <FieldError message={unitFieldErrors.water} />
+                  </div>
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${unitFieldErrors.electricity ? "text-red-500" : "text-slate-500"}`}>Electricity <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompElec} onChange={(e) => { setUnitCompElec(e.target.value); clearUnitErr("electricity"); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("electricity")}`} />
+                    </div>
+                    <FieldError message={unitFieldErrors.electricity} />
                   </div>
                 </div>
 
@@ -1661,8 +1705,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => setUnitCompPenaltyValue(e.target.value)} className="w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => { setUnitCompPenaltyValue(e.target.value); clearUnitErr("penalty"); }} className={`w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm ${unitFieldErrors.penalty ? "border-red-300 bg-red-50" : "border-slate-200"}`} />
                   </div>
+                  <FieldError message={unitFieldErrors.penalty} />
                 </div>
 
                 {/* Bank Transfer Details Section */}
@@ -1674,35 +1719,38 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Bank Name <span className="text-red-500">*</span></label>
+                      <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${unitFieldErrors.bankName ? "text-red-500" : "text-slate-400"}`}>Bank Name <span className="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         placeholder="e.g. BDO Unibank" 
                         value={unitCompBankName} 
-                        onChange={(e) => setUnitCompBankName(e.target.value)} 
-                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        onChange={(e) => { setUnitCompBankName(e.target.value); clearUnitErr("bankName"); }} 
+                        className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("bankName")}`} 
                       />
+                      <FieldError message={unitFieldErrors.bankName} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Account Name <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${unitFieldErrors.bankAccountName ? "text-red-500" : "text-slate-400"}`}>Account Name <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. HOA Admin" 
                           value={unitCompBankAccountName} 
-                          onChange={(e) => setUnitCompBankAccountName(e.target.value)} 
-                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                          onChange={(e) => { setUnitCompBankAccountName(e.target.value); clearUnitErr("bankAccountName"); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("bankAccountName")}`} 
                         />
+                        <FieldError message={unitFieldErrors.bankAccountName} />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Account Number <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${unitFieldErrors.bankAccountNumber ? "text-red-500" : "text-slate-400"}`}>Account Number <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. 0012-3456" 
                           value={unitCompBankAccountNumber} 
-                          onChange={(e) => setUnitCompBankAccountNumber(e.target.value)} 
-                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                          onChange={(e) => { setUnitCompBankAccountNumber(e.target.value); clearUnitErr("bankAccountNumber"); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs font-bold text-[var(--color-text)] transition-all shadow-sm ${ucErr("bankAccountNumber")}`} 
                         />
+                        <FieldError message={unitFieldErrors.bankAccountNumber} />
                       </div>
                     </div>
                   </div>
@@ -1710,13 +1758,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
                 {/* QR Code Upload Section */}
                 <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
-                  <label className="block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate">Digital Wallet QR <span className="text-red-500">*</span></label>
+                  <label className={`block text-xs sm:text-sm font-black mb-1 tracking-tight truncate ${unitFieldErrors.qr ? "text-red-500" : "text-[var(--color-text)]"}`}>Digital Wallet QR <span className="text-red-500">*</span></label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
                     Upload GCash, Maya, or QR Ph barcode.
                   </p>
                   
                   <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 border border-[var(--color-border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-1.5 shadow-inner">
+                    <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-1.5 shadow-inner ${unitFieldErrors.qr ? "bg-red-50 border-red-300" : "bg-slate-50 border-[var(--color-border)]"}`}>
                       {unitCompQrUrl ? (
                         <img src={unitCompQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
                       ) : (
@@ -1745,6 +1793,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       </button>
                     </div>
                   </div>
+                  <FieldError message={unitFieldErrors.qr} />
                 </div>
 
               </form>
