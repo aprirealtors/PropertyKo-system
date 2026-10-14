@@ -165,7 +165,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
   return (
     // ✨ REMOVED strict height (h-[calc...]) and overflow-hidden to allow full natural view
-    <div className="flex flex-col w-full relative pb-2 font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* ✨ PREMIUM HEADER SECTION - Themified & Responsive */}
       <div className="shrink-0 mb-4 px-1 sm:px-0">
@@ -212,10 +212,10 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
 
             {/* Search Bar */}
             <div className="relative w-full sm:w-56 lg:w-64 group shrink-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-text)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
-                placeholder="Search metrics..." 
+                placeholder="Search Metrics..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-medium text-[var(--color-text)] placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all hover:bg-white"
@@ -234,8 +234,8 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
       </div>
 
       {/* ✨ MAIN TABLE WRAPPER - Removed flex-1 and min-h-0 to let it stretch naturally */}
-      <div className="w-full max-w-[1700px] mx-auto flex flex-col px-1 sm:px-0 lg:pr-2 pb-2 lg:pb-4">
-        <div className="w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
+      <div className="w-full flex-1 min-h-0 flex flex-col px-1 sm:px-0">
+        <div className="w-full flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[var(--color-primary)]/5 rounded-full blur-3xl -translate-y-10 sm:-translate-y-20 translate-x-10 sm:translate-x-20 pointer-events-none z-0"></div>
 
@@ -260,7 +260,7 @@ export default function KPIReportsTab({ orgData, isLoading: isOrgLoading }: any)
           </div>
           
           {/* ✨ FULL VIEW TABLE - Removed vertical scrolling constraint, kept horizontal scrolling for mobile safety */}
-          <div className="w-full overflow-x-auto relative z-10">
+          <div className="w-full flex-1 min-h-0 overflow-auto custom-scrollbar relative z-10">
             <table className="w-full text-left text-xs sm:text-sm relative min-w-[700px] sm:min-w-[800px]">
               <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] uppercase tracking-widest border-b border-transparent sticky top-0 z-20 text-[9px] sm:text-[10px] shadow-sm">
                 <tr>

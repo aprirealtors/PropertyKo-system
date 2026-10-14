@@ -3,7 +3,7 @@ importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-comp
 
 // Hardcoded keys because Service Workers cannot read .env files
 const firebaseConfig = {
-  apiKey: "AIzaSyDRkj1NI4bO23xqCpSNfJElZQ4wNjiZ9m0",
+  apiKey: "AIzaSyDRkj1NI4bO23xqCp5NfJE1ZQ4wNjIz9m0", // <-- Fixed typos here!
   authDomain: "propertyko-notif.firebaseapp.com",
   projectId: "propertyko-notif",
   storageBucket: "propertyko-notif.firebasestorage.app",
@@ -18,7 +18,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: "/icon-192.png", // Ensure you have this icon in your public folder
+    icon: "/icon-192.png", 
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);

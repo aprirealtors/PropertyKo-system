@@ -24,6 +24,21 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
   // Tab Switcher State (Para sa Mobile View na lang)
   const [activeView, setActiveView] = useState<'open' | 'on_hold' | 'resolved'>('open');
 
+  // Mobile swipe navigation between the three task lists
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const mobileViews: Array<'open' | 'on_hold' | 'resolved'> = ['open', 'on_hold', 'resolved'];
+
+  const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    setTouchStartX(null);
+    if (Math.abs(deltaX) < 60) return; // ignore small drags / vertical scrolls
+    const currentIndex = mobileViews.indexOf(activeView);
+    const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex >= 0 && nextIndex < mobileViews.length) setActiveView(mobileViews[nextIndex]);
+  };
+
   // MODAL STATES
   const [reviewActiveTask, setReviewActiveTask] = useState<any | null>(null);
   const [reviewOnHoldTask, setReviewOnHoldTask] = useState<any | null>(null);
@@ -151,7 +166,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
   });
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-130px)] md:h-[calc(100vh-130px)] relative pb-2 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-2 sm:px-6 pt-4 sm:pt-6 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+        
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .custom-scrollbar::-webkit-scrollbar { display: none; }
@@ -159,7 +175,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       `}} />
 
       {/* PREMIUM HEADER */}
-      <div className="mb-4 shrink-0">
+      <div className="shrink-0 mb-4 px-1 sm:px-0">
         <div className="bg-white px-5 py-4 sm:px-6 sm:py-5 rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
           
           <div className="w-full sm:w-auto">
@@ -183,33 +199,37 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
       </div>
 
       {/* MOBILE TAB SWITCHER */}
-      <div className="md:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-[var(--radius-xl)] flex border border-slate-200/80 mx-1 sm:mx-0">
+      <div className="md:hidden shrink-0 mb-4 bg-slate-100 p-1.5 rounded-[var(--radius-xl)] flex gap-1 w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden custom-scrollbar border border-slate-200/80">
         <button 
           onClick={() => setActiveView('open')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'open' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+          className={`flex-1 shrink-0 whitespace-nowrap px-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'open' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
           <Clock size={14} strokeWidth={2.5}/> Open <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : openTasks.length}</span>
         </button>
         <button 
           onClick={() => setActiveView('on_hold')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'on_hold' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+          className={`flex-1 shrink-0 whitespace-nowrap px-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'on_hold' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
           <PauseCircle size={14} strokeWidth={2.5}/> Hold <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : onHoldTasks.length}</span>
         </button>
         <button 
           onClick={() => setActiveView('resolved')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'resolved' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
+          className={`flex-1 shrink-0 whitespace-nowrap px-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${activeView === 'resolved' ? 'bg-[var(--color-primary)] text-[var(--color-text)] shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-[var(--color-text)]'}`}
         >
           <CheckCircle size={14} strokeWidth={2.5}/> Resolved <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-1.5 py-0.5 rounded-md text-[10px]">{isLoading ? "-" : resolvedTasks.length}</span>
         </button>
       </div>
 
       {/* HYBRID BOARD WRAPPER */}
-      <div className="flex-1 w-full h-full min-h-0 overflow-y-auto pb-6 px-1 sm:px-0 custom-scrollbar animate-in fade-in duration-300">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start w-full h-full min-h-[400px]">
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="flex-1 w-full h-full min-h-0 overflow-y-auto pb-10 md:pb-6 px-0 custom-scrollbar animate-in fade-in duration-300"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch w-full min-h-full">
           
           {/* ================= COLUMN 1: OPEN TASKS ================= */}
-          <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
+          <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto w-full bg-transparent md:bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-0 md:p-5 border-0 md:border md:border-[var(--color-border)] shadow-none md:shadow-inner`}>
             <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
               <span className="flex items-center gap-2"><Clock size={16} className="text-blue-700" strokeWidth={2.5}/> Open &amp; In Progress</span>
               <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-2.5 py-0.5 rounded-[var(--radius-xl)] text-xs font-black border border-[var(--color-primary)]/20 shadow-inner">{isLoading ? "-" : openTasks.length}</span>
@@ -219,13 +239,13 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               {isLoading ? (
                 <> <SkeletonCard /> <SkeletonCard /> </>
               ) : openTasks.length === 0 ? (
-                <EmptyState icon={Inbox} title="No active tasks" message="Assigned and pending requests will appear here." />
+                <EmptyState icon={Inbox} title="No Active Tasks" message="Assigned and pending requests will appear here." />
               ) : (
                 openTasks.map((task: any) => (
                   <div 
                     key={task.id} 
                     onClick={() => setReviewActiveTask(task)}
-                    className={`group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
+                    className={`group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
                       task.priority === 'Urgent' ? 'border-l-4 border-l-red-500 shadow-sm shadow-red-500/5 border-[var(--color-border)]' : 'hover:border-[var(--color-primary)]/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border-[var(--color-border)]'
                     }`}
                   >
@@ -267,7 +287,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           </div>
 
           {/* ================= COLUMN 2: ON HOLD TASKS ================= */}
-          <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
+          <div className={`${activeView === 'on_hold' ? 'flex' : 'hidden'} md:flex flex-col h-auto w-full bg-transparent md:bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-0 md:p-5 border-0 md:border md:border-[var(--color-border)] shadow-none md:shadow-inner`}>
             <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
               <span className="flex items-center gap-2"><PauseCircle size={16} className="text-amber-500" strokeWidth={2.5}/> On Hold</span>
               <span className="bg-amber-50 text-[var(--color-text)] px-2.5 py-0.5 rounded-xl text-xs font-black border border-amber-100 shadow-inner">{isLoading ? "-" : onHoldTasks.length}</span>
@@ -277,13 +297,13 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               {isLoading ? (
                 <> <SkeletonCard /> <SkeletonCard /> </>
               ) : onHoldTasks.length === 0 ? (
-                <EmptyState icon={PauseCircle} title="No tasks on hold" message="Tasks awaiting parts or feedback will show here." />
+                <EmptyState icon={PauseCircle} title="No Tasks On Hold" message="Tasks awaiting parts or feedback will show here." />
               ) : (
                 onHoldTasks.map((task: any) => (
                   <div 
                     key={task.id} 
                     onClick={() => setReviewOnHoldTask(task)}
-                    className="group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+                    className="group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -315,7 +335,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
           </div>
 
           {/* ================= COLUMN 3: RESOLVED TASKS ================= */}
-          <div className={`${activeView === 'resolved' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
+          <div className={`${activeView === 'resolved' ? 'flex' : 'hidden'} md:flex flex-col h-auto w-full bg-transparent md:bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-0 md:p-5 border-0 md:border md:border-[var(--color-border)] shadow-none md:shadow-inner`}>
             <h4 className="hidden md:flex font-black text-[var(--color-text)] text-sm mb-4 items-center justify-between px-1 tracking-tight">
               <span className="flex items-center gap-2"><CheckCircle size={16} className="text-green-700" strokeWidth={2.5}/> Resolved</span>
               <span className="bg-[var(--color-primary)]/10 text-[var(--color-text)] px-2.5 py-0.5 rounded-xl text-xs font-black border border-[var(--color-primary)]/20 shadow-inner">{isLoading ? "-" : resolvedTasks.length}</span>
@@ -325,13 +345,13 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               {isLoading ? (
                 <> <SkeletonCard /> <SkeletonCard /> </>
               ) : resolvedTasks.length === 0 ? (
-                <EmptyState icon={CheckCircle} title="No resolved tasks" message="Completed tasks will be logged here." />
+                <EmptyState icon={CheckCircle} title="No Resolved Tasks" message="Completed tasks will be logged here." />
               ) : (
                 resolvedTasks.map((task: any) => (
                   <div 
                     key={task.id} 
                     onClick={() => setReviewResolvedTask(task)} 
-                    className="group h-auto min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5"
+                    className="group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5"
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -368,17 +388,19 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
       {/* ✨ 1. UPDATE / COMPLETE REPORT MODAL */}
       {completeModalTask && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
-            <div className="px-5 py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col h-auto max-h-[92dvh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
+            <div className="relative px-5 pt-6 pb-4 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
+              <span className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-300"></span>
               <h2 className="text-lg font-black text-[var(--color-text)] tracking-wider">Update Task</h2>
               <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-[var(--color-primary)] bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-colors active:scale-90" disabled={isCompleting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
 
-            <div className="p-5 sm:p-6 bg-[var(--color-bg)]/50 overflow-y-auto custom-scrollbar pb-safe">
-              <form onSubmit={handleCompleteTask} className="space-y-6">
+            <div className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={handleCompleteTask} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 bg-[var(--color-bg)]/50 custom-scrollbar space-y-6">
                 
                 {/* STATUS SELECTION */}
                 <div>
@@ -450,7 +472,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     
                     {completionImage ? (
                       <div className="flex flex-col w-full p-2 rounded-[var(--radius-xl)] border-2 border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[var(--shadow-sm)]">
-                        <div className="relative w-full h-40 rounded-xl overflow-hidden bg-slate-900 mb-2">
+                        <div className="relative w-full h-40 sm:h-52 rounded-xl overflow-hidden bg-slate-900 mb-2">
                           <img src={URL.createObjectURL(completionImage)} alt="Resolution preview" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex items-center justify-between px-2 pb-1">
@@ -490,7 +512,10 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   </div>
                 )}
 
-                <div className="pt-2 flex gap-3">
+                </div>
+
+                {/* FIXED FOOTER: always visible, never scrolls away */}
+                <div className="shrink-0 flex gap-3 px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--color-border)] bg-[var(--color-bg)]">
                   <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150">Cancel</button>
                   <button type="submit" disabled={isCompleting || !completionStatus || !completionImage} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:text-[var(--color-primary-text)] border border-transparent text-[var(--color-primary-text)] py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
                     {isCompleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Submit Update"}

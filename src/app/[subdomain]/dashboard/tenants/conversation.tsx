@@ -823,7 +823,7 @@ export default function ConversationTab({
                         ) : (
                           <h3
                             className={`text-[13px] sm:text-[14px] tracking-tight truncate ${
-                              unreadCount > 0 ? "font-black text-[var(--color-secondary)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
+                              unreadCount > 0 ? "font-black text-[var(--color-text)]" : isActive ? "font-bold text-[var(--color-text)]" : "font-normal text-[var(--color-text)]"
                             }`}
                             title={`${customNames[role.id] || role.label}`}
                           >
@@ -833,7 +833,7 @@ export default function ConversationTab({
                       </div>
                       <span
                         className={`text-[9px] sm:text-[10px] tracking-wide shrink-0 ${
-                          unreadCount > 0 ? "font-bold text-[var(--color-primary)]" : "font-medium text-slate-400"
+                          unreadCount > 0 ? "font-bold text-[var(--color-text)]" : "font-medium text-slate-400"
                         }`}
                       >
                         {displayTime}
@@ -847,7 +847,7 @@ export default function ConversationTab({
                         } ${lastMsg?.is_deleted ? 'italic' : ''}`}
                       >
                         {isTyping ? (
-                          <span className="text-[var(--color-primary)] font-bold animate-pulse">Typing...</span>
+                          <span className="text-[var(--color-text)] font-bold animate-pulse">Typing...</span>
                         ) : lastMsg ? (
                           <span>
                             <span

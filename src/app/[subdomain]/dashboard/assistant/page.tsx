@@ -142,7 +142,6 @@ export default function AssistantDashboard() {
   };
 
   // ✨ DYNAMIC NOTIFICATION FILTER
-  // This evaluates every incoming notification to ensure the assistant has the correct module scope enabled.
   const isAllowedNotif = (notif: any) => {
     const type = (notif.type || '').toUpperCase();
     const title = (notif.title || '').toUpperCase();
@@ -155,28 +154,28 @@ export default function AssistantDashboard() {
     if (type.includes('USER') || type.includes('ACCOUNT')) return hasAccess("User");
     if (type === 'KPI' || type === 'REPORT') return hasAccess("KPI Reports");
     
-    return true; // Pass-through for general system alerts
+    return true; 
   };
 
   // ✨ FETCH DYNAMIC NOTIFICATIONS
   useEffect(() => {
     const fetchNotifications = async () => {
       if (orgData?.admin_email) {
-        // Because assistants act as deputies, we pull MANAGER level notifications too, 
-        // but we dynamically strip out the ones they don't have scope for using our filter below.
         const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('admin_email', orgData.admin_email)
-        .in('recipient', ['ASSISTANT', 'MANAGER']) 
+        // ✨ FIX: Allow Assistant to pull ADMIN notifications (Leases, etc.)
+        .in('recipient', ['ASSISTANT', 'MANAGER', 'ADMIN', orgData.admin_email]) 
         .eq('assistant_hidden', false)
         .order('created_at', { ascending: false })
-        .limit(50); // Fetch a wider net before client-side filtering
+        .limit(50);
 
         if (!error && data) {
           const allowedData = data.filter(isAllowedNotif).slice(0, 15);
           setNotifications(allowedData);
-          setUnreadCount(allowedData.filter(n => !n.is_read).length);
+          // ✨ FIX: Target assistant_read instead of is_read
+          setUnreadCount(allowedData.filter(n => !n.assistant_read).length);
         }
       }
     };
@@ -194,12 +193,15 @@ export default function AssistantDashboard() {
             const notif = payload.new;
             if (
               notif.admin_email === orgData.admin_email &&
-              ['ASSISTANT', 'MANAGER'].includes(notif.recipient)
+              // ✨ FIX: Accept ADMIN level alerts into real-time
+              ['ASSISTANT', 'MANAGER', 'ADMIN', orgData.admin_email].includes(notif.recipient)
             ) {
-              // Only trigger the bell if this specific assistant has the module scope checked
               if (isAllowedNotif(notif)) {
                 setNotifications((currentNotifs) => [notif, ...currentNotifs]);
-                setUnreadCount((currentCount) => currentCount + 1);
+                // Ensure we only increment if the incoming isn't instantly marked read
+                if (!notif.assistant_read) {
+                  setUnreadCount((currentCount) => currentCount + 1);
+                }
               }
             }
           }
@@ -210,9 +212,9 @@ export default function AssistantDashboard() {
         supabase.removeChannel(realtimeChannel);
       };
     }
-  }, [orgData, assistantProfile.accessLevel]); // Re-evaluates instantly if admin updates their access!
+  }, [orgData, assistantProfile.accessLevel]);
 
-  // ✨ LIVE ASSIGNED TICKETS (Only syncs if they have Maintenance scope)
+  // ✨ LIVE ASSIGNED TICKETS
   const [activeTicketsCount, setActiveTicketsCount] = useState<number>(0);
 
   useEffect(() => {
@@ -254,7 +256,7 @@ export default function AssistantDashboard() {
     return () => { supabase.removeChannel(viewTicketChannel); };
   }, [orgData, assistantProfile.accessLevel]);
 
-  // ✨ LIVE MAINTENANCE TICKETS INBOX (Only syncs if they have Maintenance scope)
+  // ✨ LIVE MAINTENANCE TICKETS INBOX
   const [pendingMaintenanceCount, setPendingMaintenanceCount] = useState<number>(0);
 
   useEffect(() => {
@@ -277,7 +279,7 @@ export default function AssistantDashboard() {
     return () => { supabase.removeChannel(maintenanceChannel); };
   }, [orgData, assistantProfile.accessLevel]);
 
-  // ✨ LIVE CHAT MESSAGES UNREAD COUNT (Only syncs if they have Conversation scope)
+  // ✨ LIVE CHAT MESSAGES UNREAD COUNT
   useEffect(() => {
     if (!assistantProfile.email || !orgData?.admin_email || !hasAccess("Conversation")) {
       setUnreadMessageCount(0);
@@ -465,25 +467,24 @@ export default function AssistantDashboard() {
     setIsMobileMenuOpen(false); 
   };
 
-  // ✨ SMART MARK AS READ (Only targets notifications they can actually see)
+  // ✨ SMART MARK AS READ (Targets only assistant_read)
   const markAllAsRead = async () => {
     if (!orgData?.admin_email || notifications.length === 0) return;
     
-    // Only target notifications loaded in UI state to avoid altering out-of-scope alerts
-    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    const unreadIds = notifications.filter(n => !n.assistant_read).map(n => n.id);
     
-    setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+    setNotifications(notifications.map(n => ({ ...n, assistant_read: true })));
     setUnreadCount(0);
     
     if (unreadIds.length > 0) {
       await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ assistant_read: true })
       .in('id', unreadIds);
     }
   };
 
-  // ✨ SMART DELETE ALL (Only deletes notifications they can actually see)
+  // ✨ SMART DELETE ALL (Targets only the UI loaded notifications)
   const confirmDeleteAllNotifications = async () => {
     if (!orgData?.admin_email || notifications.length === 0) return;
     
@@ -492,9 +493,9 @@ export default function AssistantDashboard() {
     setNotifications([]);
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
+    setIsNotifOpen(false);
     
     if (idsToDelete.length > 0) {
-      // ✨ FIX: Changed .delete() to .update({ is_hidden: true })
       await supabase
         .from('notifications')
         .update({ assistant_hidden: true })
@@ -512,28 +513,35 @@ export default function AssistantDashboard() {
     if (!orgData?.admin_email || !notificationToDelete) return;
 
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
-    if (!notificationToDelete.is_read) {
+    
+    // ✨ FIX: decrement based on assistant_read
+    if (!notificationToDelete.assistant_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
     setIsDeleteNotifModalOpen(false);
 
-    // ✨ FIX: Changed .delete() to .update({ is_hidden: true })
     await supabase.from('notifications').update({ assistant_hidden: true }).eq('id', notificationToDelete.id);
     setNotificationToDelete(null);
   };
 
+  // ✨ UPDATED: ROUTING LEASE NOTIFICATIONS DIRECTLY TO LEASING & TENANTS TAB
   const handleNotificationClick = async (notif: any) => {
-    if (!notif.is_read) {
-      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+    // ✨ FIX: Update assistant_read
+    if (!notif.assistant_read) {
+      setNotifications(notifications.map(n => n.id === notif.id ? { ...n, assistant_read: true } : n));
       setUnreadCount(prev => Math.max(0, prev - 1));
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+      await supabase.from('notifications').update({ assistant_read: true }).eq('id', notif.id);
     }
     setIsNotifOpen(false);
 
     const type = notif.type?.toUpperCase() || '';
     const title = notif.title?.toUpperCase() || '';
 
-    if (type === 'PAYMENT_OWNER') {
+    // Route Lease Notifications directly to the "Leasing" (Leasing & Tenants) tab
+    if (type === 'LEASE' || type === 'LEASE_TERMINATION' || title.includes('LEASE') || title.includes('TERMINATION') || title.includes('TENANT')) {
+      handleTabChange("Leasing");
+    }
+    else if (type === 'PAYMENT_OWNER') {
       const intent = notif.reference_id ? `verify_payment_owner_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("Billing", intent);
     }
@@ -656,13 +664,13 @@ export default function AssistantDashboard() {
                       </div>
                     ) : (
                       notifications.map((notif) => (
-                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/5' : 'opacity-80'}`}>
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.assistant_read ? 'bg-[var(--color-primary)]/5' : 'opacity-80'}`}>
                           <div className="flex justify-between items-start mb-1.5 gap-2">
-                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
+                            <span className={`font-bold text-sm truncate flex-1 ${!notif.assistant_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
                             
                             {/* Updated delete button to trigger modal */}
                             <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                              {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
+                              {!notif.assistant_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
                               
                               <button
                                 onClick={(e) => handleInitiateDeleteNotification(e, notif)}
@@ -1237,7 +1245,7 @@ export default function AssistantDashboard() {
                       ) : (
                         <div className="col-span-1 sm:col-span-2 text-center text-slate-400 text-xs py-8">
                           <div className="animate-pulse flex flex-col items-center gap-2.5">
-                            <div className="w-6 h-6 border-3 border-slate-200 border-t-[var(--color-primary)] rounded-full animate-spin"></div>
+                            <div className="w-6 h-6 border-3 border-[var(--color-border)] border-t-[var(--color-primary)] rounded-full animate-spin"></div>
                             <span className="font-bold uppercase tracking-wider">Loading details...</span>
                           </div>
                         </div>
@@ -1260,12 +1268,10 @@ export default function AssistantDashboard() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/5 text-[var(--color-primary)] rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
               <User size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
             </div>
-            
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Confirm Name Change</h2>
             <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
               Are you sure you want to change your profile name to <strong className="text-[var(--color-primary)] font-black">"{editedName.trim()}"</strong>?
             </p>
-            
             <div className="flex gap-3">
               <button 
                 onClick={() => setIsConfirmNameModalOpen(false)} 
@@ -1483,7 +1489,7 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
             <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
             {badgeCount !== undefined && badgeCount > 0 && (
               <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
-                isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'
+                isActive ? 'bg-red-500 text-white shadow-red-500/10' : 'bg-red-500 text-white shadow-red-500/10'
               }`}>
                 {badgeCount > 99 ? '99+' : badgeCount}
               </span>

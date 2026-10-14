@@ -361,12 +361,12 @@ export default function PayTab() {
           <>
             {/* ✨ LEFT MAIN AREA (SOA Summary & Ledger) */}
             <div className={`flex-1 flex-col bg-[var(--color-bg)] relative lg:overflow-y-auto ${!isMobileHistoryVisible ? 'flex' : 'hidden md:flex'}`}>
-              <div className="p-2 sm:p-4 lg:p-6 space-y-6 lg:space-y-8 animate-in fade-in duration-500 pb-24 lg:pb-12">
+              <div className="space-y-6 lg:space-y-8 animate-in fade-in duration-500">
                 
                 <div className="md:hidden flex justify-end">
                   <button 
                     onClick={() => setIsMobileHistoryVisible(true)}
-                    className="flex items-center gap-2 bg-white border border-[var(--color-border)] shadow-[var(--shadow-sm)] px-4 py-2.5 rounded-[var(--radius-md)] text-[11px] font-black text-[var(--color-text)] uppercase tracking-wider active:scale-95 transition-transform"
+                    className="flex items-center gap-2 bg-white border border-[var(--color-border)] shadow-[var(--shadow-sm)] px-4 py-2.5 mt-4 rounded-[var(--radius-md)] text-[11px] font-black text-[var(--color-text)] uppercase tracking-wider active:scale-95 transition-transform"
                   >
                     <History size={14} className="text-[var(--color-text)]" /> View History
                   </button>
@@ -458,7 +458,7 @@ export default function PayTab() {
                   </p>
                 </div>
 
-                <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-4 sm:p-6 md:p-8">
+                <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-2 sm:p-4 md:p-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-6 gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)] shrink-0">
@@ -483,14 +483,14 @@ export default function PayTab() {
                     <table className="w-full text-left text-xs min-w-[800px] border-collapse">
                       <thead className="bg-[var(--color-primary)] text-[var(--color-primary-text)] text-center font-extrabold border-b border-transparent sticky top-0 z-20 shadow-sm">
                         <tr>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PERIOD</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUE DATE</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUES</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PARKING</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">UTILS</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700 font-extrabold">PENALTY</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">STATUS</th>
-                          <th className="px-4 sm:px-5 py-3.5 sm:py-4 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">TOTAL</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PERIOD</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUE DATE</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">DUES</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">PARKING</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">UTILS</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap bg-red-600 text-white text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-red-700 font-extrabold">PENALTY</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest border-r border-white/20 font-extrabold">STATUS</th>
+                          <th className="px-4 sm:px-5 py-4.5 sm:py-5 whitespace-nowrap text-[9px] sm:text-[10px] uppercase tracking-widest font-extrabold">TOTAL</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[var(--color-border)] text-[var(--color-text)] text-center bg-white font-medium relative z-0">
@@ -531,7 +531,7 @@ export default function PayTab() {
                     </table>
                   </div>
 
-                  <div className="block md:hidden space-y-4">
+                  <div className="block md:hidden space-y-4 mb-14 sm:mb-0">
                     {ledgerData.map((row, idx) => {
                       const isRowPaid = row.status === 'Paid';
                       const activeRow = row.isCurrentMonth;

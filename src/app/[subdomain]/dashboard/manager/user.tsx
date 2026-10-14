@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
+<<<<<<< HEAD
 import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, AlertCircle } from "lucide-react";
+=======
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon } from "lucide-react";
+>>>>>>> 2a3949f622772f7655764357428858b670161eb9
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -217,6 +221,7 @@ export default function UsersTab({ orgData }: any) {
     }
 
     try {
+      // 1. Create the Auth account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -235,6 +240,7 @@ export default function UsersTab({ orgData }: any) {
 
       const finalAccessLevel = selectedUnits.join(", ");
 
+      // 2. Create the portal profile
       const { error: dbError } = await supabase
         .from('team_members')
         .insert([
@@ -250,6 +256,32 @@ export default function UsersTab({ orgData }: any) {
 
       if (dbError) throw new Error(`Database Error: ${dbError.message}`);
 
+      // ✨ NEW LOGIC: Update the `units` table so notifications have the correct email destination
+      const selectedUnitIds = availableUnits
+        .filter(u => selectedUnits.includes(`${u.property_name} - ${u.unit_number}`))
+        .map(u => u.id);
+
+      if (selectedUnitIds.length > 0) {
+        if (role === 'Owner') {
+          // Update Owner details on the unit
+          const { error: unitError } = await supabase
+            .from('units')
+            .update({ owner_email: email.trim(), owner_name: name.trim() })
+            .in('id', selectedUnitIds);
+          
+          if (unitError) console.error("Failed to update owner email in units:", unitError);
+        } else if (role === 'Tenant') {
+          // Update Tenant details on the unit
+          const { error: unitError } = await supabase
+            .from('units')
+            .update({ tenant_email: email.trim(), tenant_name: name.trim() })
+            .in('id', selectedUnitIds);
+            
+          if (unitError) console.error("Failed to update tenant email in units:", unitError);
+        }
+      }
+
+      // 3. Update existing active leases (if Tenant)
       if (role === 'Tenant') {
         const { data: tenantLeases } = await supabase
           .from('leases')
@@ -305,10 +337,10 @@ export default function UsersTab({ orgData }: any) {
   });
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-100px)] md:h-[calc(100vh-112px)] -mb-10 relative overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 bg-[var(--color-bg)] animate-in fade-in duration-500">
+    <div className="absolute inset-0 flex flex-col w-full h-full px-4 sm:px-6 pt-4 sm:pt-6 pb-4 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
       
       {/* 🌟 PREMIUM HEADER - Fixed Header Zone */}
-      <div className="shrink-0 mb-6 px-1 sm:px-0 mt-1">
+      <div className="shrink-0 mb-6 px-0 w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/80 p-4 sm:p-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-3">
@@ -328,7 +360,7 @@ export default function UsersTab({ orgData }: any) {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
-                placeholder="Search accounts..." 
+                placeholder="Search Account Name..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-sm font-bold text-[var(--color-text)] placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-sm transition-all hover:bg-white relative" 
@@ -346,8 +378,8 @@ export default function UsersTab({ orgData }: any) {
         </div>
       </div>
 
-      <div className="flex-1 w-full max-w-7xl mx-auto min-h-0 flex flex-col px-1 sm:px-0 pb-6 lg:pb-12">
-        <div className="flex-1 min-h-0 bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
+      <div className="flex-1 w-full min-h-0 flex flex-col px-0">
+        <div className="flex-1 min-h-0 w-full bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col overflow-hidden relative">
           
           <div className="absolute top-0 right-0 w-96 h-96 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none"></div>
 
@@ -372,8 +404,8 @@ export default function UsersTab({ orgData }: any) {
           
           {/* Scrollable Table Area */}
           <div className="flex-1 min-h-0 overflow-auto custom-scrollbar relative w-full">
-            <table className="w-full text-left text-sm relative min-w-[600px]">
-              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 text-[10px] shadow-md">
+            <table className="w-full min-w-full text-left text-sm relative">
+              <thead className="text-[var(--color-primary-text)] bg-[var(--color-primary)] font-extrabold uppercase tracking-widest border-b border-transparent sticky top-0 text-[10px] shadow-md z-10">
                 <tr>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Name / Email</th>
                   <th className="px-6 py-4 whitespace-nowrap border-r border-white/20 font-extrabold">Role</th>
@@ -431,12 +463,17 @@ export default function UsersTab({ orgData }: any) {
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-500 font-semibold text-xs max-w-[250px] truncate border-r border-[var(--color-border)]/50" title={user.access_level}>
+                      <td className="px-6 py-4 text-slate-500 font-semibold text-xs border-r border-[var(--color-border)]/50" title={user.access_level}>
                         {formatUnitsForTable(user.access_level)}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 group-hover:bg-[#359b46] group-hover:text-white transition-colors">
-                          <UserCheck size={14} strokeWidth={2.5} /> {user.status}
+                        <span className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest shadow-sm inline-flex items-center gap-1.5 transition-colors border ${
+                          user.status === 'Terminated' || user.status === 'Inactive'
+                            ? 'bg-red-50 text-red-700 border-red-200/60 group-hover:bg-red-600 group-hover:text-white'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 group-hover:bg-[#359b46] group-hover:text-white'
+                        }`}>
+                          {user.status === 'Terminated' || user.status === 'Inactive' ? <XOctagon size={14} strokeWidth={2.5} /> : <UserCheck size={14} strokeWidth={2.5} />} 
+                          {user.status || 'Active'}
                         </span>
                       </td>
                     </tr>
@@ -460,7 +497,7 @@ export default function UsersTab({ orgData }: any) {
                 <UserPlus className="text-[var(--color-text)]" size={22} strokeWidth={2.5} />
                 Create Account
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>

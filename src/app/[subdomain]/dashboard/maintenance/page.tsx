@@ -1000,7 +1000,7 @@ function NavItem({ icon, label, isActive, onClick, badgeCount, collapsed }: { ic
             <span className="truncate whitespace-nowrap flex-1 text-left pr-4">{label}</span>
             {badgeCount !== undefined && badgeCount > 0 && (
               <span className={`shrink-0 ml-auto flex items-center justify-center font-black text-[10px] h-5 min-w-[20px] px-1.5 rounded-full shadow-sm animate-in zoom-in-50 duration-200 ${
-                isActive ? 'bg-white text-[var(--color-primary)]' : 'bg-red-500 text-white shadow-red-500/10'
+                isActive ? 'bg-red-500 text-white shadow-red-500/10' : 'bg-red-500 text-white shadow-red-500/10'
               }`}>
                 {badgeCount > 99 ? '99+' : badgeCount}
               </span>

@@ -22,15 +22,21 @@ export const usePushNotifications = () => {
         // ✨ THE FIX: Wait for the Service Worker to be completely active and ready
         await navigator.serviceWorker.ready;
 
-        // Get FCM Device Token
-        const currentToken = await getToken(msg, {
-          vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: registration,
-        });
+        try {
+          // ✨ NEW: Wrapped in try-catch to prevent crashes on HTTP subdomains
+          // Get FCM Device Token
+          const currentToken = await getToken(msg, {
+            vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration,
+          });
 
-        if (currentToken) {
-          setToken(currentToken);
-          console.log("FCM Device Token Generated:", currentToken);
+          if (currentToken) {
+            setToken(currentToken);
+            console.log("FCM Device Token Generated:", currentToken);
+          }
+        } catch (tokenError) {
+          // Fails silently in the console instead of throwing a red error screen
+          console.warn("FCM Token Generation Blocked. This is expected if testing on an HTTP subdomain like bsa.localhost:3000.", tokenError);
         }
       }
     } catch (error) {
@@ -41,13 +47,17 @@ export const usePushNotifications = () => {
   // Listen for notifications while the tab is active/open (Foreground)
   useEffect(() => {
     const listenForMessages = async () => {
-      const msg = await messaging();
-      if (!msg) return;
+      try {
+        const msg = await messaging();
+        if (!msg) return;
 
-      onMessage(msg, (payload) => {
-        console.log("Foreground message received:", payload);
-        // Note: GlobalPushListener handles the actual popup, this just logs it
-      });
+        onMessage(msg, (payload) => {
+          console.log("Foreground message received:", payload);
+          // Note: GlobalPushListener handles the actual popup, this just logs it
+        });
+      } catch (err) {
+        console.warn("Foreground message listener failed.", err);
+      }
     };
 
     listenForMessages();

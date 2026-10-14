@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, MessageSquare, XOctagon, Clock } from 'lucide-react';
 
 type DeclareErrors = {
   tenantName?: string;
@@ -41,6 +41,9 @@ export default function LeaseTab({ userData, units }: any) {
   });
 
   const [isDeclareModalOpen, setIsDeclareModalOpen] = useState(false);
+  const [isStopLeaseModalOpen, setIsStopLeaseModalOpen] = useState(false);
+  const [reasonText, setReasonText] = useState("");
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formTenantName, setFormTenantName] = useState("");
   const [formRent, setFormRent] = useState("");
@@ -64,7 +67,6 @@ export default function LeaseTab({ userData, units }: any) {
     }
   }, [selectedUnit]);
 
-  // Clear old warnings every time the declare modal is opened or closed
   useEffect(() => {
     setDeclareErrors({});
   }, [isDeclareModalOpen]);
@@ -102,8 +104,6 @@ export default function LeaseTab({ userData, units }: any) {
   const showSuccess = (title: string, desc: string) => setSuccessModal({ isOpen: true, title, desc });
   const showError = (message: string) => setErrorModal({ isOpen: true, message });
 
-  // --- DECLARE FORM VALIDATION HELPERS ---
-  // Remove one field's error as soon as the user fixes it
   const clearDeclareError = (field: keyof DeclareErrors) => {
     setDeclareErrors(prev => {
       if (!prev[field]) return prev;
@@ -115,23 +115,18 @@ export default function LeaseTab({ userData, units }: any) {
 
   const validateDeclareForm = (): boolean => {
     const errs: DeclareErrors = {};
-
     if (!formTenantName.trim()) errs.tenantName = "Tenant full name is required.";
-
     if (String(formRent).trim() === "") errs.rent = "Monthly rent is required.";
     else if (Number(formRent) < 0) errs.rent = "Monthly rent cannot be negative.";
-
     if (!formStartDate) errs.startDate = "Start date is required.";
     if (!formEndDate) errs.endDate = "End date is required.";
     else if (formStartDate && new Date(formEndDate) <= new Date(formStartDate)) {
       errs.endDate = "End date must be after the start date.";
     }
-
     setDeclareErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  // Shared input styling: turns red when the field has an error
   const declareInputClass = (hasError: boolean, extra = "px-4") =>
     `w-full ${extra} py-3 sm:py-3.5 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-[13px] sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${
       hasError
@@ -159,15 +154,12 @@ export default function LeaseTab({ userData, units }: any) {
 
   const confirmDeclareLease = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // ✅ Validate first: show red borders + warning and stop if anything is missing
     if (!validateDeclareForm()) {
       requestAnimationFrame(() =>
         declareWarningRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
       );
       return;
     }
-
     const isRenewal = !!activeLease;
     setConfirmModal({
       isOpen: true,
@@ -227,6 +219,108 @@ export default function LeaseTab({ userData, units }: any) {
     }
   };
 
+  // ✨ CONFIRMATION: Cancel Pending Lease
+  const confirmCancelPending = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Cancel Pending Request",
+      desc: "Are you sure you want to delete this pending lease request? This cannot be undone.",
+      isDestructive: true,
+      action: executeCancelPending
+    });
+  };
+
+  const executeCancelPending = async () => {
+    setIsSubmitting(true);
+    try {
+      await supabase.from('leases').delete().eq('id', activeLease.id);
+      setActiveLease(null);
+      showSuccess("Request Cancelled", "The pending lease request has been successfully deleted.");
+    } catch (err: any) {
+      showError("An error occurred while cancelling the lease request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✨ SUBMIT: Request Early Termination (Owner Initiated)
+  const handleOwnerStopLeaseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reasonText.trim()) {
+      showError("Please provide a reason for terminating the lease early.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('leases')
+        .update({ renewal_status: 'Termination_Requested_by_Owner', renewal_reason: reasonText })
+        .eq('id', activeLease.id);
+
+      if (error) throw error;
+
+      await supabase.from('notifications').insert({
+        admin_email: selectedUnit.admin_email,
+        recipient: selectedUnit.admin_email,
+        type: 'LEASE_TERMINATION',
+        title: 'Owner Requested Lease Termination',
+        message: `The owner of ${selectedUnit.property_name} Unit ${selectedUnit.unit_number} has requested to terminate the active lease. Please review in the Leasing Tab.`,
+        reference_id: activeLease.id,
+        is_read: false
+      });
+
+      setActiveLease((prev: any) => ({ ...prev, renewal_status: 'Termination_Requested_by_Owner', renewal_reason: reasonText }));
+      setIsStopLeaseModalOpen(false);
+      setReasonText("");
+      showSuccess("Request Sent", "Your termination request has been sent to management for final approval and processing.");
+    } catch (err: any) {
+      console.error(err);
+      showError(err?.message || "An error occurred while sending the termination request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ✨ CONFIRMATION: Approve Tenant's Termination Request
+  const confirmApproveTenantTermination = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Approve Termination Request",
+      desc: "Are you sure you want to approve the tenant's request to terminate early? This will notify management to perform the final contract termination.",
+      action: executeApproveTenantTermination
+    });
+  };
+
+  const executeApproveTenantTermination = async () => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('leases')
+        .update({ renewal_status: 'Termination_Approved_by_Owner' })
+        .eq('id', activeLease.id);
+
+      if (error) throw error;
+
+      await supabase.from('notifications').insert({
+        admin_email: selectedUnit.admin_email,
+        recipient: selectedUnit.admin_email,
+        type: 'LEASE_TERMINATION',
+        title: 'Owner Approved Early Termination',
+        message: `The owner has approved the tenant's request to terminate the lease for ${selectedUnit.property_name} Unit ${selectedUnit.unit_number}. Please perform the final termination.`,
+        reference_id: activeLease.id,
+        is_read: false
+      });
+
+      setActiveLease((prev: any) => ({ ...prev, renewal_status: 'Termination_Approved_by_Owner' }));
+      showSuccess("Termination Approved", "Management has been notified of your approval. They will process the final termination shortly.");
+    } catch (err: any) {
+      showError("An error occurred while approving the termination request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
   // ✨ CONFIRMATION: Offer Renewal
   const confirmOfferRenewal = () => {
     if (!activeLease) return;
@@ -241,15 +335,13 @@ export default function LeaseTab({ userData, units }: any) {
   const executeOfferRenewal = async () => {
     setIsSubmitting(true);
     try {
-      // 1. Update lease table
       const { error: updateError } = await supabase
         .from('leases')
         .update({ renewal_status: 'Offered' })
         .eq('id', activeLease.id);
-        
+
       if (updateError) throw updateError;
 
-      // 2. Send Notification
       if (activeLease.tenant_email) {
         await supabase.from('notifications').insert({
           admin_email: selectedUnit.admin_email,
@@ -302,7 +394,7 @@ export default function LeaseTab({ userData, units }: any) {
       if (updateError) throw updateError;
 
       setActiveLease({ ...activeLease, document_url: documentUrl });
-      
+
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 3000);
     } catch (error: any) {
@@ -338,18 +430,18 @@ export default function LeaseTab({ userData, units }: any) {
   const monthlyRent = activeLease?.monthly_rent || 0;
   const tenantName = activeLease?.tenant_name || "—";
   const hasDocument = !!activeLease?.document_url;
-  
+
   const today = new Date();
   today.setHours(0,0,0,0);
-  
+
   const endDate = activeLease?.end_date ? new Date(activeLease.end_date) : null;
   if (endDate) endDate.setHours(0,0,0,0);
-  
+
   const diffDays = endDate ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
-  
+
   const isExpired = activeLease?.status === 'Expired' || (diffDays !== null && diffDays < 0); 
   const isExpiringSoon = diffDays !== null && diffDays >= 0 && diffDays <= 30;
-  const isEligibleForRenewal = (diffDays !== null && diffDays <= 30) && !activeLease?.renewal_status;
+  const isEligibleForRenewal = (diffDays !== null && diffDays <= 30) && !activeLease?.renewal_status && activeLease?.status === 'Active';
 
   const leaseStartDate = activeLease?.start_date 
     ? new Date(activeLease.start_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
@@ -359,9 +451,17 @@ export default function LeaseTab({ userData, units }: any) {
     ? new Date(activeLease.end_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) 
     : "Not specified";
 
+  const pendingTerminationStatuses = ['Termination_Requested_by_Tenant', 'Termination_Approved_by_Owner', 'Termination_Requested_by_Owner'];
+
+  // ✨ Strictly check if a banner will actually render to fix layout spacing
+  const hasVisibleBanner = activeLease && (
+    ['Termination_Approved_by_Owner', 'Termination_Requested_by_Owner', 'Accepted', 'Declined'].includes(activeLease.renewal_status) ||
+    ((isExpiringSoon || isExpired) && !['Accepted', 'Declined', ...pendingTerminationStatuses].includes(activeLease?.renewal_status))
+  );
+
   return (
     <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
-      
+
       <div className="shrink-0 bg-[var(--color-bg)]/80 backdrop-blur-xl border-b border-[var(--color-border)] px-4 sm:px-6 py-4 sm:py-5 shadow-[var(--shadow-sm)]">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 max-w-[1600px] mx-auto w-full">
           <div className="flex justify-between items-center w-full md:w-auto">
@@ -382,7 +482,7 @@ export default function LeaseTab({ userData, units }: any) {
               {userData?.name ? userData.name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 1).toUpperCase() : "OW"}
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center w-full md:w-auto gap-3">
             {sortedUnits.length > 1 && (
               <div className="relative w-full sm:w-auto min-w-[240px] max-w-full group">
@@ -393,7 +493,7 @@ export default function LeaseTab({ userData, units }: any) {
                   className="w-full pl-10 pr-8 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[13px] sm:text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white transition-all hover:bg-slate-50 appearance-none cursor-pointer shadow-sm"
                 >
                   {sortedUnits.map((u: any) => (
-                    <option key={u.id} value={u.id}>{u.property_name} - Unit {u.unit_number}</option>
+                    <option key={u.id} value={u.id}>{u.property_name} Unit {u.unit_number}</option>
                   ))}
                 </select>
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -413,11 +513,26 @@ export default function LeaseTab({ userData, units }: any) {
       </div>
 
       <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-4 sm:gap-6 px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto custom-scrollbar lg:overflow-hidden pb-[100px] lg:pb-6">
-        
-        {/* ✨ RENEWAL TRACKING BANNERS */}
-        {(activeLease?.renewal_status || isExpiringSoon || isExpired) && (
+
+        {/* ✨ RENEWAL & TERMINATION TRACKING BANNERS */}
+        {hasVisibleBanner && (
           <div className="w-full shrink-0 lg:absolute lg:top-[100px] lg:left-6 lg:right-6 lg:z-30 lg:w-[calc(100%-48px)] flex flex-col lg:flex-row gap-4 mb-4 lg:mb-0">
-            
+
+            {/* Termination Approved or Requested by Owner (Waiting for Admin) */}
+            {(activeLease?.renewal_status === 'Termination_Approved_by_Owner' || activeLease?.renewal_status === 'Termination_Requested_by_Owner') && (
+              <div className="flex-1 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 p-4 sm:p-5 rounded-[1.5rem] flex items-start sm:items-center justify-between gap-4 shadow-[var(--shadow-md)] animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="flex items-center gap-4">
+                  <div className="bg-amber-100 p-3 rounded-2xl text-amber-600 shadow-inner border border-amber-200 shrink-0">
+                    <Clock size={22} strokeWidth={2.5} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-amber-900 text-sm sm:text-base tracking-tight">Termination Pending Management</h4>
+                    <p className="text-xs sm:text-sm text-amber-700/80 font-semibold mt-0.5">Management has been notified and will perform the final termination to vacate the unit.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Accepted Banner */}
             {activeLease?.renewal_status === 'Accepted' && (
               <div className="flex-1 bg-gradient-to-r from-emerald-50 to-green-50/50 border border-emerald-200/60 p-4 sm:p-5 rounded-[1.5rem] flex items-start sm:items-center justify-between gap-4 shadow-[var(--shadow-md)] animate-in fade-in slide-in-from-top-4 duration-500">
@@ -448,8 +563,8 @@ export default function LeaseTab({ userData, units }: any) {
               </div>
             )}
 
-            {/* Expiring Soon Banner (Only if no response yet) */}
-            {isExpiringSoon && !isExpired && !['Accepted', 'Declined'].includes(activeLease?.renewal_status) && (
+            {/* Expiring Soon Banner */}
+            {isExpiringSoon && !isExpired && !['Accepted', 'Declined', ...pendingTerminationStatuses].includes(activeLease?.renewal_status) && (
               <div className="flex-1 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200/60 p-4 sm:p-5 rounded-[1.5rem] flex items-start sm:items-center justify-between gap-4 shadow-[var(--shadow-md)] animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="flex items-center gap-4">
                   <div className="bg-amber-100 p-3 rounded-2xl text-amber-600 shadow-inner border border-amber-200 shrink-0">
@@ -463,8 +578,8 @@ export default function LeaseTab({ userData, units }: any) {
               </div>
             )}
 
-            {/* Expired Banner (Only if no response yet) */}
-            {isExpired && !['Accepted', 'Declined'].includes(activeLease?.renewal_status) && (
+            {/* Expired Banner */}
+            {isExpired && !['Accepted', 'Declined', ...pendingTerminationStatuses].includes(activeLease?.renewal_status) && (
               <div className="flex-1 bg-gradient-to-r from-red-50 to-rose-50/50 border border-red-200/60 p-4 sm:p-5 rounded-[1.5rem] flex items-start sm:items-center justify-between gap-4 shadow-[var(--shadow-md)] animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="flex items-center gap-4">
                   <div className="bg-red-100 p-3 rounded-2xl text-red-600 shadow-inner border border-red-200 shrink-0">
@@ -510,7 +625,7 @@ export default function LeaseTab({ userData, units }: any) {
           <div className="w-full flex-1 flex flex-col">
             <div className="flex-1 bg-white rounded-[var(--radius-lg)] sm:rounded-[var(--radius-md)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] p-6 sm:p-10 flex flex-col items-center justify-center text-center relative overflow-hidden lg:h-full">
               <div className="absolute top-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 -translate-x-20 pointer-events-none z-0 opacity-60"></div>
-              
+
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-text)]/10 text-[var(--color-text)] rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-inner border border-[var(--color-text)]/20 relative z-10">
                 <User size={32} strokeWidth={1.5} className="sm:w-9 sm:h-9" />
               </div>
@@ -528,14 +643,15 @@ export default function LeaseTab({ userData, units }: any) {
           </div>
         ) : (
           <>
-            <div className={`w-full lg:flex-1 lg:min-w-0 flex flex-col transition-all ${(activeLease?.renewal_status || isExpiringSoon || isExpired) ? 'lg:mt-24' : ''}`}>
+            {/* LEFT COLUMN: CONTRACT SUMMARY */}
+            <div className={`w-full lg:flex-1 lg:min-w-0 flex flex-col transition-all ${hasVisibleBanner ? 'lg:mt-24' : ''}`}>
               <div className="bg-white rounded-[var(--radius-lg)] border border-[var(--color-border)] shadow-[var(--shadow-sm)] relative overflow-hidden flex flex-col lg:h-full">
                 <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-20 translate-x-20 pointer-events-none z-0"></div>
 
                 <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8">
                   <div className="flex justify-between items-center mb-5 sm:mb-6 border-b border-[var(--color-border)] pb-4 shrink-0 gap-3">
                     <h3 className="font-black text-lg sm:text-xl text-[var(--color-text)] tracking-tight truncate">Contract Summary</h3>
-                    
+
                     <span className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-[var(--radius-sm)] text-[8px] sm:text-[9px] font-black uppercase tracking-widest border shadow-sm shrink-0 ${
                       isPending ? 'bg-amber-50 text-amber-700 border-amber-200/60' : 
                       isExpired ? 'bg-red-50 text-red-600 border-red-200' : 
@@ -544,17 +660,17 @@ export default function LeaseTab({ userData, units }: any) {
                       {isPending ? 'Pending Approval' : isExpired ? 'Expired' : 'Active'}
                     </span>
                   </div>
-                  
+
                   <div className="flex flex-col gap-3 sm:gap-4 shrink-0">
                     <FormField label="Tenant Name" icon={<User size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={tenantName} valueColor="text-[var(--color-text)]"/>
                     <FormField label="Property" icon={<Home size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={`${propertyName} · ${unitNumber}`} valueColor="text-[var(--color-text)]" />
                     <FormField label="Monthly Rent" icon={<CreditCard size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={`₱${monthlyRent.toLocaleString()}`} valueColor="text-[var(--color-text)]" />
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <FormField label="Lease Start" icon={<CalendarDays size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={leaseStartDate} valueColor="text-[var(--color-text)]" />
                       <FormField label="Lease Ends" icon={<Calendar size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--color-text)]" />} value={leaseEndDate} valueColor="text-[var(--color-text)]" />
                     </div>
-                    
+
                     <div className="mt-3 sm:mt-4 pt-4 border-t border-[var(--color-border)]">
                       <button 
                         onClick={() => {
@@ -580,7 +696,7 @@ export default function LeaseTab({ userData, units }: any) {
                             </span>
                           </div>
                         </div>
-                        
+
                         {hasDocument && (
                           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center shadow-[var(--shadow-sm)] border border-[var(--color-primary)]/30 group-hover:scale-105 group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] group-hover:border-[var(--color-primary)] transition-all shrink-0">
                             <ArrowRight size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -593,27 +709,39 @@ export default function LeaseTab({ userData, units }: any) {
               </div>
             </div>
 
-            <div className={`w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col mt-2 lg:mt-0 transition-all ${(activeLease?.renewal_status || isExpiringSoon || isExpired) ? 'lg:mt-24' : ''}`}>
+            {/* RIGHT COLUMN: LEASE ACTIONS */}
+            <div className={`w-full lg:w-[320px] xl:w-[380px] shrink-0 flex flex-col mt-2 lg:mt-0 transition-all ${hasVisibleBanner ? 'lg:mt-24' : ''}`}>
               <div className="bg-[var(--color-secondary)] rounded-[var(--radius-lg)] text-[var(--color-bg)] shadow-[var(--shadow-md)] relative overflow-hidden transition-all flex flex-col lg:h-full border border-[var(--color-border)]">
                 <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-white opacity-5 rounded-full -mr-16 -mt-16 pointer-events-none"></div>
-                
+
                 <div className="relative z-10 flex flex-col h-full overflow-y-auto custom-scrollbar p-5 sm:p-6 md:p-8">
                   <div className="flex items-center gap-2 text-white mb-5 sm:mb-6 pb-4 border-b border-white/10 shrink-0">
                     <FileText size={18} strokeWidth={2.5} className="w-4 h-4 sm:w-5 sm:h-5" />
                     <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest">Lease Actions</span>
                   </div>
-                  
+
                   <h3 className="font-black text-xl sm:text-2xl tracking-tight mb-2 sm:mb-3 shrink-0 text-white">Management</h3>
                   <p className="text-white/60 text-[11px] sm:text-sm font-medium leading-relaxed mb-6 sm:mb-8 shrink-0">
-                    Update lease terms, initiate renewals, or upload signed documents.
+                    Update lease terms, initiate renewals, cancel pending requests, or request a termination.
                   </p>
-                  
+
                   <div className="mt-auto space-y-3 shrink-0">
-                    
+
+                    {/* ✨ TENANT REQUESTED TERMINATION APPROVAL */}
+                    {activeLease?.renewal_status === 'Termination_Requested_by_Tenant' && (
+                      <button 
+                        onClick={confirmApproveTenantTermination}
+                        disabled={isSubmitting}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all shadow-[var(--shadow-sm)] active:scale-95 flex justify-center items-center gap-2 mb-4"
+                      >
+                        <CheckCircle size={16} strokeWidth={2.5} className="w-4 h-4" /> Approve Tenant Termination Request
+                      </button>
+                    )}
+
                     {/* ✨ RENEWAL BUTTON */}
                     <button 
                       onClick={confirmOfferRenewal}
-                      disabled={!isEligibleForRenewal || isSubmitting}
+                      disabled={!isEligibleForRenewal || isSubmitting || isPending}
                       className={`w-full rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 ${
                         isEligibleForRenewal 
                         ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
@@ -621,7 +749,7 @@ export default function LeaseTab({ userData, units }: any) {
                       }`}
                     >
                       <RefreshCw size={16} strokeWidth={2.5} className="w-4 h-4" /> 
-                      {activeLease?.renewal_status ? `Renewal ${activeLease.renewal_status}` : isEligibleForRenewal ? "Offer Renewal" : "Renewal Unavailable"}
+                      {activeLease?.renewal_status ? `Renewal ${activeLease.renewal_status.split('_').join(' ')}` : isEligibleForRenewal ? "Offer Renewal" : "Renewal Unavailable"}
                     </button>
 
                     <button 
@@ -639,7 +767,7 @@ export default function LeaseTab({ userData, units }: any) {
                       onChange={handleFileUpload}
                       className="hidden" 
                     />
-                    
+
                     <button 
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploadingDoc || uploadSuccess}
@@ -657,6 +785,28 @@ export default function LeaseTab({ userData, units }: any) {
                         <><Upload size={16} /> Upload Signed Doc</>
                       )}
                     </button>
+
+                    {/* ✨ CANCEL / REQUEST TERMINATION */}
+                    {isPending && (
+                      <button 
+                        onClick={confirmCancelPending}
+                        disabled={isSubmitting}
+                        className="w-full mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
+                      >
+                        <XOctagon size={16} strokeWidth={2.5} className="w-4 h-4" /> Cancel Pending Request
+                      </button>
+                    )}
+
+                    {!isPending && activeLease?.status === 'Active' && !pendingTerminationStatuses.includes(activeLease?.renewal_status) && (
+                      <button 
+                        onClick={() => { setReasonText(""); setIsStopLeaseModalOpen(true); }}
+                        disabled={isSubmitting}
+                        className="w-full mt-2 bg-white/5 hover:bg-red-500/20 text-white hover:text-red-300 border border-white/10 hover:border-red-500/30 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
+                      >
+                        <XOctagon size={16} strokeWidth={2.5} className="w-4 h-4" /> Request Lease Termination
+                      </button>
+                    )}
+
                   </div>
                 </div>
               </div>
@@ -669,10 +819,10 @@ export default function LeaseTab({ userData, units }: any) {
       {isDeclareModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-            
+
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
-              
+
               <div className="relative z-10 min-w-0">
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">
                   {activeLease ? "Declare Renewal" : "Declare Lease"}
@@ -685,10 +835,8 @@ export default function LeaseTab({ userData, units }: any) {
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
-              {/* noValidate: show our own red-border warnings instead of the browser's default popups */}
               <form onSubmit={confirmDeclareLease} noValidate className="space-y-4 sm:space-y-5">
 
-                {/* ⚠️ WARNING BANNER: missing / invalid fields */}
                 <div ref={declareWarningRef}>
                   {hasDeclareErrors && (
                     <div role="alert" className="p-3 bg-red-50 text-red-700 text-xs font-bold rounded-xl border border-red-300 flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -697,7 +845,7 @@ export default function LeaseTab({ userData, units }: any) {
                     </div>
                   )}
                 </div>
-                
+
                 {activeLease && (
                   <p className="text-xs sm:text-sm font-medium text-slate-500 leading-relaxed mb-2">
                     Submitting new terms here will set the current lease to <strong className="text-[var(--color-secondary)]">Renewed</strong> and submit these new terms for manager approval.
@@ -772,12 +920,62 @@ export default function LeaseTab({ userData, units }: any) {
         </div>
       )}
 
+      {/* ✨ STOP LEASE MODAL (Owner Requested) */}
+      {isStopLeaseModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] sm:max-h-[95vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden shrink-0 border-b bg-red-50 border-red-200">
+              <div className="relative z-10 min-w-0 flex items-center gap-3">
+                <XOctagon size={20} strokeWidth={2.5} className="text-red-500" />
+                <h2 className="text-lg sm:text-xl font-black tracking-tight truncate text-red-700">
+                  Request Lease Termination
+                </h2>
+              </div>
+              <button onClick={() => { !isSubmitting && setIsStopLeaseModalOpen(false); }} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0 shadow-sm" disabled={isSubmitting}>
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
+              <form onSubmit={handleOwnerStopLeaseSubmit} className="space-y-4 sm:space-y-5">
+                <p className="text-xs sm:text-sm font-medium text-slate-500 leading-relaxed">
+                  Provide a reason for terminating this lease early. This request will be sent to management for final approval and contract termination.
+                </p>
+
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">
+                    Reason for Termination
+                  </label>
+                  <textarea
+                    required
+                    value={reasonText}
+                    onChange={e => setReasonText(e.target.value)}
+                    placeholder="e.g. Tenant has been delinquent for 2 months..."
+                    className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-white focus:ring-4 focus:ring-slate-500/10 focus:border-slate-400 text-[12px] sm:text-sm font-medium text-[var(--color-text)] bg-white transition-all shadow-sm resize-none h-28 custom-scrollbar"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row gap-2.5 sm:gap-3 justify-end pt-5 border-t border-[var(--color-border)] sticky bottom-0 bg-[var(--color-bg)]/90 backdrop-blur-md pb-2 sm:pb-0 z-20">
+                  <button type="button" onClick={() => { setIsStopLeaseModalOpen(false); }} disabled={isSubmitting} className="w-full sm:w-[130px] shrink-0 py-3.5 sm:py-4 text-[12px] sm:text-[13px] font-black uppercase tracking-wider text-slate-500 hover:text-[var(--color-secondary)] bg-white border border-[var(--color-border)] hover:bg-slate-50 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-sm">Cancel</button>
+                  <button type="submit" disabled={isSubmitting} className="w-full flex-1 sm:flex-none disabled:opacity-50 text-white py-3.5 sm:py-4 rounded-[var(--radius-md)] text-[12px] sm:text-[13px] font-black uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center justify-center min-w-[160px] border border-transparent bg-red-600 hover:bg-red-700">
+                    {isSubmitting ? "Submitting..." : "Send Request"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {/* ✨ UNIVERSAL CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-amber-100 text-amber-600 border-amber-200'}`}>
-              <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
+              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">

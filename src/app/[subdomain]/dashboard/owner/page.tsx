@@ -453,7 +453,7 @@ export default function OwnerDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ✨ UPDATED: INSTANT SNAP FOR DEEP LINKING
+  // ✨ INSTANT SNAP FOR DEEP LINKING
   const handleTabChange = (tabName: string, highlightId: string | null = null) => {
     setActiveTab(tabName);
 
@@ -461,10 +461,8 @@ export default function OwnerDashboard() {
     
     if (highlightId) {
       if (highlightId.startsWith('select_unit_')) {
-        // ✨ INSTANT ROUTING: Execute immediately for UI snap (No 800ms delay)
         setHighlightTicketId(highlightId);
       } else {
-        // Standard modal delay for other intents
         setHighlightTicketId(null);
         intentTimeoutRef.current = setTimeout(() => {
           setHighlightTicketId(highlightId);
@@ -475,8 +473,6 @@ export default function OwnerDashboard() {
     }
   };
 
-  // ✨ NEW: Smart Router Function for "Recent Statements" and "View Statements" buttons
-  // Directly passes the Intent to snap to the Details Card on Mobile instead of the properties list
   const handleRouteToFinancialsDetail = () => {
     const targetUnitId = myUnitsList.length > 0 ? myUnitsList[0].id : null;
     const intent = targetUnitId ? `select_unit_${targetUnitId}_${Date.now()}` : null;
@@ -612,52 +608,42 @@ export default function OwnerDashboard() {
     await supabase.from('notifications').update({ is_read: true }).eq('recipient', userEmail).eq('is_read', false);
   };
 
-  // ✨ FIX: Hide ALL function instead of permanently deleting
   const confirmDeleteAllNotifications = async () => {
     if (!userEmail) return;
     
-    // Optimistic UI updates
     setNotifications([]);
     setUnreadCount(0);
     setIsDeleteAllNotifModalOpen(false);
     setIsNotifOpen(false);
     
-    // ✨ FIX: Update to is_hidden: true instead of .delete()
     await supabase
       .from('notifications')
       .update({ is_hidden: true })
       .eq('recipient', userEmail); 
   };
 
-  // --- NEW: Initiate Single Delete Modal ---
   const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
     e.stopPropagation(); 
     setNotificationToDelete(notif);
     setIsDeleteNotifModalOpen(true);
   };
 
-  // --- NEW: Actual Function Called by the Delete Modal ---
   const confirmDeleteNotification = async () => {
     if (!userEmail || !notificationToDelete) return;
 
-    // 1. Update local state immediately for snappy UI
     setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
     
-    // 2. Adjust unread count if the deleted notification was unread
     if (!notificationToDelete.is_read) {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Close the modal
     setIsDeleteNotifModalOpen(false);
 
-    // 3. ✨ FIX: Change back to update({ is_hidden: true }) to keep in DB
     await supabase
       .from('notifications')
       .update({ is_hidden: true })
       .eq('id', notificationToDelete.id);
 
-    // Clear the tracked notification
     setNotificationToDelete(null);
   };
 
@@ -683,7 +669,10 @@ export default function OwnerDashboard() {
       }
     }
 
-    if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
+    // ✨ ROUTING UPDATED: Route Lease notifications to the Lease tab (`leases`)
+    if (type === 'LEASE_TERMINATION' || type === 'LEASE' || title.includes('LEASE') || title.includes('TERMINATION')) {
+      handleTabChange("leases");
+    } else if (type === 'BILLING' || type === 'STATEMENT' || type === 'SOA') {
       const intent = notif.reference_id ? `select_unit_${notif.reference_id}_${Date.now()}` : null;
       handleTabChange("financials", intent); 
     } else if (type === 'MAINTENANCE' || type === 'TICKET') {
@@ -821,6 +810,8 @@ export default function OwnerDashboard() {
                         Icon = Wrench; iconColor = "text-orange-500"; iconBg = "bg-orange-100";
                       } else if (type === 'MESSAGE' || type === 'CHAT') {
                         Icon = MessageSquare; iconColor = "text-[var(--color-primary)]"; iconBg = "bg-[var(--color-primary)]/10";
+                      } else if (type === 'LEASE_TERMINATION' || type === 'LEASE') {
+                        Icon = FileText; iconColor = "text-emerald-600"; iconBg = "bg-emerald-100";
                       }
 
                       return (
@@ -1276,7 +1267,7 @@ export default function OwnerDashboard() {
                 <p className="text-sm font-semibold leading-relaxed">
                   {rejectedTicketModalData.reason?.replace(/Your request ".*?" was not approved\. Reason: /, '') || "This request was not approved by the administration."}
                 </p>
-                {/* reported issue date and time  */}
+                {/* reported issue date and time */}
                 <p className="text-[10px] font-bold text-red-200 uppercase tracking-widest mt-3">Reported on: {formatDateTime(rejectedTicketModalData.created_at)}</p>
               </div>
 

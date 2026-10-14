@@ -416,10 +416,10 @@ export default function RepairTab({ highlightTicketId }: any) {
   });
 
   return (
-    <div className="flex flex-col w-full max-w-[1400px] mx-auto h-full overflow-y-auto custom-scrollbar p-4 md:p-6 lg:p-8 md:pb-10 font-[family-name:var(--font-corporate)]">
-      
+    <div className="absolute inset-0 flex flex-col w-full h-full px-2 sm:px-6 pt-4 sm:pt-6 overflow-hidden font-[family-name:var(--font-corporate)] selection:bg-[var(--color-primary)]/10 animate-in fade-in duration-500">
+        
       {/* Header */}
-      <div className="flex-none shrink-0 mb-4 sm:mb-6">
+      <div className="shrink-0 mb-4 px-1 sm:px-0">
         <div className="bg-white p-5 sm:px-8 sm:py-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all">
           <div className="w-full sm:w-auto">
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--color-text)] tracking-tight flex items-center gap-2.5 sm:gap-3">
@@ -430,7 +430,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium">Request maintenance and track the progress live.</p>
           </div>
-          <div className="w-full sm:w-auto shrink-0 border-t sm:border-t-0 border-slate-100 pt-4 sm:pt-0 mt-1 sm:mt-0 flex">
+          <div className="w-full sm:w-auto shrink-0 border-t sm:border-t-0 border-slate-100 flex">
             <button 
               onClick={openRepairModal} 
               className="w-full sm:w-auto justify-center bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] px-8 py-3.5 rounded-[var(--radius-lg)] text-sm font-black transition-all shadow-[var(--shadow-md)] hover:shadow-lg hover:-translate-y-0.5 flex items-center gap-2 active:scale-[0.98] border border-transparent"
@@ -464,7 +464,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       </div>
 
       {/* Grid Kanban (Hybrid UI) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full overflow-y-auto custom-scrollbar">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full overflow-y-auto custom-scrollbar pb-16 md:pb-0 transition-all">
           
         {/* ================= Column 1: Active Tickets ================= */}
         <div className={`${activeView === 'open' ? 'flex' : 'hidden'} md:flex flex-col h-auto bg-[var(--color-bg)]/50 rounded-[var(--radius-xl)] p-4 sm:p-5 border border-[var(--color-border)] shadow-inner`}>
@@ -482,7 +482,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             {isLoading ? (
               <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : openInProgressTasks.length === 0 ? (
-              <EmptyState icon={Inbox} title="No active requests" message="When you report an issue, it will be tracked here." />
+              <EmptyState icon={Inbox} title="No Active Requests" message="When you report an issue, it will be tracked here." />
             ) : (
               openInProgressTasks.map(t => {
                 const isHighlighted = activeHighlightId === String(t.id);
@@ -551,7 +551,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             {isLoading ? (
               <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : onHoldTasks.length === 0 ? (
-              <EmptyState icon={PauseCircle} title="No on hold ticket" message="If a repair needs parts or gets delayed, it will show here." />
+              <EmptyState icon={PauseCircle} title="No On Hold Tickets" message="If a repair needs parts or gets delayed, it will show here." />
             ) : (
               onHoldTasks.map(t => {
                 const holdReason = t.on_hold_reason;
@@ -618,7 +618,7 @@ export default function RepairTab({ highlightTicketId }: any) {
             {isLoading ? (
               <><KanbanSkeleton /><KanbanSkeleton /></>
             ) : resolvedTasks.length === 0 ? (
-              <EmptyState icon={CheckCircle2} title="No resolved tickets" message="Successfully completed tasks will be logged here." />
+              <EmptyState icon={CheckCircle2} title="No Resolved Tickets" message="Successfully completed tasks will be logged here." />
             ) : (
               resolvedTasks.map((t: any) => {
                 return (

@@ -1017,7 +1017,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden print:hidden">
       
       {/* ✨ TOP HEADER SECTION (Optimized for 768px+ & Mobile) */}
-      <div className="shrink-0 px-3 sm:px-4 md:px-6 pt-3 sm:pt-5 pb-2 sm:pb-3 mt-1 sm:mt-0">
+      <div className="shrink-0 px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3 mt-1 sm:mt-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 md:px-6 md:py-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl transition-all">
           
           <div className="w-full md:w-auto flex items-center justify-between sm:justify-start min-w-0">
@@ -1048,7 +1048,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search units, tenants, owners..." 
+                placeholder="Search Name & Unit..." 
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all hover:bg-white" 
               />
             </div>
@@ -1065,7 +1065,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       </div>
 
       {/* ✨ MAIN WORKSPACE (Extended Single-Column Toggle up to 1450px) */}
-      <div className="flex-1 flex flex-col min-[1451px]:flex-row overflow-hidden max-w-[1700px] mx-auto w-full relative px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 gap-3 sm:gap-4 md:gap-5">
+      <div className="flex-1 flex flex-col min-[1451px]:flex-row overflow-hidden w-full relative px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 gap-3 sm:gap-4 md:gap-5">
         {isLoading ? (
           <div className="flex-1 flex flex-col min-[1451px]:flex-row gap-3 sm:gap-4 md:gap-5">
             {/* Sidebar Skeleton */}
@@ -1239,7 +1239,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-5 lg:p-7 space-y-4 sm:space-y-6">
                 
                 {/* Header & Status Box */}
-                <div className="bg-white rounded-[1.5rem] shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
+                <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
                   
                   {/* HEADER TOOLBAR WITH BACK BUTTON (Visible up to 1450px) */}
                   <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-7 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/30">
@@ -1376,7 +1376,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 </div>
 
                 {/* ✨ HERO FINANCIAL BANNER */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-6 bg-[var(--color-secondary)] p-5 sm:p-6 md:p-7 rounded-[1.5rem] shadow-[var(--shadow-md)] w-full overflow-hidden tabular-nums relative">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-6 bg-[var(--color-secondary)] p-5 sm:p-6 md:p-7 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] w-full overflow-hidden tabular-nums relative">
                   <div className="min-w-0 flex-1">
                     <span className="font-black text-white/90 text-xs uppercase tracking-widest block">Total Amount Due</span>
                     {!isTenantVacant && <div className="text-[10px] font-medium text-white/70 mt-1 truncate block">Combined Property Balance</div>}
@@ -1430,14 +1430,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
                   <button 
                     onClick={() => setIsPrintModalOpen(true)}
-                    className="w-full md:w-auto md:flex-none justify-center bg-white border border-slate-300 hover:border-slate-800 text-slate-800 px-4 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                    className="w-full md:w-auto md:flex-none justify-center bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/90 text-slate-800 px-4 py-2.5 sm:py-3 rounded-[var(--radius-md)] text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-2"
                   >
                     <Printer className="shrink-0 w-4 h-4" /> <span className="truncate">Print / Save PDF</span>
                   </button>
                 </div>
 
                 {/* ✨ COMBINED LEDGER TABLE */}
-                <div className="bg-white rounded-[1.5rem] shadow-sm border border-[var(--color-border)] p-4 sm:p-5 md:p-6 overflow-hidden mb-6">
+                <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] p-2 sm:p-3 md:p-5 overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-5 gap-3 sm:gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shadow-sm shrink-0">
@@ -1452,23 +1452,23 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     </div>
                     <button 
                       onClick={handleExportCSV}
-                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-[var(--color-text)] bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border border-[var(--color-border)] shadow-sm shrink-0"
+                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 px-4 py-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border border-[var(--color-border)] shadow-sm shrink-0"
                     >
                       <Download size={15} /> Export CSV
                     </button>
                   </div>
                   
                   {/* Table with responsive horizontal scroll */}
-                  <div className="overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-xl)] relative shadow-inner custom-scrollbar">
+                  <div className="overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-xl)] relative shadow-inner">
                     <table className="w-full text-center text-xs sm:text-sm min-w-[750px] sm:min-w-[850px] tabular-nums">
                       <thead className="bg-slate-50 border-b border-[var(--color-border)] sticky top-0 z-10">
                         <tr>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PERIOD</th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUE DATE</th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUES</th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PARKING</th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">UTILITIES</th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap bg-red-50 text-red-600 border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider">
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PERIOD</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUE DATE</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUES</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PARKING</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">UTILITIES</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap bg-red-50 text-red-600 border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider">
                             PENALTY
                           </th>
                           <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">STATUS {isTenantVacant ? '' : '(O/T)'}</th>
@@ -1482,15 +1482,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                           
                           return (
                             <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10" : "hover:bg-slate-50"}`}>
-                              <td className={`px-4 py-3 whitespace-nowrap border-r border-slate-100 font-black uppercase text-[10px] sm:text-xs tracking-wide ${activeRow ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>
+                              <td className={`px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-black uppercase text-[10px] sm:text-xs tracking-wide ${activeRow ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>
                                 {row.monthName} {row.year} {activeRow && <span className="ml-1 text-[8px] font-black text-emerald-600 tracking-widest opacity-80">(NOW)</span>}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap border-r border-slate-100 text-slate-500 font-medium text-xs">{row.dueDate}</td>
-                              <td className="px-4 py-3 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{rawDues > 0 ? `₱${rawDues.toLocaleString()}` : "—"}</td>
-                              <td className="px-4 py-3 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
-                              <td className="px-4 py-3 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
+                              <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 text-slate-500 font-medium text-xs">{row.dueDate}</td>
+                              <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{rawDues > 0 ? `₱${rawDues.toLocaleString()}` : "—"}</td>
+                              <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{rawParking > 0 ? `₱${rawParking.toLocaleString()}` : "—"}</td>
+                              <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-medium text-xs">{(!isTenantVacant && (rawWater + rawElectricity) > 0) ? `₱${(rawWater + rawElectricity).toLocaleString()}` : "—"}</td>
                               
-                              <td className={`px-4 py-3 whitespace-nowrap border-r border-slate-100 font-bold text-xs ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
+                              <td className={`px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-bold text-xs ${hasPenalty ? 'text-red-500 bg-red-50/50' : 'text-slate-400'}`}>
                                 {hasPenalty ? (
                                   <div className="flex flex-col gap-0.5 text-[10px]">
                                     {ownerPenalty > 0 && <span>O: ₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>}
@@ -1499,7 +1499,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                                 ) : "—"}
                               </td>
                               
-                              <td className="px-4 py-3 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] tracking-wider uppercase">
+                              <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-bold text-[10px] tracking-wider uppercase">
                                 {row.isCurrentMonth ? (
                                   isOwnerVacant && isTenantVacant ? (
                                       <span className="text-slate-400">VACANT</span>
@@ -1618,7 +1618,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">{selectedUnit.property_name} · Unit {selectedUnit.unit_number}</p>
                 </div>
               </div>
-              <button onClick={() => setIsUnitConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsUnitConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -1769,12 +1769,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         type="button" 
                         onClick={() => qrInputRef.current?.click()} 
                         disabled={isUploadingQr} 
-                        className="w-full bg-slate-50 border border-slate-200 hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] text-slate-600 font-bold text-[10px] sm:text-xs py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all shadow-sm flex justify-center items-center gap-2 active:scale-95 disabled:opacity-50"
+                        className="w-full bg-slate-50 border border-slate-200 hover:border-[var(--color-primary)]/50 hover:text-[var(--color-text)] text-slate-600 font-bold text-[10px] sm:text-xs py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all shadow-sm flex justify-center items-center gap-2 active:scale-95 disabled:opacity-50"
                       >
                         {isUploadingQr ? (
                           <><Loader2 size={14} className="animate-spin text-slate-500" /> Uploading...</>
                         ) : (
-                          <><Upload size={14} className="text-slate-500" /> {unitCompQrUrl ? 'Replace QR' : 'Upload QR'}</>
+                          <><Upload size={14} className="text-[var(--color-text)]" /> {unitCompQrUrl ? 'Replace QR' : 'Upload QR'}</>
                         )}
                       </button>
                     </div>
@@ -2173,7 +2173,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-wider truncate pr-2">Payment Verification</h2>
-              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:opacity-100 rounded-full transition-colors p-2 active:scale-95 shrink-0">
                 <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
@@ -2207,13 +2207,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     setPaymentModalParty('tenant');
                     setIsPaymentModalOpen(true);
                   }}
-                  className="w-full bg-white border border-[var(--color-border)] hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-primary)]/5 text-[var(--color-text)] p-4 sm:p-5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex justify-between items-center group active:scale-95"
+                  className="w-full bg-white border border-[var(--color-border)] hover:border-emerald-300 hover:bg-emerald-50 text-[var(--color-text)] p-4 sm:p-5 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-sm)] flex justify-between items-center group active:scale-95"
                 >
                   <div className="flex flex-col text-left">
-                    <span className="font-bold text-xs sm:text-sm group-hover:text-[var(--color-primary)]">Tenant Payment</span>
+                    <span className="font-bold text-xs sm:text-sm group-hover:text-emerald-700 tracking-wider">Tenant Payment</span>
                     <span className="text-xs text-slate-500 mt-0.5">Amount Due: ₱{tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                   </div>
-                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-[var(--color-primary)]" size={20} />
+                  <ChevronLeft className="rotate-180 text-slate-400 group-hover:text-emerald-500" size={20} />
                 </button>
               )}
             </div>
@@ -2227,7 +2227,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] capitalize tracking-wider truncate pr-2">{paymentModalParty} Payment</h2>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:opacity-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
             </div>
