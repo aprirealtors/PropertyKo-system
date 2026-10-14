@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings, Printer } from "lucide-react";
+import { Search, X, Calculator, CalendarClock, Download, Send, CreditCard, CheckCircle, Clock, ChevronLeft, Upload, Loader2, AlertCircle, Settings, Printer, Globe } from "lucide-react";
 
 export default function BillingTab({ orgData, isLoading: isOrgLoading, actionIntent }: any) {
   
@@ -26,10 +26,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false); 
   const [paymentModalParty, setPaymentModalParty] = useState<'owner' | 'tenant' | null>(null);
   const [isUnitConfigModalOpen, setIsUnitConfigModalOpen] = useState(false);
+  const [isUnitSuccessModalOpen, setIsUnitSuccessModalOpen] = useState(false); 
+  const [isGlobalConfigModalOpen, setIsGlobalConfigModalOpen] = useState(false); 
+  const [isGlobalSuccessModalOpen, setIsGlobalSuccessModalOpen] = useState(false);
   const [isSOAModalOpen, setIsSOAModalOpen] = useState(false);
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   
+  // Global Config Memory State
+  const [lastGlobalConfig, setLastGlobalConfig] = useState<any>(null); 
+
   // Print SOA States
   const currentYearNum = new Date().getFullYear();
   const currentMonthNum = new Date().getMonth();
@@ -37,7 +43,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [printMonth, setPrintMonth] = useState<number | 'all'>(currentMonthNum);
   const [printYear, setPrintYear] = useState<number>(Math.max(2026, currentYearNum));
 
-  // Year logic (Starts at 2026, adds up to current year)
+  // Year logic
   const availableYears = Array.from({length: Math.max(1, currentYearNum - 2026 + 1)}, (_, i) => 2026 + i);
 
   // Overdue Confirmation Modal States
@@ -51,13 +57,14 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [isWaiving, setIsWaiving] = useState(false);
   const [waivingParty, setWaivingParty] = useState<'owner' | 'tenant' | null>(null);
   const [isSavingUnitConfig, setIsSavingUnitConfig] = useState(false);
+  const [isSavingGlobalConfig, setIsSavingGlobalConfig] = useState(false);
   const [unitConfigError, setUnitConfigError] = useState<string | null>(null);
 
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
 
-  // ✨ NOTIFICATION CLEANUP STATE
+  // NOTIFICATION CLEANUP STATE
   const [sourceNotificationId, setSourceNotificationId] = useState<string | null>(null);
 
   // SOA Assignment States
@@ -66,7 +73,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     tenant: { dues: false, parking: false, water: false, electricity: false, penalty: false }
   });
 
-  // Unit-Specific Config Form States
+  // Unit/Global Config Form Shared States
   const [unitCompDuesRate, setUnitCompDuesRate] = useState("");
   const [unitCompWater, setUnitCompWater] = useState("");
   const [unitCompElec, setUnitCompElec] = useState("");
@@ -89,53 +96,54 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     "July", "August", "September", "October", "November", "December"
   ];
 
-  // Derive available months for the dropdown (hiding upcoming months)
   const availableMonths = monthsList.map((m, i) => ({ name: m, index: i })).filter(m => {
     if (printYear === currentYearNum && m.index > currentMonthNum) return false;
     return true;
   });
 
+  // ✨ RESTORE GLOBAL CONFIG FROM LOCAL STORAGE ON MOUNT
   useEffect(() => {
     if (orgData?.admin_email) {
+      const savedGlobalConfig = localStorage.getItem(`globalConfig_${orgData.admin_email}`);
+      if (savedGlobalConfig) {
+        try {
+          setLastGlobalConfig(JSON.parse(savedGlobalConfig));
+        } catch (e) {
+          console.error("Error parsing saved global config", e);
+        }
+      }
       fetchAllUnits();
     }
   }, [orgData?.admin_email]);
 
-  // ✨ CATCH DEEP LINK INTENT FROM NOTIFICATIONS (SMART ROUTING & CLEANUP)
   const processedIntentRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Wait until units are loaded before processing the intent
     if (!actionIntent || allUnits.length === 0) return;
     
-    // Prevent duplicate firing for the exact same intent
     if (processedIntentRef.current === actionIntent) return;
 
-    // Direct Verify Payment Flow based on explicit party type from notification
     if (actionIntent.startsWith("verify_payment_")) {
-      // Format: verify_payment_[party]_[unitId]_[notifId]
       const parts = actionIntent.split('_'); 
       const party = parts[2] as 'owner' | 'tenant';
       const unitId = parts[3];
-      const notifId = parts[4] || null; // Capture the notification ID that triggered this
+      const notifId = parts[4] || null; 
 
       const targetUnit = allUnits.find(u => String(u.id) === String(unitId));
       
       if (targetUnit) {
-        processedIntentRef.current = actionIntent; // Mark processed
+        processedIntentRef.current = actionIntent; 
         
         setSelectedUnit(targetUnit);
         setIsMobileListVisible(false);
-        if (notifId) setSourceNotificationId(notifId); // Store it for cleanup later
+        if (notifId) setSourceNotificationId(notifId); 
         
-        // Delay to allow UI to render the selected unit first, then pop the exact modal
         setTimeout(() => {
           setPaymentModalParty(party);
           setIsPaymentModalOpen(true);
         }, 500);
       }
     } 
-    // Fallback/Legacy select unit flow
     else if (actionIntent.startsWith("select_unit_")) {
       const parts = actionIntent.split('_'); 
       const unitId = parts[2];
@@ -174,7 +182,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
             setFetchedPayment({
               payment_method: method,
               reference_number: ref,
-              status: status, // ✨ Inject the real-time status here to act as a guard
+              status: status, 
             });
           } else {
             setFetchedPayment(null);
@@ -225,7 +233,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
       setAllUnits(sortedData);
       
-      // Auto-select unit unless an actionIntent is routing us somewhere specific
       if (typeof window !== 'undefined' && window.innerWidth >= 768 && !actionIntent) {
         setSelectedUnit(sortedData[0]); 
       } else if (!actionIntent) {
@@ -283,15 +290,11 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const hasOwnerAssign = isAssigned && (currentSoa.owner_dues || currentSoa.owner_parking || currentSoa.owner_water || currentSoa.owner_electricity || currentSoa.owner_penalty);
   const hasTenantAssign = isAssigned && (currentSoa.tenant_dues || currentSoa.tenant_parking || currentSoa.tenant_water || currentSoa.tenant_electricity || currentSoa.tenant_penalty);
 
-  // An SOA counts as "already sent" while any billed party is still unpaid.
-  // Once every billed party is 'Paid', a new SOA can be sent again.
   const isSoaAlreadySent = isAssigned && (
     (!isOwnerVacant && !!hasOwnerAssign && ownerStatus !== 'Paid') ||
     (!isTenantVacant && !!hasTenantAssign && tenantStatus !== 'Paid')
   );
 
-  // Overdue is "issued" once the late penalty has been applied to every party
-  // that has an active bill (same eligibility rule as the Mark Overdue modal).
   const isOwnerOverdueEligible = !isOwnerVacant && !!(soaConfig.owner.dues || soaConfig.owner.parking || soaConfig.owner.water || soaConfig.owner.electricity);
   const isTenantOverdueEligible = !isTenantVacant && !!(soaConfig.tenant.dues || soaConfig.tenant.parking || soaConfig.tenant.water || soaConfig.tenant.electricity);
   const isOverdueIssued =
@@ -299,9 +302,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     (!isOwnerOverdueEligible || !!soaConfig.owner.penalty) &&
     (!isTenantOverdueEligible || !!soaConfig.tenant.penalty);
   
-  // ==========================================
-  // UNIT-SPECIFIC BILLING CALCULATION
-  // ==========================================
   const activeDuesRate = selectedUnit?.dues_rate || 0;
   const activeWater = selectedUnit?.water || 0;
   const activeElectricity = selectedUnit?.electricity || 0;
@@ -317,8 +317,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const rawElectricity = activeElectricity;
   const rawParking = activeParking;
 
-  // Unit config counts as unset when nothing is billable (rates are null/0).
-  // Mirrors the rows shown in the Assign Balances modal.
   const isUnitConfigMissing = !(rawDues > 0 || rawParking > 0 || (!isTenantVacant && (rawWater > 0 || rawElectricity > 0)));
 
   const activeConfig = currentSoa ? {
@@ -358,10 +356,42 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const tenantTotalDue = tenantBase + tenantPenalty;
   const totalDue = ownerTotalDue + tenantTotalDue;
   
-  // Used in print rendering
   const baseTotalForPrint = ownerBase + tenantBase;
   const penaltyTotalForPrint = ownerPenalty + tenantPenalty;
   const combinedTotalForPrint = baseTotalForPrint + penaltyTotalForPrint;
+
+  // ✨ GLOBAL CONFIG MODAL OPENER
+  const openGlobalConfigModal = () => {
+    if (lastGlobalConfig) {
+      setUnitCompDuesRate(lastGlobalConfig.dues_rate != null ? String(lastGlobalConfig.dues_rate) : "");
+      setUnitCompWater(lastGlobalConfig.water != null ? String(lastGlobalConfig.water) : "");
+      setUnitCompElec(lastGlobalConfig.electricity != null ? String(lastGlobalConfig.electricity) : "");
+      setUnitCompParking(lastGlobalConfig.parking != null ? String(lastGlobalConfig.parking) : "");
+      setUnitCompPenaltyType(lastGlobalConfig.penalty_type || "percent");
+      setUnitCompPenaltyValue(lastGlobalConfig.penalty_value != null ? String(lastGlobalConfig.penalty_value) : "");
+      setUnitCompCollectionDay(lastGlobalConfig.collection_day != null ? String(lastGlobalConfig.collection_day) : "");
+      setUnitCompGracePeriod(lastGlobalConfig.grace_period_days != null ? String(lastGlobalConfig.grace_period_days) : "");
+      setUnitCompBankName(lastGlobalConfig.bank_name || "");
+      setUnitCompBankAccountName(lastGlobalConfig.bank_account_name || "");
+      setUnitCompBankAccountNumber(lastGlobalConfig.bank_account_number || "");
+      setUnitCompQrUrl(lastGlobalConfig.qr_code_url || "");
+    } else {
+      setUnitCompDuesRate("");
+      setUnitCompWater("");
+      setUnitCompElec("");
+      setUnitCompParking("");
+      setUnitCompPenaltyType("percent");
+      setUnitCompPenaltyValue("");
+      setUnitCompCollectionDay("");
+      setUnitCompGracePeriod("");
+      setUnitCompBankName("");
+      setUnitCompBankAccountName("");
+      setUnitCompBankAccountNumber("");
+      setUnitCompQrUrl("");
+    }
+    setUnitConfigError(null);
+    setIsGlobalConfigModalOpen(true);
+  };
 
   const openUnitConfigModal = () => {
     if (!selectedUnit) return;
@@ -466,8 +496,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     if (isSoaAlreadySent) return;
     setIsSendingSOA(true);
     try {
-      // A previous SOA exists here only when it is fully paid, so this send starts a new cycle:
-      // penalties from the paid cycle must not carry over.
       const isNewCycle = isAssigned;
       await saveSoaToDatabase('Pending', isNewCycle);
 
@@ -707,11 +735,78 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     }
   };
 
+  // ✨ SECURE GLOBAL CONFIG SAVING (WITH PERSISTENT STORAGE)
+  const handleSaveGlobalConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const missingFields: string[] = [];
+    if (String(unitCompCollectionDay).trim() === "") missingFields.push("Collection Start");
+    if (String(unitCompGracePeriod).trim() === "") missingFields.push("Grace Period");
+    if (String(unitCompDuesRate).trim() === "") missingFields.push("Assoc. Dues");
+    if (String(unitCompParking).trim() === "") missingFields.push("Parking");
+    if (String(unitCompWater).trim() === "") missingFields.push("Water");
+    if (String(unitCompElec).trim() === "") missingFields.push("Electricity");
+    if (String(unitCompPenaltyValue).trim() === "") missingFields.push("Late Penalty Deduction");
+    if (unitCompBankName.trim() === "") missingFields.push("Bank Name");
+    if (unitCompBankAccountName.trim() === "") missingFields.push("Account Name");
+    if (unitCompBankAccountNumber.trim() === "") missingFields.push("Account Number");
+    if (!unitCompQrUrl) missingFields.push("Digital Wallet QR");
+
+    if (missingFields.length > 0) {
+      setUnitConfigError(`Please complete all required fields`);
+      return;
+    }
+    setUnitConfigError(null);
+
+    setIsSavingGlobalConfig(true);
+
+    const payload = {
+      dues_rate: unitCompDuesRate !== "" ? Number(parseFloat(unitCompDuesRate).toFixed(2)) : null,
+      water: unitCompWater !== "" ? Number(parseFloat(unitCompWater).toFixed(2)) : null,
+      electricity: unitCompElec !== "" ? Number(parseFloat(unitCompElec).toFixed(2)) : null,
+      parking: unitCompParking !== "" ? Number(parseFloat(unitCompParking).toFixed(2)) : null,
+      penalty_type: unitCompPenaltyType,
+      penalty_value: unitCompPenaltyValue !== "" ? Number(parseFloat(unitCompPenaltyValue).toFixed(2)) : null,
+      collection_day: unitCompCollectionDay !== "" ? parseInt(unitCompCollectionDay) : null,
+      grace_period_days: unitCompGracePeriod !== "" ? parseInt(unitCompGracePeriod) : null,
+      bank_name: unitCompBankName,
+      bank_account_name: unitCompBankAccountName,
+      bank_account_number: unitCompBankAccountNumber,
+      qr_code_url: unitCompQrUrl
+    };
+
+    try {
+      const { error } = await supabase
+        .from('units')
+        .update(payload)
+        .eq('admin_email', orgData.admin_email);
+
+      if (error) throw error;
+
+      // Update local states
+      setAllUnits(prev => prev.map(u => ({ ...u, ...payload })));
+      if (selectedUnit) {
+        setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
+      }
+      
+      // ✨ SAVE TO LOCAL STORAGE SO IT SURVIVES PAGE REFRESHES
+      localStorage.setItem(`globalConfig_${orgData.admin_email}`, JSON.stringify(payload));
+      setLastGlobalConfig(payload);
+      
+      setIsGlobalConfigModalOpen(false);
+      setIsGlobalSuccessModalOpen(true); 
+    } catch (err: any) {
+      console.error("Failed to update global unit computation:", err);
+      alert(err.message || "Failed to update global configuration");
+    } finally {
+      setIsSavingGlobalConfig(false);
+    }
+  };
+
   const handleSaveUnitConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUnit) return;
 
-    // All fields are required (0 is a valid amount; blank is not)
     const missingFields: string[] = [];
     if (String(unitCompCollectionDay).trim() === "") missingFields.push("Collection Start");
     if (String(unitCompGracePeriod).trim() === "") missingFields.push("Grace Period");
@@ -734,12 +829,12 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     setIsSavingUnitConfig(true);
 
     const payload = {
-      dues_rate: unitCompDuesRate !== "" ? parseFloat(unitCompDuesRate) : null,
-      water: unitCompWater !== "" ? parseFloat(unitCompWater) : null,
-      electricity: unitCompElec !== "" ? parseFloat(unitCompElec) : null,
-      parking: unitCompParking !== "" ? parseFloat(unitCompParking) : null,
+      dues_rate: unitCompDuesRate !== "" ? Number(parseFloat(unitCompDuesRate).toFixed(2)) : null,
+      water: unitCompWater !== "" ? Number(parseFloat(unitCompWater).toFixed(2)) : null,
+      electricity: unitCompElec !== "" ? Number(parseFloat(unitCompElec).toFixed(2)) : null,
+      parking: unitCompParking !== "" ? Number(parseFloat(unitCompParking).toFixed(2)) : null,
       penalty_type: unitCompPenaltyType,
-      penalty_value: unitCompPenaltyValue !== "" ? parseFloat(unitCompPenaltyValue) : null,
+      penalty_value: unitCompPenaltyValue !== "" ? Number(parseFloat(unitCompPenaltyValue).toFixed(2)) : null,
       collection_day: unitCompCollectionDay !== "" ? parseInt(unitCompCollectionDay) : null,
       grace_period_days: unitCompGracePeriod !== "" ? parseInt(unitCompGracePeriod) : null,
       bank_name: unitCompBankName,
@@ -760,6 +855,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
       
       setIsUnitConfigModalOpen(false);
+      setIsUnitSuccessModalOpen(true); 
     } catch (err: any) {
       console.error("Failed to update unit computation:", err);
       alert(err.message || "Failed to update unit configuration");
@@ -768,7 +864,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     }
   };
 
-  // Generate Ledger for generic view (Current Year)
   const generateLedgerMonths = () => {
     const months = [];
     const localCurrentYear = new Date().getFullYear();
@@ -802,7 +897,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     return months;
   };
 
-  // Generate Ledger specifically for the Print Selection (using printYear)
   const generatePrintLedgerMonths = () => {
     const months = [];
     const localCurrentYear = new Date().getFullYear();
@@ -881,7 +975,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     URL.revokeObjectURL(url);
   };
 
-  // ✨ CONFIRM PAYMENT HANDLER (UPDATED TO DELETE NOTIFICATION IF EXISTS)
   const handleConfirmPayment = async () => {
     if (!paymentModalParty || !selectedUnit) return;
     setIsSimulating(true);
@@ -904,7 +997,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         
       if (error) throw error;
 
-      // ✨ NEW: Cleanup the specific notification that triggered this modal so it doesn't show up again.
       if (sourceNotificationId) {
         await supabase
           .from('notifications')
@@ -968,7 +1060,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
   return (
     <>
-    {/* Global CSS for Print Mode to override and hide parent elements completely */}
     <style dangerouslySetInnerHTML={{__html: `
       @media print {
         @page {
@@ -980,11 +1071,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        /* Aggressively hide everything from the app root EXCEPT our print portal container */
         body > :not(#printable-soa) {
           display: none !important;
         }
-        
         #printable-soa {
           display: block !important;
           position: static !important;
@@ -996,10 +1085,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       }
     `}} />
 
-    {/* MAIN APP CONTAINER (Hidden on Print) */}
     <div className="absolute inset-0 flex flex-col bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden print:hidden">
       
-      {/* ✨ TOP HEADER SECTION (Optimized for 768px+ & Mobile) */}
+      {/* ✨ TOP HEADER SECTION */}
       <div className="shrink-0 px-3 sm:px-4 md:px-6 pt-4 sm:pt-6 pb-2 sm:pb-3 mt-1 sm:mt-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/90 p-4 sm:p-5 md:px-6 md:py-5 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm backdrop-blur-xl transition-all">
           
@@ -1016,7 +1104,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </p>
             </div>
             
-            {/* Mobile-only avatar */}
             <div className="flex flex-col items-end gap-2 sm:hidden shrink-0">
               <div className="w-10 h-10 p-2 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-xs border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                 {initials}
@@ -1025,6 +1112,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           </div>
           
           <div className="flex flex-col min-[480px]:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-3 sm:gap-4 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0 shrink-0">
+            
+            {/* ✨ GLOBAL CONFIG BUTTON */}
+            <button
+               onClick={openGlobalConfigModal}
+               className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white px-3.5 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-bold text-slate-700 hover:opacity-100 hover:border-[var(--color-primary)] transition-all shadow-sm shrink-0"
+               title="Apply settings to all units"
+            >
+              <Globe size={16} /> <span className="truncate">Global Config</span>
+            </button>
+
             <div className="relative w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 group shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
@@ -1036,7 +1133,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               />
             </div>
 
-            {/* Desktop/Tablet admin badge */}
             <div className="hidden sm:flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
               <span className="text-xs font-black text-[var(--color-text)] uppercase tracking-wider hidden lg:block">Manager</span>
               <div className="w-10 h-10 md:w-12 md:h-10 p-4 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center font-black text-sm border border-[var(--color-primary)]/20 shadow-sm">
@@ -1047,11 +1143,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         </div>
       </div>
 
-      {/* ✨ MAIN WORKSPACE (Extended Single-Column Toggle up to 1450px) */}
       <div className="flex-1 flex flex-col min-[1451px]:flex-row overflow-hidden w-full relative px-2 sm:px-4 md:px-6 pb-4 sm:pb-6 gap-3 sm:gap-4 md:gap-5">
         {isLoading ? (
           <div className="flex-1 flex flex-col min-[1451px]:flex-row gap-3 sm:gap-4 md:gap-5">
-            {/* Sidebar Skeleton */}
             <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white border border-[var(--color-border)] rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden animate-pulse ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               <div className="p-4 sm:p-5 border-b border-[var(--color-border)] bg-slate-50 flex justify-between items-center h-[52px] sm:h-[60px]">
                 <div className="w-24 h-4 bg-slate-200 rounded"></div>
@@ -1064,7 +1158,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
             </div>
 
-            {/* Main Content Skeleton */}
             <div className={`flex-1 flex-col bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm animate-pulse ${!isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               <div className="h-[72px] sm:h-[84px] bg-slate-50 border-b border-[var(--color-border)] p-4 sm:p-6 flex items-center justify-between">
                 <div className="w-1/3 h-6 bg-slate-200 rounded-lg"></div>
@@ -1072,9 +1165,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
               <div className="p-4 sm:p-6 flex-1 space-y-4 sm:space-y-6">
                 
-                {/* ✨ Detailed Skeleton for Dual Statement Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-0 rounded-2xl bg-white overflow-hidden">
-                  {/* Owner Column Skeleton */}
                   <div className="p-4 sm:p-6 md:p-7 flex flex-col h-[280px]">
                     <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-100 flex justify-between items-start">
                       <div className="space-y-2 w-1/2">
@@ -1094,7 +1185,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     </div>
                   </div>
                   
-                  {/* Tenant Column Skeleton */}
                   <div className="p-4 sm:p-6 md:p-7 flex-col h-[280px] hidden md:flex">
                     <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-slate-100 flex justify-between items-start">
                       <div className="space-y-2 w-1/2">
@@ -1132,7 +1222,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           </div>
         ) : (
           <>
-            {/* ✨ SIDEBAR (Takes 100% width up to 1450px) */}
+            {/* ✨ SIDEBAR */}
             <div className={`w-full min-[1451px]:w-[420px] shrink-0 bg-white border border-[var(--color-border)] rounded-[var(--radius-xl)] flex-col h-full shadow-sm overflow-hidden transition-all ${isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               <div className="p-4 sm:p-5 border-b border-[var(--color-border)] shrink-0 bg-white flex justify-between items-center z-10 shadow-sm">
                 <div className="flex items-center gap-2">
@@ -1208,7 +1298,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
             </div>
 
-            {/* ✨ MAIN DETAILS VIEW (Takes 100% width up to 1450px) */}
+            {/* ✨ MAIN DETAILS VIEW */}
            <div className={`flex-1 flex-col overflow-hidden bg-[var(--color-bg)] rounded-[var(--radius-xl)] relative border border-[var(--color-border)] shadow-sm ${!isMobileListVisible ? 'flex' : 'hidden min-[1451px]:flex'}`}>
               {!selectedUnit ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center h-full">
@@ -1221,10 +1311,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               ) : (
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-5 lg:p-7 space-y-4 sm:space-y-6">
                 
-                {/* Header & Status Box */}
                 <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
                   
-                  {/* HEADER TOOLBAR WITH BACK BUTTON (Visible up to 1450px) */}
                   <div className="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-7 pb-4 sm:pb-5 flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/30">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <button 
@@ -1238,7 +1326,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       </h3>
                     </div>
                     
-                    {/* TOP RIGHT ACTIONS */}
                     <div className="flex items-center gap-2 shrink-0">
                       {isOwnerVacant && isTenantVacant && (
                         <span className="text-slate-500 font-bold bg-slate-100 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] sm:text-[11px] border border-slate-200 uppercase tracking-wide shadow-sm shrink-0 hidden min-[480px]:inline-flex">
@@ -1257,10 +1344,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     </div>
                   </div>
 
-                  {/* DUAL STATEMENT CARDS (Side-by-side on md: / 768px+) */}
                   <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-[var(--color-border)]' : ''}`}>
                     
-                    {/* OWNER STATEMENT COLUMN */}
                     <div className="p-4 sm:p-6 md:p-7 relative flex flex-col">
                        <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)] flex justify-between items-start gap-3">
                            <div className="min-w-0 pr-2">
@@ -1307,7 +1392,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                        </div>
                     </div>
 
-                    {/* TENANT STATEMENT COLUMN */}
                     {!isTenantVacant && (
                        <div className="p-4 sm:p-6 md:p-7 relative flex flex-col border-t md:border-t-0 border-[var(--color-border)] md:rounded-br-[1.5rem]">
                            <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-primary)]/20 flex justify-between items-start gap-3">
@@ -1348,7 +1432,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                            </div>
 
                            <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
-                               <span className="text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
+                               <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
                                <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                                  {isAssigned ? `₱${tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                                </span>
@@ -1358,7 +1442,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   </div>
                 </div>
 
-                {/* ✨ HERO FINANCIAL BANNER */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-6 bg-[var(--color-secondary)] p-5 sm:p-6 md:p-7 rounded-[var(--radius-xl)] shadow-[var(--shadow-md)] w-full overflow-hidden tabular-nums relative">
                   <div className="min-w-0 flex-1">
                     <span className="font-black text-white/90 text-xs uppercase tracking-widest block">Total Amount Due</span>
@@ -1381,7 +1464,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   <span className="font-black text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight break-all sm:break-normal shrink-0">₱{totalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                 </div>
                 
-                {/* ✨ EXECUTIVE ACTION CONTROL TOOLBAR */}
                 <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:flex md:flex-row gap-2.5 sm:gap-3 w-full mb-6 flex-wrap">
                   
                   {isAssigned && ((ownerTotalDue > 0 && ownerStatus !== 'Paid' && !isOwnerVacant) || (tenantTotalDue > 0 && tenantStatus !== 'Paid' && !isTenantVacant)) && (
@@ -1419,7 +1501,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   </button>
                 </div>
 
-                {/* ✨ COMBINED LEDGER TABLE */}
                 <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] p-2 sm:p-3 md:p-5 overflow-hidden">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-5 gap-3 sm:gap-4">
                     <div className="flex items-center gap-3 min-w-0">
@@ -1441,7 +1522,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     </button>
                   </div>
                   
-                  {/* Table with responsive horizontal scroll */}
                   <div className="overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-xl)] relative shadow-inner">
                     <table className="w-full text-center text-xs sm:text-sm min-w-[750px] sm:min-w-[850px] tabular-nums">
                       <thead className="bg-slate-50 border-b border-[var(--color-border)] sticky top-0 z-10">
@@ -1547,7 +1627,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   </select>
                 </div>
                 
-                {/* Dynamically hidden/shown year dropdown based on available years */}
                 {availableYears.length > 1 && (
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Year</label>
@@ -1586,7 +1665,203 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         </div>
       )}
 
-      {/* UNIT-SPECIFIC CONFIGURATION MODAL */}
+      {/* ✨ GLOBAL CONFIGURATION MODAL */}
+      {isGlobalConfigModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg md:max-w-xl lg:max-w-2xl overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden bg-white shrink-0 border-b border-[var(--color-border)]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/10 rounded-full blur-3xl -translate-y-10 translate-x-10 pointer-events-none"></div>
+              <div className="relative z-10 min-w-0 flex items-center gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-text)]/5 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-border)] shrink-0 shadow-sm">
+                  <Globe size={18} className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate">Global Billing Config</h2>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">Applies to all units across {orgData?.org_name || "the property"}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsGlobalConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0">
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
+              <div className="mb-4 sm:mb-5 p-3.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm rounded-[var(--radius-md)]">
+                <strong>Warning:</strong> Saving this form will instantly overwrite these billing settings for <strong>every single unit</strong> in your property. Individual unit configs can still be modified later.
+              </div>
+              <form onSubmit={handleSaveGlobalConfig} className="space-y-4 sm:space-y-5 pb-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Collection Start <span className="text-red-500">*</span></label>
+                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => setUnitCompCollectionDay(e.target.value)} className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Grace Period <span className="text-red-500">*</span></label>
+                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => setUnitCompGracePeriod(e.target.value)} className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => setUnitCompDuesRate(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompParking} onChange={(e) => setUnitCompParking(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Water <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompWater} onChange={(e) => setUnitCompWater(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Electricity <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompElec} onChange={(e) => setUnitCompElec(e.target.value)} className="w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200/60 pt-4 sm:pt-5">
+                  <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Late Penalty Deduction <span className="text-red-500">*</span></label>
+                  <div className="flex flex-col min-[480px]:flex-row gap-2.5 sm:gap-3">
+                    <select value={unitCompPenaltyType} onChange={(e) => setUnitCompPenaltyType(e.target.value)} className="w-full min-[480px]:w-[130px] shrink-0 px-3 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs font-bold text-slate-700 transition-all shadow-sm bg-white">
+                      <option value="fixed">Fixed (₱)</option>
+                      <option value="percent">Percent (%)</option>
+                    </select>
+                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => setUnitCompPenaltyValue(e.target.value)} className="w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm" />
+                  </div>
+                </div>
+
+                {/* Bank Transfer Details Section */}
+                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
+                  <label className="block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate">Bank Transfer Details</label>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
+                    Set up this global bank details here. Securely displayed to all owners and tenants.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Bank Name <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. BDO Unibank" 
+                        value={unitCompBankName} 
+                        onChange={(e) => setUnitCompBankName(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Account Name <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. HOA Admin" 
+                          value={unitCompBankAccountName} 
+                          onChange={(e) => setUnitCompBankAccountName(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Account Number <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 0012-3456" 
+                          value={unitCompBankAccountNumber} 
+                          onChange={(e) => setUnitCompBankAccountNumber(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* QR Code Upload Section */}
+                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
+                  <label className="block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate">Digital Wallet QR <span className="text-red-500">*</span></label>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
+                    Upload GCash, Maya, or QR Ph barcode to apply to all units.
+                  </p>
+                  
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 border border-[var(--color-border)] rounded-xl flex items-center justify-center overflow-hidden shrink-0 relative p-1.5 shadow-inner">
+                      {unitCompQrUrl ? (
+                        <img src={unitCompQrUrl} alt="Uploaded QR" className="w-full h-full object-contain rounded-lg" />
+                      ) : (
+                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-center">No QR</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        ref={qrInputRef} 
+                        onChange={handleQrUpload} 
+                        className="hidden" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => qrInputRef.current?.click()} 
+                        disabled={isUploadingQr} 
+                        className="w-full bg-slate-50 border border-slate-200 hover:border-[var(--color-primary)]/50 hover:text-[var(--color-text)] text-slate-600 font-bold text-[10px] sm:text-xs py-2.5 sm:py-3 rounded-[var(--radius-sm)] transition-all shadow-sm flex justify-center items-center gap-2 active:scale-95 disabled:opacity-50"
+                      >
+                        {isUploadingQr ? (
+                          <><Loader2 size={14} className="animate-spin text-slate-500" /> Uploading...</>
+                        ) : (
+                          <><Upload size={14} className="text-[var(--color-text)]" /> {unitCompQrUrl ? 'Replace QR' : 'Upload QR'}</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </form>
+            </div>
+            
+            {unitConfigError && (
+              <div className="shrink-0 px-4 sm:px-6 pt-3 bg-white border-t border-[var(--color-border)]">
+                <div className="p-3 bg-red-50 text-red-700 text-xs sm:text-sm font-semibold rounded-xl border border-red-200 flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{unitConfigError}</span>
+                </div>
+              </div>
+            )}
+            <div className="mt-auto px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[var(--color-border)] flex gap-2.5 sm:gap-3 bg-white z-20 shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setIsGlobalConfigModalOpen(false)} 
+                disabled={isSavingGlobalConfig}
+                className="flex-1 sm:flex-none sm:w-[130px] shrink-0 py-3 sm:py-3.5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-[var(--radius-md)] transition-all active:scale-95 shadow-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveGlobalConfig}
+                disabled={isSavingGlobalConfig}
+                className="flex-[2] sm:flex-1 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] border border-transparent py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest transition-all shadow-[var(--shadow-md)] active:scale-95 flex items-center justify-center gap-2 truncate px-2"
+              >
+                {isSavingGlobalConfig ? <Loader2 size={14} className="animate-spin" /> : "Save to All Units"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ UNIT-SPECIFIC CONFIGURATION MODAL */}
       {isUnitConfigModalOpen && selectedUnit && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg md:max-w-xl lg:max-w-2xl overflow-hidden transform transition-all flex flex-col h-[90vh] sm:h-auto sm:max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
@@ -2247,7 +2522,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 )}
               </div>
 
-              {/* ✨ GUARDED PAYMENT BUTTON */}
               <button 
                 onClick={handleConfirmPayment}
                 disabled={isSimulating || isFetchingPayment || !fetchedPayment || fetchedPayment?.status === 'Paid'}
@@ -2270,7 +2544,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       {waiveSuccess && (
         <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">Penalty Waived</h2>
@@ -2291,9 +2565,51 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           </div>
         </div>
       )}
+      
+      {/* ✨ SUCCESS MODAL FOR UNIT CONFIG SAVING */}
+      {isUnitSuccessModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
+              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">Unit Config Saved</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
+              The billing settings for <strong className="text-slate-800">Unit {selectedUnit?.unit_number}</strong> have been successfully updated.
+            </p>
+            <button 
+              onClick={() => setIsUnitSuccessModalOpen(false)}
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] font-black uppercase tracking-widest text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* ✨ SUCCESS MODAL FOR GLOBAL CONFIG SAVING */}
+      {isGlobalSuccessModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
+              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">Global Config Saved</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
+              The billing settings have been successfully securely applied to <strong>all units</strong> in your property.
+            </p>
+            <button 
+              onClick={() => setIsGlobalSuccessModalOpen(false)}
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] font-black uppercase tracking-widest text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
 
-    {/* ✨ HIDDEN PDF / PRINTABLE SOA TEMPLATE (Takes over screen during Print via Portal) */}
+    {/* ✨ HIDDEN PDF / PRINTABLE SOA TEMPLATE */}
     {isMounted && typeof document !== 'undefined' && createPortal(
       <div 
         id="printable-soa"
@@ -2302,7 +2618,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         {selectedUnit && (
           <div className="w-full mx-auto p-4 sm:p-8">
             
-            {/* Print Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h1 className="text-xl font-black uppercase tracking-wide">STATEMENT OF ACCOUNT</h1>
@@ -2316,9 +2631,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
             </div>
 
-            {/* Details & Summary Blocks */}
             <div className="grid grid-cols-2 gap-6 mb-6">
-              {/* Bill To */}
               <div>
                 <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
                   BILL TO:
@@ -2330,7 +2643,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 </div>
               </div>
 
-              {/* Account Summary */}
               <div>
                 <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
                   ACCOUNT SUMMARY
@@ -2350,7 +2662,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
             </div>
 
-            {/* Ledger Table (Filtered Based on Print Setting) */}
             <div className="mb-6">
               <table className="w-full text-center tabular-nums border-collapse border border-black table-fixed text-[10px]">
                 <thead>
@@ -2369,7 +2680,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   {(printMonth === 'all' ? printLedgerData : printLedgerData.filter(row => row.monthIndex === printMonth)).map((row, idx) => {
                     const isPopulatedRow = printMonth === 'all' ? row.status !== "Upcoming" : row.monthIndex === printMonth;
                     
-                    // Logic to show amounts without penalties for past paid months
                     const isPastPaid = printMonth === 'all' && row.status === 'Paid' && !row.isCurrentMonth;
                     const rowDues = rawDues;
                     const rowParking = rawParking;
@@ -2410,7 +2720,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </table>
             </div>
 
-            {/* Table Footer / Summary Totals */}
             <div className="flex justify-end mb-10">
               <div className="grid grid-cols-[200px_120px] text-xs gap-y-1">
                 <span className="font-bold">Ending Balance Statement Date:</span>
@@ -2430,10 +2739,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </div>
             </div>
 
-            {/* Signatures */}
             <div className="flex justify-between items-end text-xs mt-8 pr-8">
                
-               {/* Signatures Left (Prepared by) */}
                <div className="w-[200px]">
                  <div className="flex items-end gap-3">
                    <span className="mb-0.5">Prepared by:</span>
@@ -2441,7 +2748,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                  </div>
                </div>
                
-               {/* Signatures Right (Approved by) */}
                <div className="w-[250px]">
                  <div className="flex items-end gap-3">
                    <span className="mb-0.5">Approved by:</span>
@@ -2462,7 +2768,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   );
 }
 
-// ✨ REUSABLE BILLING SKELETON CARD FOR ACCURATE LOADING STATE
 function BillingSkeletonCard() {
   return (
     <div className="bg-white border-slate-200 rounded-[var(--radius-md)] p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-sm border animate-pulse group cursor-pointer h-[72px] shrink-0">

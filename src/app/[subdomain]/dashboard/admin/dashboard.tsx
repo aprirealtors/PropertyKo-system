@@ -106,30 +106,60 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
   const defaultElectricity = orgConfig?.default_electricity || 0;
   const defaultParking = orgConfig?.default_parking || 0;
 
+  // Mirrors the Billing tab: rates come from each unit first (falling back to the
+  // organization defaults only when a unit has no value), vacant parties are not billed,
+  // and the late penalty is included whenever a party is Overdue or flagged for a penalty.
+  const rateOf = (unitValue: any, fallback: number) => {
+    const n = Number(unitValue);
+    return unitValue === null || unitValue === undefined || unitValue === '' || isNaN(n) ? fallback : n;
+  };
+
   soaData.forEach(soa => {
     const unit = units.find(u => u.id === soa.unit_id);
-    if(!unit) return;
+    if (!unit) return;
 
     const unitArea = parseFloat(String(unit.unit_area || "0").replace(/[^\d.]/g, '')) || 0;
-    const rawDues = duesRate * unitArea;
+    const rawDues = rateOf(unit.dues_rate, duesRate) * unitArea;
+    const rawWater = rateOf(unit.water, defaultWater);
+    const rawElectricity = rateOf(unit.electricity, defaultElectricity);
+    const rawParking = rateOf(unit.parking, defaultParking);
 
-    let ownerDue = 0;
-    if(soa.owner_dues) ownerDue += rawDues;
-    if(soa.owner_parking) ownerDue += defaultParking;
-    if(soa.owner_water) ownerDue += defaultWater;
-    if(soa.owner_electricity) ownerDue += defaultElectricity;
+    const pType = unit.penalty_type || 'percent';
+    const pVal = Number(unit.penalty_value) || 0;
+    const penaltyOf = (base: number) => (pType === 'percent' ? base * (pVal / 100) : pVal);
 
-    totalExpectedBilling += ownerDue;
-    if(soa.owner_status === 'Paid') totalCollectedBilling += ownerDue;
+    const isOwnerVacant = !unit.owner_name || unit.owner_name === '—';
+    const isTenantVacant = unit.status === 'Vacant' || !unit.tenant_name || unit.tenant_name === '—';
 
-    let tenantDue = 0;
-    if(soa.tenant_dues) tenantDue += rawDues;
-    if(soa.tenant_parking) tenantDue += defaultParking;
-    if(soa.tenant_water) tenantDue += defaultWater;
-    if(soa.tenant_electricity) tenantDue += defaultElectricity;
+    // OWNER
+    if (!isOwnerVacant) {
+      const ownerBase =
+        (soa.owner_dues ? rawDues : 0) +
+        (soa.owner_parking ? rawParking : 0) +
+        (soa.owner_water ? rawWater : 0) +
+        (soa.owner_electricity ? rawElectricity : 0);
+      if (ownerBase > 0) {
+        const ownerPenalty = (soa.owner_status === 'Overdue' || soa.owner_penalty) ? penaltyOf(ownerBase) : 0;
+        const ownerDue = ownerBase + ownerPenalty;
+        totalExpectedBilling += ownerDue;
+        if (soa.owner_status === 'Paid') totalCollectedBilling += ownerDue;
+      }
+    }
 
-    totalExpectedBilling += tenantDue;
-    if(soa.tenant_status === 'Paid') totalCollectedBilling += tenantDue;
+    // TENANT
+    if (!isTenantVacant) {
+      const tenantBase =
+        (soa.tenant_dues ? rawDues : 0) +
+        (soa.tenant_parking ? rawParking : 0) +
+        (soa.tenant_water ? rawWater : 0) +
+        (soa.tenant_electricity ? rawElectricity : 0);
+      if (tenantBase > 0) {
+        const tenantPenalty = (soa.tenant_status === 'Overdue' || soa.tenant_penalty) ? penaltyOf(tenantBase) : 0;
+        const tenantDue = tenantBase + tenantPenalty;
+        totalExpectedBilling += tenantDue;
+        if (soa.tenant_status === 'Paid') totalCollectedBilling += tenantDue;
+      }
+    }
   });
 
   const collectionPct = totalExpectedBilling > 0 ? (totalCollectedBilling / totalExpectedBilling) * 100 : 0;
@@ -272,13 +302,13 @@ export default function DashboardTab({ orgData, isLoading: isOrgLoading, onNavig
                   className="relative h-5 sm:h-6 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner"
                   role="progressbar" aria-valuenow={Math.round(collectionPct)} aria-valuemin={0} aria-valuemax={100} aria-label="Billing collected this month"
                 >
-                  <div className="h-full bg-[var(--color-primary)] rounded-full shadow-[0_0_12px_var(--color-primary)] relative transition-all duration-1000" style={{ width: `${Math.min(collectionPct, 100)}%` }}>
+                  <div className="h-full bg-[var(--color-secondary)] rounded-full shadow-[0_0_12px_var(--color-secondary)] relative transition-all duration-1000" style={{ width: `${Math.min(collectionPct, 100)}%` }}>
                     <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                   </div>
                   {/* Percentage: inside the bar when it fits, otherwise just after the fill */}
                   {collectionPct >= 12 ? (
                     <span
-                      className="absolute top-0 h-full flex items-center justify-end pr-3 text-[10px] sm:text-xs font-black text-[var(--color-primary-text)] drop-shadow-sm transition-all duration-1000 pointer-events-none"
+                      className="absolute top-0 h-full flex items-center justify-end pr-3 text-[10px] sm:text-xs font-black text-white drop-shadow-sm transition-all duration-1000 pointer-events-none"
                       style={{ width: `${Math.min(collectionPct, 100)}%` }}
                     >
                       {collectionPct.toFixed(1)}%
