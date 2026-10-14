@@ -41,6 +41,7 @@ export default function RepairTab({ highlightTicketId }: any) {
   const [issueCategory, setIssueCategory] = useState(""); 
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
 
   const [activeView, setActiveView] = useState<'open' | 'on_hold' | 'resolved'>('open');
 
@@ -169,16 +170,20 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPhotoError(""); 
+    setPhotoError("");
+    setCategoryError("");
 
+    let hasError = false;
     if (!issueCategory) {
-      showToast("Please select an issue category.", "error");
-      return;
+      setCategoryError("Please select an issue category.");
+      hasError = true;
     }
     if (!selectedImage) {
       setPhotoError("Please upload a photo of the issue.");
-      return;
+      hasError = true;
     }
+    if (hasError) return;
+
     setIsSubmitting(true);
 
     try {
@@ -248,6 +253,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       setSelectedImage(null);
       setIsRepairModalOpen(false); 
       setPhotoError(""); 
+      setCategoryError("");
       setIsSuccessModalOpen(true);
 
     } catch (err: any) {
@@ -263,6 +269,7 @@ export default function RepairTab({ highlightTicketId }: any) {
     setIssueCategory(""); 
     setRepairTime(""); 
     setPhotoError(""); 
+    setCategoryError("");
     setIsRepairModalOpen(true);
   };
 
@@ -645,11 +652,11 @@ export default function RepairTab({ highlightTicketId }: any) {
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar bg-[var(--color-bg)]/50 pb-safe">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} noValidate className="space-y-6">
                 
                 {/* Visual Category Grid */}
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 1: Select Ticket Category <span className="text-red-500">*</span></label>
+                  <label className={`text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block ${categoryError ? 'text-red-500' : 'text-slate-400'}`}>Step 1: Select Ticket Category <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {CATEGORIES.map(cat => {
                       const isSelected = issueCategory === cat.id;
@@ -659,6 +666,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                           key={cat.id}
                           onClick={() => {
                             setIssueCategory(cat.id);
+                            setCategoryError("");
                           }}
                           className={`cursor-pointer rounded-[var(--radius-md)] border-2 flex flex-col items-center justify-center p-3 sm:p-4 text-center transition-all duration-200 active:scale-95 ${
                             isSelected ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
@@ -675,6 +683,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                       )
                     })}
                   </div>
+                  {categoryError && <FieldError message={categoryError} />}
                 </div>
 
                 {/* Animated reveal */}
@@ -682,7 +691,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Step 2: Upload Photo <span className="text-red-500">*</span></label>
+                      <label className={`text-[10px] font-black uppercase tracking-widest ml-1 mb-2 block ${photoError ? 'text-red-500' : 'text-slate-400'}`}>Step 2: Upload Photo <span className="text-red-500">*</span></label>
                       
                       {selectedImage ? (
                         <div className="flex flex-col w-full p-2 rounded-[var(--radius-lg)] border-2 border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-[var(--shadow-sm)]">
@@ -761,12 +770,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                       )}
 
                       {/* ✨ INLINE PHOTO ERROR MESSAGE */}
-                      {photoError && (
-                        <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
-                          <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
-                        </div>
-                      )}
+                      {photoError && <FieldError message={photoError} />}
                     </div>
 
                     <div className="space-y-1.5 pt-2">
@@ -1259,6 +1263,18 @@ function EmptyState({ icon: Icon, title, message }: { icon: any, title: string, 
       </div>
       <h4 className="font-extrabold text-[var(--color-text)] mb-1.5">{title}</h4>
       <p className="text-xs text-slate-500 max-w-[220px] mx-auto leading-relaxed">{message}</p>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ UNIFORM FIELD ERROR MESSAGE
+// -------------------------------------------------------------
+function FieldError({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-1.5 mt-2 ml-1 text-red-600 animate-in fade-in duration-200">
+      <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
+      <span className="text-xs font-bold">{message}</span>
     </div>
   );
 }
