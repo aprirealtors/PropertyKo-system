@@ -21,6 +21,13 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
   const [completionImage, setCompletionImage] = useState<File | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
 
+  // ✨ INLINE VALIDATION ERRORS
+  const [statusError, setStatusError] = useState("");
+  const [holdReasonError, setHoldReasonError] = useState("");
+  const [customReasonError, setCustomReasonError] = useState("");
+  const [remarksError, setRemarksError] = useState("");
+  const [photoError, setPhotoError] = useState("");
+
   // Tab Switcher State (Para sa Mobile View na lang)
   const [activeView, setActiveView] = useState<'open' | 'on_hold' | 'resolved'>('open');
 
@@ -64,6 +71,8 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
     setCompleteModalTask(taskId);
     setCompletionStatus(""); setOnHoldReason(""); setCustomHoldReason(""); 
     setCompletionRemarks(""); setCompletionCost(""); setCompletionImage(null);
+    setStatusError(""); setHoldReasonError(""); setCustomReasonError(""); 
+    setRemarksError(""); setPhotoError("");
   };
 
   const capitalizeWords = (str: string) => {
@@ -73,14 +82,39 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
   const handleCompleteTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!completeModalTask || !completionStatus) return;
+    if (!completeModalTask) return;
+
+    setStatusError(""); setHoldReasonError(""); setCustomReasonError(""); 
+    setRemarksError(""); setPhotoError("");
+
+    let hasError = false;
+
+    if (!completionStatus) {
+      setStatusError("Please select a repair result.");
+      hasError = true;
+    }
 
     if (completionStatus === "On Hold") {
-      if (!onHoldReason) return showAlert('warning', 'Missing Information', 'Please select a reason for putting the task on hold.');
-      if (onHoldReason === "Other" && !customHoldReason.trim()) return showAlert('warning', 'Specific Reason Needed', 'Please type the specific reason for putting the task on hold.');
+      if (!onHoldReason) {
+        setHoldReasonError("Please select a reason for holding.");
+        hasError = true;
+      } else if (onHoldReason === "Other" && !customHoldReason.trim()) {
+        setCustomReasonError("Please specify the reason.");
+        hasError = true;
+      }
     }
-    
-    if (!completionImage) return showAlert('warning', 'Photo Required', 'Please upload a photo as proof of work or visit.');
+
+    if (completionStatus === "Success" && !completionRemarks.trim()) {
+      setRemarksError("Please describe what was fixed.");
+      hasError = true;
+    }
+
+    if (completionStatus && !completionImage) {
+      setPhotoError("Please upload a photo as proof of work or visit.");
+      hasError = true;
+    }
+
+    if (hasError) return;
     
     setIsCompleting(true);
 
@@ -399,46 +433,72 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             </div>
 
             <div className="flex flex-col flex-1 min-h-0">
-              <form onSubmit={handleCompleteTask} className="flex flex-col flex-1 min-h-0">
+              <form onSubmit={handleCompleteTask} noValidate className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6 bg-[var(--color-bg)]/50 custom-scrollbar space-y-6">
                 
                 {/* STATUS SELECTION */}
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Repair Result</label>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${statusError ? 'text-red-500' : 'text-slate-400'}`}>Repair Result <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-2 gap-3">
                     <label className={`flex flex-col items-center justify-center gap-1.5 p-4 border-2 rounded-[var(--radius-lg)] cursor-pointer transition-all active:scale-95 duration-200 shadow-sm ${completionStatus === "Success" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-[var(--color-border)] bg-white text-slate-400 hover:border-slate-300"}`}>
-                      <input type="radio" name="status" value="Success" checked={completionStatus === "Success"} onChange={(e) => {setCompletionStatus(e.target.value); setOnHoldReason(""); setCustomHoldReason("");}} className="hidden" />
+                      <input type="radio" name="status" value="Success" checked={completionStatus === "Success"} onChange={(e) => {setCompletionStatus(e.target.value); setOnHoldReason(""); setCustomHoldReason(""); setStatusError(""); setHoldReasonError(""); setCustomReasonError("");}} className="hidden" />
                       <CheckCircle size={24} strokeWidth={2.5} />
                       <span className="text-sm font-bold">Success</span>
                     </label>
                     <label className={`flex flex-col items-center justify-center gap-1.5 p-4 border-2 rounded-[var(--radius-lg)] cursor-pointer transition-all active:scale-95 duration-200 shadow-sm ${completionStatus === "On Hold" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-[var(--color-border)] bg-white text-slate-400 hover:border-slate-300"}`}>
-                      <input type="radio" name="status" value="On Hold" checked={completionStatus === "On Hold"} onChange={(e) => setCompletionStatus(e.target.value)} className="hidden" />
+                      <input type="radio" name="status" value="On Hold" checked={completionStatus === "On Hold"} onChange={(e) => {setCompletionStatus(e.target.value); setStatusError(""); setRemarksError("");}} className="hidden" />
                       <PauseCircle size={24} strokeWidth={2.5} />
                       <span className="text-sm font-bold">On Hold</span>
                     </label>
                   </div>
+                  {statusError && <FieldError message={statusError} />}
                 </div>
 
                 {/* ON HOLD FIELDS */}
                 {completionStatus === "On Hold" && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4 bg-white p-4 rounded-[var(--radius-xl)] border border-amber-200 shadow-sm">
                     <div>
-                      <label className="block text-[10px] font-black text-amber-700/60 uppercase tracking-widest mb-2">Reason for holding</label>
-                      <select required value={onHoldReason} onChange={(e) => { setOnHoldReason(e.target.value); if (e.target.value !== "Other") setCustomHoldReason(""); }} className="w-full px-4 py-3 rounded-[var(--radius-xl)] border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 text-sm font-bold text-slate-700" disabled={isCompleting}>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${holdReasonError ? 'text-red-500' : 'text-amber-700/60'}`}>Reason for holding <span className="text-red-500">*</span></label>
+                      <select
+                        required
+                        value={onHoldReason}
+                        onChange={(e) => { setOnHoldReason(e.target.value); setHoldReasonError(""); if (e.target.value !== "Other") { setCustomHoldReason(""); setCustomReasonError(""); } }}
+                        className={`w-full px-4 py-3 rounded-[var(--radius-xl)] border focus:outline-none focus:ring-2 text-sm font-bold text-slate-700 ${
+                          holdReasonError
+                            ? 'border-red-300 bg-red-50 focus:ring-red-100 focus:border-red-400'
+                            : 'border-slate-200 bg-slate-50 focus:ring-amber-500/20 focus:border-amber-400'
+                        }`}
+                        disabled={isCompleting}
+                      >
                         <option value="" disabled>Select reason...</option>
                         <option value="Need Parts">Need Parts</option>
                         <option value="No Access">No Access to Unit</option>
                         <option value="Budget Approval">Awaiting Budget Approval</option>
                         <option value="Other">Other reason...</option>
                       </select>
+                      {holdReasonError && <FieldError message={holdReasonError} />}
                     </div>
                     {onHoldReason === "Other" && (
                       <div className="animate-in fade-in slide-in-from-top-1 duration-200">
                         <div className="flex justify-between items-center mb-2">
-                          <label className="text-[10px] font-black text-amber-700/60 uppercase tracking-widest ml-1">Please specify reason</label>
+                          <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${customReasonError ? 'text-red-500' : 'text-amber-700/60'}`}>Please specify reason <span className="text-red-500">*</span></label>
                           <span className="text-[10px] font-bold text-slate-400">{customHoldReason.length}/25</span>
                         </div>
-                        <input type="text" required maxLength={25} value={customHoldReason} onChange={(e) => setCustomHoldReason(e.target.value)} placeholder="Type the specific reason here..." className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 text-sm font-bold text-slate-700" disabled={isCompleting} />
+                        <input
+                          type="text"
+                          required
+                          maxLength={25}
+                          value={customHoldReason}
+                          onChange={(e) => { setCustomHoldReason(e.target.value); setCustomReasonError(""); }}
+                          placeholder="Type the specific reason here..."
+                          className={`w-full px-4 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-2 text-sm font-bold text-slate-700 ${
+                            customReasonError
+                              ? 'border-red-300 bg-red-50 focus:ring-red-100 focus:border-red-400'
+                              : 'border-slate-200 bg-slate-50 focus:ring-amber-500/20 focus:border-amber-400'
+                          }`}
+                          disabled={isCompleting}
+                        />
+                        {customReasonError && <FieldError message={customReasonError} />}
                       </div>
                     )}
                   </div>
@@ -449,10 +509,23 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <div className="animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
                     <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm">
                       <div className="flex justify-between items-center mb-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Remarks / What was fixed?</label>
+                        <label className={`text-[10px] font-black uppercase tracking-widest ml-1 ${remarksError ? 'text-red-500' : 'text-slate-400'}`}>Remarks / What was fixed? <span className="text-red-500">*</span></label>
                         <span className="text-[10px] font-bold text-slate-400">{completionRemarks.length}/30</span>
                       </div>
-                      <textarea required maxLength={30} value={completionRemarks} onChange={(e) => setCompletionRemarks(e.target.value)} placeholder="Briefly describe the fix..." className="w-full border border-[var(--color-border)] bg-slate-50 rounded-[var(--radius-xl)] p-3 text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] min-h-[80px]" disabled={isCompleting} />
+                      <textarea
+                        required
+                        maxLength={30}
+                        value={completionRemarks}
+                        onChange={(e) => { setCompletionRemarks(e.target.value); setRemarksError(""); }}
+                        placeholder="Briefly describe the fix..."
+                        className={`w-full border rounded-[var(--radius-xl)] p-3 text-sm font-bold text-[var(--color-text)] focus:outline-none focus:ring-2 min-h-[80px] ${
+                          remarksError
+                            ? 'border-red-300 bg-red-50 focus:ring-red-100 focus:border-red-400'
+                            : 'border-[var(--color-border)] bg-slate-50 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]'
+                        }`}
+                        disabled={isCompleting}
+                      />
+                      {remarksError && <FieldError message={remarksError} />}
                     </div>
 
                     <div className="bg-white p-4 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-sm">
@@ -468,7 +541,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 {/* PHOTO UPLOAD */}
                 {completionStatus && (
                   <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Required: Proof of Work / Visit <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 ${photoError ? 'text-red-500' : 'text-slate-400'}`}>Required: Proof of Work / Visit <span className="text-red-500">*</span></label>
                     
                     {completionImage ? (
                       <div className="flex flex-col w-full p-2 rounded-[var(--radius-xl)] border-2 border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-[var(--shadow-sm)]">
@@ -483,32 +556,34 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     ) : (
                       <>
                         <div className="flex md:hidden gap-3 w-full">
-                          <label className="flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-sm transition-all group">
+                          <label className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-xl)] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 bg-white'} cursor-pointer shadow-sm transition-all group`}>
                             <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors"><Camera size={20} strokeWidth={2.5}/></div>
                             <span className="text-[10px] sm:text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Take Photo</span>
-                            <input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])} className="hidden" disabled={isCompleting} />
+                            <input type="file" accept="image/*" capture="environment" onChange={(e) => { if (e.target.files) { setCompletionImage(e.target.files[0]); setPhotoError(""); } }} className="hidden" disabled={isCompleting} />
                           </label>
-                          <label className="flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-sm transition-all group">
+                          <label className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-[var(--radius-xl)] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 bg-white'} cursor-pointer shadow-sm transition-all group`}>
                             <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
                             <span className="text-[10px] sm:text-xs font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Gallery</span>
-                            <input type="file" accept="image/*" onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])} className="hidden" disabled={isCompleting} />
+                            <input type="file" accept="image/*" onChange={(e) => { if (e.target.files) { setCompletionImage(e.target.files[0]); setPhotoError(""); } }} className="hidden" disabled={isCompleting} />
                           </label>
                         </div>
 
                         <div className="hidden md:flex w-full">
-                          <label className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-[var(--radius-xl)] border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 cursor-pointer bg-white shadow-[var(--shadow-sm)] transition-all group">
+                          <label className={`w-full flex flex-col items-center justify-center gap-2 py-8 rounded-[var(--radius-xl)] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 bg-white'} cursor-pointer shadow-[var(--shadow-sm)] transition-all group`}>
                             <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
                             <span className="text-sm font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Upload Photo</span>
                             <span className="text-xs text-slate-400 font-medium">Click to browse from your computer</span>
-                            <input type="file" accept="image/*" onChange={(e) => e.target.files && setCompletionImage(e.target.files[0])} className="hidden" disabled={isCompleting} />
+                            <input type="file" accept="image/*" onChange={(e) => { if (e.target.files) { setCompletionImage(e.target.files[0]); setPhotoError(""); } }} className="hidden" disabled={isCompleting} />
                           </label>
                         </div>
                       </>
                     )}
+
+                    {photoError && <FieldError message={photoError} />}
                   </div>
                 )}
 
@@ -517,7 +592,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 {/* FIXED FOOTER: always visible, never scrolls away */}
                 <div className="shrink-0 flex gap-3 px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--color-border)] bg-[var(--color-bg)]">
                   <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150">Cancel</button>
-                  <button type="submit" disabled={isCompleting || !completionStatus || !completionImage} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:text-[var(--color-primary-text)] border border-transparent text-[var(--color-primary-text)] py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
+                  <button type="submit" disabled={isCompleting} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:text-[var(--color-primary-text)] border border-transparent text-[var(--color-primary-text)] py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
                     {isCompleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Submit Update"}
                   </button>
                 </div>
@@ -863,6 +938,18 @@ function EmptyState({ icon: Icon, title, message }: any) {
       </div>
       <h4 className="text-sm font-black text-[var(--color-text)] mb-1">{title}</h4>
       <p className="text-xs font-semibold text-slate-400 max-w-[200px] leading-relaxed">{message}</p>
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// ✨ UNIFORM FIELD ERROR MESSAGE
+// -------------------------------------------------------------
+function FieldError({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-1.5 mt-2 ml-1 text-red-600 animate-in fade-in duration-200">
+      <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
+      <span className="text-xs font-bold">{message}</span>
     </div>
   );
 }
