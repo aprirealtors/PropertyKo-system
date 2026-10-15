@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon, AlertCircle } from "lucide-react";
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="flex items-center gap-1.5 mt-2 text-[11px] font-black text-red-600 tracking-wide">
+      <AlertCircle size={14} strokeWidth={2.5} /> {message}
+    </p>
+  ) : null;
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -26,6 +33,15 @@ export default function UsersTab({ orgData }: any) {
   
   // State for Unit Allocation Search
   const [unitSearchQuery, setUnitSearchQuery] = useState("");
+
+  // Field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  useEffect(() => { setFieldErrors({}); }, [isModalOpen, role]);
+
+  const errCls = (key: string) =>
+    fieldErrors[key]
+      ? "border-red-300 bg-red-50 focus:ring-red-500/15 focus:border-red-400"
+      : "border-[var(--color-border)] bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]";
 
   const filteredUsers = usersList.filter(user => {
     const searchLower = searchQuery.toLowerCase();
@@ -142,6 +158,7 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const handleUnitToggle = (unitString: string, unitData: any) => {
+    setFieldErrors(prev => ({ ...prev, units: "", name: "", email: "" }));
     const isCurrentlySelected = selectedUnits.includes(unitString);
     
     if (!isCurrentlySelected) {
@@ -177,8 +194,16 @@ export default function UsersTab({ orgData }: any) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (selectedUnits.length === 0) {
-      setErrorMsg("Please assign at least one unit/property to this user.");
+    const errors: Record<string, string> = {};
+    if (selectedUnits.length === 0) errors.units = "Please select at least one unit.";
+    if (!name.trim()) errors.name = "Please enter the full name.";
+    if (!email.trim()) errors.email = "Please enter an email address.";
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) errors.email = "Please enter a valid email address.";
+    if (!password) errors.password = "Please enter a password.";
+    else if (password.length < 6) errors.password = "Password must be at least 6 characters.";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
       setIsSubmitting(false);
       return;
     }
@@ -465,7 +490,7 @@ export default function UsersTab({ orgData }: any) {
             </div>
 
             {/* ✨ FIX: The form now wraps both the scrollable content AND the fixed footer */}
-            <form onSubmit={handleCreateUser} className="flex flex-col min-h-0 flex-1">
+            <form onSubmit={handleCreateUser} noValidate className="flex flex-col min-h-0 flex-1">
               
               {/* Scrollable Content Area */}
               <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
@@ -506,8 +531,8 @@ export default function UsersTab({ orgData }: any) {
 
                   {/* DYNAMIC UNIT SELECTION */}
                   <div>
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      <Home size={14} className="text-slate-500" /> Select Unit Allocation
+                    <label className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-2 ${fieldErrors.units ? "text-red-500" : "text-slate-500"}`}>
+                      <Home size={14} className={fieldErrors.units ? "text-red-500" : "text-slate-500"} /> Select Unit Allocation *
                     </label>
                     
                     <div className="relative mb-3 group">
@@ -522,7 +547,7 @@ export default function UsersTab({ orgData }: any) {
                       />
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
+                    <div className={`max-h-48 overflow-y-auto custom-scrollbar border rounded-[var(--radius-lg)] p-2 space-y-1 shadow-inner ${fieldErrors.units ? "border-red-300 bg-red-50" : "border-[var(--color-border)] bg-white"}`}>
                       {filteredAvailableUnits.length === 0 ? (
                         <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
                           {unitSearchQuery ? "No matching units found." : (role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners.")}
@@ -561,28 +586,31 @@ export default function UsersTab({ orgData }: any) {
                         })
                       )}
                     </div>
+                    <FieldError message={fieldErrors.units} />
                   </div>
 
                   {/* FORM FIELDS */}
                   <div className="space-y-4 pt-2">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.name ? "text-red-500" : "text-slate-500"}`}>Full Name *</label>
                       <div className="relative">
                         <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => { setName(e.target.value); setFieldErrors(p => ({ ...p, name: "" })); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("name")}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.name} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.email ? "text-red-500" : "text-slate-500"}`}>Login Email *</label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: "" })); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("email")}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.email} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.password ? "text-red-500" : "text-slate-500"}`}>Initial Password *</label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input 
@@ -591,8 +619,8 @@ export default function UsersTab({ orgData }: any) {
                           minLength={6} 
                           placeholder="Minimum 6 characters" 
                           value={password} 
-                          onChange={(e) => setPassword(e.target.value)} 
-                          className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          onChange={(e) => { setPassword(e.target.value); setFieldErrors(p => ({ ...p, password: "" })); }} 
+                          className={`w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("password")}`} 
                           disabled={isSubmitting} 
                         />
                         <button
@@ -604,6 +632,7 @@ export default function UsersTab({ orgData }: any) {
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
+                      <FieldError message={fieldErrors.password} />
                     </div>
                   </div>
                 </div>
