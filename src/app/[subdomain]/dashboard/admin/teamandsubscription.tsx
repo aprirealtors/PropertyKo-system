@@ -65,6 +65,9 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Field-level validation errors for the Add/Edit User form
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   // Edit & Delete States
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [isEditConfirmModalOpen, setIsEditConfirmModalOpen] = useState(false);
@@ -121,17 +124,31 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     "Engineer", "Technician", "Housekeeping"
   ];
 
+  // Clears a single field's validation error (called as the user edits that field)
+  const clearFieldError = (key: string) =>
+    setFieldErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+  // Extra classes applied to an input when its field has an error
+  const errCls = (key: string) => (fieldErrors[key] ? ' !border-red-300 !bg-red-50' : '');
+
   const handleAccessChange = (module: string) => {
     setMemberAccess((prev) =>
       prev.includes(module)
         ? prev.filter((m) => m !== module)
         : [...prev, module]
     );
+    clearFieldError('access');
   };
 
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setMemberRole(e.target.value);
     setMemberAccess([]); // Reset checkboxes when role switches
+    clearFieldError('access');
   };
 
   // Helper to determine which module list to show based on the selected role
@@ -253,6 +270,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     setMemberRole("Property manager");
     setMemberAccess([]);
     setErrorMsg(null);
+    setFieldErrors({});
   };
 
   // Edit Click Handler (Populates the modal with user info)
@@ -267,7 +285,44 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       : [];
     setMemberAccess(parsedAccess);
     
+    setErrorMsg(null);
+    setFieldErrors({});
     setIsInviteModalOpen(true);
+  };
+
+  // Validates the Add/Edit User form and returns a map of field -> error message
+  const validateUserForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (memberName.trim() === "") {
+      errors.name = "Please enter the member's full name.";
+    }
+
+    // Email & password are only editable when creating a new user
+    if (!editingMemberId) {
+      const email = memberEmail.trim();
+      if (email === "") {
+        errors.email = "Please enter a login email.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errors.email = "Please enter a valid email address.";
+      } else if (team.some(m => String(m.email || "").trim().toLowerCase() === email.toLowerCase())) {
+        errors.email = "This email is already assigned to a team member.";
+      }
+
+      if (memberPassword === "") {
+        errors.password = "Please enter an initial password.";
+      } else if (memberPassword.length < 6) {
+        errors.password = "Password must be at least 6 characters.";
+      }
+    }
+
+    if (memberAccess.length === 0) {
+      errors.access = memberRole === "Maintenance staff"
+        ? "Please select at least one maintenance role."
+        : "Please select at least one module for property scope access.";
+    }
+
+    return errors;
   };
 
   // Pre-Submit handler that triggers the Edit Confirmation Modal
@@ -275,10 +330,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
     e.preventDefault();
     setErrorMsg(null);
 
-    if (memberAccess.length === 0) {
-      setErrorMsg(memberRole === "Maintenance staff" ? "Please select at least one maintenance role." : "Please select at least one module for property scope access.");
+    const errors = validateUserForm();
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
 
     if (!editingMemberId && team.length + 1 >= seatLimit) {
       setErrorMsg(`You have reached your workspace limit of ${seatLimit} seats.`);
@@ -322,7 +379,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       } else {
         // ADD NEW USER
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: memberEmail,
+          email: memberEmail.trim(),
           password: memberPassword,
           options: {
             data: {
@@ -345,7 +402,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
             { 
               admin_email: orgData.admin_email,
               name: memberName.trim(),
-              email: memberEmail,
+              email: memberEmail.trim(),
               role: memberRole,
               access_level: memberAccess.join(', '),
               status: 'Active' 
@@ -362,7 +419,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       
     } catch (error: any) {
       console.error(error);
-      setErrorMsg(error.message);
+      // Show "email already registered" style errors directly under the email field
+      if (!editingMemberId && /already (been )?registered|already exists/i.test(error.message || "")) {
+        setFieldErrors({ email: "This email is already registered." });
+      } else {
+        setErrorMsg(error.message);
+      }
       setIsEditConfirmModalOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -474,7 +536,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
               <div className="p-1.5 sm:p-2 bg-white rounded-xl border border-[var(--color-primary)]/20 shadow-sm shrink-0">
                 <Settings className="text-[var(--color-text)] w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
               </div>
-              <span className="truncate" title="Team & Settings">Team & Settings</span>
+              <span className="truncate" title="Team Settings">Team &amp; Settings</span>
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm mt-1.5 font-medium flex flex-wrap items-center gap-2">
               <span className="truncate" title="Manage workspace access, billing, and branding">Manage workspace access, billing, and branding</span>
@@ -716,7 +778,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         <input type="color" value={customTheme.primaryColor} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Primary Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Primary Color (Buttons & Active States)">Primary Color (Buttons & Active States)</label>
+                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Primary Color (Buttons & Active States)">Primary Color (Buttons &amp; Active States)</label>
                         <input type="text" value={customTheme.primaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, primaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                       </div>
                     </div>
@@ -726,7 +788,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         <input type="color" value={customTheme.secondaryColor} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="absolute -top-4 -left-4 w-20 h-20 cursor-pointer" title="Select Secondary Color" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Secondary Color (Sidebar & Headers)">Secondary Color (Sidebar & Headers)</label>
+                        <label className="block text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 truncate" title="Secondary Color (Sidebar & Headers)">Secondary Color (Sidebar &amp; Headers)</label>
                         <input type="text" value={customTheme.secondaryColor.toUpperCase()} onChange={(e) => setCustomTheme({ ...customTheme, secondaryColor: e.target.value })} className="w-full px-3 py-1.5 sm:py-2 border border-slate-200 rounded-[var(--radius-md)] text-[11px] sm:text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 uppercase transition-all" />
                       </div>
                     </div>
@@ -878,32 +940,49 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
             </div>
 
             <div className="p-5 sm:p-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
-              <form onSubmit={handlePreSubmit} className="space-y-4">
-                {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-xs sm:text-sm rounded-[var(--radius-md)] border border-red-100">{errorMsg}</div>}
+              <form onSubmit={handlePreSubmit} noValidate className="space-y-4">
+                {errorMsg && <FieldError message={errorMsg} />}
 
+                {/* FULL NAME */}
                 <div>
-                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><UserPlus size={16} className="text-[var(--color-text)]" /> Full Name</label>
-                  <input type="text" required placeholder="e.g. Maria Lopez" value={memberName} onChange={(e) => setMemberName(e.target.value)} className="w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                  <label className={`flex items-center gap-2 text-xs sm:text-sm font-bold mb-1.5 ${fieldErrors.name ? 'text-red-500' : 'text-[var(--color-text)]'}`}><UserPlus size={16} className={fieldErrors.name ? 'text-red-500' : 'text-[var(--color-text)]'} /> Full Name <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Maria Lopez" 
+                    value={memberName} 
+                    onChange={(e) => { setMemberName(e.target.value); clearFieldError('name'); }} 
+                    className={`w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)]${errCls('name')}`} 
+                    disabled={isSubmitting} 
+                  />
+                  <FieldError message={fieldErrors.name} />
                 </div>
 
+                {/* LOGIN EMAIL */}
                 <div>
-                  <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Mail size={16} className="text-[var(--color-text)]" /> Login Email</label>
-                  <input type="email" required placeholder="maria@company.com" value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} className={`w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] ${editingMemberId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}`} disabled={isSubmitting || !!editingMemberId} />
+                  <label className={`flex items-center gap-2 text-xs sm:text-sm font-bold mb-1.5 ${fieldErrors.email ? 'text-red-500' : 'text-[var(--color-text)]'}`}><Mail size={16} className={fieldErrors.email ? 'text-red-500' : 'text-[var(--color-text)]'} /> Login Email {!editingMemberId && <span className="text-red-500">*</span>}</label>
+                  <input 
+                    type="email" 
+                    placeholder="maria@company.com" 
+                    value={memberEmail} 
+                    onChange={(e) => { setMemberEmail(e.target.value); clearFieldError('email'); }} 
+                    className={`w-full px-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] ${editingMemberId ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}${errCls('email')}`} 
+                    disabled={isSubmitting || !!editingMemberId} 
+                  />
                   {editingMemberId && <p className="text-[9px] sm:text-[10px] text-slate-400 mt-1">Email cannot be changed after account creation.</p>}
+                  <FieldError message={fieldErrors.email} />
                 </div>
 
+                {/* INITIAL PASSWORD */}
                 {!editingMemberId && (
                   <div>
-                    <label className="flex items-center gap-2 text-xs sm:text-sm font-bold text-[var(--color-text)] mb-1.5"><Lock size={16} className="text-[var(--color-text)]" /> Initial Password</label>
+                    <label className={`flex items-center gap-2 text-xs sm:text-sm font-bold mb-1.5 ${fieldErrors.password ? 'text-red-500' : 'text-[var(--color-text)]'}`}><Lock size={16} className={fieldErrors.password ? 'text-red-500' : 'text-[var(--color-text)]'} /> Initial Password <span className="text-red-500">*</span></label>
                     <div className="relative group">
                       <input 
                         type={showMemberPassword ? "text" : "password"} 
-                        required 
-                        minLength={6} 
                         placeholder="Minimum 6 characters" 
                         value={memberPassword} 
-                        onChange={(e) => setMemberPassword(e.target.value)} 
-                        className="w-full px-4 pr-11 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] transition-all" 
+                        onChange={(e) => { setMemberPassword(e.target.value); clearFieldError('password'); }} 
+                        className={`w-full px-4 pr-11 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[var(--color-text)] text-xs sm:text-sm shadow-[var(--shadow-sm)] transition-all${errCls('password')}`} 
                         disabled={isSubmitting} 
                       />
                       <button 
@@ -915,6 +994,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                         {showMemberPassword ? <Eye size={16} strokeWidth={2.5} /> : <EyeOff size={16} strokeWidth={2.5} />}
                       </button>
                     </div>
+                    <FieldError message={fieldErrors.password} />
                   </div>
                 )}
 
@@ -927,11 +1007,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                   </select>
                 </div>
 
+                {/* MODULE ACCESS / MAINTENANCE ROLE */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-bold text-[var(--color-text)] mb-2">
-                    {memberRole === "Maintenance staff" ? "Maintenance Role Designation" : "Module Access Scope"}
+                  <label className={`block text-xs sm:text-sm font-bold mb-2 ${fieldErrors.access ? 'text-red-500' : 'text-[var(--color-text)]'}`}>
+                    {memberRole === "Maintenance staff" ? "Maintenance Role Designation" : "Module Access Scope"} <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-3 p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] bg-slate-50/50">
+                  <div className={`grid grid-cols-2 gap-3 p-3 border border-[var(--color-border)] rounded-[var(--radius-md)] bg-slate-50/50${errCls('access')}`}>
                     {getAvailableModulesForRole(memberRole).map((module) => (
                       <label key={module} className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-slate-600 cursor-pointer hover:text-[var(--color-text)] transition-colors">
                         <input
@@ -945,13 +1026,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
                       </label>
                     ))}
                   </div>
-                  {memberAccess.length === 0 && (
-                     <p className="text-[10px] sm:text-xs text-amber-600 mt-2 font-medium">
-                       {memberRole === "Maintenance staff" 
-                         ? "Please select at least one maintenance role." 
-                         : "Please select at least one module to grant access."}
-                     </p>
-                  )}
+                  <FieldError message={fieldErrors.access} />
                 </div>
 
               </form>
@@ -1264,6 +1339,17 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ✨ INLINE FIELD ERROR (icon + bold red message shown under an invalid field)
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <div className="flex items-start gap-1.5 mt-2 ml-1 text-red-600 text-xs sm:text-[13px] font-bold animate-in fade-in slide-in-from-top-1">
+      <AlertCircle className="w-4 h-4 shrink-0 mt-px" />
+      <span className="leading-snug">{message}</span>
     </div>
   );
 }
