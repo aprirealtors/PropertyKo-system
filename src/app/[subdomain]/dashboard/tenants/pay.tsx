@@ -435,7 +435,7 @@ export default function PayTab() {
                 </div>
                 
                 {/* Action Button */}
-                <div className="w-full shrink-0">
+                <div className="w-full max-w-2xl shrink-0 mx-auto px-4 sm:px-6 md:px-8">
                   <button 
                     onClick={() => setIsPaymentModalOpen(true)}
                     disabled={!isAssigned || isPaid || totalDue === 0 || isLoading || isTenantProcessing}
@@ -661,7 +661,7 @@ export default function PayTab() {
                 </div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Submit Payment</h2>
               </div>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSimulating}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -787,7 +787,7 @@ export default function PayTab() {
       {showSuccessModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-emerald-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-[var(--shadow-sm)] border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight whitespace-normal break-words">Request Submitted</h2>

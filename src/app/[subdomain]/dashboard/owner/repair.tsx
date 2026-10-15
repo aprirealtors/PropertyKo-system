@@ -380,10 +380,11 @@ export default function RepairTab({ highlightTicketId }: any) {
   };
 
   // ---------------------------------------------------------------------------
-  // FILTERED GROUPS (✨ ENTERPRISE SLA SORTING)
+  // FILTERED GROUPS (✨ ENTERPRISE SLA SORTING & REMOVED REJECTED FROM UI)
   // ---------------------------------------------------------------------------
   const openInProgressTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
+    // Exclude 'rejected' entirely
     return s === 'pending' || s === 'open' || s === 'in_progress' || s === 'in progress' || s === 'assigned to maintenance' || s === 'working';
   }).sort((a: any, b: any) => {
     if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
@@ -393,6 +394,7 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   const onHoldTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
+    // Exclude 'rejected' entirely
     return s === 'on_hold' || s === 'on hold';
   }).sort((a: any, b: any) => {
     if (a.priority === 'Urgent' && b.priority !== 'Urgent') return -1;
@@ -402,7 +404,8 @@ export default function RepairTab({ highlightTicketId }: any) {
 
   const resolvedTasks = enrichedTickets.filter((t: any) => {
     const s = String(t.currentLiveStatus).toLowerCase();
-    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success' || s === 'rejected';
+    // ✨ FIX: ONLY include completed/resolved/success, EXPLICITLY filter out 'rejected'
+    return s === 'completed' || s === 'resolved' || s === 'closed' || s === 'success';
   }).sort((a: any, b: any) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -569,9 +572,8 @@ export default function RepairTab({ highlightTicketId }: any) {
                     </div>
 
                     <div className="space-y-2 mb-3 flex-1 overflow-hidden mt-1">
-                      <p className="text-xs leading-relaxed font-semibold text-amber-700 line-clamp-2">
-                        <AlertTriangle size={12} className="inline mr-1 text-amber-500" strokeWidth={2.5} />
-                        {holdReason || "Awaiting management review."}
+                      <p className="text-xs leading-relaxed font-semibold text-slate-500 line-clamp-2">
+                        {t.description}
                       </p>
                     </div>
 
@@ -630,27 +632,24 @@ export default function RepairTab({ highlightTicketId }: any) {
                         <MapPin size={14} strokeWidth={2.5} className="shrink-0"/> <span className="truncate">{t.location}</span>
                       </p>
                       <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1 ml-1">
-                        <Clock size={10} /> {t.label === 'Rejected' ? 'Rejected' : 'Resolved'}: {formatDateTime(t.updated_at || t.created_at)}
+                        <Clock size={10} /> Resolved: {formatDateTime(t.updated_at || t.created_at)}
                       </p>
                     </div>
 
                     <div className="space-y-2 mb-3 flex-1 overflow-hidden mt-1">
-                      <p className={`text-xs leading-relaxed font-semibold line-clamp-2 ${t.label === 'Rejected' ? 'text-red-700' : 'text-emerald-700'}`}>
-                        {t.label === 'Rejected' ? (
-                          <><AlertCircle size={12} className="inline mr-1 text-red-500" strokeWidth={3} /> {t.staffRemarks || "Request rejected by admin."}</>
-                        ) : (
-                          <><CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} /> {t.staffRemarks || "Task completed successfully."}</>
-                        )}
+                      <p className="text-xs leading-relaxed font-semibold text-emerald-700 line-clamp-2">
+                        <CheckCircle2 size={12} className="inline mr-1 text-emerald-500" strokeWidth={3} />
+                        {t.staffRemarks || "Task completed successfully."}
                       </p>
                     </div>
 
                     <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-[var(--color-border)]">
                       <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border ${t.label === 'Rejected' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20'}`}>
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]/20">
                           {t.staffName !== "Pending Assignment" ? t.staffName.substring(0, 1) : "?"}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{t.label === 'Rejected' ? 'Rejected By' : 'Fixed By'}</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Fixed By</span>
                           <span className="text-xs font-bold text-[var(--color-text)]">{t.staffName}</span>
                         </div>
                       </div>
@@ -667,15 +666,21 @@ export default function RepairTab({ highlightTicketId }: any) {
 
       {/* ✨ 1. ENTERPRISE REPORT REPAIR MODAL */}
       {isRepairModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-2 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
-            
-            <div className="px-5 py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="relative bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl p-2 overflow-hidden transform transition-all flex flex-col max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 border border-[var(--color-border)]">
+
+            {/* Mobile grab handle */}
+            <span
+              aria-hidden="true"
+              className="sm:hidden absolute top-2.5 inset-x-0 mx-auto w-11 h-1.5 rounded-full bg-slate-300/80 z-20 pointer-events-none animate-in fade-in duration-500"
+            />
+
+            <div className="px-5 pt-8 pb-5 sm:py-6 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 shadow-[var(--shadow-sm)] z-10">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Report an Issue</h2>
                 <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Let us know what needs fixing.</p>
               </div>
-              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-[var(--radius-sm)] text-slate-500 active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsRepairModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -776,10 +781,10 @@ export default function RepairTab({ highlightTicketId }: any) {
                           {/* DESKTOP VIEW (Full Width Upload) */}
                           <div className="hidden md:flex w-full">
                             <label className={`w-full flex flex-col items-center justify-center gap-2 py-8 rounded-[var(--radius-lg)] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer bg-white shadow-[var(--shadow-sm)] transition-all group`}>
-                              <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
+                              <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                               </div>
-                              <span className="text-sm font-black text-[var(--color-text)] group-hover:text-[var(--color-primary)] uppercase tracking-wide">Upload Photo</span>
+                              <span className="text-sm font-black text-[var(--color-text)] group-hover:text-[var(--color-text)] uppercase tracking-wide">Upload Photo</span>
                               <span className="text-xs text-slate-400 font-medium">Click to browse from your computer</span>
                               <input 
                                 type="file" 
@@ -1012,9 +1017,9 @@ export default function RepairTab({ highlightTicketId }: any) {
 
                 {/* ON HOLD UPDATE COLUMN */}
                 <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
-                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Update</span>
+                      <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">Update</span>
                       <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Staff Report</span>
                     </div>
                     <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-[10px] text-amber-700 font-black uppercase tracking-widest border bg-amber-50 border-amber-200/60 shrink-0 shadow-[var(--shadow-sm)]`}>
@@ -1080,14 +1085,14 @@ export default function RepairTab({ highlightTicketId }: any) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-[var(--color-bg)]/50 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8 bg-slate-50/50 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 
                 {/* BEFORE */}
                 <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--color-border)] shadow-[var(--shadow-sm)] flex flex-col space-y-5">
                   <div className="flex items-center gap-3">
                     <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-border)] shadow-[var(--shadow-sm)]">Before</span>
-                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Your Initial Report</span>
+                    <span className="text-sm sm:text-base font-black text-[var(--color-text)]">Reported Issue</span>
                   </div>
 
                   <div className="w-full h-64 sm:h-[400px] bg-slate-900/95 rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden flex items-center justify-center shrink-0 shadow-inner group p-1">
@@ -1104,7 +1109,7 @@ export default function RepairTab({ highlightTicketId }: any) {
                       <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewTicket.description}</p>
                     </div>
                     <div className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest border-t border-[var(--color-border)] pt-4 mt-5 shrink-0 flex items-center gap-1.5">
-                      <Clock size={12} className="shrink-0" /> Reported: {formatDateTime(reviewTicket.created_at)}
+                      <Clock size={12}/> Reported: {formatDateTime(reviewTicket.created_at)}
                     </div>
                   </div>
                 </div>
@@ -1144,13 +1149,12 @@ export default function RepairTab({ highlightTicketId }: any) {
                         </span>
                       </div>
                     </div>
-
                     <div className="text-[10px] sm:text-xs text-emerald-600 font-bold uppercase tracking-widest border-t border-[var(--color-primary)]/20 pt-5 mt-5 shrink-0 flex items-center gap-1.5">
                       <Clock size={12} className="shrink-0" /> Resolved: {formatDateTime(reviewTicket.updated_at || reviewTicket.created_at)}
                     </div>
                   </div>
-                </div>
 
+                </div>
               </div>
             </div>
 
@@ -1165,7 +1169,7 @@ export default function RepairTab({ highlightTicketId }: any) {
       {isSuccessModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm p-8 text-center transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-500 rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-emerald-500/20">
+            <div className="w-20 h-20 bg-emerald-500 text-white rounded-[var(--radius-xl)] flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-emerald-500/20">
               <CheckCircle2 size={40} strokeWidth={2.5} />
             </div>
             <h2 className="text-2xl font-black text-[var(--color-text)] mb-3">Request Submitted!</h2>

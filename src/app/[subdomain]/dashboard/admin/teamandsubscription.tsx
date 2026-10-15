@@ -867,12 +867,12 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
       {/* ✨ ADD/EDIT USER MODAL */}
       {isInviteModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-[95vw] sm:max-w-xl h-[80vh] sm:h-[80vh] overflow-hidden transform transition-all flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 border border-[var(--color-border)]" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text)] tracking-tight truncate" title={editingMemberId ? "Edit Workspace User" : "Add Workspace User"}>
                 {editingMemberId ? "Edit Workspace User" : "Add Workspace User"}
               </h2>
-              <button onClick={() => !isSubmitting && closeUserModal()} className="text-slate-400 hover:opacity-90 transition-colors p-1" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && closeUserModal()} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={20} />
               </button>
             </div>
@@ -990,7 +990,7 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
           <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] shadow-2xl w-full max-w-[95vw] sm:max-w-md h-[85vh] sm:h-auto overflow-hidden transform transition-all flex flex-col border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 sm:px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight truncate" title="Subscription Details">Subscription Details</h2>
-              <button onClick={() => setIsBillingModalOpen(false)} className="text-slate-400 hover:text-[var(--color-text)] transition-colors p-1">
+              <button onClick={() => setIsBillingModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={20} />
               </button>
             </div>
@@ -1071,8 +1071,8 @@ export default function TeamTab({ orgData, isLoading: isOrgLoading, actionIntent
             
             {paymentSuccess ? (
               <div className="px-6 py-12 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
-                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-amber-50">
-                  <CheckCircle className="text-[#d97706]" size={40} strokeWidth={2.5} />
+                <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-inner border-4 border-white">
+                  <CheckCircle className="text-white" size={40} strokeWidth={2.5} />
                 </div>
                 <h3 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-3 tracking-tight truncate" title="Payment Submitted!">Payment Submitted!</h3>
                 <p className="text-slate-500 text-xs sm:text-sm mb-10 leading-relaxed px-4">

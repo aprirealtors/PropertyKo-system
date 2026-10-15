@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
-import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon } from "lucide-react";
+import { Search, X, UserPlus, Shield, Mail, Lock, Home, Users, UserCheck, Eye, EyeOff, XOctagon, AlertCircle, CheckCircle2 } from "lucide-react";
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="flex items-center gap-1.5 mt-2 text-[11px] font-black text-red-600 tracking-wide">
+      <AlertCircle size={14} strokeWidth={2.5} /> {message}
+    </p>
+  ) : null;
 
 export default function UsersTab({ orgData }: any) {
   // Database States
@@ -24,8 +31,20 @@ export default function UsersTab({ orgData }: any) {
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Success modal after an account is created
+  const [createdAccount, setCreatedAccount] = useState<{ name: string; email: string; role: string; units: number } | null>(null);
+
   // State for Unit Allocation Search
   const [unitSearchQuery, setUnitSearchQuery] = useState("");
+
+  // Field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  useEffect(() => { setFieldErrors({}); }, [isModalOpen, role]);
+
+  const errCls = (key: string) =>
+    fieldErrors[key]
+      ? "border-red-300 bg-red-50 focus:ring-red-500/15 focus:border-red-400"
+      : "border-[var(--color-border)] bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]";
 
   const filteredUsers = usersList.filter(user => {
     const searchLower = searchQuery.toLowerCase();
@@ -142,6 +161,7 @@ export default function UsersTab({ orgData }: any) {
   };
 
   const handleUnitToggle = (unitString: string, unitData: any) => {
+    setFieldErrors(prev => ({ ...prev, units: "", name: "", email: "" }));
     const isCurrentlySelected = selectedUnits.includes(unitString);
     
     if (!isCurrentlySelected) {
@@ -177,8 +197,16 @@ export default function UsersTab({ orgData }: any) {
     setIsSubmitting(true);
     setErrorMsg(null);
 
-    if (selectedUnits.length === 0) {
-      setErrorMsg("Please assign at least one unit/property to this user.");
+    const errors: Record<string, string> = {};
+    if (selectedUnits.length === 0) errors.units = "Please select at least one unit.";
+    if (!name.trim()) errors.name = "Please enter the full name.";
+    if (!email.trim()) errors.email = "Please enter an email address.";
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) errors.email = "Please enter a valid email address.";
+    if (!password) errors.password = "Please enter a password.";
+    else if (password.length < 6) errors.password = "Password must be at least 6 characters.";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
       setIsSubmitting(false);
       return;
     }
@@ -264,6 +292,9 @@ export default function UsersTab({ orgData }: any) {
 
       await fetchUsers(); 
       setIsModalOpen(false);
+
+      // ✨ Show success modal (capture values before the form is reset)
+      setCreatedAccount({ name: name.trim(), email: email.trim(), role, units: selectedUnits.length });
       
       setName("");
       setEmail("");
@@ -450,7 +481,7 @@ export default function UsersTab({ orgData }: any) {
       {/* 🌟 PREMIUM CREATE USER MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col max-h-[90vh] border border-[var(--color-border)] animate-in slide-in-from-bottom sm:zoom-in-95 duration-500" onClick={(e) => e.stopPropagation()}>
             
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0 relative overflow-hidden">
@@ -459,13 +490,13 @@ export default function UsersTab({ orgData }: any) {
                 <UserPlus className="text-[var(--color-text)]" size={22} strokeWidth={2.5} />
                 Create Account
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
 
             {/* ✨ FIX: The form now wraps both the scrollable content AND the fixed footer */}
-            <form onSubmit={handleCreateUser} className="flex flex-col min-h-0 flex-1">
+            <form onSubmit={handleCreateUser} noValidate className="flex flex-col min-h-0 flex-1">
               
               {/* Scrollable Content Area */}
               <div className="p-6 overflow-y-auto custom-scrollbar bg-slate-50/40 flex-1">
@@ -506,8 +537,8 @@ export default function UsersTab({ orgData }: any) {
 
                   {/* DYNAMIC UNIT SELECTION */}
                   <div>
-                    <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                      <Home size={14} className="text-slate-500" /> Select Unit Allocation
+                    <label className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mb-2 ${fieldErrors.units ? "text-red-500" : "text-slate-500"}`}>
+                      <Home size={14} className={fieldErrors.units ? "text-red-500" : "text-slate-500"} /> Select Unit Allocation *
                     </label>
                     
                     <div className="relative mb-3 group">
@@ -522,7 +553,7 @@ export default function UsersTab({ orgData }: any) {
                       />
                     </div>
 
-                    <div className="max-h-48 overflow-y-auto custom-scrollbar border border-[var(--color-border)] rounded-[var(--radius-lg)] p-2 space-y-1 bg-white shadow-inner">
+                    <div className={`max-h-48 overflow-y-auto custom-scrollbar border rounded-[var(--radius-lg)] p-2 space-y-1 shadow-inner ${fieldErrors.units ? "border-red-300 bg-red-50" : "border-[var(--color-border)] bg-white"}`}>
                       {filteredAvailableUnits.length === 0 ? (
                         <p className="text-xs font-bold text-slate-400 text-center py-6 px-4">
                           {unitSearchQuery ? "No matching units found." : (role === 'Tenant' ? "No active leases found. You must declare a lease before creating a tenant account." : "No units found with assigned owners.")}
@@ -561,28 +592,31 @@ export default function UsersTab({ orgData }: any) {
                         })
                       )}
                     </div>
+                    <FieldError message={fieldErrors.units} />
                   </div>
 
                   {/* FORM FIELDS */}
                   <div className="space-y-4 pt-2">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Full Name</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.name ? "text-red-500" : "text-slate-500"}`}>Full Name *</label>
                       <div className="relative">
                         <UserPlus className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => setName(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="text" required placeholder="e.g. Juan Reyes" value={name} onChange={(e) => { setName(e.target.value); setFieldErrors(p => ({ ...p, name: "" })); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("name")}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.name} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Login Email</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.email ? "text-red-500" : "text-slate-500"}`}>Login Email *</label>
                       <div className="relative">
                         <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" disabled={isSubmitting} />
+                        <input type="email" required placeholder="juan@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: "" })); }} className={`w-full pl-10 pr-4 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("email")}`} disabled={isSubmitting} />
                       </div>
+                      <FieldError message={fieldErrors.email} />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Initial Password</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${fieldErrors.password ? "text-red-500" : "text-slate-500"}`}>Initial Password *</label>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input 
@@ -591,8 +625,8 @@ export default function UsersTab({ orgData }: any) {
                           minLength={6} 
                           placeholder="Minimum 6 characters" 
                           value={password} 
-                          onChange={(e) => setPassword(e.target.value)} 
-                          className="w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold text-[var(--color-text)] bg-white transition-all shadow-[var(--shadow-sm)]" 
+                          onChange={(e) => { setPassword(e.target.value); setFieldErrors(p => ({ ...p, password: "" })); }} 
+                          className={`w-full pl-10 pr-10 py-3 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-sm font-bold text-[var(--color-text)] transition-all shadow-[var(--shadow-sm)] ${errCls("password")}`} 
                           disabled={isSubmitting} 
                         />
                         <button
@@ -601,9 +635,10 @@ export default function UsersTab({ orgData }: any) {
                           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary)] focus:outline-none transition-colors"
                           disabled={isSubmitting}
                         >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                       </div>
+                      <FieldError message={fieldErrors.password} />
                     </div>
                   </div>
                 </div>
@@ -621,6 +656,45 @@ export default function UsersTab({ orgData }: any) {
           </div>
         </div>
       )}
+
+      {/* 🌟 ACCOUNT CREATED SUCCESS MODAL */}
+      {createdAccount && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-md overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-[var(--radius-lg)] flex items-center justify-center mx-auto mb-5 border-4 border-[var(--color-primary)]/20 shadow-inner">
+              <CheckCircle2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Account Created</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 leading-relaxed px-1">
+              <strong className="text-[var(--color-text)] font-black">{createdAccount.name}</strong>'s {createdAccount.role.toLowerCase()} account is ready. They can now log in with the email and password you set.
+            </p>
+
+            <div className="bg-white border border-[var(--color-border)] rounded-[var(--radius-lg)] p-4 mb-6 text-left space-y-2.5 shadow-sm">
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email</span>
+                <span className="text-xs font-bold text-[var(--color-text)] truncate">{createdAccount.email}</span>
+              </div>
+              <div className="flex justify-between items-center gap-3 border-t border-slate-100 pt-2.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</span>
+                <span className="text-xs font-bold text-[var(--color-text)]">{createdAccount.role}</span>
+              </div>
+              <div className="flex justify-between items-center gap-3 border-t border-slate-100 pt-2.5">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Units</span>
+                <span className="text-xs font-bold text-[var(--color-text)]">{createdAccount.units} assigned</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setCreatedAccount(null)}
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-xs sm:text-sm font-black uppercase tracking-wider transition-all shadow-[var(--shadow-md)] active:scale-[0.96] border border-transparent"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

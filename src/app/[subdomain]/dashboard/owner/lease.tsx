@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, AlertCircle, RefreshCw, MessageSquare, XOctagon, Clock } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, FileCheck, User, Plus, X, CalendarDays, Upload, Loader2, CheckCircle, AlertTriangle, CircleQuestionMark, AlertCircle, RefreshCw, MessageSquare, XOctagon, Clock } from 'lucide-react';
 
 type DeclareErrors = {
   tenantName?: string;
@@ -791,7 +791,7 @@ export default function LeaseTab({ userData, units }: any) {
                       <button 
                         onClick={confirmCancelPending}
                         disabled={isSubmitting}
-                        className="w-full mt-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
+                        className="w-full mt-2 bg-red-500/10 hover:bg-red-500 text-white border border-red-500 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
                       >
                         <XOctagon size={16} strokeWidth={2.5} className="w-4 h-4" /> Cancel Pending Request
                       </button>
@@ -801,7 +801,7 @@ export default function LeaseTab({ userData, units }: any) {
                       <button 
                         onClick={() => { setReasonText(""); setIsStopLeaseModalOpen(true); }}
                         disabled={isSubmitting}
-                        className="w-full mt-2 bg-white/5 hover:bg-red-500/20 text-white hover:text-red-300 border border-white/10 hover:border-red-500/30 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
+                        className="w-full mt-2 bg-red-500/10 hover:bg-red-500 text-white border border-red-500 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all active:scale-[0.98] flex justify-center items-center gap-2 disabled:opacity-50"
                       >
                         <XOctagon size={16} strokeWidth={2.5} className="w-4 h-4" /> Request Lease Termination
                       </button>
@@ -829,7 +829,7 @@ export default function LeaseTab({ userData, units }: any) {
                 </h2>
                 <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[var(--color-text)] opacity-70 mt-0.5 sm:mt-1 truncate">{propertyName} / {unitNumber}</p>
               </div>
-              <button onClick={() => !isSubmitting && setIsDeclareModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-[var(--color-border)] rounded-[var(--radius-sm)] text-slate-400 hover:text-[var(--color-primary)] transition-colors active:scale-95 shrink-0 shadow-sm" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsDeclareModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -928,11 +928,11 @@ export default function LeaseTab({ userData, units }: any) {
             <div className="px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden shrink-0 border-b bg-red-50 border-red-200">
               <div className="relative z-10 min-w-0 flex items-center gap-3">
                 <XOctagon size={20} strokeWidth={2.5} className="text-red-500" />
-                <h2 className="text-lg sm:text-xl font-black tracking-tight truncate text-red-700">
+                <h2 className="text-lg sm:text-xl font-black tracking-tight truncate text-[var(--color-text)]">
                   Request Lease Termination
                 </h2>
               </div>
-              <button onClick={() => { !isSubmitting && setIsStopLeaseModalOpen(false); }} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0 shadow-sm" disabled={isSubmitting}>
+              <button onClick={() => { !isSubmitting && setIsStopLeaseModalOpen(false); }} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -972,12 +972,12 @@ export default function LeaseTab({ userData, units }: any) {
 
       {/* ✨ UNIVERSAL CONFIRMATION MODAL */}
       {confirmModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
-              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-emerald-500 text-white border-[var(--color-primary)]/30'}`}>
+              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CircleQuestionMark size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {confirmModal.desc}
             </p>
@@ -990,7 +990,7 @@ export default function LeaseTab({ userData, units }: any) {
                   if (confirmModal.action) confirmModal.action();
                   setConfirmModal({ isOpen: false, title: "", desc: "", action: null, isDestructive: false });
                 }} 
-                className={`flex-1 text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 ${confirmModal.isDestructive ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--color-primary)] hover:opacity-90'}`}
+                className={`flex-1 text-[var(--color-primary-text)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 ${confirmModal.isDestructive ? 'bg-red-500 hover:bg-red-600' : 'bg-[var(--color-primary)] hover:opacity-90'}`}
               >
                 Yes, Proceed
               </button>
@@ -1001,12 +1001,12 @@ export default function LeaseTab({ userData, units }: any) {
 
       {/* ✨ SUCCESS MODAL */}
       {successModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{successModal.title}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">{successModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {successModal.desc}
             </p>
@@ -1019,12 +1019,12 @@ export default function LeaseTab({ userData, units }: any) {
 
       {/* ✨ ERROR MODAL */}
       {errorModal.isOpen && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-lg)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-red-200">
               <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">An error occurred</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">An error occurred</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {errorModal.message}
             </p>

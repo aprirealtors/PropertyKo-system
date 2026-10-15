@@ -955,7 +955,7 @@ export default function OwnerDashboard() {
              
              {/* TAB 1: HOME (OVERVIEW) */}
              {activeTab === 'home' && (
-               <div className="max-w-6xl mx-auto space-y-5 sm:space-y-6 md:space-y-8">
+               <div className="w-full flex-1 flex flex-col gap-5 sm:gap-6 md:gap-8">
 
                  {/* Header Section */}
               <header className="flex flex-row justify-between items-center pb-2 gap-4">
@@ -967,7 +967,7 @@ export default function OwnerDashboard() {
                   ) : (
                     <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-black mt-1 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
                       Welcome back,
-                      <span className="text-[var(--color-text)] break-words">{fullName}</span>
+                      <span className="text-[var(--color-text)] break-words">{fullName} 👋</span>
                     </h1>
                   )}
 
@@ -1313,7 +1313,7 @@ export default function OwnerDashboard() {
       {/* WORKSPACE PROFILE MODAL */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
 
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Owner Profile</h2>

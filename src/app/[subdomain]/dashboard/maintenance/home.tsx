@@ -108,7 +108,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
             <span>{currentDate}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl md:text-[2.5rem] font-black tracking-tight leading-tight truncate text-black pb-1">
-            <span className="text-[var(--color-text)]">{greeting}</span>, {profile.name?.split(' ')[0]} 👋
+            <span className="text-[var(--color-text)]">{greeting}</span>, {profile.name?.split('')} 👋
           </h2>
           <p className="text-slate-500 mt-0.5 md:mt-1 text-xs sm:text-sm font-medium truncate leading-relaxed max-w-lg">
             Here's your maintenance overview for today.
@@ -197,7 +197,7 @@ export default function HomeTab({ profile, metrics, openProfileModal, tasks = []
         <div className="flex-1 flex flex-col">
           {upNextTasks.length === 0 ? (
             <div className="flex-1 py-14 text-center border-2 border-dashed border-[var(--color-border)] rounded-[1.5rem] bg-slate-50/50 flex flex-col items-center justify-center transition-all hover:bg-slate-50 hover:border-[var(--color-primary)]/30">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 rounded-[var(--radius-md)] flex items-center justify-center mb-5 shadow-inner text-emerald-500 border border-emerald-200/20">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-600 rounded-[var(--radius-md)] flex items-center justify-center mb-5 shadow-inner text-white border border-emerald-200/20">
                 <CheckCircle size={36} className="sm:w-10 sm:h-10" />
               </div>
               <h4 className="text-lg md:text-xl text-[var(--color-text)] font-black tracking-tight">You're all caught up!</h4>

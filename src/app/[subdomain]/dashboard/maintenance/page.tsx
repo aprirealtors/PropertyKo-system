@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ NEW IMPORT
 import { 
   Bell, CheckCircle2, AlertTriangle, LogOut, 
   Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight, Lock, Key,
@@ -37,28 +36,19 @@ export interface MaintenanceTask {
 export default function MaintenanceDashboard() {
   const router = useRouter();
   
-  // ✨ INITIALIZE NOTIFICATION HOOK
-  const { token, requestPermission } = usePushNotifications();
-
-  // ✨ FIX: Add this auto-restore block right here!
-  // This forces the UI button to immediately say "Notifications Enabled" upon login
-  useEffect(() => {
-    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
-      if (requestPermission) {
-        requestPermission(); 
-      }
-    }
-  }, [token, requestPermission]);
-
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
   
-  // Global Data States (✨ ADDED accessLevel)
+  // Global Data States 
   const [profile, setProfile] = useState({ name: "Staff", initials: "S", accessLevel: "Maintenance Staff" });
   const [userEmail, setUserEmail] = useState<string>(""); 
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // ✨ LOADING STATES
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isTasksLoading, setIsTasksLoading] = useState(true);
   
   // Modals & UI States
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -73,11 +63,16 @@ export default function MaintenanceDashboard() {
   const [isSavingName, setIsSavingName] = useState(false);
   const [isConfirmNameModalOpen, setIsConfirmNameModalOpen] = useState(false);
 
-  // Notification & Messages States
+  // ✨ Notification & Messages States
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState<number>(0);
+
+  // ✨ Notification Delete Modals
+  const [isDeleteNotifModalOpen, setIsDeleteNotifModalOpen] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<any>(null);
+  const [isDeleteAllNotifModalOpen, setIsDeleteAllNotifModalOpen] = useState(false);
 
   // Metrics
   const [metrics, setMetrics] = useState({ assigned: 0, dueToday: 0, doneThisWeek: 0 });
@@ -99,9 +94,10 @@ export default function MaintenanceDashboard() {
     fetchUserDataAndTasks();
   }, []);
 
-  // Fetch Data
+  // Fetch Data (Cleaned and Optimized)
   const fetchUserDataAndTasks = async () => {
-    setIsLoading(true);
+    setIsAppLoading(true);
+    setIsTasksLoading(true);
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
@@ -113,6 +109,8 @@ export default function MaintenanceDashboard() {
       setUserEmail(user.email || ""); 
 
       const adminParentEmail = user.user_metadata?.admin_parent || user.email;
+      
+      // Fetch Org Logo
       const { data: orgData } = await supabase
         .from('organizations')
         .select('logo_url')
@@ -121,9 +119,10 @@ export default function MaintenanceDashboard() {
 
       if (orgData?.logo_url) setOrgLogo(orgData.logo_url);
 
+      // Fetch Staff Profile
       const { data: userData } = await supabase
         .from('team_members')
-        .select('name, access_level') // ✨ FETCH access_level
+        .select('name, access_level')
         .eq('email', user.email)
         .single();
 
@@ -134,16 +133,12 @@ export default function MaintenanceDashboard() {
           initials, 
           accessLevel: userData.access_level || "Maintenance Staff" 
         });
-      } else if (user.user_metadata?.name || user.user_metadata?.full_name) {
-        const metaName = user.user_metadata.name || user.user_metadata.full_name;
-        const initials = metaName.charAt(0).toUpperCase();
-        setProfile({ 
-          name: metaName, 
-          initials, 
-          accessLevel: "Maintenance Staff" 
-        });
       }
 
+      // RELEASE APP LOADING: The shell and tabs will now render
+      setIsAppLoading(false);
+
+      // Fetch Tasks Assigned to this Staff
       const { data: taskData, error: taskError } = await supabase
         .from('maintenance_tasks')
         .select('*')
@@ -159,7 +154,7 @@ export default function MaintenanceDashboard() {
         .eq('recipient', user.email) 
         .eq('is_hidden', false)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
         
       if (notifData) {
         setNotifications(notifData);
@@ -169,11 +164,12 @@ export default function MaintenanceDashboard() {
     } catch (error) {
       console.error("Error loading maintenance dashboard:", error);
     } finally {
-      setIsLoading(false);
+      setIsAppLoading(false); // Failsafe
+      setIsTasksLoading(false); // Data fetch finished
     }
   };
 
-  // Real-time Listeners
+  // ✨ Real-time Listeners (PURE UI DATA ONLY - No Sounds)
   useEffect(() => {
     if (!userEmail) return;
 
@@ -193,12 +189,14 @@ export default function MaintenanceDashboard() {
     };
     fetchUnreadMessages();
 
+    // ✨ TASKS CHANNEL LISTENER (Updates the Board)
     const tasksChannel = supabase
-      .channel('staff-live-tasks')
+      .channel(`staff-live-tasks-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_tasks', filter: `assigned_to=eq.${userEmail}` },
         (payload) => {
           if (payload.eventType === 'INSERT') {
             setTasks((current) => [payload.new as MaintenanceTask, ...current]);
+            showToast("Your task board has been updated with a new assignment.", "success");
           } else if (payload.eventType === 'UPDATE') {
             setTasks((current) => {
               const exists = current.find(t => t.id === payload.new.id);
@@ -211,18 +209,21 @@ export default function MaintenanceDashboard() {
         }
       ).subscribe();
 
+    // ✨ NOTIFICATIONS CHANNEL LISTENER (Updates the Bell Dropdown)
     const notifChannel = supabase
-      .channel('staff-live-notifications')
+      .channel(`staff-live-notifications-${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `recipient=eq.${userEmail}` },
         (payload) => {
           setNotifications((current) => [payload.new, ...current]);
-          setUnreadCount((count) => count + 1);
+          if (!payload.new.is_read) {
+            setUnreadCount((count) => count + 1);
+          }
         }
       ).subscribe();
 
     // Realtime Listener for Messages Count Update
     const messagesCountChannel = supabase
-      .channel('staff-live-messages-count')
+      .channel(`staff-live-messages-count-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `tenant_email=eq.${userEmail}` },
         () => {
           fetchUnreadMessages();
@@ -263,34 +264,28 @@ export default function MaintenanceDashboard() {
     router.push('/login');
   };
 
-  // --- Trigger Modal Instead of Saving Immediately ---
   const handleInitiateNameSave = () => {
     if (!editedName.trim()) {
       showToast("Name cannot be empty", "error");
       return;
     }
-    
     if (editedName.trim() === profile.name) {
       setIsEditingName(false);
       return;
     }
-
     setIsConfirmNameModalOpen(true);
   };
 
-  // --- Actual Save Function called from Modal ---
   const confirmNameSave = async () => {
     setIsConfirmNameModalOpen(false);
     setIsSavingName(true);
     
     try {
-      // 1. Update name directly in Supabase Auth user metadata
       const { error: authError } = await supabase.auth.updateUser({
         data: { name: editedName.trim() }
       });
       if (authError) throw authError;
         
-      // 2. Update name in the team_members table
       const { data, error: dbError } = await supabase
         .from('team_members')
         .update({ name: editedName.trim() })
@@ -299,7 +294,6 @@ export default function MaintenanceDashboard() {
         
       if (dbError) throw dbError;
 
-      // 3. Catch Silent RLS Failures
       if (!data || data.length === 0) {
         throw new Error("Update blocked by database permissions (RLS) or email not found.");
       }
@@ -318,7 +312,6 @@ export default function MaintenanceDashboard() {
     }
   };
 
-  // Handle Password Change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -341,17 +334,13 @@ export default function MaintenanceDashboard() {
         password: currentPassword,
       });
 
-      if (signInError) {
-        throw new Error("Incorrect current password.");
-      }
+      if (signInError) throw new Error("Incorrect current password.");
 
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
 
-      if (updateError) {
-        throw new Error(`Failed to update password: ${updateError.message}`);
-      }
+      if (updateError) throw new Error(`Failed to update password: ${updateError.message}`);
 
       showToast("Password updated successfully!", "success");
       setIsChangingPassword(false);
@@ -369,7 +358,98 @@ export default function MaintenanceDashboard() {
     }
   };
 
-  if (isLoading) {
+  // ✨ NOTIFICATIONS LOGIC
+  const markAllAsRead = () => {
+    if (!userEmail || notifications.length === 0) return;
+    
+    const unreadIds = notifications.filter(n => !n.is_read && !n.id.toString().includes('task_')).map(n => n.id);
+    
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    
+    if (unreadIds.length > 0) {
+      supabase.from('notifications').update({ is_read: true }).in('id', unreadIds).then();
+    }
+  };
+
+  const confirmDeleteAllNotifications = async () => {
+    if (!userEmail || notifications.length === 0) return;
+    
+    const idsToDelete = notifications.filter(n => !n.id.toString().includes('task_')).map(n => n.id);
+    setNotifications([]);
+    setUnreadCount(0);
+    setIsDeleteAllNotifModalOpen(false);
+    setIsNotifOpen(false);
+    
+    if (idsToDelete.length > 0) {
+      await supabase.from('notifications').update({ is_hidden: true }).in('id', idsToDelete); 
+    }
+  };
+
+  const handleInitiateDeleteNotification = (e: React.MouseEvent, notif: any) => {
+    e.stopPropagation(); 
+    setNotificationToDelete(notif);
+    setIsDeleteNotifModalOpen(true);
+  };
+
+  const confirmDeleteNotification = async () => {
+    if (!userEmail || !notificationToDelete) return;
+
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationToDelete.id));
+    if (!notificationToDelete.is_read) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    setIsDeleteNotifModalOpen(false);
+
+    if (!String(notificationToDelete.id).includes('task_')) {
+      await supabase.from('notifications').update({ is_hidden: true }).eq('id', notificationToDelete.id);
+    }
+    setNotificationToDelete(null);
+  };
+
+  const handleNotificationClick = (notif: any) => {
+    setIsNotifOpen(false);
+
+    if (!notif.is_read) {
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (!String(notif.id).includes('task_')) {
+        supabase.from('notifications').update({ is_read: true }).eq('id', notif.id).then();
+      }
+    }
+
+    const type = notif.type?.toUpperCase() || '';
+    if (type === 'MESSAGE' || type === 'CHAT') {
+      setActiveTab("messages"); 
+    } else if (type === 'TICKET' || type === 'MAINTENANCE') {
+      // ✨ FIX: Kunin ang actual Task ID mula sa reference_id galing sa database
+      const taskId = notif.reference_id || (notif.id.toString().includes('task_') ? notif.id.split('task_')[1] : null);
+      const intent = taskId ? `${taskId}_${Date.now()}` : null;
+      
+      setHighlightTaskId(intent);
+      setActiveTab("tasks"); 
+    } else {
+      setActiveTab("home");
+    }
+  };
+
+  const formatNotificationMessage = (text: string) => {
+    if (!text) return { __html: "" };
+    let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    safeText = safeText.replace(/\b(COMPLETED|ON HOLD|RESOLVED|PENDING|IN PROGRESS|SUCCESS|FAILED)\b/g, '<span class="font-black text-[var(--color-text)] bg-slate-200/70 border border-slate-300 px-1.5 py-0.5 rounded text-[9px] tracking-wider ml-0.5 mr-0.5">$1</span>');
+    safeText = safeText.replace(/^([a-zA-Z0-9\s]+?)\s(marked|put|requested|created|updated|resolved|submitted|assigned)\b/i, '<strong class="font-extrabold text-[var(--color-text)]">$1</strong> $2');
+    safeText = safeText.replace(/(Remarks|Reason|Note|Notes):\s*(.*)/gi, function(match, label, content) {
+      return `<div class="mt-2.5 bg-white border border-[var(--color-border)] rounded-xl p-2.5 shadow-[var(--shadow-sm)]">
+                <span class="block text-[9px] font-black uppercase tracking-widest text-[var(--color-text)] mb-0.5">${label}</span>
+                <span class="block text-xs font-bold text-slate-700 leading-snug break-words">${content}</span>
+              </div>`;
+    });
+    return { __html: safeText };
+  };
+
+  // ✨ ONLY SHOW FULL SCREEN LOADER FOR APP BOOT
+  if (isAppLoading) {
     return (
       <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] font-[family-name:var(--font-corporate)] overflow-hidden">
         <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 border-b border-white/5 z-40 shadow-md shrink-0">
@@ -394,7 +474,7 @@ export default function MaintenanceDashboard() {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-[var(--color-bg)] text-[var(--color-text)] font-[family-name:var(--font-corporate)] overflow-hidden">
-      
+
       {/* HEADER */}
       <header className="h-16 bg-[var(--color-secondary)] flex items-center justify-between px-4 sm:px-6 flex-shrink-0 relative z-40 border-b border-white/5 shadow-md">
         <div className="flex items-center gap-3">
@@ -416,7 +496,86 @@ export default function MaintenanceDashboard() {
           )}
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4 text-white relative">
+        <div className="flex items-center gap-2 sm:gap-4 text-white relative">
+          
+          {/* ✨ PREMIUM NOTIFICATION BELL */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsNotifOpen(!isNotifOpen)} 
+              className="relative flex items-center justify-center w-10 h-10 hover:bg-white/10 rounded-xl transition-all group"
+            >
+              <Bell className={`w-[22px] h-[22px] text-slate-300 group-hover:text-white transition-colors ${unreadCount > 0 ? 'animate-bounce-slow' : ''}`} />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 flex h-4 w-4 p-2 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-[var(--color-secondary)] shadow-[var(--shadow-sm)]">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+            
+            {isNotifOpen && (
+              <>
+                <div className="fixed inset-0 z-[90]" onClick={() => setIsNotifOpen(false)} />
+                
+                <div className="fixed top-[70px] left-4 right-4 sm:absolute sm:top-14 sm:left-auto sm:-right-2 sm:w-96 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] border border-slate-200 z-[100] overflow-hidden flex flex-col text-[var(--color-text)] animate-in slide-in-from-top-2 duration-200">
+                  <div className="p-4 flex justify-between items-center bg-slate-50 border-b border-slate-100">
+                    <h3 className="font-extrabold text-[var(--color-text)] text-sm">Notifications</h3>
+                    <div className="flex gap-3 relative z-10">
+                      <button onClick={markAllAsRead} className="text-xs font-bold text-slate-500 hover:text-[var(--color-primary)] flex items-center gap-1 transition-colors"><CheckCheck size={14} /> Read All</button>
+                      <button 
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          setIsDeleteAllNotifModalOpen(true);
+                        }} 
+                        className="text-xs font-bold text-slate-500 hover:text-red-500 flex items-center gap-1 transition-colors"
+                      >
+                        <Trash2 size={14} /> Delete all
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="max-h-[350px] sm:max-h-[400px] overflow-y-auto relative z-10 custom-scrollbar">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 flex flex-col items-center justify-center text-slate-400 gap-3">
+                        <Bell size={32} className="opacity-20" />
+                        <span className="text-sm font-semibold">No new notifications</span>
+                      </div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div key={notif.id} onClick={() => handleNotificationClick(notif)} className={`p-4 border-b border-slate-50 cursor-pointer transition-all hover:bg-slate-50 relative group ${!notif.is_read ? 'bg-[var(--color-primary)]/5' : 'opacity-80'}`}>
+                          <div className="flex justify-between items-start mb-1.5 gap-2">
+                            <span className={`font-bold text-sm truncate flex-1 ${!notif.is_read ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>{notif.title}</span>
+                            
+                            <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                              {!notif.is_read && <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-primary)] shadow-sm"></span>}
+                              
+                              <button
+                                onClick={(e) => handleInitiateDeleteNotification(e, notif)}
+                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                                title="Delete notification"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div 
+                            className="text-xs text-slate-500 leading-relaxed mt-1"
+                            dangerouslySetInnerHTML={formatNotificationMessage(notif.message)}
+                          />
+
+                          <div className="flex justify-between items-center mt-3.5 pt-3 border-t border-slate-100/60">
+                            <span className={`text-[9px] font-extrabold px-2 py-1 rounded-[var(--radius-sm)] uppercase tracking-wider ${notif.type === 'TICKET' || notif.type === 'MAINTENANCE' ? 'bg-[var(--color-primary)]/10 text-[var(--color-text)] border border-[var(--color-primary)]/20' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{notif.type}</span>
+                            <span className="text-[10px] font-semibold text-slate-400">{new Date(notif.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           <span className="hidden sm:block px-3 py-1.5 rounded-[var(--radius-sm)] text-[10px] sm:text-xs font-extrabold border border-[var(--color-primary)]/30 text-[var(--color-primary-text)] bg-[var(--color-primary)]">Maintenance Portal</span>
           
           <button onClick={() => setShowLogoutModal(true)} className="flex items-center gap-2 text-white/70 hover:text-white hover:bg-white/10 font-bold transition-all text-xs px-3 py-2 sm:px-4 rounded-[var(--radius-sm)]">
@@ -499,10 +658,10 @@ export default function MaintenanceDashboard() {
                 }} 
                 tasks={tasks} 
                 setActiveTab={setActiveTab} 
-                isLoading={isLoading}
+                isLoading={isTasksLoading}
               />
             )}
-            {activeTab === 'tasks' && <TasksTab tasks={tasks} profile={profile} showToast={showToast} fetchTasks={fetchUserDataAndTasks} />}
+            {activeTab === 'tasks' && <TasksTab tasks={tasks} profile={profile} showToast={showToast} fetchTasks={fetchUserDataAndTasks} isLoading={isTasksLoading} highlightTaskId={highlightTaskId} />}
             {activeTab === 'messages' && <ConversationTab />}
           </div>
         </main>
@@ -541,7 +700,7 @@ export default function MaintenanceDashboard() {
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
-              <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Staff Profile</h2>
+              <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Maintenance Staff Profile</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
                 className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-slate-100 rounded-[var(--radius-xl)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
@@ -648,31 +807,6 @@ export default function MaintenanceDashboard() {
                       Maintenance Staff
                     </span>
                   </div>
-                </div>
-              </div>
-
-              {/* ✨ NEW: Desktop Notifications Box */}
-              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
-                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
-                  Preferences
-                </h4>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
-                  <button
-                    onClick={requestPermission}
-                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
-                      token
-                        ? 'bg-green-50 text-green-600 border-green-200'
-                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
-                    }`}
-                  >
-                    {token ? (
-                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
-                    ) : (
-                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
-                    )}
-                  </button>
-                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and updates even when the app is minimized.</p>}
                 </div>
               </div>
 
@@ -863,6 +997,67 @@ export default function MaintenanceDashboard() {
                 className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-[var(--color-primary)]/25 active:scale-[0.96]"
               >
                 Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PREMIUM DELETE NOTIFICATION MODAL */}
+      {isDeleteNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete Notification</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete this notification? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsDeleteNotifModalOpen(false);
+                  setNotificationToDelete(null);
+                }} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteNotification} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ NEW: PREMIUM DELETE ALL NOTIFICATIONS MODAL */}
+      {isDeleteAllNotifModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center p-6 sm:p-8 transform transition-all animate-in zoom-in-95 duration-500 border border-[var(--color-border)]">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-[1rem] sm:rounded-[2rem] flex items-center justify-center mx-auto mb-5 border-4 border-red-50/50 shadow-inner">
+              <Trash2 size={32} className="sm:w-9 sm:h-9" strokeWidth={2.5} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 tracking-tight">Delete All</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-8 sm:mb-10 leading-relaxed px-1">
+              Are you sure you want to delete all notifications? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIsDeleteAllNotifModalOpen(false)} 
+                className="flex-1 py-3 sm:py-3.5 text-xs sm:text-sm font-black text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-[var(--radius-md)] transition-all border border-transparent active:scale-[0.96]"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDeleteAllNotifications} 
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 sm:py-3.5 rounded-[var(--radius-md)] text-sm sm:text-sm font-black transition-all shadow-lg shadow-red-500/25 active:scale-[0.96]"
+              >
+                Yes, Delete All
               </button>
             </div>
           </div>
