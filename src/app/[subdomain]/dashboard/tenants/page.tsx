@@ -958,7 +958,7 @@ export default function TenantDashboard() {
       {/* WORKSPACE PROFILE MODAL (WITH CHANGE PASSWORD) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
 
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">{userRole === 'owner' ? 'Owner Profile' : 'Tenant Profile'}</h2>
@@ -1576,7 +1576,7 @@ function HomeView({
   }, [unit, soaStatus, rentAmount]);
 
   return (
-    <div className="space-y-5 sm:space-y-6 md:space-y-8 max-w-6xl mx-auto">
+    <div className="space-y-5 sm:space-y-6 md:space-y-8 w-full mx-auto">
       {/* Header Section */}
       <header className="flex flex-row justify-between items-center pb-2 gap-4">
         <div className="flex-1 min-w-0">

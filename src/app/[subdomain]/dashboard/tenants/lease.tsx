@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/utils/supabase/client";
-import { FileText, Calendar, Home, CreditCard, ArrowRight, CalendarDays, User, FileCheck, AlertTriangle, RefreshCw, XOctagon, CheckCircle, X, Clock } from 'lucide-react';
+import { FileText, Calendar, Home, CreditCard, ArrowRight, CalendarDays, User, FileCheck, AlertTriangle, RefreshCw, XOctagon, CheckCircle, CircleQuestionMark,  X, Clock } from 'lucide-react';
 
 export default function LeaseTab({ setActiveTab }: any) {
   const [lease, setLease] = useState<any>(null);
@@ -502,7 +502,7 @@ export default function LeaseTab({ setActiveTab }: any) {
                     {!pendingTerminationStatuses.includes(lease.renewal_status) && lease.status === 'Active' && (
                       <button 
                         onClick={() => { setReasonText(""); setIsStopLeaseModalOpen(true); }}
-                        className="w-full bg-white/5 hover:bg-red-500/20 text-white hover:text-red-300 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] flex justify-center items-center gap-2 border border-white/10 hover:border-red-500/30"
+                        className="w-full bg-red-500/10 hover:bg-red-500 text-white border border-red-500 rounded-[var(--radius-md)] py-3.5 sm:py-4 font-black uppercase tracking-wider text-[10px] sm:text-[11px] transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] flex justify-center items-center gap-2"
                       >
                         <XOctagon size={16} strokeWidth={2.5} className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Request Early Termination
                       </button>
@@ -523,11 +523,11 @@ export default function LeaseTab({ setActiveTab }: any) {
             <div className={`px-5 sm:px-6 py-4 sm:py-5 flex justify-between items-center relative overflow-hidden shrink-0 border-b ${isStopLeaseModalOpen ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
               <div className="relative z-10 min-w-0 flex items-center gap-3">
                 <XOctagon size={20} strokeWidth={2.5} className={isStopLeaseModalOpen ? 'text-red-500' : 'text-slate-500'} />
-                <h2 className={`text-lg sm:text-xl font-black tracking-tight truncate ${isStopLeaseModalOpen ? 'text-red-700' : 'text-slate-700'}`}>
+                <h2 className={`text-lg sm:text-xl font-black tracking-tight truncate ${isStopLeaseModalOpen ? 'text-[var(--color-text)]' : 'text-slate-700'}`}>
                   {isStopLeaseModalOpen ? "Request Early Termination" : "Decline Renewal"}
                 </h2>
               </div>
-              <button onClick={() => { !isSubmitting && setIsDeclineModalOpen(false); setIsStopLeaseModalOpen(false); }} className="relative z-10 w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-[var(--radius-sm)] text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0 shadow-sm" disabled={isSubmitting}>
+              <button onClick={() => { !isSubmitting && setIsDeclineModalOpen(false); setIsStopLeaseModalOpen(false); }} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -570,8 +570,8 @@ export default function LeaseTab({ setActiveTab }: any) {
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30`}>
-              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border bg-emerald-500 text-white border-[var(--color-primary)]/30`}>
+              <CircleQuestionMark size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
@@ -599,7 +599,7 @@ export default function LeaseTab({ setActiveTab }: any) {
       {successModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{successModal.title}</h2>

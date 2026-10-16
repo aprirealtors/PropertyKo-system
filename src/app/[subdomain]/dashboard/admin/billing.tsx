@@ -42,6 +42,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [printMonth, setPrintMonth] = useState<number | 'all'>(currentMonthNum);
   const [printYear, setPrintYear] = useState<number>(Math.max(2026, currentYearNum));
+  const [printLayout, setPrintLayout] = useState<'full' | 'half'>('full');
 
   // Year logic
   const availableYears = Array.from({length: Math.max(1, currentYearNum - 2026 + 1)}, (_, i) => 2026 + i);
@@ -58,6 +59,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [waivingParty, setWaivingParty] = useState<'owner' | 'tenant' | null>(null);
   const [isSavingUnitConfig, setIsSavingUnitConfig] = useState(false);
   const [isSavingGlobalConfig, setIsSavingGlobalConfig] = useState(false);
+  const [unitConfigError, setUnitConfigError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Payment Fetch States
@@ -87,6 +89,13 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [unitCompBankAccountNumber, setUnitCompBankAccountNumber] = useState("");
   const [unitCompQrUrl, setUnitCompQrUrl] = useState("");
   
+  // SOA Contact/Address Info States
+  const [unitCompAddress, setUnitCompAddress] = useState("");
+  const [unitCompEmail, setUnitCompEmail] = useState("");
+  const [unitCompShortName, setUnitCompShortName] = useState("");
+  const [unitCompContactNumber, setUnitCompContactNumber] = useState("");
+  const [unitCompCustomReminder, setUnitCompCustomReminder] = useState("");
+  
   // QR Code Upload States
   const [isUploadingQr, setIsUploadingQr] = useState(false);
   const qrInputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +109,9 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     if (printYear === currentYearNum && m.index > currentMonthNum) return false;
     return true;
   });
+
+  // Date formatted as MM/DD/YYYY
+  const currentDateStr = `${String(new Date().getMonth() + 1).padStart(2, '0')}/${String(new Date().getDate()).padStart(2, '0')}/${new Date().getFullYear()}`;
 
   // ✨ RESTORE GLOBAL CONFIG FROM LOCAL STORAGE ON MOUNT
   useEffect(() => {
@@ -335,7 +347,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
   const tenantBase = 
     (activeConfig.tenant.dues ? rawDues : 0) + 
-    (activeConfig.tenant.parking ? rawParking : 0) + 
+    (!isTenantVacant && activeConfig.tenant.parking ? rawParking : 0) + 
     (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0) + 
     (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
 
@@ -359,6 +371,16 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const baseTotalForPrint = ownerBase + tenantBase;
   const penaltyTotalForPrint = ownerPenalty + tenantPenalty;
   const combinedTotalForPrint = baseTotalForPrint + penaltyTotalForPrint;
+
+  // ✨ LOAD CONTACT DATA DYNAMICALLY FOR PRINT
+  const globalContact = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`globalContact_${orgData?.admin_email}`) || "{}") : {};
+  const unitContact = typeof window !== 'undefined' && selectedUnit ? JSON.parse(localStorage.getItem(`unitContact_${selectedUnit.id}`) || "{}") : {};
+
+  const printAddress = unitContact.property_address || globalContact.property_address || "110 PANAY AVENUE. QUEZON CITY";
+  const printEmail = unitContact.contact_email || globalContact.contact_email || "futurepointplazasuites@propertyko.com";
+  const printShortName = unitContact.contact_short_name || globalContact.contact_short_name || "FPPS PM";
+  const printContactNumber = unitContact.contact_number || globalContact.contact_number || "09569277024";
+  const printCustomReminder = unitContact.custom_reminder !== undefined ? unitContact.custom_reminder : (globalContact.custom_reminder !== undefined ? globalContact.custom_reminder : "");
 
   // ✨ GLOBAL CONFIG MODAL OPENER
   const openGlobalConfigModal = () => {
@@ -389,6 +411,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       setUnitCompBankAccountNumber("");
       setUnitCompQrUrl("");
     }
+    
+    // Load local storage contact info
+    setUnitCompAddress(globalContact.property_address || "110 PANAY AVENUE. QUEZON CITY");
+    setUnitCompEmail(globalContact.contact_email || "futurepointplazasuites@propertyko.com");
+    setUnitCompShortName(globalContact.contact_short_name || "FPPS PM");
+    setUnitCompContactNumber(globalContact.contact_number || "09569277024");
+    setUnitCompCustomReminder(globalContact.custom_reminder !== undefined ? globalContact.custom_reminder : "");
+
+    setUnitConfigError(null);
     setFieldErrors({});
     setIsGlobalConfigModalOpen(true);
   };
@@ -407,6 +438,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     setUnitCompBankAccountName(selectedUnit.bank_account_name || "");
     setUnitCompBankAccountNumber(selectedUnit.bank_account_number || "");
     setUnitCompQrUrl(selectedUnit.qr_code_url || "");
+    
+    // Load local storage contact info
+    setUnitCompAddress(unitContact.property_address || globalContact.property_address || "110 PANAY AVENUE. QUEZON CITY");
+    setUnitCompEmail(unitContact.contact_email || globalContact.contact_email || "futurepointplazasuites@propertyko.com");
+    setUnitCompShortName(unitContact.contact_short_name || globalContact.contact_short_name || "FPPS PM");
+    setUnitCompContactNumber(unitContact.contact_number || globalContact.contact_number || "09569277024");
+    setUnitCompCustomReminder(unitContact.custom_reminder !== undefined ? unitContact.custom_reminder : (globalContact.custom_reminder !== undefined ? globalContact.custom_reminder : ""));
+    
+    setUnitConfigError(null);
     setFieldErrors({});
     setIsUnitConfigModalOpen(true);
   };
@@ -725,7 +765,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         .getPublicUrl(filePath);
 
       setUnitCompQrUrl(publicUrlData.publicUrl);
-      clearFieldError('qr');
+      clearErr('qr');
 
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -736,50 +776,52 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     }
   };
 
-  // Field-level validation for the Unit / Global config forms
-  // Parking, Water and Electricity are optional (0 is a valid value)
-  const validateConfigForm = () => {
+  const clearErr = (key: string) =>
+    setFieldErrors(prev => (prev[key] ? { ...prev, [key]: '' } : prev));
+
+  // Shared validation for Global Config & Unit Config (inline, per-field errors)
+  const validateConfigForm = (): boolean => {
     const errors: Record<string, string> = {};
     if (String(unitCompCollectionDay).trim() === "") errors.collectionDay = "Please enter the collection start day.";
-    if (String(unitCompGracePeriod).trim() === "") errors.gracePeriod = "Please enter the grace period in days.";
+    if (String(unitCompGracePeriod).trim() === "") errors.gracePeriod = "Please enter the grace period.";
     if (String(unitCompDuesRate).trim() === "") errors.duesRate = "Please enter the association dues rate.";
-    else if (!(parseFloat(unitCompDuesRate) > 0)) errors.duesRate = "Assoc. Dues must be greater than 0.";
     if (String(unitCompPenaltyValue).trim() === "") errors.penaltyValue = "Please enter the late penalty deduction.";
     if (unitCompBankName.trim() === "") errors.bankName = "Please enter the bank name.";
     if (unitCompBankAccountName.trim() === "") errors.bankAccountName = "Please enter the account name.";
     if (unitCompBankAccountNumber.trim() === "") errors.bankAccountNumber = "Please enter the account number.";
-    if (!unitCompQrUrl) errors.qr = "Please upload a digital wallet QR code.";
-    return errors;
+    if (!unitCompQrUrl) errors.qr = "Please upload the digital wallet QR.";
+
+    setFieldErrors(errors);
+    setUnitConfigError(null);
+
+    if (Object.keys(errors).length > 0) {
+      setTimeout(() => {
+        document.querySelector('[data-field-error]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+      return false;
+    }
+    return true;
   };
 
-  const clearFieldError = (key: string) =>
-    setFieldErrors(prev => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-
-  const errCls = (key: string) => (fieldErrors[key] ? ' !border-red-300 !bg-red-50' : '');
+  // Parking / Water / Electricity are optional: empty or 0 both save as 0
+  const toAmountOrZero = (value: string) => {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : Number(parsed.toFixed(2));
+  };
 
   // ✨ SECURE GLOBAL CONFIG SAVING (WITH PERSISTENT STORAGE)
   const handleSaveGlobalConfig = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const errors = validateConfigForm();
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    if (!validateConfigForm()) return;
 
     setIsSavingGlobalConfig(true);
 
-    const payload = {
+    const dbPayload = {
       dues_rate: unitCompDuesRate !== "" ? Number(parseFloat(unitCompDuesRate).toFixed(2)) : null,
-      water: unitCompWater !== "" ? Number(parseFloat(unitCompWater).toFixed(2)) : null,
-      electricity: unitCompElec !== "" ? Number(parseFloat(unitCompElec).toFixed(2)) : null,
-      parking: unitCompParking !== "" ? Number(parseFloat(unitCompParking).toFixed(2)) : null,
+      water: toAmountOrZero(unitCompWater),
+      electricity: toAmountOrZero(unitCompElec),
+      parking: toAmountOrZero(unitCompParking),
       penalty_type: unitCompPenaltyType,
       penalty_value: unitCompPenaltyValue !== "" ? Number(parseFloat(unitCompPenaltyValue).toFixed(2)) : null,
       collection_day: unitCompCollectionDay !== "" ? parseInt(unitCompCollectionDay) : null,
@@ -790,23 +832,33 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       qr_code_url: unitCompQrUrl
     };
 
+    const localContactPayload = {
+      property_address: unitCompAddress,
+      contact_email: unitCompEmail,
+      contact_short_name: unitCompShortName,
+      contact_number: unitCompContactNumber,
+      custom_reminder: unitCompCustomReminder
+    };
+
     try {
       const { error } = await supabase
         .from('units')
-        .update(payload)
+        .update(dbPayload)
         .eq('admin_email', orgData.admin_email);
 
       if (error) throw error;
 
       // Update local states
-      setAllUnits(prev => prev.map(u => ({ ...u, ...payload })));
+      setAllUnits(prev => prev.map(u => ({ ...u, ...dbPayload })));
       if (selectedUnit) {
-        setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
+        setSelectedUnit((prev: any) => ({ ...prev, ...dbPayload }));
       }
       
       // ✨ SAVE TO LOCAL STORAGE SO IT SURVIVES PAGE REFRESHES
-      localStorage.setItem(`globalConfig_${orgData.admin_email}`, JSON.stringify(payload));
-      setLastGlobalConfig(payload);
+      localStorage.setItem(`globalConfig_${orgData.admin_email}`, JSON.stringify(dbPayload));
+      localStorage.setItem(`globalContact_${orgData.admin_email}`, JSON.stringify(localContactPayload));
+      
+      setLastGlobalConfig(dbPayload);
       
       setIsGlobalConfigModalOpen(false);
       setIsGlobalSuccessModalOpen(true); 
@@ -822,20 +874,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     e.preventDefault();
     if (!selectedUnit) return;
 
-    const errors = validateConfigForm();
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-    setFieldErrors({});
+    if (!validateConfigForm()) return;
 
     setIsSavingUnitConfig(true);
 
-    const payload = {
+    const dbPayload = {
       dues_rate: unitCompDuesRate !== "" ? Number(parseFloat(unitCompDuesRate).toFixed(2)) : null,
-      water: unitCompWater !== "" ? Number(parseFloat(unitCompWater).toFixed(2)) : null,
-      electricity: unitCompElec !== "" ? Number(parseFloat(unitCompElec).toFixed(2)) : null,
-      parking: unitCompParking !== "" ? Number(parseFloat(unitCompParking).toFixed(2)) : null,
+      water: toAmountOrZero(unitCompWater),
+      electricity: toAmountOrZero(unitCompElec),
+      parking: toAmountOrZero(unitCompParking),
       penalty_type: unitCompPenaltyType,
       penalty_value: unitCompPenaltyValue !== "" ? Number(parseFloat(unitCompPenaltyValue).toFixed(2)) : null,
       collection_day: unitCompCollectionDay !== "" ? parseInt(unitCompCollectionDay) : null,
@@ -845,17 +892,27 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       bank_account_number: unitCompBankAccountNumber,
       qr_code_url: unitCompQrUrl
     };
+    
+    const localContactPayload = {
+      property_address: unitCompAddress,
+      contact_email: unitCompEmail,
+      contact_short_name: unitCompShortName,
+      contact_number: unitCompContactNumber,
+      custom_reminder: unitCompCustomReminder
+    };
 
     try {
       const { error } = await supabase
         .from('units')
-        .update(payload)
+        .update(dbPayload)
         .eq('id', selectedUnit.id);
 
       if (error) throw error;
+      
+      localStorage.setItem(`unitContact_${selectedUnit.id}`, JSON.stringify(localContactPayload));
 
-      setAllUnits(prev => prev.map(u => u.id === selectedUnit.id ? { ...u, ...payload } : u));
-      setSelectedUnit((prev: any) => ({ ...prev, ...payload }));
+      setAllUnits(prev => prev.map(u => u.id === selectedUnit.id ? { ...u, ...dbPayload } : u));
+      setSelectedUnit((prev: any) => ({ ...prev, ...dbPayload }));
       
       setIsUnitConfigModalOpen(false);
       setIsUnitSuccessModalOpen(true); 
@@ -1061,13 +1118,17 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     return <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-md sm:rounded-full text-[10px] sm:text-[11px] border border-amber-100 uppercase tracking-wide shadow-sm shrink-0">Pending</span>;
   };
 
+  const printOwnerName = selectedUnit?.owner_name && selectedUnit.owner_name !== '—' ? selectedUnit.owner_name : 'Occupant';
+  const printTenantName = selectedUnit?.tenant_name && selectedUnit.tenant_name !== '—' && selectedUnit.tenant_name !== 'Vacant' ? selectedUnit.tenant_name : null;
+  const printResidentDisplay = printTenantName ? `${printOwnerName} (${printTenantName})` : printOwnerName;
+
   return (
     <>
     <style dangerouslySetInnerHTML={{__html: `
       @media print {
         @page {
           size: A4 portrait;
-          margin: 10mm;
+          margin: ${printLayout === 'half' ? '0' : '10mm'};
         }
         body {
           background: white !important;
@@ -1078,12 +1139,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           display: none !important;
         }
         #printable-soa {
-          display: block !important;
-          position: static !important;
+          display: flex !important;
           width: 100% !important;
-          max-width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
         }
       }
     `}} />
@@ -1312,7 +1369,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Choose a unit from the sidebar to view billing details.</p>
                 </div>
               ) : (
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-5 lg:p-7 space-y-4 sm:space-y-6">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 lg:p-4 space-y-4 sm:space-y-6">
                 
                 <div className="bg-white rounded-[var(--radius-xl)] shadow-sm border border-[var(--color-border)] overflow-hidden mb-4 sm:mb-6">
                   
@@ -1366,7 +1423,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                           {isAssigned && hasOwnerAssign ? (
                             <>
                               {activeConfig.owner.dues && (
-                                <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Unit Dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                               )}
                               {activeConfig.owner.parking && (
                                 <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -1397,7 +1454,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
                     {!isTenantVacant && (
                        <div className="p-4 sm:p-6 md:p-7 relative flex flex-col border-t md:border-t-0 border-[var(--color-border)] md:rounded-br-[1.5rem]">
-                           <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-primary)]/20 flex justify-between items-start gap-3">
+                           <div className="mb-4 sm:mb-5 pb-3 sm:pb-4 border-b border-[var(--color-border)] flex justify-between items-start gap-3">
                                <div className="min-w-0 pr-2">
                                    <h4 className="font-black text-[var(--color-text)] text-[10px] sm:text-[11px] uppercase tracking-widest mb-1">Tenant Statement</h4>
                                    <p className="font-extrabold text-[var(--color-text)] text-sm sm:text-base md:text-lg truncate">{selectedUnit?.tenant_name}</p>
@@ -1413,7 +1470,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                               {isAssigned && hasTenantAssign ? (
                                 <>
                                   {activeConfig.tenant.dues && (
-                                    <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                    <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Unit Dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
                                   )}
                                   {activeConfig.tenant.parking && (
                                     <div className="flex justify-between items-center gap-3 text-xs sm:text-sm"><span className="text-slate-600 font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
@@ -1434,8 +1491,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                               )}
                            </div>
 
-                           <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
-                               <span className="text-[10px] sm:text-[11px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
+                           <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-slate-50/80 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-bl-[1.5rem] tabular-nums">
+                               <span className="text-[10px] sm:text-[11px] font-black text-slate-500 uppercase tracking-widest shrink-0">Tenant Subtotal:</span>
                                <span className="font-black text-[var(--color-text)] text-sm sm:text-lg shrink-0">
                                  {isAssigned ? `₱${tenantTotalDue.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}
                                </span>
@@ -1511,7 +1568,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <CalendarClock size={18} className="sm:w-5 sm:h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-extrabold text-[var(--color-text)] text-base sm:text-lg tracking-tight truncate">Ledger &amp; Projections</h4>
+                        <h4 className="font-extrabold text-[var(--color-text)] text-base sm:text-xl tracking-tight truncate">Ledger &amp; Projections</h4>
                         <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">
                           Due: Day {colDay} <span className="mx-1.5 text-slate-300">|</span> Penalty: Day {colDay + grace}
                         </div>
@@ -1519,7 +1576,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     </div>
                     <button 
                       onClick={handleExportCSV}
-                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-xs font-bold text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 px-4 py-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border border-[var(--color-border)] shadow-sm shrink-0"
+                      className="w-full sm:w-auto justify-center flex items-center gap-2 text-sm font-bold text-[var(--color-text)] bg-[var(--color-primary)] hover:opacity-90 px-4 py-2.5 rounded-[var(--radius-md)] transition-all active:scale-95 border border-[var(--color-border)] shadow-sm shrink-0"
                     >
                       <Download size={15} /> Export CSV
                     </button>
@@ -1527,18 +1584,18 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   
                   <div className="overflow-x-auto border border-[var(--color-border)] rounded-[var(--radius-xl)] relative shadow-inner">
                     <table className="w-full text-center text-xs sm:text-sm min-w-[750px] sm:min-w-[850px] tabular-nums">
-                      <thead className="bg-slate-50 border-b border-[var(--color-border)] sticky top-0 z-10">
+                      <thead className="bg-[var(--color-primary)] border-b border-[var(--color-border)] sticky top-0 z-10">
                         <tr>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PERIOD</th>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUE DATE</th>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">DUES</th>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">PARKING</th>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">UTILITIES</th>
-                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap bg-red-50 text-red-600 border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider">
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">PERIOD</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">DUE DATE</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">DUES</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">PARKING</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">UTILITIES</th>
+                          <th className="px-4 py-3 sm:py-4.5 whitespace-nowrap bg-red-50 text-red-600 border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider">
                             PENALTY
                           </th>
-                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[10px] font-black uppercase tracking-wider text-slate-500">STATUS {isTenantVacant ? '' : '(O/T)'}</th>
-                          <th className="px-4 py-3 sm:py-3.5 text-center whitespace-nowrap font-black text-[var(--color-text)] text-[10px] uppercase tracking-wider">TOTAL</th>
+                          <th className="px-4 py-3 sm:py-3.5 whitespace-nowrap border-r border-slate-200/50 text-[14px] font-black uppercase tracking-wider text-[var(--color-text)]">STATUS {isTenantVacant ? '' : '(O/T)'}</th>
+                          <th className="px-4 py-3 sm:py-3.5 text-center whitespace-nowrap font-black text-[var(--color-text)] text-[14px] uppercase tracking-wider">TOTAL</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-[var(--color-text)] bg-white">
@@ -1548,7 +1605,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                           
                           return (
                             <tr key={idx} className={`transition-colors ${activeRow ? "bg-[var(--color-primary)]/5 hover:bg-[var(--color-primary)]/10" : "hover:bg-slate-50"}`}>
-                              <td className={`px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-black uppercase text-[10px] sm:text-xs tracking-wide ${activeRow ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>
+                              <td className={`px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 font-black uppercase text-[8px] sm:text-xs tracking-wide ${activeRow ? 'text-[var(--color-text)]' : 'text-slate-600'}`}>
                                 {row.monthName} {row.year} {activeRow && <span className="ml-1 text-[8px] font-black text-emerald-600 tracking-widest opacity-80">(NOW)</span>}
                               </td>
                               <td className="px-4 py-3 sm:py-4.5 whitespace-nowrap border-r border-slate-100 text-slate-500 font-medium text-xs">{row.dueDate}</td>
@@ -1602,20 +1659,46 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       {/* ✨ PRINT SOA DATE SELECTOR MODAL */}
       {isPrintModalOpen && selectedUnit && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-lg overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight truncate pr-2">Print Settings</h2>
-              <button onClick={() => setIsPrintModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+              <button onClick={() => setIsPrintModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
             
-            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4 bg-slate-50/50">
-              <p className="text-xs sm:text-sm text-slate-500 mb-4 font-medium leading-relaxed">
-                Select the billing period you want to generate the PDF for:
-              </p>
-              
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-6 bg-slate-50/50">
+              <div>
+                <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-3">1. Select Layout</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setPrintLayout('full')}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${printLayout === 'full' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <div className="w-8 h-12 border-2 border-slate-300 rounded mb-2 flex flex-col p-1 gap-1">
+                      <div className="w-full h-1 bg-slate-300 rounded-sm"></div>
+                      <div className="w-full h-1 bg-slate-200 rounded-sm"></div>
+                      <div className="w-full h-1 bg-slate-200 rounded-sm"></div>
+                      <div className="w-full h-2 bg-slate-300 rounded-sm mt-auto"></div>
+                    </div>
+                    <span className={`text-[11px] font-bold ${printLayout === 'full' ? 'text-[var(--color-text)]' : 'text-slate-500'}`}>Whole Paper</span>
+                  </button>
+                  <button 
+                    onClick={() => setPrintLayout('half')}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${printLayout === 'half' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-slate-200 bg-white hover:border-slate-300'}`}
+                  >
+                    <div className="w-8 h-12 border-2 border-slate-300 rounded mb-2 flex flex-col p-1 gap-1 relative overflow-hidden">
+                      <div className="w-full h-1 bg-slate-300 rounded-sm"></div>
+                      <div className="w-full h-1 bg-slate-200 rounded-sm"></div>
+                      <div className="absolute top-[48%] left-0 right-0 border-t border-dashed border-slate-400"></div>
+                    </div>
+                    <span className={`text-[11px] font-bold ${printLayout === 'half' ? 'text-[var(--color-text)]' : 'text-slate-500'}`}>Half Paper</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-4">
+                <p className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1">2. Select Period</p>
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Month</label>
                   <select 
@@ -1683,7 +1766,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">Applies to all units across {orgData?.org_name || "the property"}</p>
                 </div>
               </div>
-              <button onClick={() => setIsGlobalConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsGlobalConfigModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -1696,25 +1779,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.collectionDay ? 'text-red-500' : 'text-slate-500'}`}>Collection Start <span className="text-red-500">*</span></label>
-                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => { setUnitCompCollectionDay(e.target.value); clearFieldError('collectionDay'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('collectionDay')}`} />
-                    <FieldError message={fieldErrors.collectionDay} />
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.collectionDay ? '!text-red-500' : ''}`}>Collection Start <span className="text-red-500">*</span></label>
+                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => { setUnitCompCollectionDay(e.target.value); clearErr('collectionDay'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.collectionDay ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
+<FieldError message={fieldErrors.collectionDay} />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.gracePeriod ? 'text-red-500' : 'text-slate-500'}`}>Grace Period <span className="text-red-500">*</span></label>
-                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => { setUnitCompGracePeriod(e.target.value); clearFieldError('gracePeriod'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('gracePeriod')}`} />
-                    <FieldError message={fieldErrors.gracePeriod} />
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.gracePeriod ? '!text-red-500' : ''}`}>Grace Period <span className="text-red-500">*</span></label>
+                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => { setUnitCompGracePeriod(e.target.value); clearErr('gracePeriod'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.gracePeriod ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
+<FieldError message={fieldErrors.gracePeriod} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.duesRate ? 'text-red-500' : 'text-slate-500'}`}>Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.duesRate ? '!text-red-500' : ''}`}>Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => { setUnitCompDuesRate(e.target.value); clearFieldError('duesRate'); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('duesRate')}`} />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => { setUnitCompDuesRate(e.target.value); clearErr('duesRate'); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.duesRate ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
                     </div>
-                  <FieldError message={fieldErrors.duesRate} />
+<FieldError message={fieldErrors.duesRate} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking</label>
@@ -1749,9 +1832,72 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => { setUnitCompPenaltyValue(e.target.value); clearFieldError('penaltyValue'); }} className={`w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm${errCls('penaltyValue')}`} />
+                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => { setUnitCompPenaltyValue(e.target.value); clearErr('penaltyValue'); }} className={`w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm ${fieldErrors.penaltyValue ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
                   </div>
-                  <FieldError message={fieldErrors.penaltyValue} />
+<FieldError message={fieldErrors.penaltyValue} />
+                </div>
+                
+                {/* Contact & Address Details Section */}
+                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
+                  <label className="block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate">Property & Contact Info</label>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
+                    Set up the property address and contact details shown on the SOA.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Property Address <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 110 PANAY AVENUE. QUEZON CITY" 
+                        value={unitCompAddress} 
+                        onChange={(e) => setUnitCompAddress(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Contact Email <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. email@propertyko.com" 
+                          value={unitCompEmail} 
+                          onChange={(e) => setUnitCompEmail(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Short Name <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. FPPS PM" 
+                          value={unitCompShortName} 
+                          onChange={(e) => setUnitCompShortName(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Contact Number <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 09569277024" 
+                          value={unitCompContactNumber} 
+                          onChange={(e) => setUnitCompContactNumber(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Custom Reminder (Optional)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. We do not accept cash payments." 
+                        value={unitCompCustomReminder} 
+                        onChange={(e) => setUnitCompCustomReminder(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Bank Transfer Details Section */}
@@ -1763,46 +1909,46 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   
                   <div className="space-y-3">
                     <div>
-                      <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankName ? 'text-red-500' : 'text-slate-400'}`}>Bank Name <span className="text-red-500">*</span></label>
+                      <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankName ? '!text-red-500' : ''}`}>Bank Name <span className="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         placeholder="e.g. BDO Unibank" 
                         value={unitCompBankName} 
-                        onChange={(e) => { setUnitCompBankName(e.target.value); clearFieldError('bankName'); }} 
-                        className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankName')}`} 
+                        onChange={(e) => { setUnitCompBankName(e.target.value); clearErr('bankName'); }} 
+                        className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankName ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                       />
-                    <FieldError message={fieldErrors.bankName} />
+<FieldError message={fieldErrors.bankName} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountName ? 'text-red-500' : 'text-slate-400'}`}>Account Name <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountName ? '!text-red-500' : ''}`}>Account Name <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. HOA Admin" 
                           value={unitCompBankAccountName} 
-                          onChange={(e) => { setUnitCompBankAccountName(e.target.value); clearFieldError('bankAccountName'); }} 
-                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankAccountName')}`} 
+                          onChange={(e) => { setUnitCompBankAccountName(e.target.value); clearErr('bankAccountName'); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankAccountName ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                         />
-                    <FieldError message={fieldErrors.bankAccountName} />
+<FieldError message={fieldErrors.bankAccountName} />
                       </div>
                       <div>
-                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountNumber ? 'text-red-500' : 'text-slate-400'}`}>Account Number <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountNumber ? '!text-red-500' : ''}`}>Account Number <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. 0012-3456" 
                           value={unitCompBankAccountNumber} 
-                          onChange={(e) => { setUnitCompBankAccountNumber(e.target.value); clearFieldError('bankAccountNumber'); }} 
-                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankAccountNumber')}`} 
+                          onChange={(e) => { setUnitCompBankAccountNumber(e.target.value); clearErr('bankAccountNumber'); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankAccountNumber ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                         />
-                    <FieldError message={fieldErrors.bankAccountNumber} />
+<FieldError message={fieldErrors.bankAccountNumber} />
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* QR Code Upload Section */}
-                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
-                  <label className={`block text-xs sm:text-sm font-black mb-1 tracking-tight truncate ${fieldErrors.qr ? 'text-red-500' : 'text-[var(--color-text)]'}`}>Digital Wallet QR <span className="text-red-500">*</span></label>
+                <div className={`border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm ${fieldErrors.qr ? '!border-red-400 !bg-red-50' : ''}`}>
+                  <label className={`block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate ${fieldErrors.qr ? '!text-red-500' : ''}`}>Digital Wallet QR <span className="text-red-500">*</span></label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
                     Upload GCash, Maya, or QR Ph barcode to apply to all units.
                   </p>
@@ -1879,7 +2025,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">{selectedUnit.property_name} · Unit {selectedUnit.unit_number}</p>
                 </div>
               </div>
-              <button onClick={() => setIsUnitConfigModalOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-100 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsUnitConfigModalOpen(false)} className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
@@ -1889,25 +2035,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.collectionDay ? 'text-red-500' : 'text-slate-500'}`}>Collection Start <span className="text-red-500">*</span></label>
-                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => { setUnitCompCollectionDay(e.target.value); clearFieldError('collectionDay'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('collectionDay')}`} />
-                    <FieldError message={fieldErrors.collectionDay} />
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.collectionDay ? '!text-red-500' : ''}`}>Collection Start <span className="text-red-500">*</span></label>
+                    <input type="number" min="1" max="31" placeholder="Day (1-31)" value={unitCompCollectionDay} onChange={(e) => { setUnitCompCollectionDay(e.target.value); clearErr('collectionDay'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.collectionDay ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
+<FieldError message={fieldErrors.collectionDay} />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.gracePeriod ? 'text-red-500' : 'text-slate-500'}`}>Grace Period <span className="text-red-500">*</span></label>
-                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => { setUnitCompGracePeriod(e.target.value); clearFieldError('gracePeriod'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('gracePeriod')}`} />
-                    <FieldError message={fieldErrors.gracePeriod} />
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.gracePeriod ? '!text-red-500' : ''}`}>Grace Period <span className="text-red-500">*</span></label>
+                    <input type="number" min="0" placeholder="Days" value={unitCompGracePeriod} onChange={(e) => { setUnitCompGracePeriod(e.target.value); clearErr('gracePeriod'); }} className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.gracePeriod ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
+<FieldError message={fieldErrors.gracePeriod} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.duesRate ? 'text-red-500' : 'text-slate-500'}`}>Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate ${fieldErrors.duesRate ? '!text-red-500' : ''}`}>Assoc. Dues (sqm) <span className="text-red-500">*</span></label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs sm:text-sm">₱</span>
-                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => { setUnitCompDuesRate(e.target.value); clearFieldError('duesRate'); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm${errCls('duesRate')}`} />
+                      <input type="number" step="0.01" min="0" placeholder="0.00" value={unitCompDuesRate} onChange={(e) => { setUnitCompDuesRate(e.target.value); clearErr('duesRate'); }} className={`w-full pl-8 pr-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-bold text-[var(--color-text)] transition-all shadow-sm ${fieldErrors.duesRate ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
                     </div>
-                  <FieldError message={fieldErrors.duesRate} />
+<FieldError message={fieldErrors.duesRate} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1 truncate">Parking</label>
@@ -1942,9 +2088,72 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <option value="fixed">Fixed (₱)</option>
                       <option value="percent">Percent (%)</option>
                     </select>
-                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => { setUnitCompPenaltyValue(e.target.value); clearFieldError('penaltyValue'); }} className={`w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm${errCls('penaltyValue')}`} />
+                    <input type="number" step="0.01" min="0" placeholder={unitCompPenaltyType === 'percent' ? "e.g. 3" : "e.g. 500"} value={unitCompPenaltyValue} onChange={(e) => { setUnitCompPenaltyValue(e.target.value); clearErr('penaltyValue'); }} className={`w-full flex-1 px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:bg-red-50 focus:ring-4 focus:ring-red-400/15 focus:border-red-400 text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm ${fieldErrors.penaltyValue ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} />
                   </div>
-                  <FieldError message={fieldErrors.penaltyValue} />
+<FieldError message={fieldErrors.penaltyValue} />
+                </div>
+                
+                {/* Contact & Address Details Section */}
+                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
+                  <label className="block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate">Property & Contact Info</label>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
+                    Set up the property address and contact details shown on the SOA.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Property Address <span className="text-red-500">*</span></label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. 110 PANAY AVENUE. QUEZON CITY" 
+                        value={unitCompAddress} 
+                        onChange={(e) => setUnitCompAddress(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Contact Email <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. email@propertyko.com" 
+                          value={unitCompEmail} 
+                          onChange={(e) => setUnitCompEmail(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Short Name <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. FPPS PM" 
+                          value={unitCompShortName} 
+                          onChange={(e) => setUnitCompShortName(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Contact Number <span className="text-red-500">*</span></label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. 09569277024" 
+                          value={unitCompContactNumber} 
+                          onChange={(e) => setUnitCompContactNumber(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate">Custom Reminder (Optional)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. We do not accept cash payments." 
+                        value={unitCompCustomReminder} 
+                        onChange={(e) => setUnitCompCustomReminder(e.target.value)} 
+                        className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white" 
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Bank Transfer Details Section */}
@@ -1956,46 +2165,46 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                   
                   <div className="space-y-3">
                     <div>
-                      <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankName ? 'text-red-500' : 'text-slate-400'}`}>Bank Name <span className="text-red-500">*</span></label>
+                      <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankName ? '!text-red-500' : ''}`}>Bank Name <span className="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         placeholder="e.g. BDO Unibank" 
                         value={unitCompBankName} 
-                        onChange={(e) => { setUnitCompBankName(e.target.value); clearFieldError('bankName'); }} 
-                        className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankName')}`} 
+                        onChange={(e) => { setUnitCompBankName(e.target.value); clearErr('bankName'); }} 
+                        className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankName ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                       />
-                    <FieldError message={fieldErrors.bankName} />
+<FieldError message={fieldErrors.bankName} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountName ? 'text-red-500' : 'text-slate-400'}`}>Account Name <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountName ? '!text-red-500' : ''}`}>Account Name <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. HOA Admin" 
                           value={unitCompBankAccountName} 
-                          onChange={(e) => { setUnitCompBankAccountName(e.target.value); clearFieldError('bankAccountName'); }} 
-                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankAccountName')}`} 
+                          onChange={(e) => { setUnitCompBankAccountName(e.target.value); clearErr('bankAccountName'); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankAccountName ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                         />
-                    <FieldError message={fieldErrors.bankAccountName} />
+<FieldError message={fieldErrors.bankAccountName} />
                       </div>
                       <div>
-                        <label className={`block text-[9px] font-bold uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountNumber ? 'text-red-500' : 'text-slate-400'}`}>Account Number <span className="text-red-500">*</span></label>
+                        <label className={`block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1 truncate ${fieldErrors.bankAccountNumber ? '!text-red-500' : ''}`}>Account Number <span className="text-red-500">*</span></label>
                         <input 
                           type="text" 
                           placeholder="e.g. 0012-3456" 
                           value={unitCompBankAccountNumber} 
-                          onChange={(e) => { setUnitCompBankAccountNumber(e.target.value); clearFieldError('bankAccountNumber'); }} 
-                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white${errCls('bankAccountNumber')}`} 
+                          onChange={(e) => { setUnitCompBankAccountNumber(e.target.value); clearErr('bankAccountNumber'); }} 
+                          className={`w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:bg-slate-50 focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs font-bold text-[var(--color-text)] transition-all shadow-sm bg-white ${fieldErrors.bankAccountNumber ? '!border-red-400 !bg-red-50 focus:!ring-red-400/15' : ''}`} 
                         />
-                    <FieldError message={fieldErrors.bankAccountNumber} />
+<FieldError message={fieldErrors.bankAccountNumber} />
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* QR Code Upload Section */}
-                <div className="border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm">
-                  <label className={`block text-xs sm:text-sm font-black mb-1 tracking-tight truncate ${fieldErrors.qr ? 'text-red-500' : 'text-[var(--color-text)]'}`}>Digital Wallet QR <span className="text-red-500">*</span></label>
+                <div className={`border border-[var(--color-primary)]/20 bg-white p-4 sm:p-5 rounded-xl sm:rounded-[1.25rem] mt-4 sm:mt-5 shadow-sm ${fieldErrors.qr ? '!border-red-400 !bg-red-50' : ''}`}>
+                  <label className={`block text-xs sm:text-sm font-black text-[var(--color-text)] mb-1 tracking-tight truncate ${fieldErrors.qr ? '!text-red-500' : ''}`}>Digital Wallet QR <span className="text-red-500">*</span></label>
                   <p className="text-[10px] sm:text-[11px] text-slate-500 mb-3 sm:mb-4 font-medium leading-relaxed">
                     Upload GCash, Maya, or QR Ph barcode.
                   </p>
@@ -2123,25 +2332,25 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       {/* SOA MODAL */}
       {isSOAModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-[var(--color-bg)] rounded-t-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl md:max-w-3xl lg:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col transform transition-all border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg)] rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] shadow-2xl w-full max-w-2xl md:max-w-3xl lg:max-w-4xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col transform transition-all border border-[var(--color-border)] animate-in slide-in-from-bottom-10 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="shrink-0 px-5 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-white z-10">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-primary)]/20 shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[var(--color-text)]/5 text-[var(--color-text)] flex items-center justify-center border border-[var(--color-border)] shrink-0">
                   <Send size={16} className="translate-x-[1px] translate-y-[-1px] sm:w-[18px] sm:h-[18px]" />
                 </div>
-                <h2 className="text-base sm:text-lg md:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Assign Balances <span className="text-slate-400 font-medium ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
+                <h2 className="text-base sm:text-lg md:text-xl font-black text-[var(--color-text)] tracking-tight truncate">Assign Balances <span className="text-[var(--color-text)] ml-1 hidden sm:inline">· Unit {selectedUnit?.unit_number}</span></h2>
               </div>
-              <button onClick={() => setIsSOAModalOpen(false)} className="text-slate-400 hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSendingSOA || isSavingDefault}>
+              <button onClick={() => setIsSOAModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSendingSOA || isSavingDefault}>
                 <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-8 bg-slate-50/50">
-              <p className="text-xs md:text-sm text-slate-500 mb-4 sm:mb-6 font-medium leading-relaxed bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-sm">
+              <p className="text-xs md:text-sm text-slate-500 mb-4 sm:mb-6 font-medium leading-relaxed bg-white p-3.5 sm:p-4 rounded-[var(--radius-lg)] border border-slate-200 shadow-sm">
                 {isTenantVacant ? "Assign balances to the owner for this unit. Settings will be saved automatically when setting defaults." : "Checking a box for one party will automatically lock it out for the other party. To swap assignments, uncheck the item first."}
               </p>
               
-              <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-slate-100' : ''} border border-[var(--color-border)] rounded-2xl overflow-hidden mb-6 shadow-sm bg-white`}>
+              <div className={`grid grid-cols-1 ${!isTenantVacant ? 'md:grid-cols-2 md:divide-x md:divide-slate-200' : ''} border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden mb-6 shadow-sm bg-white`}>
                 
                 {/* OWNER COLUMN */}
                 <div className="p-4 sm:p-5 md:p-6 bg-white relative flex flex-col">
@@ -2155,7 +2364,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.dues && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <input type="checkbox" disabled={soaConfig.tenant.dues && !isTenantVacant} checked={soaConfig.owner.dues} onChange={(e) => handleToggleSoa('owner', 'dues', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Assoc. Dues</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Assoc. Dues</span>
                         </div>
                         <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
@@ -2164,7 +2373,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.parking && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <input type="checkbox" disabled={soaConfig.tenant.parking && !isTenantVacant} checked={soaConfig.owner.parking} onChange={(e) => handleToggleSoa('owner', 'parking', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Parking</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Parking</span>
                         </div>
                         <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
@@ -2173,7 +2382,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.water ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <input type="checkbox" disabled={soaConfig.tenant.water} checked={soaConfig.owner.water} onChange={(e) => handleToggleSoa('owner', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Water</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Water</span>
                         </div>
                         <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
@@ -2182,7 +2391,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.electricity ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                           <input type="checkbox" disabled={soaConfig.tenant.electricity} checked={soaConfig.owner.electricity} onChange={(e) => handleToggleSoa('owner', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Electricity</span>
+                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Electricity</span>
                         </div>
                         <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
@@ -2220,7 +2429,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.dues ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <input type="checkbox" disabled={soaConfig.owner.dues} checked={soaConfig.tenant.dues} onChange={(e) => handleToggleSoa('tenant', 'dues', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Assoc. Dues</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Assoc. Dues</span>
                           </div>
                           <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
@@ -2229,7 +2438,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.parking ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <input type="checkbox" disabled={soaConfig.owner.parking} checked={soaConfig.tenant.parking} onChange={(e) => handleToggleSoa('tenant', 'parking', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Parking</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Parking</span>
                           </div>
                           <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
@@ -2238,7 +2447,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.water ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <input type="checkbox" disabled={soaConfig.owner.water} checked={soaConfig.tenant.water} onChange={(e) => handleToggleSoa('tenant', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Water</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Water</span>
                           </div>
                           <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
@@ -2247,7 +2456,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <label className={`flex items-center justify-between gap-2 ${soaConfig.owner.electricity ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
                           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                             <input type="checkbox" disabled={soaConfig.owner.electricity} checked={soaConfig.tenant.electricity} onChange={(e) => handleToggleSoa('tenant', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-primary)] transition-colors truncate">Electricity</span>
+                            <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Electricity</span>
                           </div>
                           <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </label>
@@ -2263,8 +2472,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       )}
                     </div>
                     
-                    <div className="mt-4 sm:mt-5 pt-3.5 sm:pt-4 border-t border-[var(--color-primary)]/20 flex justify-between items-center bg-[var(--color-primary)]/5 -mx-4 sm:-mx-6 md:-mx-7 -mb-4 sm:-mb-6 md:-mb-7 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 md:rounded-br-[1.5rem] tabular-nums">
-                      <span className="text-[9px] sm:text-[10px] font-black text-[var(--color-text)] uppercase tracking-widest shrink-0">Tenant Subtotal</span>
+                    <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-[var(--color-border)] flex justify-between items-center bg-slate-50 -mx-4 sm:-mx-5 md:-mx-6 -mb-4 sm:-mb-5 md:-mb-6 px-4 sm:px-5 md:px-6 py-3.5 sm:py-4 md:rounded-bl-2xl">
+                      <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest shrink-0">Tenant Subtotal</span>
                       <span className="font-black text-[var(--color-text)] text-sm sm:text-base shrink-0">
                         ₱{((soaConfig.tenant.dues ? rawDues : 0) + (soaConfig.tenant.parking ? rawParking : 0) + (!isTenantVacant && soaConfig.tenant.water ? rawWater : 0) + (!isTenantVacant && soaConfig.tenant.electricity ? rawElectricity : 0) + (soaConfig.tenant.penalty ? tenantPenalty : 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
                       </span>
@@ -2424,7 +2633,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-wider truncate pr-2">Payment Verification</h2>
-              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="text-slate-400 hover:opacity-100 rounded-full transition-colors p-2 active:scale-95 shrink-0">
+              <button onClick={() => setIsPaymentSelectionModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
@@ -2478,7 +2687,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
               <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] capitalize tracking-wider truncate pr-2">{paymentModalParty} Payment</h2>
-              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="text-slate-400 hover:opacity-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
+              <button onClick={() => !isSimulating && setIsPaymentModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSimulating || isFetchingPayment}>
                 <X size={20} className="w-5 h-5" />
               </button>
             </div>
@@ -2545,7 +2754,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
       {/* SUCCESS MODAL FOR WAIVING PENALTY */}
       {waiveSuccess && (
-        <div className="fixed inset-0 bg-[var(--color-secondary)]/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
@@ -2614,160 +2823,226 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
 
     {/* ✨ HIDDEN PDF / PRINTABLE SOA TEMPLATE */}
     {isMounted && typeof document !== 'undefined' && createPortal(
-      <div 
-        id="printable-soa"
-        className="hidden print:block font-serif bg-white text-black text-sm"
-      >
+      <div id="printable-soa" className={`hidden print:flex flex-col font-sans bg-white text-black w-full relative box-border ${printLayout === 'half' ? 'h-[148.5mm] pt-[10mm] px-[15mm] pb-[10mm] border-b-2 border-dashed border-slate-400 overflow-hidden' : 'h-[275mm] pt-6 px-6 pb-6 overflow-hidden'}`}>
         {selectedUnit && (
-          <div className="w-full mx-auto p-4 sm:p-8">
+          <div className="w-full flex-1 flex flex-col h-full relative">
             
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-wide">STATEMENT OF ACCOUNT</h1>
-                <p className="text-sm mt-1">For the Month of <span className="underline ml-1 font-bold">
-                  {printMonth === 'all' ? `Entire Year ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}
-                </span></p>
+            {/* Header section adjusts based on layout */}
+            {printLayout === 'full' ? (
+              <div className="text-center mb-6 flex flex-col items-center shrink-0">
+                {orgData?.logo_url ? (
+                  <div className="relative w-64 h-20 mb-2">
+                    <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain object-center" priority />
+                  </div>
+                ) : (
+                  <h1 className="text-2xl font-black uppercase tracking-wide">{orgData?.org_name || "FUTURE POINT PLAZA SUITES"}</h1>
+                )}
+                <p className="text-[12px] font-medium mt-1 uppercase">{printAddress}</p>
+                <h2 className="text-xl font-normal mt-4">STATEMENT OF ACCOUNT</h2>
               </div>
-              <div className="text-right text-xs">
-                <h2 className="text-lg font-black uppercase">{orgData?.org_name || "Admin"}</h2>
-                <p className="italic mb-1">Property Management & Billing Services</p>
+            ) : (
+              <div className="flex justify-between items-center mb-3 border-b pb-2 shrink-0">
+                <div className="flex flex-col items-start gap-0.5">
+                  {orgData?.logo_url ? (
+                    <div className="relative w-32 h-10">
+                      <Image src={orgData.logo_url} alt="Organization Logo" fill className="object-contain object-left" priority />
+                    </div>
+                  ) : (
+                    <h1 className="text-sm font-black uppercase tracking-wide">{orgData?.org_name || "FUTURE POINT PLAZA SUITES"}</h1>
+                  )}
+                  <p className="text-[9px] font-medium uppercase text-slate-600">{printAddress}</p>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-base font-black tracking-widest m-0 leading-none">STATEMENT OF ACCOUNT</h2>
+                </div>
+              </div>
+            )}
+
+            <div className={`shrink-0 ${printLayout === 'half' ? 'mb-1' : 'mb-2'}`}>
+               <p className={`font-bold italic uppercase tracking-wide ${printLayout === 'half' ? 'text-[10px]' : 'text-[14px]'}`}>BILLING PERIOD - {printMonth === 'all' ? `ENTIRE YEAR ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}</p>
+            </div>
+
+            {/* Box 1: Owner / Unit */}
+            <div className={`border border-black rounded-[12px] overflow-hidden flex justify-between items-center shrink-0 ${printLayout === 'half' ? 'mb-2' : 'mb-4'}`}>
+              <div className={`flex-1 ${printLayout === 'half' ? 'px-3 py-1' : 'p-4'}`}>
+                <p className={`uppercase ${printLayout === 'half' ? 'text-[9px] mb-0' : 'text-[12px]'}`}>UNIT OWNER / RESIDENT:</p>
+                <p className={`uppercase font-bold ${printLayout === 'half' ? 'text-[11px] mt-0' : 'text-[12px] mt-0.5'}`}>{printResidentDisplay}</p>
+              </div>
+              <div className={`${printLayout === 'half' ? 'px-3 py-1 w-[120px]' : 'p-4 w-[150px]'} border-l border-black shrink-0 h-full`}>
+                <p className={`uppercase ${printLayout === 'half' ? 'text-[9px] mb-0' : 'text-[12px]'}`}>UNIT NO.</p>
+                <p className={`uppercase font-bold ${printLayout === 'half' ? 'text-[11px] mt-0' : 'text-[12px] mt-0.5'}`}>{selectedUnit?.unit_number}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div>
-                <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
-                  BILL TO:
-                </div>
-                <div className="text-xs space-y-1">
-                  <p><strong>Name:</strong> {selectedUnit?.owner_name || selectedUnit?.tenant_name || 'Occupant'}</p>
-                  <p><strong>Trade Name:</strong> {selectedUnit?.property_name}</p>
-                  <p><strong>Address:</strong> Unit {selectedUnit?.unit_number}</p>
-                </div>
+            {/* Box 2: Table Section */}
+            <div className={`border border-black rounded-[12px] overflow-hidden shrink-0 flex flex-col ${printLayout === 'half' ? 'mb-2' : 'mb-4'}`}>
+              <div className={`flex justify-between items-center border-b border-black ${printLayout === 'half' ? 'p-1.5 px-3 text-[9px]' : 'p-3 text-[12px]'}`}>
+                <p>Period Cover: {printMonth === 'all' ? `Year ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}</p>
+                <p>Due Date: {printMonth === 'all' ? `—` : `${monthsList[printMonth as number].substring(0,3)}. ${colDay}, ${printYear}`}</p>
               </div>
-
-              <div>
-                <div className="font-black text-slate-800 uppercase border-b-2 border-slate-800 pb-0.5 w-max text-sm mb-2">
-                  ACCOUNT SUMMARY
-                </div>
-                <div className="grid grid-cols-[140px_1fr] text-xs gap-y-1">
-                  <span>Previous Balance</span><span></span>
-                  <span>Credits</span><span></span>
-                  <span>Addtl Charges</span><span>{printMonth === 'all' || printMonth === currentMonthNum ? (penaltyTotalForPrint > 0 ? penaltyTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
-                  <span>New Charges</span><span>{printMonth === 'all' || printMonth === currentMonthNum ? (baseTotalForPrint > 0 ? baseTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
-                  
-                  <span className="font-bold underline mt-1">Total Balance</span>
-                  <span className="font-bold underline mt-1">{printMonth === 'all' || printMonth === currentMonthNum ? combinedTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
-                  
-                  <span className="italic mt-1">Payment Due Date</span>
-                  <span className="italic mt-1">{printMonth === 'all' ? `—` : `${monthsList[printMonth as number]} ${colDay}, ${printYear}`}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <table className="w-full text-center tabular-nums border-collapse border border-black table-fixed text-[10px]">
-                <thead>
-                  <tr className="border-b-2 border-black bg-slate-100">
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[18%]">PERIOD</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[18%]">DUE DATE</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">DUES</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">PARKING</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">UTILITIES</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[11%]">PENALTY</th>
-                    <th className="p-1.5 border-r border-black font-black uppercase tracking-wider text-black w-[9%]">STATUS</th>
-                    <th className="p-1.5 font-black uppercase tracking-wider text-black w-[11%]">TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black text-black">
-                  {(printMonth === 'all' ? printLedgerData : printLedgerData.filter(row => row.monthIndex === printMonth)).map((row, idx) => {
-                    const isPopulatedRow = printMonth === 'all' ? row.status !== "Upcoming" : row.monthIndex === printMonth;
-                    
-                    const isPastPaid = printMonth === 'all' && row.status === 'Paid' && !row.isCurrentMonth;
-                    const rowDues = rawDues;
-                    const rowParking = rawParking;
-                    const rowUtilities = (!isTenantVacant && (rawWater + rawElectricity) > 0) ? (rawWater + rawElectricity) : 0;
-                    const rowPenalty = isPastPaid ? 0 : (ownerPenalty + tenantPenalty);
-                    const rowTotal = rowDues + rowParking + rowUtilities + rowPenalty;
-
-                    return (
-                      <tr key={idx} className={isPopulatedRow ? "font-bold" : ""}>
-                        <td className="p-1.5 whitespace-nowrap border-r border-black uppercase">
-                          {row.monthName} {row.year}
-                        </td>
-                        <td className="p-1.5 whitespace-nowrap border-r border-black">{row.dueDate}</td>
-                        
-                        {isPopulatedRow ? (
-                          <>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowDues > 0 ? `₱${rowDues.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowParking > 0 ? `₱${rowParking.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowUtilities > 0 ? `₱${rowUtilities.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black">{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}` : "—"}</td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black font-bold uppercase">{row.status}</td>
-                            <td className="p-1.5 text-right whitespace-nowrap font-black">₱{rowTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black"></td>
-                            <td className="p-1.5 whitespace-nowrap border-r border-black font-bold uppercase">—</td>
-                            <td className="p-1.5 whitespace-nowrap"></td>
-                          </>
-                        )}
+              
+              <div className={`${printLayout === 'half' ? 'p-2 px-3 pb-2' : 'p-4 pb-3'}`}>
+                <table className={`w-full text-left ${printLayout === 'half' ? 'text-[9px]' : 'text-[12px]'}`}>
+                  <thead>
+                    <tr>
+                      <th className="pb-1.5 font-bold w-[15%]">Date</th>
+                      <th className="pb-1.5 font-bold w-[25%]">Particulars</th>
+                      <th className="pb-1.5 font-bold w-[15%]">Unit Area</th>
+                      <th className="pb-1.5 font-bold w-[25%]">Rate</th>
+                      <th className="pb-1.5 font-bold w-[20%] text-right">Amount Collectible</th>
+                    </tr>
+                  </thead>
+                  <tbody className="leading-tight">
+                    {rawDues > 0 && (
+                      <tr>
+                        <td className="py-0">{currentDateStr}</td>
+                        <td className="py-0">Unit Dues</td>
+                        <td className="py-0">{selectedUnit?.unit_area || '0 sqm'}</td>
+                        <td className="py-0">{selectedUnit?.dues_rate || 0}/sqm/month</td>
+                        <td className="py-0 text-right">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-end mb-10">
-              <div className="grid grid-cols-[200px_120px] text-xs gap-y-1">
-                <span className="font-bold">Ending Balance Statement Date:</span>
-                <span className="text-right font-medium">{printMonth === 'all' || printMonth === currentMonthNum ? baseTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
-                
-                <span className="italic text-slate-600">Less: Adjustments</span>
-                <span className="text-right"></span>
-                
-                <span className="italic text-slate-600">Add: Charges/ Penalty</span>
-                <span className="text-right font-medium">{printMonth === 'all' || printMonth === currentMonthNum ? (penaltyTotalForPrint > 0 ? penaltyTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : "") : ""}</span>
-                
-                <span className="font-bold underline mt-1">TOTAL AMOUNT DUE</span>
-                <span className="font-bold underline text-right mt-1">{printMonth === 'all' || printMonth === currentMonthNum ? combinedTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2}) : ""}</span>
-                
-                <span className="italic mt-1">Payment Due Date</span>
-                <span className="italic text-right mt-1">{printMonth === 'all' ? `—` : `${monthsList[printMonth as number]} ${colDay}, ${printYear}`}</span>
+                    )}
+                    {rawParking > 0 && (
+                      <tr>
+                        <td className="py-0">{currentDateStr}</td>
+                        <td className="py-0">Parking</td>
+                        <td className="py-0">12.5 sqm</td>
+                        <td className="py-0">{selectedUnit?.parking || 0}/sqm/month</td>
+                        <td className="py-0 text-right">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      </tr>
+                    )}
+                    
+                    {!isTenantVacant && rawWater > 0 && (
+                      <tr>
+                        <td className="py-0">{currentDateStr}</td>
+                        <td className="py-0">Water</td>
+                        <td className="py-0"></td>
+                        <td className="py-0"></td>
+                        <td className="py-0 text-right">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      </tr>
+                    )}
+                    
+                    {!isTenantVacant && rawElectricity > 0 && (
+                      <tr>
+                        <td className="py-0">{currentDateStr}</td>
+                        <td className="py-0">Electricity</td>
+                        <td className="py-0"></td>
+                        <td className="py-0"></td>
+                        <td className="py-0 text-right">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      </tr>
+                    )}
+                    
+                    <tr>
+                      <td className={`${printLayout === 'half' ? 'pt-2' : 'pt-4'} pb-0 font-bold`} colSpan={5}>Remaining Balance:</td>
+                    </tr>
+                    <tr>
+                      <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[10px]'}`} colSpan={2}>- {printMonth === 'all' ? `Year ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}</td>
+                      <td colSpan={2}></td>
+                      <td className="py-0 text-right">₱{(ownerPenalty + tenantPenalty).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                    </tr>
+                    
+                    <tr>
+                      <td className={`${printLayout === 'half' ? 'pt-2' : 'pt-2'} pb-0 font-bold`} colSpan={5}>Advance Payment:</td>
+                    </tr>
+                    <tr>
+                      <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[12px]'}`} colSpan={2}>-</td>
+                      <td colSpan={2}></td>
+                      <td className="py-0 text-right"></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="flex justify-between items-end text-xs mt-8 pr-8">
-               
-               <div className="w-[200px]">
-                 <div className="flex items-end gap-3">
-                   <span className="mb-0.5">Prepared by:</span>
-                   <p className="font-bold border-b border-black flex-1 text-center uppercase pb-0.5 text-sm">Admin</p>
-                 </div>
-               </div>
-               
-               <div className="w-[250px]">
-                 <div className="flex items-end gap-3">
-                   <span className="mb-0.5">Approved by:</span>
-                   <p className="font-bold border-b border-black flex-1 text-center uppercase pb-0.5 text-sm">{orgData?.org_name || "Management"}</p>
-                 </div>
-               </div>
+            {/* Box 3: Total Collectible Block */}
+            <div className={`border border-black rounded-[12px] overflow-hidden flex flex-col shrink-0 ${printLayout === 'half' ? 'mb-2' : 'mb-6'}`}>
+              <div className={`flex justify-between items-center bg-white ${printLayout === 'half' ? 'p-1.5 px-3' : 'p-3'}`}>
+                <span className={`font-black ${printLayout === 'half' ? 'text-[12px]' : 'text-[15px]'}`}>TOTAL COLLECTIBLE</span>
+                <span className={`font-black ${printLayout === 'half' ? 'text-[12px]' : 'text-[15px]'}`}>₱{combinedTotalForPrint.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              </div>
             </div>
 
-            <div className="text-[9px] text-slate-400 mt-16 italic text-center uppercase tracking-widest">
-              Generated via Property Management System
-            </div>
+            {/* Payment Details & Reminders (Adapts based on layout to fit 1 page) */}
+            {printLayout === 'full' ? (
+              <div className="flex-1 flex flex-col mt-4">
+                <div className="mb-4 shrink-0">
+                  <h3 className="font-bold uppercase text-[12px] mb-2">PAYMENT DETAILS</h3>
+                  <div className="flex gap-2 text-[12px] mb-0.5">
+                    <span>Bank Name:</span>
+                    <span className="font-bold ml-1">{selectedUnit?.bank_name || "Future World Realty & Developer Inc."}</span>
+                  </div>
+                  <div className="flex gap-2 text-[12px] mb-0.5">
+                    <span>Bank Account Name:</span>
+                    <span className="font-bold ml-1">{selectedUnit?.bank_account_name || "FUTURE WORLD REALTY & DEVELOPER INC."}</span>
+                  </div>
+                  <div className="flex gap-2 text-[12px]">
+                    <span>Bank Account No.:</span>
+                    <span className="font-bold ml-1">{selectedUnit?.bank_account_number || "010948011048 (BDO)"}</span>
+                  </div>
+                </div>
+
+                <div className="mb-4 flex-1 overflow-hidden">
+                  <h3 className="font-bold uppercase text-[12px] mb-2">REMINDERS:</h3>
+                  <ul className="list-disc pl-5 text-[12px] space-y-1">
+                    <li>All payments should be made by check to <span className="font-bold">{selectedUnit?.bank_account_name || "FUTURE WORLD REALTY & DEVELOPER INC."}</span></li>
+                    <li>Please settle your account at your earliest convenience.</li>
+                    {printCustomReminder && <li>{printCustomReminder}</li>}
+                  </ul>
+                </div>
+
+                <div className="bg-[#2b2b2b] text-white p-3 flex justify-between items-center w-[calc(100%+3rem)] -mx-6 -mb-6 mt-auto shrink-0" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                  <span className="font-bold text-[12px] pl-6">CONTACT US</span>
+                  <span className="text-[12px] pr-6 truncate">
+                    {printEmail} | {printShortName} | {printContactNumber}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* HALF LAYOUT COMPACT FOOTER */
+              <div className="flex-1 flex flex-col justify-end mt-1 relative">
+                <div className="grid grid-cols-[1fr_1fr] gap-4 mb-2 shrink-0">
+                  <div>
+                    <h3 className="font-bold uppercase text-[9px] mb-1">PAYMENT DETAILS</h3>
+                    <div className="text-[9px] leading-tight space-y-0.5">
+                      <p>Bank Name: <span className="font-bold">{selectedUnit?.bank_name || "Future World Realty & Developer Inc."}</span></p>
+                      <p>Bank Account Name: <span className="font-bold">{selectedUnit?.bank_account_name || "FUTURE WORLD REALTY & DEVELOPER INC."}</span></p>
+                      <p>Bank Account No.: <span className="font-bold">{selectedUnit?.bank_account_number || "010948011048 (BDO)"}</span></p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase text-[9px] mb-1">REMINDERS:</h3>
+                    <ul className="list-disc pl-4 text-[8px] space-y-0.5 leading-tight">
+                      <li>All payments should be made by check to <span className="font-bold">{selectedUnit?.bank_account_name || "FUTURE WORLD REALTY & DEVELOPER INC."}</span></li>
+                      <li>Please settle your account at your earliest convenience.</li>
+                      {printCustomReminder && <li>{printCustomReminder}</li>}
+                    </ul>
+                  </div>
+                </div>
+                <div className="bg-[#2b2b2b] text-white p-2 mt-auto flex items-center justify-between w-[calc(100%+30mm)] -mx-[15mm] -mb-[10mm] shrink-0" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                  <span className="font-bold text-[9px] pl-[15mm]">CONTACT US</span>
+                  <span className="text-[9px] pr-[15mm] truncate">
+                    {printEmail} | {printShortName} | {printContactNumber}
+                  </span>
+                </div>
+              </div>
+            )}
+            
           </div>
         )}
       </div>,
       document.body
     )}
     </>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p data-field-error className="flex items-center gap-1.5 mt-1.5 ml-1 text-xs font-bold text-red-600 animate-in fade-in slide-in-from-top-1">
+      <AlertCircle className="w-4 h-4 shrink-0" />
+      <span className="leading-snug">{message}</span>
+    </p>
   );
 }
 
@@ -2787,16 +3062,6 @@ function BillingSkeletonCard() {
         <div className="h-4 bg-slate-200 rounded w-16"></div>
         <div className="h-4 bg-slate-200 rounded w-16"></div>
       </div>
-    </div>
-  );
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return (
-    <div className="flex items-start gap-1.5 mt-2 ml-1 text-red-600 text-xs sm:text-[13px] font-bold animate-in fade-in slide-in-from-top-1">
-      <AlertCircle className="w-4 h-4 shrink-0 mt-px" />
-      <span className="leading-snug">{message}</span>
     </div>
   );
 }

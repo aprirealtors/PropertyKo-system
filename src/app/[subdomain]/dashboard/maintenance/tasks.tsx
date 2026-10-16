@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MapPin, X, CheckCircle, PauseCircle, Camera, PhilippinePesoIcon, AlertCircle, AlertTriangle, Wrench, Clock, Activity, Info, Inbox, Trash2, CheckCircle2, ChevronRight, User, Check, CheckSquare } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
@@ -11,7 +11,7 @@ const formatDateTime = (dateString: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
-export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoading = false }: any) {
+export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoading = false, highlightTaskId }: any) {
   const [completeModalTask, setCompleteModalTask] = useState<string | null>(null);
   const [completionStatus, setCompletionStatus] = useState(""); 
   const [onHoldReason, setOnHoldReason] = useState(""); 
@@ -50,6 +50,53 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
   const [reviewActiveTask, setReviewActiveTask] = useState<any | null>(null);
   const [reviewOnHoldTask, setReviewOnHoldTask] = useState<any | null>(null);
   const [reviewResolvedTask, setReviewResolvedTask] = useState<any | null>(null);
+
+  // ✨ AUTO-HIGHLIGHT / AUTO-OPEN MODAL ON NOTIFICATION CLICK
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
+  // ✨ REVISED LOGIC: AUTO-OPEN MODAL INSTEAD OF JUST HIGHLIGHTING
+  useEffect(() => {
+    if (highlightTaskId && !isLoading && tasks.length > 0) {
+      // PREVENT REPEATING PULSE & MODAL ON TAB SWITCH
+      const consumedHighlight = sessionStorage.getItem('consumed_task_highlight');
+      if (consumedHighlight === highlightTaskId) return;
+      
+      // Mark as consumed so it only triggers once per specific notification click
+      sessionStorage.setItem('consumed_task_highlight', highlightTaskId);
+
+      const actualId = highlightTaskId.split('_')[0]; 
+      
+      setTimeout(() => {
+        const matchingTask = tasks.find((t: any) => String(t.id) === actualId);
+        
+        if (matchingTask) {
+          const status = String(matchingTask.status).toLowerCase();
+          
+          // Auto-open specific review modals directly based on status
+          if (status === 'on_hold') {
+            setActiveView('on_hold'); 
+            setReviewOnHoldTask(matchingTask); 
+          } else if (status === 'completed' || status === 'resolved' || status === 'success') {
+            setActiveView('resolved'); 
+            setReviewResolvedTask(matchingTask); 
+          } else {
+            setActiveView('open'); 
+            setReviewActiveTask(matchingTask); 
+          }
+
+          // We'll still scroll it into view and pulse the background behind the modal for visual context
+          const targetElement = document.getElementById(`maintenance-card-${actualId}`);
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+            setActiveHighlightId(actualId);
+            setTimeout(() => {
+              setActiveHighlightId(null);
+            }, 3500);
+          }
+        }
+      }, 300); // Slight delay ensures DOM is fully painted
+    }
+  }, [highlightTaskId, isLoading, tasks]);
 
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, type: 'success', title: '', message: '' });
 
@@ -278,9 +325,14 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 openTasks.map((task: any) => (
                   <div 
                     key={task.id} 
+                    id={`maintenance-card-${task.id}`}
                     onClick={() => setReviewActiveTask(task)}
                     className={`group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-5 ${
-                      task.priority === 'Urgent' ? 'border-l-4 border-l-red-500 shadow-sm shadow-red-500/5 border-[var(--color-border)]' : 'hover:border-[var(--color-primary)]/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border-[var(--color-border)]'
+                      activeHighlightId === String(task.id) 
+                        ? 'ring-4 ring-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 border-[var(--color-primary)] scale-[1.02] shadow-[var(--shadow-lg)] animate-pulse z-10' 
+                        : task.priority === 'Urgent' 
+                          ? 'border-l-4 border-l-red-500 shadow-sm shadow-red-500/5 border-[var(--color-border)]' 
+                          : 'hover:border-[var(--color-primary)]/50 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border-[var(--color-border)]'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
@@ -336,8 +388,9 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 onHoldTasks.map((task: any) => (
                   <div 
                     key={task.id} 
+                    id={`maintenance-card-${task.id}`}
                     onClick={() => setReviewOnHoldTask(task)}
-                    className="group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]"
+                    className={`group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border border-[var(--color-border)] flex flex-col cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-amber-400 p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)]`}
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -384,8 +437,9 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 resolvedTasks.map((task: any) => (
                   <div 
                     key={task.id} 
+                    id={`maintenance-card-${task.id}`}
                     onClick={() => setReviewResolvedTask(task)} 
-                    className="group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5"
+                    className={`group h-auto min-h-[180px] md:min-h-[210px] shrink-0 bg-white rounded-[var(--radius-xl)] border flex flex-col transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1 hover:border-[var(--color-primary)]/50 border-[var(--color-border)] shadow-[0_4px_20px_rgb(0,0,0,0.03)] p-5`}
                   >
                     <div className="flex justify-between items-start mb-3 gap-3 shrink-0">
                       <h4 className="font-extrabold text-[var(--color-text)] text-base leading-snug tracking-tight line-clamp-2">{task.title}</h4>
@@ -427,7 +481,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
             <div className="relative px-5 pt-6 pb-4 sm:py-4 border-b border-[var(--color-border)] flex justify-between items-center bg-[var(--color-bg)] shrink-0">
               <span className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-300"></span>
               <h2 className="text-lg font-black text-[var(--color-text)] tracking-wider">Update Task</h2>
-              <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="text-slate-400 hover:text-[var(--color-primary)] bg-slate-50 hover:bg-slate-100 rounded-full p-2 transition-colors active:scale-90" disabled={isCompleting}>
+              <button onClick={() => !isCompleting && setCompleteModalTask(null)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isCompleting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -443,12 +497,12 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                     <label className={`flex flex-col items-center justify-center gap-1.5 p-4 border-2 rounded-[var(--radius-lg)] cursor-pointer transition-all active:scale-95 duration-200 shadow-sm ${completionStatus === "Success" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-[var(--color-border)] bg-white text-slate-400 hover:border-slate-300"}`}>
                       <input type="radio" name="status" value="Success" checked={completionStatus === "Success"} onChange={(e) => {setCompletionStatus(e.target.value); setOnHoldReason(""); setCustomHoldReason(""); setStatusError(""); setHoldReasonError(""); setCustomReasonError("");}} className="hidden" />
                       <CheckCircle size={24} strokeWidth={2.5} />
-                      <span className="text-sm font-bold">Success</span>
+                      <span className="text-sm font-bold text-center leading-tight">Resolved</span>
                     </label>
                     <label className={`flex flex-col items-center justify-center gap-1.5 p-4 border-2 rounded-[var(--radius-lg)] cursor-pointer transition-all active:scale-95 duration-200 shadow-sm ${completionStatus === "On Hold" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-[var(--color-border)] bg-white text-slate-400 hover:border-slate-300"}`}>
                       <input type="radio" name="status" value="On Hold" checked={completionStatus === "On Hold"} onChange={(e) => {setCompletionStatus(e.target.value); setStatusError(""); setRemarksError("");}} className="hidden" />
                       <PauseCircle size={24} strokeWidth={2.5} />
-                      <span className="text-sm font-bold">On Hold</span>
+                      <span className="text-sm font-bold text-center leading-tight">Hold / Pending</span>
                     </label>
                   </div>
                   {statusError && <FieldError message={statusError} />}
@@ -572,10 +626,10 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                         <div className="hidden md:flex w-full">
                           <label className={`w-full flex flex-col items-center justify-center gap-2 py-8 rounded-[var(--radius-xl)] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 bg-white'} cursor-pointer shadow-[var(--shadow-sm)] transition-all group`}>
-                            <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-primary)] transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
-                            <span className="text-sm font-black text-slate-700 group-hover:text-[var(--color-primary)] uppercase tracking-wide">Upload Photo</span>
+                            <span className="text-sm font-black text-slate-700 group-hover:text-[var(--color-text)] uppercase tracking-wide">Upload Photo</span>
                             <span className="text-xs text-slate-400 font-medium">Click to browse from your computer</span>
                             <input type="file" accept="image/*" onChange={(e) => { if (e.target.files) { setCompletionImage(e.target.files[0]); setPhotoError(""); } }} className="hidden" disabled={isCompleting} />
                           </label>
@@ -591,7 +645,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                 {/* FIXED FOOTER: always visible, never scrolls away */}
                 <div className="shrink-0 flex gap-3 px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-[var(--color-border)] bg-[var(--color-bg)]">
-                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150">Cancel</button>
+                  <button type="button" onClick={() => setCompleteModalTask(null)} disabled={isCompleting} className="flex-1 py-3.5 rounded-[var(--radius-md)] font-black text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors text-xs active:scale-95 duration-150 border border-transparent">Cancel</button>
                   <button type="submit" disabled={isCompleting} className="flex-[2] bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 disabled:text-[var(--color-primary-text)] border border-transparent text-[var(--color-primary-text)] py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center">
                     {isCompleting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Submit Update"}
                   </button>
@@ -616,7 +670,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <Inbox size={16} className="text-blue-700 shrink-0" /> {reviewActiveTask.title}
                 </div>
               </div>
-              <button onClick={() => setReviewActiveTask(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewActiveTask(null)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -656,7 +710,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                   <div className="flex-1 bg-slate-50 rounded-[var(--radius-lg)] p-5 border border-[var(--color-border)] flex flex-col justify-between">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block border-b border-[var(--color-border)] pb-2 mb-2">Issue Description:</span>
-                    <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold">{reviewActiveTask.description}</p>
+                    <p className="text-sm text-[var(--color-text)] leading-relaxed font-semibold text-center">{reviewActiveTask.description}</p>
                     
                     <div className="mt-8 space-y-4 pt-2">
                       <div className="flex justify-between items-center border-t border-[var(--color-border)] pt-4">
@@ -686,8 +740,31 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </div>
             </div>
 
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
-              <button onClick={() => setReviewActiveTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
+            {/* ✨ ACTION FOOTER */}
+            <div className="shrink-0 justify-center items-center flex px-5 sm:px-8 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
+              
+
+              {reviewActiveTask.status === 'pending' ? (
+                <button 
+                  onClick={() => {
+                    updateTaskStatus(reviewActiveTask.id, 'in_progress');
+                    setReviewActiveTask({ ...reviewActiveTask, status: 'in_progress' });
+                  }} 
+                  className="flex bg-[var(--color-primary)] w-full max-w-md hover:opacity-90 text-[var(--color-primary-text)] py-3.5 sm:py-3 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Wrench size={16} strokeWidth={2.5} /> Start Task
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setReviewActiveTask(null);
+                    openCompleteModal(reviewActiveTask.id);
+                  }} 
+                  className="flex bg-[var(--color-primary)] w-full max-w-md hover:opacity-90 text-[var(--color-primary-text)] py-3.5 sm:py-3 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <CheckSquare size={16} strokeWidth={2.5} /> Update Report
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -707,7 +784,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <PauseCircle size={16} className="text-amber-500 shrink-0" /> {reviewOnHoldTask.title}
                 </div>
               </div>
-              <button onClick={() => setReviewOnHoldTask(null)} className="w-12 h-12 flex items-center hidden md:flex justify-center bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewOnHoldTask(null)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -747,7 +824,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                 </div>
 
                 {/* ON HOLD UPDATE COLUMN */}
-                <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--color-primary)]/30 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
+                <div className="bg-white rounded-[var(--radius-lg)] p-5 sm:p-6 border border-amber-100 shadow-[var(--shadow-sm)] flex flex-col space-y-5 hover:shadow-lg transition-shadow">
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex items-center gap-3">
                       <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-[var(--radius-sm)] text-[10px] font-black uppercase tracking-widest border border-[var(--color-primary)]/20 shadow-[var(--shadow-sm)]">Update</span>
@@ -790,8 +867,18 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
               </div>
             </div>
 
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewOnHoldTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close View</button>
+            {/* ✨ ACTION FOOTER FOR ON HOLD */}
+            <div className="shrink-0 flex justify-center items-center px-5 sm:px-8 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg)] z-10 shadow-[0_-10px_20px_rgb(0,0,0,0.02)]">
+
+              <button 
+                onClick={() => {
+                  setReviewOnHoldTask(null);
+                  openCompleteModal(reviewOnHoldTask.id);
+                }} 
+                className="flex w-full max-w-md bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)] py-3.5 sm:py-3 rounded-[var(--radius-md)] text-sm font-black transition-all shadow-[var(--shadow-md)] active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <CheckSquare size={16} strokeWidth={2.5} /> Update Report
+              </button>
             </div>
           </div>
         </div>
@@ -811,7 +898,7 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
                   <CheckCircle2 size={16} className="text-green-700 shrink-0" /> {reviewResolvedTask.title}
                 </div>
               </div>
-              <button onClick={() => setReviewResolvedTask(null)} className="w-12 h-12 flex items-center justify-center hidden md:flex bg-slate-100 hover:bg-slate-200 transition-colors rounded-[var(--radius-sm)] shrink-0 active:scale-95 text-slate-500">
+              <button onClick={() => setReviewResolvedTask(null)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={24} strokeWidth={2.5} />
               </button>
             </div>
@@ -888,10 +975,6 @@ export default function TasksTab({ tasks, profile, showToast, fetchTasks, isLoad
 
                 </div>
               </div>
-            </div>
-
-            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)] shrink-0 md:hidden z-10 shadow-[var(--shadow-sm)]">
-              <button onClick={() => setReviewResolvedTask(null)} className="w-full bg-[var(--color-primary)] text-[var(--color-text)] py-4 rounded-[var(--radius-md)] font-black text-base shadow-[var(--shadow-md)] active:scale-[0.98] transition-all border border-transparent">Close Details</button>
             </div>
           </div>
         </div>

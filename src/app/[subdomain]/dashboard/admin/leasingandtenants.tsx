@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/utils/supabase/client";
 import { 
   Search, Users, X, MapPin, CheckCircle, BellRing, CalendarDays, 
-  AlertTriangle, FolderOpen, Clock, FileText, Download, XOctagon, RefreshCw, MessageSquare 
+  AlertTriangle, FolderOpen, Clock, FileText, Download, XOctagon, RefreshCw, MessageSquare, CircleQuestionMark
 } from "lucide-react";
 
 export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading }: any) {
@@ -468,7 +468,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <CheckCircle className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
                 Approve Lease
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -528,7 +528,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   </div>
                   <div>
                     <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">
-                      <CalendarDays size={14} className="text-[var(--color-primary)]" /> End Date
+                      <CalendarDays size={14} className="text-[var(--color-text)]" /> End Date
                     </label>
                     <input 
                       required type="date"
@@ -564,7 +564,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                 <FileText className="text-[var(--color-text)]" size={24} strokeWidth={2.5} />
                 Contract Details
               </h2>
-              <button onClick={() => setIsViewModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-[var(--color-border)] rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => setIsViewModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -796,10 +796,10 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {confirmModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[120] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] border-[var(--color-primary)]/30'}`}>
-              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border ${confirmModal.isDestructive ? 'bg-red-100 text-red-600 border-red-200' : 'bg-emerald-500 text-white border-[var(--color-primary)]/30'}`}>
+              {confirmModal.isDestructive ? <AlertTriangle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" /> : <CircleQuestionMark size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />}
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">{confirmModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {confirmModal.desc}
             </p>
@@ -812,7 +812,7 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
                   if (confirmModal.action) confirmModal.action();
                   setConfirmModal({ isOpen: false, title: "", desc: "", action: null, isDestructive: false });
                 }} 
-                className={`flex-1 text-white font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 ${confirmModal.isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-[var(--color-primary)] hover:opacity-90'}`}
+                className={`flex-1 text-[var(--color-text)] font-black uppercase tracking-widest text-[11px] sm:text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-md border border-transparent active:scale-95 ${confirmModal.isDestructive ? 'bg-red-600 hover:bg-red-700' : 'bg-[var(--color-primary)] hover:opacity-90'}`}
               >
                 Yes, Proceed
               </button>
@@ -825,10 +825,10 @@ export default function LeasingAndTenantsTab({ orgData, isLoading: isOrgLoading 
       {successModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 animate-in fade-in duration-300">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-emerald-200">
               <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-secondary)] mb-2 sm:mb-3 tracking-tight">{successModal.title}</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">{successModal.title}</h2>
             <p className="text-slate-500 text-[13px] sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
               {successModal.desc}
             </p>

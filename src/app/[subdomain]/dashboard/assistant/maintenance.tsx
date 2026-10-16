@@ -26,6 +26,13 @@ const formatDateTime = (dateString: string) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p className="flex items-center gap-1.5 mt-2 text-[11px] font-black text-red-600 tracking-wide">
+      <AlertCircle size={14} strokeWidth={2.5} /> {message}
+    </p>
+  ) : null;
+
 export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highlightTicketId }: any) {
   const [tickets, setTickets] = useState<any[]>([]); // Combined tasks & rejected requests
   const [inboxTickets, setInboxTickets] = useState<any[]>([]); 
@@ -61,6 +68,15 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
   // INLINE ERROR STATES
   const [photoError, setPhotoError] = useState("");
+
+  // Field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  useEffect(() => { setFieldErrors({}); }, [isModalOpen]);
+
+  const errCls = (key: string) =>
+    fieldErrors[key]
+      ? "border-red-300 bg-red-50 focus:ring-red-500/15 focus:border-red-400"
+      : "border-[var(--color-border)] bg-white focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]";
 
   // Searchable Dropdown States for Modal
   const [isLocationOpen, setIsLocationOpen] = useState(false);
@@ -252,7 +268,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
           title: 'Repair Request Rejected',
           message: `Your request "${ticketToReject.title}" was not approved. Reason: ${rejectReason}`,
           reference_id: ticketToReject.id,
-          is_read: false
+          is_read: false,
+          admin_hidden: true, // Prevents admin from seeing their own action
+          manager_hidden: true,
+          assistant_hidden: true
         }]);
       }
 
@@ -279,20 +298,16 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
     setIsSubmitting(true);
     setPhotoError(""); 
 
-    if (!assignedTo) {
-      showAlert('warning', 'Missing Assignment', "Please assign this ticket to a maintenance staff member.");
-      setIsSubmitting(false);
-      return;
-    }
+    const errors: Record<string, string> = {};
+    if (!selectedCategory) errors.category = "Please select a ticket category.";
+    if (!location.trim()) errors.location = "Please enter or select a location.";
+    if (!assignedTo) errors.assignedTo = "Please assign a maintenance staff member.";
+    setFieldErrors(errors);
 
-    if (!selectedCategory) {
-      showAlert('warning', 'Missing Category', "Please select a ticket category before submitting.");
-      setIsSubmitting(false);
-      return;
-    }
+    const missingPhoto = !ticketImage && !selectedInboxId;
+    if (missingPhoto) setPhotoError("Please upload or take a photo as evidence.");
 
-    if (!ticketImage && !selectedInboxId) {
-      setPhotoError("A photo evidence is required to process this ticket.");
+    if (Object.keys(errors).length > 0 || missingPhoto) {
       setIsSubmitting(false);
       return;
     }
@@ -320,6 +335,25 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
       const hasTicketNumber = /#\d+/.test(title);
       const finalTitle = hasTicketNumber ? title.trim() : `${title.trim()} #${uniqueId}`;
 
+      // ✨ FIX 1: INSERT DIRECTLY TO TICKETS TABLE IF MANUAL CREATION
+      if (!selectedInboxId) {
+        const { error: ticketInsertError } = await supabase.from('tickets').insert([{
+          admin_email: orgData.admin_email,
+          title: finalTitle,
+          description: finalDesc,
+          location: location,
+          status: 'Assigned to Maintenance',
+          priority: priority,
+          category: selectedCategory,
+          photo_url: photoUrlToSave,
+          updated_at: new Date().toISOString()
+        }]);
+        if (ticketInsertError) throw new Error(`Ticket Database Error: ${ticketInsertError.message}`);
+      } else {
+        await supabase.from('tickets').update({ status: 'Assigned to Maintenance', category: selectedCategory, updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
+      }
+
+      // ✨ FIX 2: CREATE MAINTENANCE TASK
       const { data: newTask, error } = await supabase.from('maintenance_tasks').insert([{ 
         admin_email: orgData.admin_email, 
         title: finalTitle, 
@@ -330,13 +364,28 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         cost: 0, 
         photo_url: photoUrlToSave, 
         priority: priority,
-        category: selectedCategory, // ✨ Saving the new category field
+        category: selectedCategory, 
         updated_at: new Date().toISOString()
       }]).select().single();
 
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      if (selectedInboxId) await supabase.from('tickets').update({ status: 'Assigned to Maintenance', category: selectedCategory, updated_at: new Date().toISOString() }).eq('id', selectedInboxId);
+      // ✨ FIX 3: DIRECTLY INSERT TO NOTIFICATIONS TABLE FOR STAFF TO RECEIVE
+      if (assignedTo) {
+        await supabase.from('notifications').insert([{
+          admin_email: orgData.admin_email,
+          recipient: assignedTo,
+          type: 'MAINTENANCE',
+          title: priority === 'Urgent' ? '🚨 Urgent Task Assigned' : 'New Task Assigned',
+          // ❌ TINANGGAL ANG <STRONG> TAGS DAHIL YUNG FRONTEND PARSER NA ANG BAHALA MAG-FORMAT
+          message: `Admin assigned a new ticket to you: ${finalTitle} at ${location}. Notes: ${priority === 'Urgent' ? 'This is an URGENT task. Please attend to it immediately.' : `Please review and process.`}`,
+          reference_id: newTask.id,
+          is_read: false,
+          admin_hidden: true,
+          manager_hidden: true,
+          assistant_hidden: true
+        }]);
+      }
 
       await fetchTickets(); 
       setIsModalOpen(false);
@@ -517,7 +566,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
                 <input 
                   type="text" 
-                  placeholder="Search Name, Ticket & Unit..." 
+                  placeholder="Search name, title, id, units..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] bg-white backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all" 
@@ -626,8 +675,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ DYNAMIC CONTENT AREA */}
         {viewMode === 'board' ? (
           
-          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-4 custom-scrollbar animate-in fade-in duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 sm:gap-4 items-stretch w-full h-full min-h-[400px]">
+          <div className="flex-1 w-full h-full min-h-0 overflow-x-hidden overflow-y-auto pr-1 pb-16 custom-scrollbar animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 items-start w-full h-full min-h-[400px]">
               
               {/* Column 1: Open */}
               <div className={`${activeView === 'open' ? 'flex' : 'hidden'} lg:flex flex-col bg-slate-50 border border-[var(--color-border)] rounded-[var(--radius-xl)] p-4 sm:p-5 w-full shrink-0 shadow-sm`}>
@@ -988,12 +1037,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Create New Ticket</h2>
                   <p className="text-[10px] sm:text-xs font-bold text-slate-400 mt-0.5">Fill in the details below to create a new maintenance ticket.</p>
                 </div>
-                  <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); setSelectedCategory(""); setAssignedTo(""); setTitle(""); } }} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-100 hover:opacity-75 rounded-[var(--radius-sm)] text-slate-500 active:scale-95 shrink-0" disabled={isSubmitting}>
+                  <button onClick={() => { if(!isSubmitting) { setIsModalOpen(false); setTicketImage(null); setPhotoError(""); setSelectedCategory(""); setAssignedTo(""); setTitle(""); } }} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                     <X size={18} strokeWidth={2.5} />
                   </button>
               </div>
               <div className="p-4 sm:p-5 overflow-y-auto max-h-full sm:max-h-[75vh] custom-scrollbar bg-slate-50/50">
-                <form onSubmit={handleAddTicket} className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
+                <form onSubmit={handleAddTicket} noValidate className="space-y-4 sm:space-y-5 pb-8 sm:pb-0">
                   
                   {/* Select Inbox Item */}
                   {inboxTickets.length > 0 && (
@@ -1004,6 +1053,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         onChange={(e) => {
                           const id = e.target.value;
                           setSelectedInboxId(id);
+                          setFieldErrors({});
                           setTicketImage(null); 
                           setPhotoError(""); 
                           if (id) {
@@ -1040,7 +1090,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
 
                   {/* ✨ SMART CATEGORY SELECTOR */}
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 ${fieldErrors.category ? "text-red-500" : "text-slate-400"}`}>
                       Select Ticket Category <span className="text-red-500">*</span>
                     </label>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
@@ -1053,6 +1103,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             type="button"
                             onClick={() => {
                               setSelectedCategory(cat.id);
+                              setFieldErrors(p => ({ ...p, category: "", assignedTo: "" }));
                               setAssignedTo(""); // Auto-reset assign dropdown when category changes
                               
                               // ✨ STRICT AUTO-FILL (Since field is now disabled)
@@ -1063,7 +1114,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border text-center transition-all ${
                               isSelected 
                               ? `bg-white border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/20 shadow-sm ${cat.color}` 
-                              : `bg-white border-[var(--color-border)] text-slate-500 hover:bg-slate-50`
+                              : `bg-white ${fieldErrors.category ? "border-red-300" : "border-[var(--color-border)]"} text-slate-500 hover:bg-slate-50`
                             }`}
                             disabled={isSubmitting || !!selectedInboxId} // Prevent change if pulled from Inbox with existing category
                           >
@@ -1077,6 +1128,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                         );
                       })}
                     </div>
+                    <FieldError message={fieldErrors.category} />
                   </div>
 
                   <div>
@@ -1093,7 +1145,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
 
                   <div className="relative">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Location / Unit <span className="text-red-500">*</span></label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 ${fieldErrors.location ? "text-red-500" : "text-slate-400"}`}>Location / Unit <span className="text-red-500">*</span></label>
                     <input 
                       type="text"
                       required 
@@ -1101,6 +1153,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       value={location} 
                       onChange={(e) => {
                         setLocation(e.target.value);
+                        setFieldErrors(p => ({ ...p, location: "" }));
                         setIsLocationOpen(true);
                       }} 
                       onFocus={() => setIsLocationOpen(true)}
@@ -1108,10 +1161,13 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none text-xs sm:text-sm font-semibold shadow-sm transition-colors ${
                         selectedInboxId 
                           ? "bg-slate-50 border-slate-200/60 text-slate-500 cursor-not-allowed" 
-                          : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
+                          : fieldErrors.location
+                            ? "bg-red-50 border-red-300 focus:ring-4 focus:ring-red-500/15 focus:border-red-400 text-[var(--color-text)]"
+                            : "bg-white border-[var(--color-border)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-[var(--color-text)]"
                       }`}
                       disabled={isSubmitting || !!selectedInboxId}
                     />
+                    <FieldError message={fieldErrors.location} />
                     {isLocationOpen && !selectedInboxId && (
                       <div className="absolute z-50 w-full mt-1 bg-white border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                         {(() => {
@@ -1128,8 +1184,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           return filtered.map((opt, idx) => (
                             <div
                               key={idx}
-                              onMouseDown={() => { setLocation(opt); setIsLocationOpen(false); }}
-                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
+                              onMouseDown={() => { setLocation(opt); setFieldErrors(p => ({ ...p, location: "" })); setIsLocationOpen(false); }}
+                              className="px-4 py-2.5 text-xs sm:text-sm text-slate-700 hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-text)] cursor-pointer font-bold transition-colors border-b border-slate-50 last:border-0"
                             >
                               {opt}
                             </div>
@@ -1194,8 +1250,8 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               onMouseDown={() => { setReporter(m.name); setIsReporterOpen(false); }}
                               className="px-4 py-2.5 flex items-center justify-between hover:bg-[var(--color-primary)]/10 cursor-pointer border-b border-slate-50 last:border-0 group transition-colors"
                             >
-                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-primary)]">{m.name}</span>
-                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-primary)]/70">{m.role}</span>
+                              <span className="text-xs sm:text-sm text-slate-700 font-bold group-hover:text-[var(--color-text)]">{m.name}</span>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 group-hover:text-[var(--color-text)]">{m.role}</span>
                             </div>
                           ));
                         })()}
@@ -1205,12 +1261,12 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Assign To <span className="text-red-500">*</span></label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 ${fieldErrors.assignedTo ? "text-red-500" : "text-slate-400"}`}>Assign To <span className="text-red-500">*</span></label>
                       <select 
                         required 
                         value={assignedTo} 
-                        onChange={(e) => setAssignedTo(e.target.value)} 
-                        className="w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-xs sm:text-sm font-semibold bg-white text-slate-700 shadow-sm" 
+                        onChange={(e) => { setAssignedTo(e.target.value); setFieldErrors(p => ({ ...p, assignedTo: "" })); }} 
+                        className={`w-full px-3 sm:px-4 py-2.5 rounded-[var(--radius-md)] border focus:outline-none focus:ring-4 text-xs sm:text-sm font-semibold text-slate-700 shadow-sm ${errCls("assignedTo")}`} 
                         disabled={isSubmitting}
                       >
                         <option value="" disabled>Select staff...</option>
@@ -1221,9 +1277,10 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                           </option> 
                         ))}
                       </select>
+                      <FieldError message={fieldErrors.assignedTo} />
                       {/* ✨ Filter Helper Text */}
                       {selectedCategory && selectedCategory !== "General Repair" && (
-                        <p className="text-[9px] text-[var(--color-primary)] font-bold mt-1.5 ml-0.5">
+                        <p className="text-[9px] text-[var(--color-text)] font-bold mt-1.5 ml-0.5">
                           Filtered by: {TICKET_CATEGORIES.find(c => c.id === selectedCategory)?.requiredRole}
                         </p>
                       )}
@@ -1239,7 +1296,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1 ${photoError ? "text-red-500" : "text-slate-400"}`}>
                       Photo Evidence <span className="text-red-500">*</span>
                     </label>
                     <div>
@@ -1297,7 +1354,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                               <Camera size={20} strokeWidth={2.5} />
                             </div>
                             <div>
-                              <span className="text-xs font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
+                              <span className="text-sm font-black text-slate-700 group-hover:text-[var(--color-text)] block leading-none mt-1">
                                 Take Photo
                               </span>
                             </div>
@@ -1316,7 +1373,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                             />
                           </label>
                           <label className={`flex flex-1 flex-col items-center justify-center gap-2 px-2 py-4 rounded-[1.5rem] border-2 border-dashed ${photoError ? 'border-red-400 bg-red-50/50 hover:bg-red-50' : 'border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5'} cursor-pointer transition-all group text-center shadow-sm bg-white`}>
-                            <div className="w-30 h-30 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-slate-50 group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center text-slate-400 group-hover:text-[var(--color-text)] transition-colors shadow-sm ring-2 ring-slate-50 group-hover:ring-[var(--color-primary)]/5 shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                             </div>
                             <div>
@@ -1341,12 +1398,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                       )}
                     </div>
                     {/* ✨ INLINE PHOTO ERROR MESSAGE */}
-                    {photoError && (
-                      <div className="flex items-center gap-1.5 mt-2 text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100 animate-in fade-in">
-                        <AlertCircle size={14} strokeWidth={2.5} className="shrink-0" />
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest">{photoError}</span>
-                      </div>
-                    )}
+                    <FieldError message={photoError} />
                   </div>
                   
                   {selectedInboxId && (
@@ -1389,7 +1441,7 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
                   <AlertCircle size={18} strokeWidth={2.5} />
                   <h2 className="text-base font-black tracking-tight">Reject Request</h2>
                 </div>
-                <button onClick={() => !isRejecting && setIsRejectModalOpen(false)} className="text-red-400 hover:text-red-600 transition-colors p-1.5 rounded-full hover:bg-red-100 active:scale-90" disabled={isRejecting}>
+                <button onClick={() => !isRejecting && setIsRejectModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isRejecting}>
                   <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
@@ -1422,15 +1474,15 @@ export default function MaintenanceTab({ orgData, isLoading: isOrgLoading, highl
         {/* ✨ UNIVERSAL ALERT MODAL (NEW) */}
         {alertConfig.isOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-bg)] rounded-[var(--radius-md)] shadow-2xl w-full max-w-sm p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
-              <div className={`w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-emerald-100 text-emerald-600 border-emerald-200/20' : alertConfig.type === 'error' ? 'bg-red-100 text-red-600 border-red-200/20' : 'bg-amber-100 text-amber-600 border-amber-200/20'}`}>
+            <div className="bg-[var(--color-bg)] rounded-[var(--radius-md)] shadow-2xl w-full max-w-lg p-6 text-center border border-[var(--color-border)] transform transition-all animate-in zoom-in-95 duration-200">
+              <div className={`w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center mx-auto mb-4 border-4 shadow-inner ${alertConfig.type === 'success' ? 'bg-emerald-500 text-white' : alertConfig.type === 'error' ? 'bg-red-100 text-red-600 border-red-200/20' : 'bg-amber-100 text-amber-600 border-amber-200/20'}`}>
                 {alertConfig.type === 'success' && <CheckCircle size={28} strokeWidth={2.5} />}
                 {alertConfig.type === 'error' && <AlertCircle size={28} strokeWidth={2.5} />}
                 {alertConfig.type === 'warning' && <AlertTriangle size={28} strokeWidth={2.5} />}
               </div>
-              <h2 className="text-lg font-black text-[var(--color-text)] mb-2 tracking-tight">{alertConfig.title}</h2>
+              <h2 className="text-xl font-black text-[var(--color-text)] mb-2 tracking-wider">{alertConfig.title}</h2>
               <p className="text-slate-500 text-xs mb-6 leading-relaxed whitespace-pre-wrap font-medium">{alertConfig.message}</p>
-              <button onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} className={`w-full text-white px-4 py-3.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] duration-150 border border-transparent ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)]' : alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}>Got it</button>
+              <button onClick={() => setAlertConfig({ ...alertConfig, isOpen: false })} className={`w-full text-[var(--color-text)] px-4 py-3.5 rounded-[var(--radius-md)] text-xs uppercase font-black transition-all shadow-[var(--shadow-sm)] active:scale-[0.98] duration-150 border border-transparent ${alertConfig.type === 'success' ? 'bg-[var(--color-primary)] hover:opacity-90 text-[var(--color-primary-text)]' : alertConfig.type === 'error' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'}`}>Got it</button>
             </div>
           </div>
         )}

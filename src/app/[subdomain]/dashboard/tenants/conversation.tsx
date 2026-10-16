@@ -1275,7 +1275,7 @@ export default function ConversationTab({
 
               {/* REPLYING TO BANNER */}
               {replyingTo && (
-                <div className="w-full max-w-4xl bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
+                <div className="w-full bg-slate-100 border-x border-t border-[var(--color-border)] rounded-t-[var(--radius-md)] px-3 py-2 flex justify-between items-center mb-4 pb-2 z-0 animate-in slide-in-from-bottom-2">
                   <div className="flex flex-col min-w-0 pr-2 border-l-[3px] border-[var(--color-primary)] pl-2">
                     <span className="text-[10px] font-black text-[var(--color-text)] uppercase tracking-wider">
                       Replying to {replyingTo.sender_email === userData.email ? 'yourself' : (customNames[activeChat] || activeRoleDetails?.label || 'User')}
@@ -1288,7 +1288,7 @@ export default function ConversationTab({
                 </div>
               )}
 
-              <form onSubmit={handleSendMessage} className={`w-full max-w-4xl flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
+              <form onSubmit={handleSendMessage} className={`w-full flex gap-2 sm:gap-3 items-end z-10 ${replyingTo ? 'mt-0' : ''}`}>
                 <div className={`flex-1 bg-[var(--color-bg)] border border-[var(--color-border)] px-3 sm:px-4 py-2 sm:py-3 flex items-center min-h-[44px] sm:min-h-[48px] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/40 transition-all shadow-[var(--shadow-inner)] ${replyingTo ? 'rounded-b-[var(--radius-md)]' : 'rounded-[var(--radius-md)]'}`}>
                   <textarea
                     ref={inputRef as any}
@@ -1305,7 +1305,7 @@ export default function ConversationTab({
                     }}
                     placeholder="Type a message..."
                     className="w-full bg-transparent border-none outline-none text-[14px] sm:text-[15px] text-[var(--color-text)] font-medium placeholder:text-slate-400 resize-none overflow-y-auto custom-scrollbar"
-                    style={{ minHeight: '24px', height: '24px', maxHeight: '120px' }} 
+                    style={{ minHeight: '24px', height: '24px', maxHeight: '90px' }} 
                     disabled={isSending || isLoading}
                     rows={1}
                   />

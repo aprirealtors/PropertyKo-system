@@ -858,7 +858,7 @@ export default function AdminDashboard() {
       {/* 🌟 PREMIUM USER PROFILE MODAL */}
       {isUserProfileModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
 
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Admin Profile</h2>
@@ -1137,7 +1137,7 @@ export default function AdminDashboard() {
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Organization Profile</h2>
               <button 
                 onClick={() => setIsWorkspaceModalOpen(false)}
-                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
+                className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0"
               >
                 <X size={18} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
               </button>

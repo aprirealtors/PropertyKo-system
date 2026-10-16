@@ -758,7 +758,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1.5">Select the properties/units you want to permanently delete from the system.</p>
               </div>
-              <button onClick={() => { setIsMassDeleteModalOpen(false); setMassDeleteSearchQuery(""); }} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0">
+              <button onClick={() => { setIsMassDeleteModalOpen(false); setMassDeleteSearchQuery(""); }} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0">
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -867,7 +867,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 {editingUnitId ? <Edit size={24} className="text-[var(--color-text)]" /> : <Building size={24} className="text-[var(--color-text)]" />}
                 {editingUnitId ? "Edit Unit Details" : "Add New Unit"}
               </h2>
-              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative z-10 w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
+              <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isSubmitting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -1088,7 +1088,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] tracking-tight">Review Import Data</h2>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">Review your CSV entries. Delete any row you do not want to upload.</p>
               </div>
-              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="w-9 h-9 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-full text-slate-400 hover:opacity-90 transition-colors active:scale-95 shrink-0" disabled={isImporting}>
+              <button onClick={() => !isImporting && setIsPreviewModalOpen(false)} className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors active:scale-95 shrink-0" disabled={isImporting}>
                 <X size={18} strokeWidth={2.5} />
               </button>
             </div>
@@ -1282,7 +1282,7 @@ export default function PropertiesAndUnitsTab({ orgData, isLoading: isOrgLoading
       {showSuccessModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
           <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-8 animate-in fade-in zoom-in-95 duration-300 border border-[var(--color-border)]">
-            <div className="w-20 h-20 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
+            <div className="w-20 h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-sm">
               <CheckCircle2 size={40} strokeWidth={3} />
             </div>
             <h2 className="text-2xl font-black text-[var(--color-text)] tracking-tight mb-2">Success!</h2>
