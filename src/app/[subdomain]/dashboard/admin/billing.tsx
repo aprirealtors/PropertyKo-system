@@ -32,6 +32,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [isSendAllModalOpen, setIsSendAllModalOpen] = useState(false);
   const [isSendAllSuccessModalOpen, setIsSendAllSuccessModalOpen] = useState(false);
   const [sendAllNotifCount, setSendAllNotifCount] = useState(0);
+
+  // ✨ Payment Method Config States
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+  const [isPaymentMethodSuccessModalOpen, setIsPaymentMethodSuccessModalOpen] = useState(false);
+  const [isPaymentMethodConfirmModalOpen, setIsPaymentMethodConfirmModalOpen] = useState(false);
+  const [isSavingPaymentMethods, setIsSavingPaymentMethods] = useState(false);
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>(
+    orgData?.available_payment_methods || ['Digital Wallet', 'Bank Transfer', 'Check', 'Cash']
+  );
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   const [pendingWaive, setPendingWaive] = useState<'owner' | 'tenant' | null>(null);
@@ -967,6 +976,36 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     return isNaN(parsed) ? null : Number(parsed.toFixed(2));
   };
 
+  const handleTogglePaymentMethod = (method: string) => {
+    setSelectedPaymentMethods(prev => 
+      prev.includes(method) ? prev.filter(m => m !== method) : [...prev, method]
+    );
+  };
+
+  const handleSavePaymentMethods = async () => {
+    if (selectedPaymentMethods.length === 0) {
+      alert("Please select at least one payment method.");
+      return;
+    }
+    setIsSavingPaymentMethods(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ available_payment_methods: selectedPaymentMethods })
+        .eq('admin_email', orgData.admin_email);
+        
+      if (error) throw error;
+      
+      setIsPaymentMethodModalOpen(false);
+      setIsPaymentMethodSuccessModalOpen(true);
+    } catch (err: any) {
+      console.error("Error saving payment methods", err);
+      alert("Failed to save payment methods: " + err.message);
+    } finally {
+      setIsSavingPaymentMethods(false);
+    }
+  };
+
   const handleSaveGlobalConfig = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1383,15 +1422,26 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                 {isSendingAll ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
                 <span className="truncate">Send All SOA</span>
               </button>
+
+              {/* ✨ PAYMENT METHODS BUTTON */}
+              <button 
+                onClick={() => setIsPaymentMethodModalOpen(true)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-3.5 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm shrink-0"
+                title="Configure accepted payment methods"
+              >
+                <CreditCard size={16} />
+                <span className="truncate">Payment Methods</span>
+              </button>
             </div>
 
-            <div className="relative w-full sm:w-64 md:w-72 lg:w-80 xl:w-96 group shrink-0">
+            {/* ✨ Made search bar smaller to prevent title truncation */}
+            <div className="relative w-full sm:w-32 md:w-40 lg:w-48 xl:w-56 group shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[var(--color-primary)] transition-colors z-10 pointer-events-none sm:w-4 sm:h-4" size={16} strokeWidth={2.5} />
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Name & Unit..." 
+                placeholder="Search..." 
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/15 focus:border-[var(--color-primary)] bg-white/80 backdrop-blur-sm shadow-[var(--shadow-sm)] transition-all hover:bg-white" 
               />
             </div>
@@ -1859,6 +1909,138 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         )}
       </div>
       
+      {/* ✨ PAYMENT METHODS CONFIG MODAL */}
+      {isPaymentMethodModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                  <CreditCard size={16} />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">Accepted Payment Methods</h2>
+              </div>
+              <button onClick={() => setIsPaymentMethodModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSavingPaymentMethods}>
+                <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4 bg-slate-50/50">
+              <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4">
+                Select the payment methods you want to make available for owners and tenants when they submit their payments.
+              </p>
+
+              <div className="grid grid-cols-1 gap-3">
+                {['Digital Wallet', 'Bank Transfer', 'Check', 'Cash'].map((method) => {
+                  const isSelected = selectedPaymentMethods.includes(method);
+                  return (
+                    <label 
+                      key={method} 
+                      className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${isSelected ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                    >
+                      <span className={`font-bold text-sm ${isSelected ? 'text-emerald-800' : 'text-slate-600'}`}>{method}</span>
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected}
+                        onChange={() => handleTogglePaymentMethod(method)}
+                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="px-4 sm:px-6 py-4 border-t border-[var(--color-border)] bg-white flex gap-3 justify-end">
+              <button
+                onClick={() => setIsPaymentMethodModalOpen(false)}
+                disabled={isSavingPaymentMethods}
+                className="px-5 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-[var(--radius-md)] transition-colors shadow-sm active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setIsPaymentMethodConfirmModalOpen(true)}
+                disabled={isSavingPaymentMethods || selectedPaymentMethods.length === 0}
+                className="px-5 py-2.5 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest transition-colors shadow-[var(--shadow-md)] flex items-center justify-center gap-2 active:scale-95 border border-transparent"
+              >
+                {isSavingPaymentMethods ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                Save Methods
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ PAYMENT METHODS CONFIRMATION MODAL */}
+      {isPaymentMethodConfirmModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-[var(--color-border)] animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-5 md:p-6 pb-4 sm:pb-5 flex justify-between items-center border-b border-[var(--color-border)] bg-[var(--color-bg)]/50">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
+                  <AlertCircle size={16} />
+                </div>
+                <h2 className="text-base sm:text-lg font-black text-[var(--color-text)] tracking-tight">Confirm Update</h2>
+              </div>
+              <button onClick={() => setIsPaymentMethodConfirmModalOpen(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors p-2 active:scale-95 shrink-0" disabled={isSavingPaymentMethods}>
+                <X size={20} className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
+
+            <div className="px-5 sm:px-6 py-6 sm:py-8 space-y-4 bg-white">
+              <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                Are you sure you want to update the available payment methods?
+              </p>
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-medium">
+                This will instantly change the payment options available to all owners and tenants when they submit their next payment.
+              </div>
+            </div>
+
+            <div className="px-4 sm:px-6 py-4 border-t border-[var(--color-border)] bg-slate-50 flex gap-3 justify-end">
+              <button
+                onClick={() => setIsPaymentMethodConfirmModalOpen(false)}
+                disabled={isSavingPaymentMethods}
+                className="px-5 py-2.5 text-xs font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-[var(--radius-md)] transition-colors shadow-sm active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSavePaymentMethods();
+                  setIsPaymentMethodConfirmModalOpen(false);
+                }}
+                disabled={isSavingPaymentMethods}
+                className="px-5 py-2.5 bg-[var(--color-primary)] hover:opacity-90 disabled:opacity-50 text-[var(--color-primary-text)] rounded-[var(--radius-md)] text-xs font-black uppercase tracking-widest transition-colors shadow-[var(--shadow-md)] flex items-center justify-center gap-2 active:scale-95 border border-transparent"
+              >
+                {isSavingPaymentMethods ? <Loader2 size={16} className="animate-spin" /> : "Confirm Update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ SUCCESS MODAL FOR PAYMENT METHODS */}
+      {isPaymentMethodSuccessModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-sm overflow-hidden transform transition-all text-center p-6 sm:p-8 border border-[var(--color-border)] animate-in zoom-in-95 duration-500">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-5 sm:mb-6 shadow-sm border border-[var(--color-primary)]/20">
+              <CheckCircle size={32} strokeWidth={2.5} className="sm:w-10 sm:h-10" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--color-text)] mb-2 sm:mb-3 tracking-tight">Payment Methods Updated</h2>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium mb-6 sm:mb-8 leading-relaxed px-2">
+              Your residents will now only see the selected payment options when settling their accounts.
+            </p>
+            <button 
+              onClick={() => setIsPaymentMethodSuccessModalOpen(false)}
+              className="w-full bg-[var(--color-primary)] hover:opacity-90 border border-transparent text-[var(--color-primary-text)] font-black uppercase tracking-widest text-xs py-3.5 sm:py-4 rounded-[var(--radius-md)] transition-all shadow-[var(--shadow-md)] active:scale-95"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* SEND ALL SOA CONFIRMATION MODAL */}
       {isSendAllModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">

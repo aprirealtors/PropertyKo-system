@@ -31,11 +31,16 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
 
   const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [allSoaConfigs, setAllSoaConfigs] = useState<Record<string, any>>({});
-  const [globalComp, setGlobalComp] = useState({
+  const [globalComp, setGlobalComp] = useState<{
+    duesRate: number; water: number; electricity: number; parking: number;
+    penaltyType: string; penaltyValue: number; collectionDay: number; gracePeriod: number;
+    bankName: string; bankAccountName: string; bankAccountNumber: string;
+    qrCodeUrl: string; available_payment_methods: string[];
+  }>({
     duesRate: 0, water: 0, electricity: 0, parking: 0,
     penaltyType: 'percent', penaltyValue: 3, collectionDay: 1, gracePeriod: 15,
     bankName: '', bankAccountName: '', bankAccountNumber: '',
-    qrCodeUrl: '' 
+    qrCodeUrl: '', available_payment_methods: ['Digital Wallet', 'Bank Transfer', 'Check', 'Cash']
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -46,11 +51,14 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
   const [isMobileListVisible, setIsMobileListVisible] = useState(true);
   const [isMobileHistoryVisible, setIsMobileHistoryVisible] = useState(false);
 
-  // Updated payment methods
-  const PAYMENT_METHODS = [
-    'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
-  ];
   const [paymentMethod, setPaymentMethod] = useState<string>('Digital Wallet');
+
+  // ✨ Sync selected payment method with whatever the admin has enabled
+  useEffect(() => {
+    if (globalComp.available_payment_methods.length > 0 && !globalComp.available_payment_methods.includes(paymentMethod)) {
+      setPaymentMethod(globalComp.available_payment_methods[0]);
+    }
+  }, [globalComp.available_payment_methods]);
   const [referenceNumber, setReferenceNumber] = useState("");
   
   const [isSimulating, setIsSimulating] = useState(false);
@@ -87,11 +95,37 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
     }
   }, [actionIntent, sortedUnits]);
 
+  // ✨ 1. Realtime Listener for Organization / Payment Methods
   useEffect(() => {
     if (userData?.admin_email) {
       fetchBillingConfig();
+
+      const orgChannelName = `owner-org-updates-${userData.admin_email}-${Date.now()}`;
+      const orgChannel = supabase
+        .channel(orgChannelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'organizations',
+            filter: `admin_email=eq.${userData.admin_email}`
+          },
+          () => {
+            console.log("Org Config Updated! Refreshing payment methods...");
+            fetchBillingConfig();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(orgChannel);
+      };
     }
-    
+  }, [userData?.admin_email]);
+
+  // ✨ 2. Fetch SOA Configs for assigned units
+  useEffect(() => {
     if (sortedUnits && sortedUnits.length > 0) {
       if (!selectedUnit && !actionIntent) {
         if (typeof window !== 'undefined' && window.innerWidth >= 768) {
@@ -118,13 +152,13 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
       };
       fetchSoaConfigs();
     }
-  }, [userData?.admin_email, sortedUnits]);
+  }, [sortedUnits, actionIntent]);
 
   const fetchBillingConfig = async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('organizations')
-      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
+      .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url, available_payment_methods')
       .eq('admin_email', userData.admin_email)
       .single();
 
@@ -135,7 +169,11 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
         penaltyType: data.penalty_type || 'percent', penaltyValue: data.penalty_value || 0,
         collectionDay: data.collection_day || 1, gracePeriod: data.grace_period_days || 15,
         bankName: data.bank_name || '', bankAccountName: data.bank_account_name || '', bankAccountNumber: data.bank_account_number || '',
-        qrCodeUrl: data.qr_code_url || ''
+        qrCodeUrl: data.qr_code_url || '',
+        // ✨ Fetch custom payment methods or fallback to defaults
+        available_payment_methods: data.available_payment_methods && data.available_payment_methods.length > 0 
+          ? data.available_payment_methods 
+          : ['Digital Wallet', 'Bank Transfer', 'Check', 'Cash']
       });
     }
     setIsLoading(false);
@@ -952,7 +990,7 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
               <div className="mb-5 sm:mb-6 shrink-0">
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2.5 ml-1">Select Payment Method</label>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {PAYMENT_METHODS.map((method) => (
+                  {globalComp.available_payment_methods.map((method) => (
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 

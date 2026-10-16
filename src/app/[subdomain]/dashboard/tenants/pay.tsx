@@ -10,11 +10,16 @@ export default function PayTab() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [globalComp, setGlobalComp] = useState({
+  const [globalComp, setGlobalComp] = useState<{
+    duesRate: number; water: number; electricity: number; parking: number;
+    penaltyType: string; penaltyValue: number; collectionDay: number; gracePeriod: number;
+    bankName: string; bankAccountName: string; bankAccountNumber: string;
+    qrCodeUrl: string; available_payment_methods: string[];
+  }>({
     duesRate: 0, water: 0, electricity: 0, parking: 0,
     penaltyType: 'percent', penaltyValue: 0, collectionDay: 1, gracePeriod: 15,
     bankName: '', bankAccountName: '', bankAccountNumber: '',
-    qrCodeUrl: '' 
+    qrCodeUrl: '', available_payment_methods: ['Digital Wallet', 'Bank Transfer', 'Check', 'Cash']
   });
 
   const [soaConfig, setSoaConfig] = useState<any>({
@@ -29,10 +34,14 @@ export default function PayTab() {
   
   const [isMobileHistoryVisible, setIsMobileHistoryVisible] = useState(false);
 
-  const PAYMENT_METHODS = [
-    'Digital Wallet', 'Bank Transfer', 'Check', 'Cash'
-  ];
   const [paymentMethod, setPaymentMethod] = useState<string>('Digital Wallet');
+
+  // ✨ Sync selected payment method with whatever the admin has enabled
+  useEffect(() => {
+    if (globalComp.available_payment_methods.length > 0 && !globalComp.available_payment_methods.includes(paymentMethod)) {
+      setPaymentMethod(globalComp.available_payment_methods[0]);
+    }
+  }, [globalComp.available_payment_methods]);
   const [referenceNumber, setReferenceNumber] = useState("");
   
   const [isSimulating, setIsSimulating] = useState(false);
@@ -59,7 +68,7 @@ export default function PayTab() {
       if (profile) {
         const { data: orgData } = await supabase
           .from('organizations')
-          .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url')
+          .select('dues_rate, default_water, default_electricity, default_parking, penalty_type, penalty_value, collection_day, grace_period_days, bank_name, bank_account_name, bank_account_number, qr_code_url, available_payment_methods')
           .eq('admin_email', profile.admin_email)
           .single();
 
@@ -70,7 +79,11 @@ export default function PayTab() {
             penaltyType: orgData.penalty_type || 'percent', penaltyValue: orgData.penalty_value || 0,
             collectionDay: orgData.collection_day || 1, gracePeriod: orgData.grace_period_days || 15,
             bankName: orgData.bank_name || '', bankAccountName: orgData.bank_account_name || '', bankAccountNumber: orgData.bank_account_number || '',
-            qrCodeUrl: orgData.qr_code_url || '' 
+            qrCodeUrl: orgData.qr_code_url || '',
+            // ✨ Fetch custom payment methods or fallback to defaults
+            available_payment_methods: orgData.available_payment_methods && orgData.available_payment_methods.length > 0 
+              ? orgData.available_payment_methods 
+              : ['Digital Wallet', 'Bank Transfer', 'Check', 'Cash']
           });
         }
 
@@ -123,12 +136,13 @@ export default function PayTab() {
   };
 
   useEffect(() => {
-    if (!unit?.id) return;
+    if (!unit?.id || !unit?.admin_email) return;
 
-    const channelName = `tenant-soa-updates-${unit.id}-${Date.now()}`;
+    const soaChannelName = `tenant-soa-updates-${unit.id}-${Date.now()}`;
+    const orgChannelName = `tenant-org-updates-${unit.admin_email}-${Date.now()}`;
 
     const soaChannel = supabase
-      .channel(channelName)
+      .channel(soaChannelName)
       .on(
         'postgres_changes',
         { 
@@ -144,10 +158,29 @@ export default function PayTab() {
       )
       .subscribe();
 
+    // ✨ Listen for Organization updates (Payment Methods, Rates, etc.)
+    const orgChannel = supabase
+      .channel(orgChannelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'organizations',
+          filter: `admin_email=eq.${unit.admin_email}`
+        },
+        () => {
+          console.log("Org Config Updated! Refreshing payment methods...");
+          fetchBillingData();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(soaChannel);
+      supabase.removeChannel(orgChannel);
     };
-  }, [unit?.id]);
+  }, [unit?.id, unit?.admin_email]);
 
   const getUnitAreaValue = (areaStr: string) => {
     const parsed = parseFloat(String(areaStr || "0").replace(/[^\d.]/g, ''));
@@ -711,7 +744,7 @@ export default function PayTab() {
               <div className="mb-5 sm:mb-6 shrink-0">
                 <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2.5 ml-1 whitespace-normal break-words">Select Payment Method</label>
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                  {PAYMENT_METHODS.map((method) => (
+                  {globalComp.available_payment_methods.map((method) => (
                     <button 
                       key={method}
                       onClick={() => setPaymentMethod(method)} 
