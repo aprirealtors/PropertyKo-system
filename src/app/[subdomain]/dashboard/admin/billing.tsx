@@ -30,8 +30,8 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const [isGlobalSuccessModalOpen, setIsGlobalSuccessModalOpen] = useState(false);
   const [isSOAModalOpen, setIsSOAModalOpen] = useState(false);
   const [isSendAllModalOpen, setIsSendAllModalOpen] = useState(false);
-  const [isSendAllSuccessModalOpen, setIsSendAllSuccessModalOpen] = useState(false); // NEW STATE
-  const [sendAllNotifCount, setSendAllNotifCount] = useState(0); // NEW STATE
+  const [isSendAllSuccessModalOpen, setIsSendAllSuccessModalOpen] = useState(false);
+  const [sendAllNotifCount, setSendAllNotifCount] = useState(0);
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [waiveSuccess, setWaiveSuccess] = useState<{party: 'owner' | 'tenant'} | null>(null);
   const [pendingWaive, setPendingWaive] = useState<'owner' | 'tenant' | null>(null);
@@ -69,6 +69,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   // Payment Fetch States
   const [fetchedPayment, setFetchedPayment] = useState<any>(null);
   const [isFetchingPayment, setIsFetchingPayment] = useState(false);
+  const [amountPaidInput, setAmountPaidInput] = useState("");
 
   // NOTIFICATION CLEANUP STATE
   const [sourceNotificationId, setSourceNotificationId] = useState<string | null>(null);
@@ -351,15 +352,15 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const rawElectricity = activeElectricity;
   const rawParking = activeParkingRate * activeParkingArea;
 
-  const isUnitConfigMissing = !(rawDues > 0 || rawParking > 0 || (!isTenantVacant && (rawWater > 0 || rawElectricity > 0)));
+  const isUnitConfigMissing = !(rawDues > 0 || rawParking > 0 || rawWater > 0 || rawElectricity > 0);
 
   const activeConfig = currentSoa ? {
-    owner: { dues: currentSoa.owner_dues, parking: currentSoa.owner_parking, water: currentSoa.owner_water, electricity: currentSoa.owner_electricity, penalty: currentSoa.owner_penalty },
-    tenant: { dues: currentSoa.tenant_dues, parking: currentSoa.tenant_parking, water: currentSoa.tenant_water, electricity: currentSoa.tenant_electricity, penalty: currentSoa.tenant_penalty }
-  } : {
-    owner: { dues: true, parking: true, water: isTenantVacant, electricity: isTenantVacant, penalty: false },
-    tenant: { dues: false, parking: false, water: !isTenantVacant, electricity: !isTenantVacant, penalty: !isTenantVacant && tenantStatus === 'Overdue' }
-  };
+  owner: { dues: currentSoa.owner_dues, parking: currentSoa.owner_parking, water: currentSoa.owner_water, electricity: currentSoa.owner_electricity, penalty: currentSoa.owner_penalty },
+  tenant: { dues: currentSoa.tenant_dues, parking: currentSoa.tenant_parking, water: currentSoa.tenant_water, electricity: currentSoa.tenant_electricity, penalty: currentSoa.tenant_penalty }
+} : {
+  owner: { dues: true, parking: true, water: true, electricity: true, penalty: false },
+  tenant: { dues: false, parking: false, water: !isTenantVacant, electricity: !isTenantVacant, penalty: !isTenantVacant && tenantStatus === 'Overdue' }
+};
 
   const ownerBase = 
     (activeConfig.owner.dues ? rawDues : 0) + 
@@ -389,9 +390,41 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
   const ownerTotalDue = ownerBase + ownerPenalty;
   const tenantTotalDue = tenantBase + tenantPenalty;
   const totalDue = ownerTotalDue + tenantTotalDue;
-  
+
+  // Advance Payment Logic
+  const ownerAdvance = currentSoa?.owner_advance || 0;
+  const tenantAdvance = currentSoa?.tenant_advance || 0;
+
+  const appliedOwnerAdvance = Math.min(ownerAdvance, ownerTotalDue);
+  const appliedTenantAdvance = Math.min(tenantAdvance, tenantTotalDue);
+
+  const ownerCollectible = ownerTotalDue - appliedOwnerAdvance;
+  const tenantCollectible = tenantTotalDue - appliedTenantAdvance;
+  const totalCollectible = ownerCollectible + tenantCollectible;
+
+  // ---------------- PRINT / PDF COMPUTATION ----------------
+  // Each printed line is built with the SAME rules as ownerBase / tenantBase,
+  // so the rows on the PDF always add up to the total.
+  const printDuesAmt =
+    (activeConfig.owner.dues ? rawDues : 0) +
+    (activeConfig.tenant.dues ? rawDues : 0);
+
+  const printParkingAmt =
+    (activeConfig.owner.parking ? rawParking : 0) +
+    (!isTenantVacant && activeConfig.tenant.parking ? rawParking : 0);
+
+  const printWaterAmt =
+    (activeConfig.owner.water ? rawWater : 0) +
+    (!isTenantVacant && activeConfig.tenant.water ? rawWater : 0);
+
+  const printElectricityAmt =
+    (activeConfig.owner.electricity ? rawElectricity : 0) +
+    (!isTenantVacant && activeConfig.tenant.electricity ? rawElectricity : 0);
+
   const baseTotalForPrint = ownerBase + tenantBase;
   const penaltyTotalForPrint = ownerPenalty + tenantPenalty;
+  // TOTAL COLLECTIBLE = full bill (charges + penalties). It does NOT change
+  // when someone pays or when an advance gets consumed.
   const combinedTotalForPrint = baseTotalForPrint + penaltyTotalForPrint;
 
   const globalContact = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(`globalContact_${orgData?.admin_email}`) || "{}") : {};
@@ -667,7 +700,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
         if (!oHasBill && !tHasBill) return;
 
         soaUpdates.push({
-          ...soa, // <--- This prevents the database from clearing out dues, water, parking flags
+          ...soa, 
           owner_status: (!isUnitOwnerVacant && oHasBill) ? 'Pending' : soa.owner_status,
           tenant_status: (!isUnitTenantVacant && tHasBill) ? 'Pending' : soa.tenant_status
         });
@@ -713,8 +746,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       }
       
       setIsSendAllModalOpen(false);
-      
-      // TRIGGER THE NEW SUCCESS MODAL INSTEAD OF ALERT
       setSendAllNotifCount(notificationsToInsert.length);
       setIsSendAllSuccessModalOpen(true);
       
@@ -1178,18 +1209,28 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
     const wasWaived = pendingWaive === partyToVerify;
     
     try {
-      const updateField: any = paymentModalParty === 'owner' ? { owner_status: 'Paid' } : { tenant_status: 'Paid' };
+      const isOwner = paymentModalParty === 'owner';
+      const collectibleAmount = isOwner ? ownerCollectible : tenantCollectible;
+      const currentAdvance = isOwner ? ownerAdvance : tenantAdvance;
+      const appliedAdvance = isOwner ? appliedOwnerAdvance : appliedTenantAdvance;
+      
+      const actualPaid = parseFloat(amountPaidInput) || 0;
+      
+      // Calculate new advance (Remaining advance after deduction + any new overpayment)
+      let newAdvance = currentAdvance - appliedAdvance;
+      if (actualPaid > collectibleAmount) {
+        newAdvance += (actualPaid - collectibleAmount);
+      }
+
+      const updateField: any = isOwner 
+        ? { owner_status: 'Paid', owner_advance: newAdvance } 
+        : { tenant_status: 'Paid', tenant_advance: newAdvance };
       
       if (pendingWaive === paymentModalParty) {
         updateField[`${paymentModalParty}_penalty`] = false;
       } else {
-        if (paymentModalParty === 'owner' && ownerPenalty > 0) {
-          updateField.owner_penalty = true;
-        }
-        
-        if (paymentModalParty === 'tenant' && tenantPenalty > 0) {
-          updateField.tenant_penalty = true;
-        }
+        if (isOwner && ownerPenalty > 0) updateField.owner_penalty = true;
+        if (!isOwner && tenantPenalty > 0) updateField.tenant_penalty = true;
       }
       
       const { error } = await supabase
@@ -1247,6 +1288,7 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
       setFetchedPayment(null);
       setSourceNotificationId(null);
       setPendingWaive(null);
+      setAmountPaidInput("");
       
       // ✨ Show the success modal AFTER successful payment
       if (wasWaived) {
@@ -2678,24 +2720,24 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                       </label>
                     )}
-                    {!isTenantVacant && rawWater > 0 && (
-                      <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.water ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
-                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.water} checked={soaConfig.owner.water} onChange={(e) => handleToggleSoa('owner', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Water</span>
-                        </div>
-                        <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                      </label>
-                    )}
-                    {!isTenantVacant && rawElectricity > 0 && (
-                      <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.electricity ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
-                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                          <input type="checkbox" disabled={soaConfig.tenant.electricity} checked={soaConfig.owner.electricity} onChange={(e) => handleToggleSoa('owner', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
-                          <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Electricity</span>
-                        </div>
-                        <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                      </label>
-                    )}
+                    {rawWater > 0 && (
+  <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.water && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
+    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <input type="checkbox" disabled={soaConfig.tenant.water && !isTenantVacant} checked={soaConfig.owner.water} onChange={(e) => handleToggleSoa('owner', 'water', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
+      <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Water</span>
+    </div>
+    <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+  </label>
+)}
+{rawElectricity > 0 && (
+  <label className={`flex items-center justify-between gap-2 ${soaConfig.tenant.electricity && !isTenantVacant ? 'cursor-not-allowed opacity-50' : 'cursor-pointer group'}`}>
+    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+      <input type="checkbox" disabled={soaConfig.tenant.electricity && !isTenantVacant} checked={soaConfig.owner.electricity} onChange={(e) => handleToggleSoa('owner', 'electricity', e.target.checked)} className="rounded text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 disabled:bg-slate-200 transition-all border-slate-300 shrink-0" />
+      <span className="text-xs sm:text-sm font-bold text-slate-700 group-hover:text-[var(--color-text)] transition-colors truncate">Electricity</span>
+    </div>
+    <span className="font-black text-[var(--color-text)] text-xs sm:text-sm shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+  </label>
+)}
 
                     {soaConfig.owner.penalty && !isOwnerVacant && (
                       <label className="flex items-center justify-between gap-2 cursor-not-allowed opacity-70">
@@ -3011,11 +3053,42 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
               </p>
 
               <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[var(--color-border)] mb-6 sm:mb-8 shadow-sm">
-                <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-[var(--color-border)] gap-3">
-                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Amount Due</span>
-                  <span className="font-black text-[var(--color-text)] text-xl sm:text-2xl tracking-tight shrink-0">
+                
+                <div className="flex justify-between items-center mb-2 gap-3">
+                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Total Bill</span>
+                  <span className="font-bold text-slate-500 text-sm tracking-tight shrink-0">
                     ₱{(paymentModalParty === 'owner' ? ownerTotalDue : tenantTotalDue).toLocaleString(undefined, {minimumFractionDigits: 2})}
                   </span>
+                </div>
+                {(paymentModalParty === 'owner' ? ownerAdvance : tenantAdvance) > 0 && (
+                  <div className="flex justify-between items-center mb-2 gap-3">
+                    <span className="text-[10px] sm:text-[11px] font-black text-emerald-500 uppercase tracking-widest shrink-0">Less: Advance Payment</span>
+                    <span className="font-bold text-emerald-600 text-sm tracking-tight shrink-0">
+                      - ₱{(paymentModalParty === 'owner' ? appliedOwnerAdvance : appliedTenantAdvance).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center mb-4 sm:mb-5 pb-4 sm:pb-5 border-b border-[var(--color-border)] gap-3">
+                  <span className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-widest shrink-0">Collectible Amount</span>
+                  <span className="font-black text-[var(--color-text)] text-xl sm:text-2xl tracking-tight shrink-0">
+                    ₱{(paymentModalParty === 'owner' ? ownerCollectible : tenantCollectible).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                  </span>
+                </div>
+
+                <div className="mb-4 sm:mb-5">
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Actual Amount Paid (₱)</label>
+                  <input 
+                    type="number" 
+                    placeholder="Enter amount paid..." 
+                    value={amountPaidInput} 
+                    onChange={(e) => setAmountPaidInput(e.target.value)} 
+                    className="w-full px-3.5 py-2.5 sm:py-3 rounded-[var(--radius-md)] border border-slate-200 focus:outline-none focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)] text-sm font-bold shadow-sm" 
+                  />
+                  {(parseFloat(amountPaidInput) || 0) > (paymentModalParty === 'owner' ? ownerCollectible : tenantCollectible) && (
+                    <p className="text-xs text-emerald-600 font-bold mt-2 ml-1">
+                      + ₱{((parseFloat(amountPaidInput) || 0) - (paymentModalParty === 'owner' ? ownerCollectible : tenantCollectible)).toLocaleString(undefined, {minimumFractionDigits: 2})} will be saved as Advance Payment for next month.
+                    </p>
+                  )}
                 </div>
                 
                 {isFetchingPayment ? (
@@ -3198,42 +3271,42 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       {/* Added pl-6 to shift right */}
                       <th className="pb-1.5 font-bold w-[15%] pl-6">Unit Area</th>
                       <th className="pb-1.5 font-bold w-[25%] pl-6">Rate</th>
-                      <th className="pb-1.5 font-bold w-[20%] text-right">Amount Collectible</th>
+                      {/* Added whitespace-nowrap here */}
+                      <th className="pb-1.5 font-bold w-[20%] text-right whitespace-nowrap">Amount Collectible</th>
                     </tr>
                   </thead>
                   <tbody className="leading-tight">
-                    {rawDues > 0 && (
+                    {/* Only lines that are actually assigned (same rules as ownerBase / tenantBase) */}
+                    {printDuesAmt > 0 && (
                       <tr>
                         <td className="py-0">{currentDateStr}</td>
                         <td className="py-0">Unit Dues</td>
-                        {/* Added pl-6 to shift right */}
-                        <td className="py-0 pl-6">{selectedUnit?.unit_area || '0 sqm'}</td>
-                        <td className="py-0 pl-6">{selectedUnit?.dues_rate || 0}/sqm/month</td>
-                        <td className="py-0 text-right">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td className="py-0 pl-6 whitespace-nowrap">{selectedUnit?.unit_area || '0 sqm'}</td>
+                        <td className="py-0 pl-6 whitespace-nowrap">₱{selectedUnit?.dues_rate || 0}/sqm/month</td>
+                        <td className="py-0 text-right">₱{printDuesAmt.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
                     )}
-                    {rawParking > 0 && (
+                    {printParkingAmt > 0 && (
                       <tr>
                         <td className="py-0">{currentDateStr}</td>
                         <td className="py-0">Parking</td>
-                        {/* Added pl-6 to shift right */}
-                        <td className="py-0 pl-6">{selectedUnit?.parking_area || 0} sqm</td>
-                        <td className="py-0 pl-6">{selectedUnit?.parking || 0}/sqm/month</td>
-                        <td className="py-0 text-right">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td className="py-0 pl-6 whitespace-nowrap">{selectedUnit?.parking_area || 0} sqm</td>
+                        <td className="py-0 pl-6 whitespace-nowrap">₱{selectedUnit?.parking || 0}/sqm/month</td>
+                        <td className="py-0 text-right">₱{printParkingAmt.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
                     )}
                     
-                    {!isTenantVacant && rawWater > 0 && activeWaterMode === 'fixed' && (
+                    {printWaterAmt > 0 && activeWaterMode === 'fixed' && (
                       <tr>
                         <td className="py-0">{currentDateStr}</td>
                         <td className="py-0">Water</td>
                         <td className="py-0 pl-6"></td>
                         <td className="py-0 pl-6"></td>
-                        <td className="py-0 text-right">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td className="py-0 text-right">₱{printWaterAmt.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
                     )}
 
-                    {!isTenantVacant && rawWater > 0 && activeWaterMode === 'consumption' && (
+                    {printWaterAmt > 0 && activeWaterMode === 'consumption' && (
                       <tr>
                         <td className="py-0 align-top">{currentDateStr}</td>
                         <td className="py-0 align-top">
@@ -3244,17 +3317,17 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                         </td>
                         <td className="py-0 align-top pl-6"></td>
                         <td className="py-0 align-top pl-6">₱{activeWaterRate}/m³</td>
-                        <td className="py-0 text-right align-top">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td className="py-0 text-right align-top">₱{printWaterAmt.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
                     )}
                     
-                    {!isTenantVacant && rawElectricity > 0 && (
+                    {printElectricityAmt > 0 && (
                       <tr>
                         <td className="py-0">{currentDateStr}</td>
                         <td className="py-0">Electricity</td>
                         <td className="py-0 pl-6"></td>
                         <td className="py-0 pl-6"></td>
-                        <td className="py-0 text-right">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td className="py-0 text-right">₱{printElectricityAmt.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                       </tr>
                     )}
 
@@ -3277,29 +3350,47 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                       </tr>
                     )}
                     
+                    {/* Remaining Balance: penalties are already listed above, so this only
+                        carries previous unpaid balance (not tracked yet -> 0.00) */}
                     <tr>
                       <td className={`${printLayout === 'half' ? 'pt-2' : 'pt-4'} pb-0 font-bold`} colSpan={5}>Remaining Balance:</td>
                     </tr>
                     <tr>
                       <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[10px]'}`} colSpan={2}>- {printMonth === 'all' ? `Year ${printYear}` : `${monthsList[printMonth as number]} ${printYear}`}</td>
                       <td colSpan={2}></td>
-                      <td className="py-0 text-right">₱{(ownerPenalty + tenantPenalty).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                      <td className="py-0 text-right">₱{(0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                     </tr>
                     
+                    {/* ADVANCE PAYMENT — always visible, shows who has it (like Late Penalty) */}
                     <tr>
                       <td className={`${printLayout === 'half' ? 'pt-2' : 'pt-2'} pb-0 font-bold`} colSpan={5}>Advance Payment:</td>
                     </tr>
                     <tr>
-                      <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[12px]'}`} colSpan={2}>-</td>
+                      <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[12px]'}`} colSpan={2}>
+                        - Paid by Owner
+                      </td>
                       <td colSpan={2}></td>
-                      <td className="py-0 text-right"></td>
+                      <td className="py-0 text-right">
+                        ₱{Number(ownerAdvance).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                      </td>
                     </tr>
+                    {!isTenantVacant && (
+                      <tr>
+                        <td className={`${printLayout === 'half' ? 'py-0 text-[8px]' : 'py-0 text-[12px]'}`} colSpan={2}>
+                          - Paid by Tenant
+                        </td>
+                        <td colSpan={2}></td>
+                        <td className="py-0 text-right">
+                          ₱{Number(tenantAdvance).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Box 3: Total Collectible Block */}
+            {/* Box 3: Total Collectible Block (fixed total: charges + penalties, never changes after payment) */}
             <div className={`border border-black rounded-[12px] overflow-hidden flex flex-col shrink-0 ${printLayout === 'half' ? 'mb-2' : 'mb-6'}`}>
               <div className={`flex justify-between items-center bg-white ${printLayout === 'half' ? 'p-1.5 px-3' : 'p-3'}`}>
                 <span className={`font-black ${printLayout === 'half' ? 'text-[12px]' : 'text-[15px]'}`}>TOTAL COLLECTIBLE</span>
