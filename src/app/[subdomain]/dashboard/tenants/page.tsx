@@ -201,16 +201,28 @@ export default function TenantDashboard() {
               // UNIT-SPECIFIC BILLING CALCULATION FALLBACK
               // ==========================================
               const activeDuesRate = unitData.dues_rate ?? orgData.dues_rate ?? 0;
-              const activeParking = unitData.parking ?? orgData.default_parking ?? 0;
-              const activeWater = unitData.water ?? orgData.default_water ?? 0;
+              
+              // New Water computation
+              const activeWaterMode = unitData.water_billing_mode || 'fixed';
+              const activeWaterPrev = Number(unitData.water_previous_reading) || 0;
+              const activeWaterCurr = Number(unitData.water_current_reading) || 0;
+              const activeWaterRate = Number(unitData.water_rate) || 0;
+              const waterConsumption = Math.max(0, activeWaterCurr - activeWaterPrev);
+              const rawWater = activeWaterMode === 'fixed' 
+                ? Number(unitData.water ?? orgData.default_water ?? 0)
+                : (waterConsumption * activeWaterRate);
+
+              // New Parking computation
+              const activeParkingRate = unitData.parking ?? orgData.default_parking ?? 0;
+              const activeParkingArea = Number(unitData.parking_area) || 0;
+              const rawParking = activeParkingRate * activeParkingArea;
+
               const activeElectricity = unitData.electricity ?? orgData.default_electricity ?? 0;
 
               const pType = unitData.penalty_type ?? orgData.penalty_type ?? 'percent';
               const pVal = unitData.penalty_value ?? orgData.penalty_value ?? 0;
 
               const rawDues = activeDuesRate * unitArea;
-              const rawParking = activeParking;
-              const rawWater = activeWater;
               const rawElectricity = activeElectricity;
 
               // Map assignments based on dynamic role
@@ -1117,7 +1129,7 @@ export default function TenantDashboard() {
               </div>
 
               <div className="bg-white rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
-  
+ 
                 {/* ✨ DYNAMIC HEADER SPACING & BORDER */}
                 <div className={`flex justify-between items-center transition-all duration-300 ${isChangingPassword ? 'mb-4 sm:mb-5 pb-3' : ''}`}>
                   <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">

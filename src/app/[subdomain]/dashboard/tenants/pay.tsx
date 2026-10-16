@@ -162,9 +162,22 @@ export default function PayTab() {
   // UNIT-SPECIFIC BILLING CALCULATION
   // ==========================================
   const activeDuesRate = unit?.dues_rate ?? globalComp.duesRate;
-  const activeWater = unit?.water ?? globalComp.water;
+  
+  const activeWaterMode = unit?.water_billing_mode || 'fixed';
+  const activeWaterPrev = Number(unit?.water_previous_reading) || 0;
+  const activeWaterCurr = Number(unit?.water_current_reading) || 0;
+  const activeWaterRate = Number(unit?.water_rate) || 0;
+  const waterConsumption = Math.max(0, activeWaterCurr - activeWaterPrev);
+  const rawWater = activeWaterMode === 'fixed' 
+    ? Number(unit?.water ?? globalComp.water) 
+    : (waterConsumption * activeWaterRate);
+
+  const activeParkingRate = unit?.parking ?? globalComp.parking;
+  const activeParkingArea = Number(unit?.parking_area) || 0;
+  const rawParking = activeParkingRate * activeParkingArea;
+
   const activeElectricity = unit?.electricity ?? globalComp.electricity;
-  const activeParking = unit?.parking ?? globalComp.parking;
+  const rawElectricity = activeElectricity; // ✨ ADD THIS LINE HERE
   
   const colDay = unit?.collection_day ?? globalComp.collectionDay;
   const grace = unit?.grace_period_days ?? globalComp.gracePeriod;
@@ -177,9 +190,6 @@ export default function PayTab() {
   const activeQrCodeUrl = unit?.qr_code_url || globalComp.qrCodeUrl;
   
   const rawDues = activeDuesRate * unitArea;
-  const rawParking = activeParking;
-  const rawWater = activeWater;
-  const rawElectricity = activeElectricity;
 
   const dues = isAssigned && soaConfig.dues ? rawDues : 0;
   const parking = isAssigned && soaConfig.parking ? rawParking : 0;
@@ -402,19 +412,34 @@ export default function PayTab() {
                         {isAssigned ? (
                           <>
                             {soaConfig.dues && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Assoc. Dues <span className="text-[10px] ml-1 opacity-70 hidden sm:inline">({unitArea} sqm)</span></span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm">
+                                <span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Assoc. Dues <span className="text-[10px] ml-1 opacity-70 hidden sm:inline">({unitArea} sqm)</span></span>
+                                <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                              </div>
                             )}
                             {soaConfig.parking && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm">
+                                <span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Parking {activeParkingArea > 0 && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({activeParkingArea} sqm)</span>}</span>
+                                <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                              </div>
                             )}
                             {soaConfig.water && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm">
+                                <span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Water {activeWaterMode === 'consumption' && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({waterConsumption} m³)</span>}</span>
+                                <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                              </div>
                             )}
                             {soaConfig.electricity && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm">
+                                <span className="text-[var(--color-text)] font-medium whitespace-normal break-words">Electricity</span>
+                                <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                              </div>
                             )}
                             {tenantStatus === 'Overdue' && lateFee > 0 && (
-                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm"><span className="text-red-500 font-bold whitespace-normal break-words">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                              <div className="flex justify-between items-center gap-3 text-[13px] sm:text-sm">
+                                <span className="text-red-500 font-bold whitespace-normal break-words">Late Penalty</span>
+                                <span className="font-black text-red-600 shrink-0">₱{lateFee.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                              </div>
                             )}
                             {baseTotal === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium pt-2">No assigned balances for this period.</p>}
                           </>
@@ -575,7 +600,7 @@ export default function PayTab() {
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-[11px] text-slate-500 font-medium">Penalty:</span>
-                              <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-slate-700'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
+                              <span className={`text-[12px] font-bold ${rowPenalty > 0 ? 'text-red-600' : 'text-[var(--color-text)]'}`}>{rowPenalty > 0 ? `₱${rowPenalty.toLocaleString()}` : "0"}</span>
                             </div>
                           </div>
 
@@ -759,7 +784,7 @@ export default function PayTab() {
                 </div>
               )}
             </div>
-
+            
             {/* FIXED FOOTER WITH SOLID BACKGROUND - NO MORE TEXT BLEEDING */}
             <div className="mt-auto px-4 sm:px-6 py-3.5 sm:py-4 border-t border-[var(--color-border)] flex gap-2.5 sm:gap-3 bg-white z-20 shrink-0 flex-col-reverse min-[480px]:flex-row shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
               <button 

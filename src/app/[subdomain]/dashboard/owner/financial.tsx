@@ -155,9 +155,22 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
   // UNIT-SPECIFIC BILLING CALCULATION
   // ==========================================
   const activeDuesRate = selectedUnit?.dues_rate ?? globalComp.duesRate;
-  const activeWater = selectedUnit?.water ?? globalComp.water;
+  
+  const activeWaterMode = selectedUnit?.water_billing_mode || 'fixed';
+  const activeWaterPrev = Number(selectedUnit?.water_previous_reading) || 0;
+  const activeWaterCurr = Number(selectedUnit?.water_current_reading) || 0;
+  const activeWaterRate = Number(selectedUnit?.water_rate) || 0;
+  const waterConsumption = Math.max(0, activeWaterCurr - activeWaterPrev);
+  const rawWater = activeWaterMode === 'fixed' 
+    ? Number(selectedUnit?.water ?? globalComp.water) 
+    : (waterConsumption * activeWaterRate);
+
+  const activeParkingRate = selectedUnit?.parking ?? globalComp.parking;
+  const activeParkingArea = selectedUnit?.parking_area || 0;
+  const rawParking = activeParkingRate * activeParkingArea;
+
   const activeElectricity = selectedUnit?.electricity ?? globalComp.electricity;
-  const activeParking = selectedUnit?.parking ?? globalComp.parking;
+  const rawElectricity = activeElectricity;
   
   const colDay = selectedUnit?.collection_day ?? globalComp.collectionDay;
   const grace = selectedUnit?.grace_period_days ?? globalComp.gracePeriod;
@@ -170,9 +183,6 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
   const activeQrCodeUrl = selectedUnit?.qr_code_url || globalComp.qrCodeUrl;
   
   const rawDues = activeDuesRate * unitArea;
-  const rawParking = activeParking;
-  const rawWater = activeWater;
-  const rawElectricity = activeElectricity;
 
   const existingSoa = selectedUnit ? allSoaConfigs[selectedUnit.id] : null;
   const isAssigned = !!existingSoa;
@@ -583,21 +593,33 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
                               <>
                                 {soaConfig.owner.dues && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
-                                    <span className="text-[var(--color-text)] font-medium truncate">Assoc. dues <span className="text-[10px] text-[var(--color-text)] ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
+                                    <span className="text-[var(--color-text)] font-medium truncate">Assoc. dues <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({unitArea} sqm)</span></span>
                                     <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                   </div>
                                 )}
                                 {soaConfig.owner.parking && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Parking {activeParkingArea > 0 && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({activeParkingArea} sqm)</span>}</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {soaConfig.owner.water && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Water {activeWaterMode === 'consumption' && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({waterConsumption} m³)</span>}</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {soaConfig.owner.electricity && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Electricity</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {ownerStatus === 'Overdue' && ownerPenalty > 0 && !isVacant && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-red-500 font-bold truncate">Late Penalty</span><span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-red-500 font-bold truncate">Late Penalty</span>
+                                    <span className="font-black text-red-600 shrink-0">₱{ownerPenalty.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {ownerTotalDue === 0 && <p className="text-[12px] sm:text-[13px] text-slate-400 italic font-medium">No assigned balances.</p>}
                               </>
@@ -618,16 +640,28 @@ export default function FinancialTab({ userData, units, actionIntent }: any) {
                             {isAssigned ? (
                               <>
                                 {soaConfig.tenant.dues && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Assoc. dues</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Assoc. dues</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawDues.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {soaConfig.tenant.parking && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Parking</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Parking {activeParkingArea > 0 && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({activeParkingArea} sqm)</span>}</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawParking.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {soaConfig.tenant.water && !isVacant && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Water</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Water {activeWaterMode === 'consumption' && <span className="text-[10px] text-[var(--color-text)]/70 ml-1 hidden sm:inline">({waterConsumption} m³)</span>}</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawWater.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {soaConfig.tenant.electricity && !isVacant && (
-                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm"><span className="text-[var(--color-text)] font-medium truncate">Electricity</span><span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span></div>
+                                  <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">
+                                    <span className="text-[var(--color-text)] font-medium truncate">Electricity</span>
+                                    <span className="font-bold text-[var(--color-text)] shrink-0">₱{rawElectricity.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                  </div>
                                 )}
                                 {tenantStatus === 'Overdue' && tenantPenalty > 0 && (
                                   <div className="flex justify-between items-center gap-3 text-[12px] sm:text-sm">

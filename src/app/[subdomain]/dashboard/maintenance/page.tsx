@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { usePushNotifications } from "@/utils/usePushNotifications"; // ✨ RESTORED IMPORT
 import { 
   Bell, CheckCircle2, AlertTriangle, LogOut, 
   Home, Wrench, MessageSquare, User, CheckCheck, Trash2, X, ChevronRight, Lock, Key,
@@ -36,6 +37,18 @@ export interface MaintenanceTask {
 export default function MaintenanceDashboard() {
   const router = useRouter();
   
+  // ✨ RESTORED: INITIALIZE NOTIFICATION HOOK
+  const { token, requestPermission } = usePushNotifications();
+
+  // ✨ RESTORED: Auto-restore UI button state upon login
+  useEffect(() => {
+    if (typeof window !== "undefined" && Notification.permission === "granted" && !token) {
+      if (requestPermission) {
+        requestPermission(); 
+      }
+    }
+  }, [token, requestPermission]);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -423,7 +436,6 @@ export default function MaintenanceDashboard() {
     if (type === 'MESSAGE' || type === 'CHAT') {
       setActiveTab("messages"); 
     } else if (type === 'TICKET' || type === 'MAINTENANCE') {
-      // ✨ FIX: Kunin ang actual Task ID mula sa reference_id galing sa database
       const taskId = notif.reference_id || (notif.id.toString().includes('task_') ? notif.id.split('task_')[1] : null);
       const intent = taskId ? `${taskId}_${Date.now()}` : null;
       
@@ -697,7 +709,7 @@ export default function MaintenanceDashboard() {
       {/* 1. WORKSPACE PROFILE MODAL (STAFF PROFILE) */}
       {isWorkspaceModalOpen && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-md overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
+          <div className="bg-[var(--color-bg)] rounded-[var(--radius-xl)] shadow-2xl w-full max-w-xl overflow-hidden transform transition-all flex flex-col max-h-[92vh] sm:max-h-[90vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 sm:duration-500 border border-[var(--color-border)]">
             
             <div className="px-5 py-4 sm:px-8 sm:py-6 flex justify-between items-center bg-[var(--color-bg)] shrink-0 border-b border-[var(--color-border)]">
               <h2 className="text-lg sm:text-xl font-black text-[var(--color-text)] tracking-tight">Maintenance Staff Profile</h2>
@@ -807,6 +819,31 @@ export default function MaintenanceDashboard() {
                       Maintenance Staff
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* ✨ RESTORED: Desktop Notifications Box */}
+              <div className="bg-white rounded-[1.5rem] sm:rounded-[var(--radius-xl)] shadow-[var(--shadow-sm)] border border-[var(--color-border)] p-5 sm:p-6 transition-all duration-300">
+                <h4 className="text-[10px] sm:text-[11px] font-black text-slate-400/80 uppercase tracking-[0.2em] mb-4 sm:mb-5">
+                  Preferences
+                </h4>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Desktop Notifications</label>
+                  <button
+                    onClick={requestPermission}
+                    className={`w-full py-2.5 rounded-[var(--radius-md)] text-xs font-black transition-all shadow-sm flex items-center justify-center gap-2 border ${
+                      token
+                        ? 'bg-green-50 text-green-600 border-green-200'
+                        : 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-transparent hover:opacity-90 active:scale-[0.98]'
+                    }`}
+                  >
+                    {token ? (
+                      <><CheckCircle2 size={16} strokeWidth={2.5} /> Notifications Enabled</>
+                    ) : (
+                      <><Bell size={16} strokeWidth={2.5} /> Enable Push Notifications</>
+                    )}
+                  </button>
+                  {!token && <p className="text-[10px] text-slate-500 mt-2 font-medium">Enable to receive real-time alerts for messages and updates even when the app is minimized.</p>}
                 </div>
               </div>
 

@@ -180,17 +180,30 @@ export default function OwnerDashboard() {
 
                   const unitArea = getUnitAreaValue(unit.unit_area);
 
+                  // Computed properties mirroring billing logic
                   const activeDuesRate = unit.dues_rate ?? orgData?.dues_rate ?? 0;
-                  const activeParking = unit.parking ?? orgData?.default_parking ?? 0;
-                  const activeWater = unit.water ?? orgData?.default_water ?? 0;
+                  
+                  // New Water computation
+                  const activeWaterMode = unit.water_billing_mode || 'fixed';
+                  const activeWaterPrev = Number(unit.water_previous_reading) || 0;
+                  const activeWaterCurr = Number(unit.water_current_reading) || 0;
+                  const activeWaterRate = Number(unit.water_rate) || 0;
+                  const waterConsumption = Math.max(0, activeWaterCurr - activeWaterPrev);
+                  const rawWater = activeWaterMode === 'fixed' 
+                    ? Number(unit.water ?? orgData?.default_water ?? 0)
+                    : (waterConsumption * activeWaterRate);
+
+                  // New Parking computation
+                  const activeParkingRate = unit.parking ?? orgData?.default_parking ?? 0;
+                  const activeParkingArea = Number(unit.parking_area) || 0;
+                  const rawParking = activeParkingRate * activeParkingArea;
+
                   const activeElectricity = unit.electricity ?? orgData?.default_electricity ?? 0;
 
                   const pType = unit.penalty_type ?? orgData?.penalty_type ?? 'percent';
                   const pVal = unit.penalty_value ?? orgData?.penalty_value ?? 0;
 
                   const rawDues = activeDuesRate * unitArea;
-                  const rawParking = activeParking;
-                  const rawWater = activeWater;
                   const rawElectricity = activeElectricity;
 
                   const dues = soa.owner_dues ? rawDues : 0;
