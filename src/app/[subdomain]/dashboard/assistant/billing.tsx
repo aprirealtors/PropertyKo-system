@@ -1401,38 +1401,6 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
           </div>
           
           <div className="flex flex-col min-[480px]:flex-row items-center justify-start md:justify-end w-full md:w-auto gap-2 sm:gap-3 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0 shrink-0">
-            
-            <div className="flex gap-2 w-full sm:w-auto shrink-0">
-              {/* GLOBAL CONFIG BUTTON */}
-              <button
-                 onClick={openGlobalConfigModal}
-                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-3.5 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-bold text-slate-700 hover:opacity-100 hover:border-[var(--color-primary)] transition-all shadow-sm shrink-0"
-                 title="Apply settings to all units"
-              >
-                <Globe size={16} /> <span className="truncate">Global Config</span>
-              </button>
-
-              {/* SEND ALL SOA BUTTON */}
-              <button 
-                onClick={() => setIsSendAllModalOpen(true)}
-                disabled={isSendingAll || allUnits.length === 0}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-3.5 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-bold text-slate-700 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Send SOA to all units"
-              >
-                {isSendingAll ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
-                <span className="truncate">Send All SOA</span>
-              </button>
-
-              {/* ✨ PAYMENT METHODS BUTTON */}
-              <button 
-                onClick={() => setIsPaymentMethodModalOpen(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white px-3.5 py-2 sm:py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs sm:text-sm font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm shrink-0"
-                title="Configure accepted payment methods"
-              >
-                <CreditCard size={16} />
-                <span className="truncate">Payment Methods</span>
-              </button>
-            </div>
 
             {/* ✨ Made search bar smaller to prevent title truncation */}
             <div className="relative w-full sm:w-32 md:w-40 lg:w-48 xl:w-56 group shrink-0">
@@ -1608,6 +1576,41 @@ export default function BillingTab({ orgData, isLoading: isOrgLoading, actionInt
                     )
                   })
                 )}
+              </div>
+
+              {/* BULK ACTIONS FOOTER */}
+              <div className="shrink-0 border-t border-[var(--color-border)] bg-white p-3 sm:p-4 space-y-2.5 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                  Applies to all units
+                </p>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    onClick={openGlobalConfigModal}
+                    className="h-11 flex items-center justify-center gap-2 bg-white px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs font-bold text-slate-700 hover:border-[var(--color-primary)] transition-all shadow-sm active:scale-95"
+                    title="Apply settings to all units"
+                  >
+                    <Globe size={16} className="shrink-0" /> <span className="truncate">Global Config</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsPaymentMethodModalOpen(true)}
+                    className="h-11 flex items-center justify-center gap-2 bg-white px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-xs font-bold text-slate-700 hover:border-emerald-500 hover:text-emerald-600 transition-all shadow-sm active:scale-95"
+                    title="Configure accepted payment methods"
+                  >
+                    <CreditCard size={16} className="shrink-0" /> <span className="truncate">Payment Methods</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setIsSendAllModalOpen(true)}
+                  disabled={isSendingAll || allUnits.length === 0}
+                  className="w-full h-11 flex items-center justify-center gap-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] px-4 rounded-[var(--radius-md)] border border-transparent text-xs font-black uppercase tracking-wider hover:opacity-90 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Send SOA to all units"
+                >
+                  {isSendingAll ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
+                  <span className="truncate">Send All SOA</span>
+                </button>
               </div>
             </div>
 
